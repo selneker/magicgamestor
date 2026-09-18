@@ -1,0 +1,32 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+
+const CartContext = createContext(null);
+
+export function CartProvider({ children }) {
+  const [items, setItems] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("mgs_cart") || "[]"); } catch (_) { return []; }
+  });
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => localStorage.setItem("mgs_cart", JSON.stringify(items)), [items]);
+
+  const add = useCallback((product, qty = 1) => {
+    setItems((prev) => {
+      const found = prev.find((i) => i.id === product.id);
+      if (found) return prev.map((i) => (i.id === product.id ? { ...i, qty: Math.min(20, i.qty + qty) } : i));
+      return [...prev, { id: product.id, slug: product.slug, name: product.name, name_en: product.name_en, type: product.type, price: product.price, qty }];
+    });
+  }, []);
+  const setQty = useCallback((id, qty) => setItems((prev) => (qty <= 0 ? prev.filter((i) => i.id !== id) : prev.map((i) => (i.id === id ? { ...i, qty } : i)))), []);
+  const remove = useCallback((id) => setItems((prev) => prev.filter((i) => i.id !== id)), []);
+  const clear = useCallback(() => setItems([]), []);
+
+  const value = useMemo(() => ({
+    items, add, setQty, remove, clear, open, setOpen,
+    count: items.reduce((s, i) => s + i.qty, 0),
+    total: items.reduce((s, i) => s + i.qty * i.price, 0),
+  }), [items, add, setQty, remove, clear, open]);
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+}
+
+export const useCart = () => useContext(CartContext);
