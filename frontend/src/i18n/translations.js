@@ -17,6 +17,7 @@ export const translations = {
       payment: "Mode de paiement", phone: "Numéro à débiter", phoneHint: "Vous recevrez une demande de validation sur ce numéro.", manual: "Paiement manuel (USSD + référence)", reference: "Référence de transaction", refHint: "Reçue par SMS après votre paiement.", copy: "Copier", copied: "Numéro copié", ussd: "Payer via USSD",
       pay: "Payer", summary: "Récapitulatif", email: "Email (reçu de commande)", guest: "Vous commandez en tant qu'invité.", loginHint: "Connectez-vous pour retrouver vos commandes.", processing: "Traitement…", simulated: "Mode simulation : aucun débit réel. Le paiement sera confirmé automatiquement dans quelques secondes.",
       waiting: "En attente de votre validation sur le téléphone…", success: "Paiement confirmé !", failed: "Paiement échoué", retry: "Réessayer", viewOrder: "Voir ma commande", saved: "IDs enregistrés",
+      redirect: "Vous serez redirigé vers la page de paiement sécurisée (PAPI) pour valider avec votre code MVola / Orange Money.", resume: "Reprendre le paiement",
     },
     order: {
       title: "Commande", track: "Suivre une commande", number: "Numéro de commande", find: "Rechercher", notFound: "Commande introuvable.", items: "Articles", method: "Paiement", date: "Date", none: "Aucune commande pour le moment.",
@@ -48,6 +49,7 @@ export const translations = {
       payment: "Payment method", phone: "Number to debit", phoneHint: "You will receive a validation request on this number.", manual: "Manual payment (USSD + reference)", reference: "Transaction reference", refHint: "Received by SMS after your payment.", copy: "Copy", copied: "Number copied", ussd: "Pay via USSD",
       pay: "Pay", summary: "Summary", email: "Email (order receipt)", guest: "You are ordering as a guest.", loginHint: "Log in to keep track of your orders.", processing: "Processing…", simulated: "Simulation mode: no real debit. Payment will be confirmed automatically in a few seconds.",
       waiting: "Waiting for your validation on the phone…", success: "Payment confirmed!", failed: "Payment failed", retry: "Retry", viewOrder: "View my order", saved: "Saved IDs",
+      redirect: "You will be redirected to the secure payment page (PAPI) to confirm with your MVola / Orange Money PIN.", resume: "Resume payment",
     },
     order: {
       title: "Order", track: "Track an order", number: "Order number", find: "Find", notFound: "Order not found.", items: "Items", method: "Payment", date: "Date", none: "No orders yet.",

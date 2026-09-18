@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime, timezone
 
@@ -24,7 +25,7 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
-def _backend_url(request: Request) -> str:
+def _frontend_url(request: Request) -> str:
     return os.environ.get("FRONTEND_URL") or str(request.base_url).rstrip("/")
 
 
@@ -46,11 +47,12 @@ async def _apply_status(payment: dict, status: str):
 
 @router.get("/config")
 async def payment_config():
+    live = gw.mode() == "papi" and gw.papi_configured()
     return {
-        "mode": gw.mode(),
+        "mode": gw.mode(), "gateway": "papi", "live": live,
         "providers": {
-            "mvola": {"configured": gw.provider_configured("mvola"), "merchant": os.environ["MVOLA_MERCHANT_MSISDN"], "name": "Selneker Dino"},
-            "orange": {"configured": gw.provider_configured("orange"), "merchant": os.environ["ORANGE_MERCHANT_NUMBER"], "name": "Selneker Dino"},
+            "mvola": {"configured": live, "merchant": os.environ["MVOLA_MERCHANT_MSISDN"], "name": "Selneker Dino"},
+            "orange": {"configured": live, "merchant": os.environ["ORANGE_MERCHANT_NUMBER"], "name": "Selneker Dino"},
         },
     }
 
@@ -65,19 +67,16 @@ async def initiate(body: InitiateIn, request: Request):
     if order["status"] not in ("pending_payment", "failed"):
         raise HTTPException(status_code=400, detail="Order is not payable")
     existing = await db.payments.find_one({"order_id": order["id"]}, PUBLIC)
-    if existing and existing["status"] == "pending":
-        return existing
-    if not gw.is_simulated() and not gw.provider_configured(order["payment_method"]):
-        raise HTTPException(status_code=503, detail="Payment provider not configured")
-    base = _backend_url(request)
-    if order["payment_method"] == "mvola":
-        result = await gw.mvola_initiate(order, order["payment_phone"], f"{base}/api/payments/mvola/callback")
-    else:
-        result = await gw.orange_initiate(order, f"{base}/suivi/{order['order_number']}?pubg_id={order['pubg_id']}&return=1",
-                                          f"{base}/suivi/{order['order_number']}?pubg_id={order['pubg_id']}&cancel=1",
-                                          f"{base}/api/payments/orange/notification")
+    if existing and existing["status"] == "pending" and (existing.get("payment_url") or existing.get("simulated")):
+        return {k: v for k, v in existing.items() if k != "notif_token"}
+    if not gw.is_simulated() and not gw.papi_configured():
+        raise HTTPException(status_code=503, detail="Payment gateway not configured")
+    front = _frontend_url(request)
+    track = f"{front}/suivi/{order['order_number']}?pubg_id={order['pubg_id']}"
+    result = await gw.papi_create_link(order, order["payment_method"], f"{track}&return=success", f"{track}&return=failure",
+                                       f"{front}/api/payments/papi/notification")
     payment = {
-        "order_id": order["id"], "order_number": order["order_number"], "provider": order["payment_method"],
+        "order_id": order["id"], "order_number": order["order_number"], "provider": order["payment_method"], "gateway": "papi",
         "provider_ref": result["provider_ref"], "client_ref": result["client_ref"], "amount": order["total"],
         "customer_phone": order["payment_phone"], "status": "pending", "payment_url": result.get("payment_url"),
         "notif_token": result.get("notif_token"), "simulated": gw.is_simulated(), "created_at": _now(), "updated_at": _now(),
@@ -95,39 +94,31 @@ async def status(order_id: str):
     if payment["status"] == "pending":
         if payment.get("simulated"):
             raw = gw.simulated_status(payment)
-        elif payment["provider"] == "mvola":
-            raw = await gw.mvola_status(payment["provider_ref"])
         else:
-            raw = await gw.orange_status(payment)
+            data = await gw.papi_read_link(payment["client_ref"])
+            raw = gw.link_to_status(data)
+            await db.payments.update_one({"order_id": order_id}, {"$set": {"last_lookup": data, "papi_reference": data.get("papiPaymentReference")}})
         payment = await _apply_status(payment, raw)
     order = await db.orders.find_one({"id": order_id}, {"_id": 0, "status": 1, "order_number": 1})
     return {"payment_status": payment["status"], "order_status": order["status"], "order_number": order["order_number"],
             "payment_url": payment.get("payment_url"), "simulated": payment.get("simulated", False)}
 
 
-@router.put("/mvola/callback")
-async def mvola_callback(request: Request):
-    body = await request.json()
-    sid = body.get("serverCorrelationId")
-    raw = body.get("transactionStatus") or body.get("status")
-    if not sid or not raw:
-        raise HTTPException(status_code=400, detail="Invalid callback")
-    payment = await db.payments.find_one({"provider_ref": sid, "provider": "mvola"}, PUBLIC)
-    if not payment:
-        raise HTTPException(status_code=404, detail="Unknown transaction")
-    await db.payments.update_one({"order_id": payment["order_id"]}, {"$set": {"callback": body}})
-    await _apply_status(payment, raw)
-    return {"received": True}
-
-
-@router.post("/orange/notification")
-async def orange_notification(request: Request):
-    body = await request.json()
-    payment = await db.payments.find_one({"notif_token": body.get("notif_token"), "provider": "orange"}, PUBLIC)
-    if not payment:
-        raise HTTPException(status_code=401, detail="Unknown notification token")
-    await db.payments.update_one({"order_id": payment["order_id"]}, {"$set": {"callback": body, "txnid": body.get("txnid")}})
-    await _apply_status(payment, body.get("status", ""))
+@router.post("/papi/notification")
+async def papi_notification(request: Request):
+    raw = await request.body()
+    if not gw.verify_papi_signature(raw, request.headers.get("X-Papi-Signature")):
+        raise HTTPException(status_code=401, detail="Invalid signature")
+    body = json.loads(raw)
+    payment = await db.payments.find_one({"client_ref": body.get("merchantPaymentReference"), "gateway": "papi"}, PUBLIC)
+    if not payment or payment.get("notif_token") != body.get("notificationToken"):
+        raise HTTPException(status_code=403, detail="Unknown payment")
+    if payment["status"] != "pending":
+        return {"ok": True}
+    if body.get("amount") is not None and int(body["amount"]) != int(payment["amount"]):
+        raise HTTPException(status_code=400, detail="Amount mismatch")
+    await db.payments.update_one({"order_id": payment["order_id"]}, {"$set": {"callback": body, "papi_reference": body.get("paymentReference"), "paid_with": body.get("paymentMethod")}})
+    await _apply_status(payment, body.get("paymentStatus", ""))
     return {"ok": True}
 
 

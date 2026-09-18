@@ -45,6 +45,7 @@ export function PaymentMethodPicker({ method, setMethod, phone, setPhone, refere
           <Input id="payment-phone" data-testid="payment-phone" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={method === "mvola" ? "034 XX XXX XX" : "037 XX XXX XX"} className="mt-1 h-12 rounded-xl" />
           <p className="mt-1 text-xs text-slate-500">{t("checkout.phoneHint")}</p>
           {config?.mode === "simulation" && <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700" data-testid="simulation-mode-notice">{t("checkout.simulated")}</p>}
+          {config?.live && <p className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600" data-testid="live-gateway-notice">{t("checkout.redirect")}</p>}
         </div>
       )}
 
