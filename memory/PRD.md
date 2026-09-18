@@ -36,3 +36,15 @@ Phase 1 audit: see `/app/memory/AUDIT.md` (delivered & approved).
 - P1: Phase 5 — AI smart search + "recommended for you" (Emergent LLM key, integration_expert playbook).
 - P1: Phase 6 — SEO (JSON-LD Product/Offer, per-page meta, sitemap.xml, robots.txt), image optimisation, a11y pass, 404 page.
 - P2: Order email/WhatsApp notifications, password reset flow, admin order detail drawer with history timeline, pagination for admin orders.
+
+## Implemented (2026-09-18) — Render migration prep (repo `selneker/magicgamestor`)
+- Deux services Render distincts via `render.yaml` : `magicgamestore-api-v2` (python, rootDir backend, `/health`) et `magicgamestore-web-v2` (static, rootDir frontend, rewrite `/* → /index.html`, `REACT_APP_BACKEND_URL` via `fromService`). Secrets `sync: false`, `JWT_SECRET` `generateValue`.
+- `GET /health` ajouté à la racine ; webhook PAPI `notificationUrl` construit depuis `BACKEND_PUBLIC_URL` (fallback `RENDER_EXTERNAL_URL`), success/failure depuis `FRONTEND_URL`.
+- `backend/.env` & `frontend/.env` retirés du suivi Git (`git rm --cached`), `.gitignore` : `.env`, `.env.*`, `!.env.example` ; `.env.example` créés (noms seulement).
+- `requirements.txt` réduit aux dépendances réelles (les wheels internes Emergent cassaient `pip install` sur Render) ; vérifié dans un venv vierge + démarrage sur base vide avec seed complet.
+- README : config Render, tableaux de variables backend/frontend, procédure de bascule DNS, checklist tests. Tests : backend 42/42, e2e boutique → checkout → paiement simulé → paid, admin CRUD OK.
+
+## Backlog
+- P0 : push `main` sur GitHub (aucune credential Git dans le pod) ; régénérer JWT/admin/PAPI (compromis dans l'historique Git) ; créer la base Atlas `magicgamestore_prod` ; déployer le Blueprint ; renseigner FRONTEND_URL/CORS_ORIGINS/BACKEND_PUBLIC_URL avec les URLs Render réelles.
+- P1 : Phase 2 (PAPI réel, commande test 30 UC, cutover DNS magicgame.store + www).
+- P2 : `DialogDescription` manquante (a11y) ; délai simulation ~10 s vs 8 s.

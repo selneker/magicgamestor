@@ -1,0 +1,67 @@
+# Render Blueprint — Magic Game Store v2 (selneker/magicgamestor)
+# Deux services distincts issus du même repository. Aucun secret ici : sync: false => à saisir dans le dashboard Render.
+services:
+  # ---------------------------------------------------------------- Backend API (FastAPI)
+  - type: web
+    name: magicgamestore-api-v2
+    runtime: python
+    plan: free
+    region: frankfurt
+    branch: main
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: MONGO_URL
+        sync: false
+      - key: DB_NAME
+        value: magicgamestore_prod
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: BACKEND_PUBLIC_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: PAYMENT_MODE
+        value: simulation
+      - key: PAPI_API_BASE
+        value: https://app.papi.mg/engine/api
+      - key: PAPI_API_KEY
+        sync: false
+      - key: PAPI_WEBHOOK_SECRET
+        sync: false
+      - key: MVOLA_MERCHANT_MSISDN
+        sync: false
+      - key: ORANGE_MERCHANT_NUMBER
+        sync: false
+
+  # ---------------------------------------------------------------- Frontend (React + CRACO, Static Site)
+  - type: web
+    name: magicgamestore-web-v2
+    runtime: static
+    branch: main
+    rootDir: frontend
+    buildCommand: yarn install --frozen-lockfile && yarn build
+    staticPublishPath: build
+    autoDeploy: true
+    envVars:
+      # URL publique du backend injectée AVANT le build (REACT_APP_BACKEND_URL + /api)
+      - key: REACT_APP_BACKEND_URL
+        fromService:
+          name: magicgamestore-api-v2
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
