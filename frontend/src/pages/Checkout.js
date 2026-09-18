@@ -52,7 +52,7 @@ export default function Checkout() {
       }
       const { data: payment } = await api.post("/payments/initiate", { order_id: created.id });
       if (payment.payment_url && !payment.simulated) { window.location.assign(payment.payment_url); return; }
-      setOrder(created);
+      setOrder({ ...created, simulated: payment.simulated });
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {

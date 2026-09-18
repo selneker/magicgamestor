@@ -79,7 +79,7 @@ async def register(body: RegisterIn, response: Response):
 @router.post("/login")
 async def login(body: LoginIn, request: Request, response: Response):
     email = body.email.lower()
-    identifier = f"{request.client.host if request.client else 'na'}:{email}"
+    identifier = email
     await _check_lock(identifier)
     user = await db.users.find_one({"email": email})
     if not user or not user.get("password_hash") or not verify_password(body.password, user["password_hash"]):

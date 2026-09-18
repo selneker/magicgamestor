@@ -12,7 +12,7 @@ export function CartDrawer() {
   const navigate = useNavigate();
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetContent className="flex w-full flex-col sm:max-w-md" data-testid="cart-drawer">
+      <SheetContent aria-describedby={undefined} className="flex w-full flex-col sm:max-w-md" data-testid="cart-drawer">
         <SheetHeader><SheetTitle className="font-display text-xl">{t("cart.title")}</SheetTitle></SheetHeader>
         {items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center" data-testid="cart-empty">

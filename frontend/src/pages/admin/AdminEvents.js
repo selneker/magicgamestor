@@ -44,7 +44,7 @@ export default function AdminEvents() {
         ))}
       </div>
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-2xl" data-testid="event-dialog">
+        <DialogContent aria-describedby={undefined} className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-2xl" data-testid="event-dialog">
           <DialogHeader><DialogTitle className="font-display">{editing?.id ? t("admin.edit") : t("admin.newEvent")}</DialogTitle></DialogHeader>
           {editing && (
             <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">

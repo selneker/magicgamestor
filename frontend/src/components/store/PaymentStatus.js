@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 export function PaymentStatus({ order, onRetry }) {
   const { t } = useLang();
   const [state, setState] = useState("pending");
-  const [simulated, setSimulated] = useState(false);
+  const [simulated, setSimulated] = useState(!!order.simulated);
   const timer = useRef(null);
 
   useEffect(() => {
