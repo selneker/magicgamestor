@@ -31,6 +31,11 @@ app = FastAPI(title="Magic Game Store API", lifespan=lifespan)
 api = APIRouter(prefix="/api")
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
 @api.get("/")
 async def root():
     return {"name": "Magic Game Store API", "status": "ok"}

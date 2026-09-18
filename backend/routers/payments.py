@@ -29,6 +29,11 @@ def _frontend_url(request: Request) -> str:
     return os.environ.get("FRONTEND_URL") or str(request.base_url).rstrip("/")
 
 
+def _backend_url(request: Request) -> str:
+    return (os.environ.get("BACKEND_PUBLIC_URL") or os.environ.get("RENDER_EXTERNAL_URL")
+            or str(request.base_url).rstrip("/"))
+
+
 async def _apply_status(payment: dict, status: str):
     status = gw.normalize_status(status)
     if payment.get("status") == "completed" and status != "completed":
@@ -51,8 +56,8 @@ async def payment_config():
     return {
         "mode": gw.mode(), "gateway": "papi", "live": live,
         "providers": {
-            "mvola": {"configured": live, "merchant": os.environ["MVOLA_MERCHANT_MSISDN"], "name": "Selneker Dino"},
-            "orange": {"configured": live, "merchant": os.environ["ORANGE_MERCHANT_NUMBER"], "name": "Selneker Dino"},
+            "mvola": {"configured": live, "merchant": os.environ.get("MVOLA_MERCHANT_MSISDN", ""), "name": "Selneker Dino"},
+            "orange": {"configured": live, "merchant": os.environ.get("ORANGE_MERCHANT_NUMBER", ""), "name": "Selneker Dino"},
         },
     }
 
@@ -74,7 +79,7 @@ async def initiate(body: InitiateIn, request: Request):
     front = _frontend_url(request)
     track = f"{front}/suivi/{order['order_number']}?pubg_id={order['pubg_id']}"
     result = await gw.papi_create_link(order, order["payment_method"], f"{track}&return=success", f"{track}&return=failure",
-                                       f"{front}/api/payments/papi/notification")
+                                       f"{_backend_url(request)}/api/payments/papi/notification")
     payment = {
         "order_id": order["id"], "order_number": order["order_number"], "provider": order["payment_method"], "gateway": "papi",
         "provider_ref": result["provider_ref"], "client_ref": result["client_ref"], "amount": order["total"],
