@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: selneker/next-update
-          ref: main
+          ref: UI-and-the-chanting-update
           token: ${{ secrets.SYNC_APP_TOKEN }}
           path: next-update
           fetch-depth: 1
