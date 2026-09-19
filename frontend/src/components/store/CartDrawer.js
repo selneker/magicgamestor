@@ -24,7 +24,7 @@ export function CartDrawer() {
             <ul className="flex-1 space-y-3 overflow-y-auto py-4">
               {items.map((i) => (
                 <li key={i.id} data-testid={`cart-item-${i.slug}`} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3">
-                  <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl font-display text-xs font-bold ${i.type === "uc" ? "bg-amber-50 text-amber-600" : "bg-violet-50 text-violet-600"}`}>{i.type === "uc" ? "UC" : "P+"}</div>
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-foreground bg-primary font-display text-xs font-black text-[#0A0A0A]">{i.type === "uc" ? "UC" : i.type === "prime_plus" ? "P+" : "P"}</div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-slate-900">{lang === "en" && i.name_en ? i.name_en : i.name}</p>
                     <p className="text-sm text-slate-500">{formatAr(i.price)}</p>
@@ -39,7 +39,7 @@ export function CartDrawer() {
               ))}
             </ul>
             <div className="border-t pt-4">
-              <div className="flex items-center justify-between text-lg"><span className="font-semibold text-slate-600">{t("cart.total")}</span><span data-testid="cart-total" className="font-display text-2xl font-bold text-slate-900">{formatAr(total)}</span></div>
+              <div className="flex items-center justify-between text-lg"><span className="eyebrow">{t("cart.total")}</span><span data-testid="cart-total" className="num text-2xl">{formatAr(total)}</span></div>
               <Button data-testid="cart-checkout-button" className="mt-4 h-12 w-full rounded-full text-base font-bold" onClick={() => { setOpen(false); navigate("/commande"); }}>{t("cart.checkout")}</Button>
             </div>
           </>

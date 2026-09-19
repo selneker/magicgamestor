@@ -71,14 +71,17 @@ export const AdminPush = () => {
     } catch (e) { setError(errorMessage(e)); }
     finally { setBusy(false); }
   };
-  return <section data-testid="admin-push" className="mt-4 rounded-2xl border bg-card p-4">
+  return <section data-testid="admin-push" className="mt-4 border border-foreground bg-card p-3">
     <div className="flex flex-wrap items-center gap-3">
-      <Bell className="h-4 w-4 text-primary" />
-      <p className="text-sm font-semibold" data-testid="push-status" aria-live="polite">Notifications : {supported() ? state : "non disponibles sur ce navigateur"}</p>
-      {supported() && state !== "activées" && <Button type="button" size="sm" className="rounded-full" disabled={busy || !config?.configured || state === "refusées"} onClick={enable} data-testid="push-enable">Activer les notifications</Button>}
+      <Bell className="h-4 w-4" strokeWidth={2} />
+      <p className="text-[11px] font-black uppercase tracking-[0.12em]" data-testid="push-status" aria-live="polite">
+        Notifications
+        <span className={`ml-2 inline-block border border-foreground px-1.5 py-0.5 ${state === "activées" ? "bg-primary text-[#0A0A0A]" : "text-muted-foreground"}`}>{supported() ? state : "non disponibles"}</span>
+      </p>
+      {supported() && state !== "activées" && <Button type="button" size="sm" disabled={busy || !config?.configured || state === "refusées"} onClick={enable} data-testid="push-enable">Activer</Button>}
       {state === "activées" && <>
-        <Button type="button" size="sm" variant="outline" className="rounded-full" disabled={busy} onClick={test} data-testid="push-test">Tester la notification</Button>
-        <Button type="button" size="sm" variant="ghost" className="rounded-full" disabled={busy} onClick={disable} data-testid="push-disable"><BellOff className="mr-1 h-4 w-4" />Désactiver</Button>
+        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={test} data-testid="push-test">Tester</Button>
+        <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={disable} data-testid="push-disable"><BellOff className="mr-1 h-4 w-4" />Désactiver</Button>
       </>}
     </div>
     {config && !config.configured && <p data-testid="push-not-configured" className="mt-2 text-xs text-muted-foreground">Configuration VAPID requise sur le serveur.</p>}

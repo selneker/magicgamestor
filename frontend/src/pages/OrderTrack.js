@@ -9,23 +9,26 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 const STYLE = {
-  pending_payment: ["bg-amber-50 text-amber-700", Clock], awaiting_verification: ["bg-sky-50 text-sky-700", Clock],
-  paid: ["bg-emerald-50 text-emerald-700", CheckCircle2], delivered: ["bg-emerald-600 text-white", PackageCheck],
-  cancelled: ["bg-slate-100 text-slate-600", XCircle], failed: ["bg-rose-50 text-rose-700", XCircle],
+  pending_payment: ["border-foreground bg-transparent text-foreground", Clock],
+  awaiting_verification: ["border-foreground bg-transparent text-foreground", Clock],
+  paid: ["border-[#0A0A0A] bg-primary text-[#0A0A0A]", CheckCircle2],
+  delivered: ["border-foreground bg-foreground text-background", PackageCheck],
+  cancelled: ["border-foreground/40 bg-transparent text-muted-foreground line-through", XCircle],
+  failed: ["border-destructive bg-destructive text-destructive-foreground", XCircle],
 };
 
 export function StatusPill({ status }) {
   const { t } = useLang();
   const [cls, Icon] = STYLE[status] || STYLE.pending_payment;
-  return <span data-testid={`status-${status}`} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${cls}`}><Icon className="h-3.5 w-3.5" />{t(`order.status.${status}`)}</span>;
+  return <span data-testid={`status-${status}`} className={`inline-flex items-center gap-1.5 border px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${cls}`}><Icon className="h-3 w-3" strokeWidth={2.25} />{t(`order.status.${status}`)}</span>;
 }
 
 export function OrderCard({ order }) {
   const { t, lang } = useLang();
   return (
-    <article data-testid={`order-card-${order.order_number}`} className="rounded-[2rem] border border-slate-100 bg-white p-6">
+    <article data-testid={`order-card-${order.order_number}`} className="border border-foreground bg-card p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t("order.number")}</p><p className="font-mono text-lg font-bold text-slate-900">{order.order_number}</p></div>
+        <div><p className="eyebrow">{t("order.number")}</p><p className="num text-xl">{order.order_number}</p></div>
         <StatusPill status={order.status} />
       </div>
       <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600" data-testid="order-next-step">{t(`order.next.${order.status}`)}</p>
@@ -36,7 +39,7 @@ export function OrderCard({ order }) {
         <span>PUBG ID <b className="text-slate-900">{order.pubg_id}</b> · {order.pseudo}</span>
         <span className="capitalize">{order.payment_method === "orange" ? "Orange Money" : order.payment_method === "mvola" ? "MVola" : "USSD"}</span>
         <span>{new Date(order.created_at).toLocaleString(lang === "en" ? "en-GB" : "fr-FR")}</span>
-        <span className="font-display text-lg font-bold text-slate-900">{formatAr(order.total)}</span>
+        <span className="num text-xl text-foreground">{formatAr(order.total)}</span>
       </div>
     </article>
   );

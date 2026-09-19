@@ -60,7 +60,7 @@ async def _user_from_jwt(token: str):
         payload = jwt.decode(token, _secret(), algorithms=[JWT_ALGORITHM])
     except jwt.InvalidTokenError:
         return None
-    if payload.get("type") != "access":
+    if payload.get("type") != "access" or not payload.get("sub"):
         return None
     return await db.users.find_one({"user_id": payload["sub"]}, PUBLIC_USER_FIELDS)
 

@@ -9,7 +9,7 @@ import { ChatWorkspace } from "@/components/chat/ChatWorkspace";
 const SIZE = 56, MARGIN = 12, KEY = "mgs-chat-fab";
 const safeBottom = () => { const v = getComputedStyle(document.documentElement).getPropertyValue("--sab"); return parseInt(v, 10) || 0; };
 const isMobile = () => window.innerWidth < 768;
-// Mobile keeps the button above the liquid-glass bottom nav; desktop uses the plain viewport.
+// Mobile keeps the button above the bottom nav; desktop uses the plain viewport.
 const bounds = () => ({ minX: MARGIN, maxX: window.innerWidth - SIZE - MARGIN, minY: MARGIN + 64, maxY: window.innerHeight - SIZE - MARGIN - safeBottom() - (isMobile() ? 88 : 0) });
 const clamp = (p) => { const b = bounds(); return { x: Math.min(Math.max(p.x, b.minX), b.maxX), y: Math.min(Math.max(p.y, b.minY), b.maxY) }; };
 const defaultPos = () => clamp({ x: Infinity, y: Infinity });
@@ -46,22 +46,25 @@ export const FloatingChat = () => {
     <button type="button" data-testid="floating-chat-button" aria-label={`Chat${count ? `, ${count} messages non lus` : ""}`} aria-expanded={panelOpen}
       onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
       style={{ left: pos.x, top: pos.y, width: SIZE, height: SIZE, touchAction: "none" }}
-      className="fixed z-50 flex cursor-grab select-none items-center justify-center rounded-full bg-primary text-white shadow-[0_10px_30px_hsl(var(--primary)/.45)] transition-[transform,box-shadow] duration-200 hover:scale-105 active:cursor-grabbing active:scale-95">
-      {panelOpen ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
-      {count > 0 && !panelOpen && <span data-testid="floating-chat-unread" className="absolute -right-1 -top-1 min-w-[22px] rounded-full bg-rose-500 px-1.5 text-center text-xs font-bold leading-[22px] text-white ring-2 ring-background">{count}</span>}
+      className="fixed z-50 flex cursor-grab select-none items-center justify-center border border-[#0A0A0A] bg-primary text-[#0A0A0A] shadow-[4px_4px_0_#0A0A0A] transition-transform duration-200 hover:-translate-y-0.5 active:cursor-grabbing active:translate-y-0">
+      {panelOpen ? <X className="h-6 w-6" strokeWidth={2.25} /> : <MessageCircle className="h-6 w-6" strokeWidth={2.25} />}
+      {count > 0 && !panelOpen && <span data-testid="floating-chat-unread" className="absolute -right-2 -top-2 min-w-[22px] border border-[#0A0A0A] bg-[#0A0A0A] px-1.5 text-center text-xs font-black leading-[20px] text-primary">{count}</span>}
     </button>
     {panelOpen && <section role="dialog" aria-label="Chat Magic Game Store" data-testid="floating-chat-panel"
-      className="float-glass fixed z-50 flex flex-col overflow-hidden rounded-[1.5rem] border bg-card/95 text-card-foreground inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] md:inset-auto md:bottom-6 md:right-6 md:h-[min(640px,calc(100vh-3rem))] md:w-[400px]">
-      <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
-        <div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary"><MessageCircle className="h-5 w-5" /></span><div><p className="font-display text-base font-bold leading-tight">Magic Game Store</p><p className="text-xs text-muted-foreground">Support · réponse rapide</p></div></div>
-        <Button type="button" variant="ghost" size="icon" className="rounded-full" onClick={() => setPanelOpen(false)} aria-label="Fermer le chat" data-testid="floating-chat-close"><X className="h-5 w-5" /></Button>
+      className="float-glass fixed z-50 flex flex-col overflow-hidden border border-foreground bg-card/95 text-card-foreground inset-x-3 top-[max(0.75rem,env(safe-area-inset-top))] bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] md:inset-auto md:bottom-6 md:right-6 md:h-[min(640px,calc(100vh-3rem))] md:w-[400px]">
+      <header className="flex items-center justify-between gap-3 border-b border-foreground bg-foreground px-4 py-3 text-background">
+        <div>
+          <p className="font-display text-sm font-black uppercase tracking-tight">Magic Game Store</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-background/60">Support · réponse rapide</p>
+        </div>
+        <button type="button" className="p-1 transition-colors hover:text-primary" onClick={() => setPanelOpen(false)} aria-label="Fermer le chat" data-testid="floating-chat-close"><X className="h-5 w-5" strokeWidth={2} /></button>
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        {user ? <ChatWorkspace /> : <div className="rounded-2xl border bg-background p-5" data-testid="floating-chat-login-required">
+        {user ? <ChatWorkspace /> : <div className="border border-foreground bg-background p-5" data-testid="floating-chat-login-required">
           <p className="text-sm" data-testid="floating-chat-login-message">Vous devez créer un compte ou vous connecter pour démarrer une conversation.</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button asChild className="rounded-full"><Link to="/connexion" state={{ from: pathname }} data-testid="floating-chat-login">Se connecter</Link></Button>
-            <Button asChild variant="outline" className="rounded-full"><Link to="/inscription" state={{ from: pathname }} data-testid="floating-chat-register">Créer un compte</Link></Button>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button asChild><Link to="/connexion" state={{ from: pathname }} data-testid="floating-chat-login">Se connecter</Link></Button>
+            <Button asChild variant="outline"><Link to="/inscription" state={{ from: pathname }} data-testid="floating-chat-register">Créer un compte</Link></Button>
           </div>
         </div>}
       </div>

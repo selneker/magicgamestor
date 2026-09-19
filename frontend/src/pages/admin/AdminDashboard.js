@@ -18,8 +18,8 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6" data-testid="admin-dashboard">
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-        {cards.map(([label, value, cls, id]) => (
-          <div key={id} data-testid={id} className="rounded-2xl border border-slate-100 bg-white p-5"><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p><p className={`mt-2 font-display text-2xl font-bold ${cls}`}>{value}</p></div>
+        {cards.map(([label, value, , id]) => (
+          <div key={id} data-testid={id} className="border border-foreground bg-card p-5"><p className="eyebrow">{label}</p><p className="num mt-3 text-2xl sm:text-3xl">{value}</p></div>
         ))}
       </div>
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
@@ -27,7 +27,7 @@ export default function AdminDashboard() {
           <h2 className="font-display text-lg font-bold text-slate-900">{t("admin.last14")}</h2>
           <div className="mt-4 h-56">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.daily}><XAxis dataKey="_id" tick={{ fontSize: 10 }} tickFormatter={(d) => d.slice(5)} /><Tooltip formatter={(v) => formatAr(v)} /><Bar dataKey="revenue" fill="#007aff" radius={[6, 6, 0, 0]} /></BarChart>
+              <BarChart data={stats.daily}><XAxis dataKey="_id" tick={{ fontSize: 10 }} tickFormatter={(d) => d.slice(5)} /><Tooltip formatter={(v) => formatAr(v)} /><Bar dataKey="revenue" fill="#C5FE02" stroke="currentColor" className="text-foreground" /></BarChart>
             </ResponsiveContainer>
           </div>
         </div>

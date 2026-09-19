@@ -2,9 +2,11 @@
 import os
 import time
 import uuid
+from pathlib import Path
 
 import pytest
 import requests
+from dotenv import dotenv_values
 
 # Prefer BACKEND_TEST_URL override; else use REACT_APP_BACKEND_URL; fall back to localhost.
 # NOTE: In this preview env the external ingress currently 404s on /api/*, so we test against localhost:8001.
@@ -19,8 +21,9 @@ except Exception:
     BASE_URL = "http://localhost:8001"
 API = f"{BASE_URL}/api"
 
-ADMIN_EMAIL = "admin@magicgame.store"
-ADMIN_PASSWORD = "Admin@2026!"
+_backend_env = dotenv_values(Path(__file__).resolve().parents[1] / ".env")
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL") or _backend_env["ADMIN_EMAIL"]
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD") or _backend_env["ADMIN_PASSWORD"]
 
 
 # ------------- Fixtures -------------

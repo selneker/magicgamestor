@@ -5,7 +5,7 @@ Credentials: see /app/memory/test_credentials.md
 ## Email/password (JWT cookies)
 ```
 API=$(grep REACT_APP_BACKEND_URL /app/frontend/.env | cut -d '=' -f2)
-curl -c c.txt -X POST $API/api/auth/login -H "Content-Type: application/json" -d '{"email":"admin@magicgame.store","password":"Admin@2026!"}'
+curl -c c.txt -X POST $API/api/auth/login -H "Content-Type: application/json" -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}"   # values from backend/.env
 curl -b c.txt $API/api/auth/me
 ```
 Login sets `access_token` (15 min) + `refresh_token` (7 d) httpOnly cookies AND returns `access_token` usable as `Authorization: Bearer`.

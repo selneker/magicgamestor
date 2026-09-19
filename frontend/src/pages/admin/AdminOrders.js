@@ -66,19 +66,19 @@ export default function AdminOrders() {
         {orders.length === 0 && <p className="rounded-2xl bg-white p-6 text-slate-500" data-testid="admin-orders-empty">{t("order.none")}</p>}
         {orders.map((o) => (
           <article key={o.id} data-testid={`admin-order-${o.order_number}`} className="grid gap-3 rounded-2xl border border-slate-100 bg-white p-4 lg:grid-cols-[auto_1fr_auto] lg:items-center">
-            <div><p className="flex items-center gap-1 font-mono text-sm font-bold text-slate-900">{o.order_number}<CopyButton value={o.order_number} label="n° de commande" testId={`copy-order-${o.order_number}`} /></p><p className="text-xs text-slate-400">{new Date(o.created_at).toLocaleString("fr-FR")}</p><StatusPill status={o.status} /></div>
+            <div><p className="flex items-center gap-1 num text-base text-foreground">{o.order_number}<CopyButton value={o.order_number} label="n° de commande" testId={`copy-order-${o.order_number}`} /></p><p className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground">{new Date(o.created_at).toLocaleString("fr-FR")}</p><div className="mt-1"><StatusPill status={o.status} /></div></div>
             <div className="text-sm">
               <p className="flex flex-wrap items-center gap-1 font-semibold text-slate-900">{o.pseudo} · <span className="font-mono">{o.pubg_id}</span><CopyButton value={o.pubg_id} label="PUBG ID" testId={`copy-pubg-${o.order_number}`} /></p>
               <p className="text-slate-600">{o.items.map((i) => `${i.quantity}× ${i.name}`).join(", ")}</p>
               <p className="flex flex-wrap items-center gap-1 text-xs text-slate-500">{o.payment_method === "manual" ? <>USSD · {o.manual_reference || ""}<CopyButton value={o.manual_reference} label="référence de transaction" testId={`copy-ref-${o.order_number}`} /></> : <>{o.payment_method === "mvola" ? "MVola" : "Orange Money"} · {o.payment_phone || ""}<CopyButton value={o.payment_phone} label="numéro de paiement" testId={`copy-phone-${o.order_number}`} /></>}{o.email ? ` · ${o.email}` : ""}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-display text-lg font-bold text-slate-900">{formatAr(o.total)}</span>
+              <span className="num text-xl text-foreground">{formatAr(o.total)}</span>
               <Select value={o.status} onValueChange={(v) => setStatus(o, v)} disabled={!TRANSITIONS[o.status]?.length}>
                 <SelectTrigger className="h-9 w-44 rounded-full text-xs" data-testid={`admin-status-select-${o.order_number}`}><SelectValue /></SelectTrigger>
                 <SelectContent>{STATUSES.filter((s) => s === o.status || TRANSITIONS[o.status]?.includes(s)).map((s) => <SelectItem key={s} value={s}>{t(`order.status.${s}`)}</SelectItem>)}</SelectContent>
               </Select>
-              {canDeliver(o.status) && <Button size="sm" className="rounded-full bg-emerald-600 hover:bg-emerald-700" onClick={() => setStatus(o, "delivered")} data-testid={`admin-deliver-${o.order_number}`}>{t("admin.markDelivered")}</Button>}
+              {canDeliver(o.status) && <Button size="sm" onClick={() => setStatus(o, "delivered")} data-testid={`admin-deliver-${o.order_number}`}>{t("admin.markDelivered")}</Button>}
               {o.status === "pending_payment" && o.payment_method !== "manual" && (
                 <><Button size="sm" variant="outline" className="rounded-full text-xs" onClick={() => simulate(o, "completed")} data-testid={`admin-simulate-paid-${o.order_number}`}>{t("admin.forcePaid")}</Button>
                 <Button size="sm" variant="outline" className="rounded-full text-xs" onClick={() => simulate(o, "failed")} data-testid={`admin-simulate-failed-${o.order_number}`}>{t("admin.forceFailed")}</Button></>

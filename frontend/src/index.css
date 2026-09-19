@@ -1,131 +1,154 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* NOHEMI SLOT — drop properly licensed files in /public/fonts and uncomment.
+   The whole design already reads --font-display / --font-body, so nothing else changes.
+@font-face { font-family: 'Nohemi'; src: url('/fonts/Nohemi-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Nohemi'; src: url('/fonts/Nohemi-SemiBold.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Nohemi'; src: url('/fonts/Nohemi-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Nohemi'; src: url('/fonts/Nohemi-Black.woff2') format('woff2'); font-weight: 900; font-display: swap; }
+*/
+
 @layer base {
     :root {
-        --background: 210 40% 98%;
-        --foreground: 222 47% 11%;
+        --font-display: 'Nohemi', 'Archivo', system-ui, sans-serif;
+        --font-body: 'Nohemi', 'Archivo', system-ui, sans-serif;
+        /* Neon Brutalism — light */
+        --background: 48 20% 94%;      /* #F4F3EE */
+        --foreground: 0 0% 4%;         /* #0A0A0A */
         --card: 0 0% 100%;
-        --card-foreground: 222 47% 11%;
+        --card-foreground: 0 0% 4%;
         --popover: 0 0% 100%;
-        --popover-foreground: 222 47% 11%;
-        --primary: 211 100% 50%;
-        --primary-foreground: 0 0% 100%;
-        --secondary: 210 40% 96%;
-        --secondary-foreground: 222 47% 11%;
-        --muted: 210 40% 96%;
-        --muted-foreground: 215 16% 47%;
-        --accent: 211 100% 96%;
-        --accent-foreground: 211 100% 35%;
-        --destructive: 0 84% 60%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 214 32% 91%;
-        --input: 214 32% 91%;
-        --ring: 211 100% 50%;
-        --radius: 1rem;
+        --popover-foreground: 0 0% 4%;
+        --primary: 72 99% 50%;         /* #C5FE02 */
+        --primary-foreground: 0 0% 4%;
+        --secondary: 0 0% 4%;
+        --secondary-foreground: 48 20% 94%;
+        --muted: 48 14% 90%;
+        --muted-foreground: 60 3% 41%; /* #8A8A82 */
+        --accent: 72 99% 50%;
+        --accent-foreground: 0 0% 4%;
+        --destructive: 6 78% 45%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 0 0% 4%;
+        --input: 0 0% 4%;
+        --ring: 72 99% 42%;
+        --radius: 0px;
+        --rule: hsl(0 0% 4% / .16);
         --mvola: #00A651;
         --orange: #FF7900;
-        --pubg: #F7C936;
+        --pubg: #C5FE02;
+        --sab: env(safe-area-inset-bottom, 0px);
     }
     .dark {
-        --background: 222 49% 8%;
-        --foreground: 210 40% 96%;
-        --card: 222 40% 12%;
-        --card-foreground: 210 40% 96%;
-        --popover: 222 36% 14%;
-        --popover-foreground: 210 40% 96%;
-        --secondary: 217 33% 19%;
-        --secondary-foreground: 210 40% 96%;
-        --muted: 217 33% 17%;
-        --muted-foreground: 215 20% 70%;
-        --accent: 215 40% 22%;
-        --accent-foreground: 210 100% 80%;
-        --destructive: 0 65% 45%;
-        --border: 217 27% 24%;
-        --input: 217 27% 30%;
-        --ring: 211 100% 65%;
+        --background: 0 0% 4%;
+        --foreground: 48 20% 94%;
+        --card: 0 0% 7%;
+        --card-foreground: 48 20% 94%;
+        --popover: 0 0% 9%;
+        --popover-foreground: 48 20% 94%;
+        --primary: 72 99% 50%;
+        --primary-foreground: 0 0% 4%;
+        --secondary: 48 20% 94%;
+        --secondary-foreground: 0 0% 4%;
+        --muted: 0 0% 12%;
+        --muted-foreground: 60 4% 60%;
+        --accent: 72 99% 50%;
+        --accent-foreground: 0 0% 4%;
+        --destructive: 6 70% 50%;
+        --border: 48 12% 82%;
+        --input: 48 12% 82%;
+        --ring: 72 99% 50%;
+        --rule: hsl(48 20% 94% / .22);
     }
     * { @apply border-border; }
     html { scroll-behavior: smooth; }
     body {
         @apply bg-background text-foreground antialiased;
-        font-family: 'Manrope', sans-serif;
+        font-family: var(--font-body);
+        font-feature-settings: "tnum" 1;
     }
-    h1, h2, h3, h4, .font-display { font-family: 'Outfit', sans-serif; }
-    ::selection { background: hsl(var(--primary)); color: white; }
+    h1, h2, h3, h4, .font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
+    h1, h2 { text-transform: uppercase; }
+    h1, .font-800 { font-weight: 900; }
+    ::selection { background: hsl(var(--primary)); color: #0A0A0A; }
+    :focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
 }
 
 @layer utilities {
-    .glass { @apply bg-white/85 backdrop-blur-xl border border-white/60; }
-    .card-lift { @apply transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-1 hover:shadow-[0_12px_32px_rgba(15,23,42,0.10)]; }
+    /* Editorial building blocks */
+    .panel { @apply border border-foreground bg-card; border-radius: 0; }
+    .panel-soft { border: 1px solid var(--rule); background: hsl(var(--card)); }
+    .panel-black { @apply bg-foreground text-background; border-radius: 0; }
+    .panel-neon { background: hsl(var(--primary)); color: #0A0A0A; border: 1px solid #0A0A0A; }
+    .eyebrow { @apply text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground; }
+    .rule-t { border-top: 1px solid var(--rule); }
+    .num { font-family: var(--font-display); font-weight: 900; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+    .hover-slide { @apply transition-[transform,background-color,color] duration-200 ease-out; }
+    .hover-slide:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 hsl(var(--foreground)); }
+    .neon-shadow { box-shadow: 4px 4px 0 hsl(var(--primary)); }
+    .card-lift { @apply transition-[transform,box-shadow] duration-200 ease-out; }
+    .card-lift:hover { transform: translate(-3px, -3px); box-shadow: 6px 6px 0 hsl(var(--foreground)); }
+    .dark .card-lift:hover { box-shadow: 6px 6px 0 hsl(var(--primary)); }
+    .glass { @apply bg-background/85 backdrop-blur-xl; }
     .pb-safe { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }
-    :root { --sab: env(safe-area-inset-bottom, 0px); }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     .grain::after {
-        content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .18; mix-blend-mode: overlay;
+        content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .22; mix-blend-mode: overlay;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
     }
-    .marquee { animation: marquee 60s linear infinite; }
-    @media (prefers-reduced-motion: reduce) { .marquee { animation-duration: 180s; } }
+    .marquee { animation: marquee 44s linear infinite; }
+    /* Mobile nav — original liquid-glass over a brutalist black slab */
     .liquid-nav {
-        background: linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.62));
-        -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
-        border: 1px solid rgba(255,255,255,.75);
-        box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 -1px 0 rgba(15,23,42,.05) inset, 0 12px 40px rgba(15,23,42,.16), 0 2px 8px rgba(15,23,42,.06);
+        background: linear-gradient(180deg, rgba(10,10,10,.92), rgba(10,10,10,.82));
+        -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%);
+        border: 1px solid rgba(244,243,238,.16);
+        box-shadow: 0 1px 0 rgba(244,243,238,.14) inset, 0 16px 44px rgba(0,0,0,.45);
     }
-    .dark .liquid-nav {
-        background: linear-gradient(180deg, hsl(var(--card) / .72), hsl(var(--card) / .58));
-        border-color: rgba(255,255,255,.12);
-        box-shadow: 0 1px 0 rgba(255,255,255,.12) inset, 0 12px 40px rgba(0,0,0,.55);
-    }
-    .liquid-active {
-        background: linear-gradient(180deg, hsl(var(--primary) / .95), hsl(var(--primary) / .8));
-        box-shadow: 0 1px 0 rgba(255,255,255,.45) inset, 0 6px 16px hsl(var(--primary) / .35);
-    }
+    .liquid-active { background: hsl(var(--primary)); color: #0A0A0A; box-shadow: 0 0 0 1px #0A0A0A inset, 0 6px 18px hsl(var(--primary) / .35); }
     .float-glass {
-        -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
-        box-shadow: 0 1px 0 rgba(255,255,255,.4) inset, 0 12px 32px rgba(15,23,42,.22);
+        -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
+        box-shadow: 6px 6px 0 hsl(var(--foreground));
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .marquee { animation: none; }
+        .card-lift:hover, .hover-slide:hover { transform: none; }
+        *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
     }
 }
 
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-/* Existing light utilities also appear inside portalled dialogs/menus.
-   Map their dark surfaces here rather than restyling every existing page. */
-.dark .bg-white { background-color: hsl(var(--card)); }
-.dark .bg-white\/90 { background-color: hsl(var(--card) / .9); }
-.dark .glass { background-color: hsl(var(--card) / .9); border-color: hsl(var(--border)); }
-.dark .bg-slate-50, .dark .bg-slate-100 { background-color: hsl(var(--muted)); }
-.dark .bg-slate-200 { background-color: hsl(var(--border)); }
-.dark .bg-slate-900 { background-color: hsl(var(--accent)); }
-.dark .text-slate-900, .dark .text-slate-800, .dark .text-slate-700 { color: hsl(var(--foreground)); }
-.dark .text-slate-600, .dark .text-slate-500, .dark .text-slate-400 { color: hsl(var(--muted-foreground)); }
-.dark .border-slate-100, .dark .border-slate-200, .dark .border-slate-300,
-.dark .border-slate-200\/70, .dark .border-slate-900 { border-color: hsl(var(--border)); }
-.dark .ring-slate-200 { --tw-ring-color: hsl(var(--border)); }
-.dark .hover\:bg-slate-50:hover, .dark .hover\:bg-slate-100:hover,
-.dark .hover\:bg-slate-200:hover, .dark .hover\:bg-slate-900:hover { background-color: hsl(var(--accent)); }
-.dark .hover\:text-slate-900:hover { color: hsl(var(--foreground)); }
-.dark .hover\:border-slate-300:hover { border-color: hsl(var(--input)); }
-.dark .bg-amber-50, .dark .bg-orange-50 { background-color: #352619; }
-.dark .bg-emerald-50 { background-color: #12372e; }
-.dark .bg-rose-50 { background-color: #3b1b2b; }
-.dark .bg-sky-50, .dark .bg-blue-50 { background-color: #152f48; }
-.dark .bg-violet-50 { background-color: #2d2445; }
-.dark .text-amber-600, .dark .text-amber-700, .dark .text-orange-600 { color: #fbbf24; }
-.dark .text-emerald-600, .dark .text-emerald-700 { color: #6ee7b7; }
-.dark .text-rose-600, .dark .text-rose-700 { color: #fda4af; }
-.dark .text-sky-700, .dark .text-blue-600 { color: #7dd3fc; }
-.dark .text-violet-600 { color: #c4b5fd; }
-.dark .hover\:bg-rose-50:hover { background-color: #3b1b2b; }
-.dark .hover\:text-rose-600:hover, .dark .hover\:text-rose-700:hover { color: #fda4af; }
-.dark [data-testid="product-visual"] { background-image: none; background-color: hsl(var(--card)); }
-.dark .text-slate-900\/10 { color: hsl(var(--foreground) / .15); }
-.dark .text-primary { color: #66adff; }
-.dark .recharts-default-tooltip { background-color: hsl(var(--popover)) !important; border-color: hsl(var(--border)) !important; color: hsl(var(--foreground)); }
-.dark .recharts-cartesian-axis-tick text { fill: hsl(var(--muted-foreground)); }
+/* ── Brutalist surface mapping ───────────────────────────────────────────
+   Existing pages use slate/white utilities. Remapping them here converts
+   the whole app (customer + admin, light + dark) without rewriting markup. */
+.rounded-2xl, .rounded-3xl, .rounded-xl, .rounded-\[2rem\], .rounded-\[1\.5rem\], .rounded-\[1\.75rem\], .rounded-\[1\.25rem\], .rounded-lg, .rounded-md, .rounded-full, .rounded-sm { border-radius: 0 !important; }
+.bg-white, .bg-white\/90, .bg-white\/85 { background-color: hsl(var(--card)); }
+.bg-slate-50, .bg-slate-100 { background-color: hsl(var(--muted)); }
+.bg-slate-200 { background-color: hsl(var(--muted)); }
+.bg-slate-900, .bg-slate-950 { background-color: hsl(var(--foreground)); color: hsl(var(--background)); }
+.text-slate-900, .text-slate-800, .text-slate-700 { color: hsl(var(--foreground)); }
+.text-slate-600, .text-slate-500, .text-slate-400, .text-slate-300 { color: hsl(var(--muted-foreground)); }
+.border-slate-100, .border-slate-200, .border-slate-300, .border-slate-200\/70, .border-slate-900 { border-color: var(--rule); }
+.ring-slate-200 { --tw-ring-color: var(--rule); }
+.hover\:bg-slate-50:hover, .hover\:bg-slate-100:hover, .hover\:bg-slate-200:hover { background-color: hsl(var(--primary)); color: #0A0A0A; }
+.hover\:bg-slate-900:hover { background-color: hsl(var(--foreground)); color: hsl(var(--background)); }
+.hover\:text-slate-900:hover { color: hsl(var(--foreground)); }
+.hover\:border-slate-300:hover { border-color: hsl(var(--foreground)); }
+.text-primary { color: hsl(var(--foreground)); }
+.dark .text-primary { color: hsl(var(--primary)); }
+.bg-amber-50, .bg-orange-50, .bg-emerald-50, .bg-sky-50, .bg-blue-50, .bg-violet-50, .bg-rose-50 { background-color: hsl(var(--muted)); }
+.text-amber-600, .text-amber-700, .text-orange-600, .text-emerald-600, .text-emerald-700, .text-sky-700, .text-blue-600, .text-violet-600 { color: hsl(var(--foreground)); }
+.dark .text-amber-600, .dark .text-amber-700, .dark .text-orange-600, .dark .text-emerald-600, .dark .text-emerald-700, .dark .text-sky-700, .dark .text-blue-600, .dark .text-violet-600 { color: hsl(var(--foreground)); }
+.bg-emerald-600, .bg-emerald-500, .bg-orange-500 { background-color: hsl(var(--foreground)); color: hsl(var(--background)); }
+.hover\:bg-emerald-700:hover { background-color: hsl(var(--primary)); color: #0A0A0A; }
+[data-testid="product-visual"] { background-image: none !important; background-color: hsl(var(--muted)); }
+.text-slate-900\/10 { color: hsl(var(--foreground) / .08); }
+.dark .text-slate-900\/10 { color: hsl(var(--foreground) / .12); }
+.recharts-default-tooltip { background-color: hsl(var(--popover)) !important; border-color: hsl(var(--foreground)) !important; border-radius: 0 !important; color: hsl(var(--popover-foreground)); }
+.recharts-cartesian-axis-tick text { fill: hsl(var(--muted-foreground)); }
 
 [data-debug-wrapper="true"] { display: contents !important; }

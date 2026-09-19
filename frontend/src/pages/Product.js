@@ -35,15 +35,15 @@ export default function Product() {
       <Link to="/boutique" data-testid="back-to-catalog" className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500 hover:text-slate-900"><ChevronLeft className="h-4 w-4" />{t("catalog.title")}</Link>
       <div className="mt-4 grid gap-8 lg:grid-cols-[1fr_1.1fr]">
         <div className={`relative flex min-h-[320px] items-center justify-center overflow-hidden rounded-[2rem] ${isUc ? "bg-gradient-to-br from-amber-100 via-yellow-50 to-white" : "bg-gradient-to-br from-violet-100 via-indigo-50 to-white"}`} data-testid="product-visual">
-          <div className={`flex h-32 w-32 items-center justify-center rounded-[2rem] shadow-[0_20px_40px_rgba(15,23,42,0.12)] ${isUc ? "bg-amber-400 text-white" : "bg-violet-500 text-white"}`}>{isUc ? <Coins className="h-16 w-16" /> : <Crown className="h-16 w-16" />}</div>
-          <p className="absolute bottom-6 left-6 font-display text-5xl font-800 text-slate-900/10 sm:text-7xl">{productName(product, lang)}</p>
-          {product.popular && <span className="absolute left-5 top-5 rounded-full bg-primary px-3 py-1 text-xs font-bold uppercase text-white">{t("common.popular")}</span>}
+          <div className="flex h-28 w-28 items-center justify-center border border-foreground bg-primary text-[#0A0A0A]">{isUc ? <Coins className="h-14 w-14" strokeWidth={1.75} /> : <Crown className="h-14 w-14" strokeWidth={1.75} />}</div>
+          <p className="absolute bottom-6 left-6 font-display text-5xl font-black uppercase text-slate-900/10 sm:text-7xl">{productName(product, lang)}</p>
+          {product.popular && <span className="absolute left-0 top-0 bg-primary px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#0A0A0A]">{t("common.popular")}</span>}
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">PUBG Mobile · {isUc ? "UC" : product.type === "prime_plus" ? "Prime+" : "Prime"}</p>
           <h1 className="mt-2 font-display text-4xl font-bold text-slate-900 sm:text-5xl" data-testid="product-name">{productName(product, lang)}</h1>
           <div className="mt-4 flex items-end gap-3">
-            <span data-testid="product-price" className="font-display text-3xl font-bold text-primary">{formatAr(product.price)}</span>
+            <span data-testid="product-price" className="num text-3xl sm:text-4xl">{formatAr(product.price)}</span>
             {product.old_price && <span className="pb-1 text-slate-400 line-through">{formatAr(product.old_price)}</span>}
             {discount > 0 && <span className="mb-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">{t("product.save")} {discount}%</span>}
           </div>
