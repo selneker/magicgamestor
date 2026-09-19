@@ -43,7 +43,7 @@ export default function Catalog() {
   return (
     <div className="pb-24 pt-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">PUBG Mobile</p><h1 className="font-display text-3xl font-bold text-slate-900 sm:text-4xl">{t("catalog.title")}</h1></div>
+        <div><p className="eyebrow">PUBG Mobile</p><h1 className="font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">{t("catalog.title")}</h1></div>
         <div className="relative w-full sm:w-72">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input data-testid="catalog-search" value={q} onChange={(e) => update({ q: e.target.value })} placeholder={t("catalog.search")} className="h-11 rounded-full pl-9" />
@@ -51,17 +51,17 @@ export default function Catalog() {
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        <div className="no-scrollbar flex gap-2 overflow-x-auto" role="tablist" data-testid="type-tabs">
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+        <div className="no-scrollbar flex w-full gap-2 overflow-x-auto sm:w-auto sm:min-w-0 sm:flex-1" role="tablist" data-testid="type-tabs">
           {TYPES.map(([value, key]) => (
             <button key={key} role="tab" data-testid={`type-tab-${key}`} onClick={() => update({ type: value })}
-              className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${activeType === value || (value === "prime" && type.startsWith("prime,")) ? "bg-slate-900 text-white" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"}`}>
+              className={`shrink-0 border border-foreground px-4 py-2 text-[11px] font-black uppercase tracking-[0.1em] transition-colors ${activeType === value || (value === "prime" && type.startsWith("prime,")) ? "bg-primary text-[#0A0A0A]" : "bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`}>
               {t(`catalog.${key}`)}
             </button>
           ))}
-          <button data-testid="filter-popular" onClick={() => update({ popular: popular ? "" : "1" })} className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${popular ? "bg-primary text-white" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"}`}>{t("catalog.popular")}</button>
+          <button data-testid="filter-popular" onClick={() => update({ popular: popular ? "" : "1" })} className={`shrink-0 border border-foreground px-4 py-2 text-[11px] font-black uppercase tracking-[0.1em] transition-colors ${popular ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`}>{t("catalog.popular")}</button>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex w-full items-center gap-2 sm:w-auto">
           <Button variant="outline" size="sm" className="rounded-full" onClick={() => setShowFilters((s) => !s)} data-testid="toggle-filters"><SlidersHorizontal className="mr-1 h-4 w-4" />{t("catalog.filters")}</Button>
           <Select value={sort} onValueChange={(v) => update({ sort: v === "default" ? "" : v })}>
             <SelectTrigger className="h-9 w-44 rounded-full" data-testid="sort-select"><SelectValue placeholder={t("catalog.sort")} /></SelectTrigger>
@@ -82,9 +82,9 @@ export default function Catalog() {
         </div>
       )}
 
-      <p className="mt-6 text-sm text-slate-500" data-testid="results-count">{products ? `${products.length} ${t("catalog.results")}` : t("common.loading")}</p>
-      <div className="mt-3 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4" data-testid="catalog-grid">
-        {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-56 rounded-2xl" />)}
+      <p className="mt-8 eyebrow" data-testid="results-count">{products ? `${products.length} ${t("catalog.results")}` : t("common.loading")}</p>
+      <div className="mt-3 grid grid-cols-2 items-stretch gap-4 md:grid-cols-3 lg:grid-cols-4" data-testid="catalog-grid">
+        {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-64" />)}
         {products?.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
       </div>
       {products?.length === 0 && <p className="mt-10 text-center text-slate-500" data-testid="catalog-empty">{t("catalog.empty")}</p>}

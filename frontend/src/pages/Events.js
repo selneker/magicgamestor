@@ -28,26 +28,25 @@ export default function Events() {
 
   return (
     <div className="pb-24 pt-6">
-      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Magic Game Store</p>
-      <h1 className="font-display text-3xl font-bold text-slate-900 sm:text-4xl">{t("events.title")}</h1>
-      <p className="mt-1 text-slate-500">{t("events.subtitle")}</p>
+      <p className="eyebrow">Magic Game Store</p>
+      <h1 className="font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">{t("events.title")}</h1>
+      <p className="mt-2 text-sm text-muted-foreground">{t("events.subtitle")}</p>
       {events.length === 0 && <p className="mt-10 text-slate-500" data-testid="events-empty">{t("events.empty")}</p>}
       <div className="mt-8 grid gap-6 md:grid-cols-2">
         {events.map((ev) => (
-          <article key={ev.id} id={ev.slug} data-testid={`event-card-${ev.slug}`} className="card-lift overflow-hidden rounded-[2rem] border border-slate-100 bg-white">
-            <div className="relative h-52">
+          <article key={ev.id} id={ev.slug} data-testid={`event-card-${ev.slug}`} className="card-lift flex flex-col overflow-hidden border border-foreground bg-card">
+            <div className="relative h-52 border-b border-foreground">
               {ev.image_url && <img src={ev.image_url} alt={localized(ev, "title", lang)} className="h-full w-full object-cover" loading="lazy" />}
-              <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-slate-900 backdrop-blur">Magic Game Store ✓</span>
-              {ev.badge && <span className="absolute right-4 top-4 rounded-full bg-orange-500 px-3 py-1 text-xs font-bold uppercase text-white">{ev.badge}</span>}
+              {ev.badge && <span className="absolute right-0 top-0 bg-primary px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-[#0A0A0A]">{ev.badge}</span>}
             </div>
-            <div className="p-6">
-              <h2 className="font-display text-2xl font-bold text-slate-900">{localized(ev, "title", lang)}</h2>
-              <p className="mt-2 text-sm text-slate-500">{localized(ev, "description", lang)}</p>
-              {ev.price_label && <div className="mt-4 flex items-end gap-3"><span className="font-display text-3xl font-bold text-primary">{ev.price_label}</span>{ev.old_price_label && <span className="pb-1 text-slate-400 line-through">{ev.old_price_label}</span>}</div>}
-              {ev.product_slug && <Button asChild className="mt-5 w-full rounded-full font-bold" data-testid={`event-cta-${ev.slug}`}><Link to={`/produit/${ev.product_slug}`}>{t("events.buy")}</Link></Button>}
-              <div className="mt-5 flex items-center gap-4 border-t pt-4 text-sm font-semibold text-slate-500">
-                <button data-testid={`event-like-${ev.slug}`} onClick={() => like(ev)} className={`inline-flex items-center gap-1.5 transition-colors ${liked.has(ev.id) ? "text-rose-500" : "hover:text-rose-500"}`}><Heart className={`h-4 w-4 ${liked.has(ev.id) ? "fill-current" : ""}`} />{ev.likes}</button>
-                <button data-testid={`event-share-${ev.slug}`} onClick={() => share(ev)} className="inline-flex items-center gap-1.5 hover:text-primary"><Share2 className="h-4 w-4" />{ev.shares}</button>
+            <div className="flex flex-1 flex-col p-6">
+              <h2 className="font-display text-2xl font-black uppercase leading-[0.95] tracking-tight">{localized(ev, "title", lang)}</h2>
+              <p className="mt-3 text-sm text-muted-foreground">{localized(ev, "description", lang)}</p>
+              {ev.price_label && <div className="mt-5 flex items-end gap-3 border-t border-foreground pt-4"><span className="num text-3xl">{ev.price_label}</span>{ev.old_price_label && <span className="pb-1 text-sm text-muted-foreground line-through">{ev.old_price_label}</span>}</div>}
+              {ev.product_slug && <Button asChild className="mt-5 h-12 w-full" data-testid={`event-cta-${ev.slug}`}><Link to={`/produit/${ev.product_slug}`}>{t("events.buy")}</Link></Button>}
+              <div className="mt-auto flex items-center gap-5 pt-5 text-[11px] font-black uppercase tracking-[0.1em] text-muted-foreground">
+                <button data-testid={`event-like-${ev.slug}`} onClick={() => like(ev)} className={`inline-flex items-center gap-1.5 transition-colors ${liked.has(ev.id) ? "text-foreground" : "hover:text-foreground"}`}><Heart className={`h-4 w-4 ${liked.has(ev.id) ? "fill-current" : ""}`} strokeWidth={2} />{ev.likes}</button>
+                <button data-testid={`event-share-${ev.slug}`} onClick={() => share(ev)} className="inline-flex items-center gap-1.5 hover:text-foreground"><Share2 className="h-4 w-4" strokeWidth={2} />{ev.shares}</button>
               </div>
             </div>
           </article>

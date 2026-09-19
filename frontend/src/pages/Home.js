@@ -81,7 +81,7 @@ export default function Home() {
           </div>
           <Link to="/boutique" data-testid="see-all-link" className="inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-[0.14em] hover:text-muted-foreground">{t("common.seeAll")}<ArrowRight className="h-3.5 w-3.5" /></Link>
         </div>
-        <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4" data-testid="popular-grid">
+        <div className="mt-6 grid grid-cols-2 items-stretch gap-4 md:grid-cols-3 lg:grid-cols-4" data-testid="popular-grid">
           {products.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
         </div>
       </section>

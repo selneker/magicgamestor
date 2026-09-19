@@ -8,46 +8,52 @@ import { formatAr } from "@/lib/api";
 
 export const productName = (p, lang) => (lang === "en" && p.name_en ? p.name_en : p.name);
 
-const bigNumber = (p) => {
-  if (p.type === "uc") return p.uc_amount ? String(p.uc_amount) : (String(p.name).match(/\d+/)?.[0] || "UC");
-  return p.duration_months ? `${p.duration_months}` : "1";
-};
-const unitLabel = (p) => (p.type === "uc" ? "UC" : p.type === "prime_plus" ? "Prime+" : "Prime");
+const quantity = (p) => (p.type === "uc"
+  ? { value: p.uc_amount || String(p.name).match(/\d+/)?.[0] || "", unit: "UC" }
+  : { value: p.duration_months || 1, unit: "mois" });
 
 export function ProductCard({ product, index = 0 }) {
   const { add, setOpen } = useCart();
   const { t, lang } = useLang();
   const isUc = product.type === "uc";
+  const { value, unit } = quantity(product);
   const discount = product.old_price ? Math.round((1 - product.price / product.old_price) * 100) : 0;
+  const category = isUc ? "PUBG MOBILE UC" : `PUBG ${subscriptionLabel(product.type)}`;
   return (
     <motion.article
-      initial={{ opacity: 0, y: 14 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }}
-      transition={{ delay: Math.min(index * 0.03, 0.24), duration: 0.32 }}
+      initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }}
+      transition={{ delay: Math.min(index * 0.03, 0.24), duration: 0.3 }}
       data-testid={`product-card-${product.slug}`}
-      className="card-lift group relative flex min-w-0 flex-col border border-foreground bg-card"
+      className="card-lift group relative flex h-full min-w-0 flex-col border border-foreground bg-card"
     >
       {product.popular && (
-        <span data-testid={`badge-popular-${product.slug}`} className="absolute -top-px right-0 bg-primary px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#0A0A0A]">{t("common.popular")}</span>
+        <span data-testid={`badge-popular-${product.slug}`} className="absolute -top-px right-0 z-10 bg-primary px-2 py-1 text-[10px] font-black uppercase leading-none tracking-[0.1em] text-[#0A0A0A]">{t("common.popular")}</span>
       )}
-      {!product.popular && product.badge && <span className="absolute -top-px right-0 bg-foreground px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-background">{product.badge}</span>}
-      <Link to={`/produit/${product.slug}`} className="flex flex-1 flex-col p-4 pt-8">
-        <p className="eyebrow">{isUc ? "PUBG Mobile UC" : `PUBG ${unitLabel(product)}`}</p>
-        <div className="mt-3 flex items-baseline gap-1.5">
-          <span className="num text-[2rem] leading-[0.85] text-foreground sm:text-5xl">{bigNumber(product)}</span>
-          <span className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">{isUc ? "UC" : t("product.months")}</span>
-        </div>
-        <h3 className="mt-3 truncate font-display text-sm font-bold uppercase tracking-tight text-foreground">{productName(product, lang)}</h3>
-        <div className="mt-auto pt-4">
-          <span data-testid={`price-${product.slug}`} className="num block whitespace-nowrap text-lg text-foreground">{formatAr(product.price)}</span>
-          <div className="flex items-center gap-2">
-            {product.old_price && <span className="whitespace-nowrap text-xs text-muted-foreground line-through">{formatAr(product.old_price)}</span>}
-            {discount > 0 && <span className="bg-primary px-1 text-[10px] font-black text-[#0A0A0A]">-{discount}%</span>}
+      {!product.popular && product.badge && <span className="absolute -top-px right-0 z-10 bg-foreground px-2 py-1 text-[10px] font-black uppercase leading-none tracking-[0.1em] text-background">{product.badge}</span>}
+
+      <Link to={`/produit/${product.slug}`} className="flex flex-1 flex-col p-4 pt-9 sm:p-5 sm:pt-10">
+        <p className="text-[10px] font-bold uppercase leading-none tracking-[0.14em] text-muted-foreground">{category}</p>
+        <h3 className="mt-4 flex min-w-0 items-baseline gap-1.5 font-display leading-[0.8] text-foreground">
+          <span className="num truncate text-[clamp(1.75rem,9vw,3.25rem)] sm:text-[3.25rem]">{value}</span>
+          <span className="shrink-0 text-base font-black uppercase tracking-tight sm:text-lg">{unit}</span>
+        </h3>
+
+        <div className="mt-auto pt-6">
+          <div className="border-t border-foreground pt-3">
+            <p data-testid={`price-${product.slug}`} className="num text-[1.35rem] leading-none text-foreground">{formatAr(product.price)}</p>
+            {(product.old_price || discount > 0) && (
+              <p className="mt-2 flex flex-wrap items-center gap-2 leading-none">
+                {product.old_price && <span className="text-[11px] font-semibold text-muted-foreground line-through">{formatAr(product.old_price)}</span>}
+                {discount > 0 && <span className="bg-primary px-1.5 py-0.5 text-[10px] font-black text-[#0A0A0A]">-{discount}%</span>}
+              </p>
+            )}
           </div>
         </div>
       </Link>
+
       <Button
         size="sm" data-testid={`add-to-cart-${product.slug}`}
-        className="h-11 w-full whitespace-normal rounded-none border-t border-foreground bg-transparent px-1 text-[10px] font-black uppercase leading-tight tracking-[0.1em] text-foreground shadow-none hover:bg-primary hover:text-[#0A0A0A]"
+        className="h-12 w-full whitespace-nowrap rounded-none border-0 border-t border-foreground bg-card px-2 text-[11px] font-black uppercase tracking-[0.08em] text-foreground shadow-none transition-colors hover:bg-foreground hover:text-background active:bg-primary active:text-[#0A0A0A]"
         onClick={() => { const r = add(product); if (!r.ok) return toast.error(t("product.duplicateSub").replaceAll("{label}", subscriptionLabel(product.type))); toast.success(t("product.added"), { action: { label: t("nav.cart"), onClick: () => setOpen(true) } }); }}
       >
         {t("product.add")}

@@ -41,7 +41,7 @@ export default function Product() {
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">PUBG Mobile · {isUc ? "UC" : product.type === "prime_plus" ? "Prime+" : "Prime"}</p>
-          <h1 className="mt-2 font-display text-4xl font-bold text-slate-900 sm:text-5xl" data-testid="product-name">{productName(product, lang)}</h1>
+          <h1 className="mt-2 font-display text-4xl font-black uppercase tracking-tight sm:text-5xl" data-testid="product-name">{productName(product, lang)}</h1>
           <div className="mt-4 flex items-end gap-3">
             <span data-testid="product-price" className="num text-3xl sm:text-4xl">{formatAr(product.price)}</span>
             {product.old_price && <span className="pb-1 text-slate-400 line-through">{formatAr(product.old_price)}</span>}
@@ -70,7 +70,7 @@ export default function Product() {
       {product.related?.length > 0 && (
         <section className="mt-16">
           <h2 className="font-display text-2xl font-bold text-slate-900">{t("product.related")}</h2>
-          <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-4" data-testid="related-grid">{product.related.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}</div>
+          <div className="mt-5 grid grid-cols-2 items-stretch gap-4 md:grid-cols-4" data-testid="related-grid">{product.related.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}</div>
         </section>
       )}
 

@@ -1,0 +1,34 @@
+{
+  "summary": "Frontend-only visual/polish verification of Magic Game Store product cards after the duplicate-quantity fix. Verified /boutique (UC + prime,prime_plus filters), home popular grid, /evenements, cart integration, theme toggle persistence and mobile overflow at 320/375/390/430. Duplicate-quantity bug is fully resolved. Card hierarchy, height alignment, CTA baseline alignment, POPULAIRE badge and cart interaction all pass. One minor responsive finding: the largest UC pack card (16200 UC, 5 digits) overflows its card at 320px (31px overflow) and marginally at 375px (4px overflow) due to the 2.75rem quantity font-size. Prime/Prime+ filter and 390/430px widths are clean.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "ProductCard (16200 UC / very large quantities)",
+        "issue": "At viewport 320px the 5-digit quantity '16200' renders at ~136px wide inside a ~145px card and the trailing 'UC' unit spills to right=351 (viewport=320) causing 31px of horizontal page overflow on /boutique?type=uc. Same card causes 4px overflow at 375px (right=379). 390px and 430px are clean. Root cause: quantity uses text-[2.75rem] with no responsive down-scaling or text-clamp for 5+ digit values. Suggested fix: reduce base size (e.g. text-[2.25rem] sm:text-[3.25rem]) or apply text-[clamp()] / letter-spacing tightening for values with length >= 5.",
+        "selector": "[data-testid=\"product-card-16200-uc\"] .num",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "In frontend/src/components/store/ProductCard.js reduce the quantity font-size for long values or the mobile base size to avoid horizontal overflow on 320-375px for the 16200 UC card (and any future 5-digit UC pack).",
+    "Optional: consider clamping the .num span with `min-w-0 truncate` inside the h3 flex or using `text-[clamp(1.75rem,10vw,3.25rem)]` for the value span."
+  ],
+  "critical_code_review_comments": [
+    "ProductCard.js line 40 has a dead ternary `{isUc ? null : null}` — safe to remove.",
+    "quantity() helper falls back to regex-parsing the product name; acceptable but note the name is no longer rendered so this is the sole safety net if uc_amount is missing from backend — worth ensuring uc_amount is always populated.",
+    "The type-tabs row on /boutique uses `overflow-x-auto no-scrollbar` and correctly clips content (does NOT cause document overflow at 320px), so PRIME+ / POPULAIRE tabs being off-screen is expected horizontal-scroll UX."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "95%"},
+  "test_credentials": "not required",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Verified: (1) each product card renders its quantity exactly once — 22 cards on /boutique, all UC values ['30','60','90','120','180','325','415','660','720','985','1320','1800','3850','16200'] appear once per card; PRIME/PRIME+ cards show '<n> MOIS' once with 'PUBG PRIME' or 'PUBG PRIME+' category and never 'PRIME PRIME'. (2) Card hierarchy: category eyebrow > large quantity+unit > divider > price + old_price + discount badge > CTA bar at bottom. (3) Row card heights identical (262.59px variance=0) and CTA y-positions identical (variance=0) on /boutique and on home popular-grid. (4) POPULAIRE badge renders on 7 popular products. (5) add-to-cart increments cart-count from 0 -> 1. (6) theme-toggle flips html.dark class and persists localStorage 'mgs-theme'='dark'. (7) /evenements renders event card and no overflow at 1280 or 375. (8) Only overflow found is the 16200-UC card at 320/375 (see ui_bugs).",
+  "rca of the issue": "Duplicate-quantity bug: RCA — previous ProductCard rendered both the numeric badge and the product name (which was itself '30 UC'), producing double appearance. Current implementation drops the product name entirely and derives quantity from p.uc_amount / p.duration_months with a category eyebrow — reproduction impossible with current code across all 22 catalog items and 7 popular home cards. Fixed."
+}
