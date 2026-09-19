@@ -12,7 +12,7 @@ export function ProtectedRoute({ children, admin = false }) {
       </div>
     );
   }
-  if (!user) return <Navigate to="/connexion" replace state={{ from: location.pathname }} />;
+  if (!user) return <Navigate to="/connexion" replace state={{ from: `${location.pathname}${location.search}${location.hash}` }} />;
   if (admin && user.role !== "admin") return <Navigate to="/" replace />;
   return children;
 }

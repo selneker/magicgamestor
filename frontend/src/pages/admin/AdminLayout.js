@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { CalendarRange, Download, LayoutDashboard, Package, ReceiptText } from "lucide-react";
+import { CalendarRange, Download, LayoutDashboard, Package, ReceiptText, MessageCircle } from "lucide-react";
+import { AdminPush } from "@/components/admin/AdminPush";
+import { useChat } from "@/context/ChatContext";
 import { api } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { Switch } from "@/components/ui/switch";
@@ -8,6 +10,7 @@ import { Button } from "@/components/ui/button";
 
 export default function AdminLayout() {
   const { t } = useLang();
+  const { count } = useChat();
   const [online, setOnline] = useState(false);
   useEffect(() => { api.get("/settings/status").then((r) => setOnline(r.data.online)).catch(() => {}); }, []);
   const toggle = async (v) => { setOnline(v); await api.post("/admin/status", { online: v }).catch(() => setOnline(!v)); };
@@ -16,6 +19,7 @@ export default function AdminLayout() {
     ["/admin/commandes", ReceiptText, t("admin.orders"), "admin-tab-orders"],
     ["/admin/catalogue", Package, t("admin.products"), "admin-tab-products"],
     ["/admin/evenements", CalendarRange, t("admin.events"), "admin-tab-events"],
+    ["/admin/messages", MessageCircle, `Chat${count ? ` (${count})` : ""}`, "admin-tab-chat"],
   ];
   const exportCsv = async () => {
     const { data } = await api.get("/admin/export", { responseType: "blob" });
@@ -32,6 +36,7 @@ export default function AdminLayout() {
         <Button variant="outline" size="sm" className="rounded-full" onClick={exportCsv} data-testid="admin-export"><Download className="mr-1 h-4 w-4" />{t("admin.export")}</Button>
         <Button asChild variant="ghost" size="sm" className="rounded-full"><Link to="/">{t("nav.shop")}</Link></Button>
       </div>
+      <AdminPush />
       <nav className="no-scrollbar mt-6 flex gap-2 overflow-x-auto">
         {tabs.map(([to, Icon, label, id, end]) => (
           <NavLink key={to} to={to} end={end} data-testid={id} className={({ isActive }) => `inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${isActive ? "bg-slate-900 text-white" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"}`}><Icon className="h-4 w-4" />{label}</NavLink>

@@ -1,26 +1,46 @@
 {
-  "theme": "light",
+  "theme": "light_and_dark",
+  "theme_system": {
+    "provider": "next-themes",
+    "attribute": "class",
+    "defaultTheme": "system",
+    "enableSystem": true,
+    "storageKey": "theme",
+    "script_placement": "index.html inline script to prevent white flash on load"
+  },
   "project_name": "Magic Game Store",
-  "description": "Fast, modern, mobile-first game marketplace selling PUBG Mobile UC + Prime subscriptions top-up shop for Madagascar.",
+  "description": "Fast, modern e-commerce game marketplace with dual Customer UI and Admin UI featuring full Light/Dark mode support.",
+  "dark_mode_tokens": {
+    "background": "dark:bg-slate-950",
+    "surface": "dark:bg-slate-900",
+    "card": "dark:bg-slate-900 dark:border-slate-800",
+    "popover": "dark:bg-slate-900 dark:border-slate-800",
+    "text_primary": "dark:text-slate-50",
+    "text_secondary": "dark:text-slate-400",
+    "muted": "dark:bg-slate-800 dark:text-slate-400",
+    "border": "dark:border-slate-800",
+    "accent": "dark:bg-slate-800 dark:text-slate-100",
+    "glass": "dark:bg-slate-950/85 dark:border-slate-800/60 backdrop-blur-xl"
+  },
   "typography": {
     "headings": {
       "font_family": "Outfit, sans-serif",
       "styles": {
-        "h1": "text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-slate-900",
-        "h2": "text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-slate-800",
-        "h3": "text-xl sm:text-2xl font-semibold text-slate-800",
-        "h4": "text-lg sm:text-xl font-medium text-slate-700"
+        "h1": "text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-slate-900 dark:text-slate-50",
+        "h2": "text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-slate-800 dark:text-slate-100",
+        "h3": "text-xl sm:text-2xl font-semibold text-slate-800 dark:text-slate-100",
+        "h4": "text-lg sm:text-xl font-medium text-slate-700 dark:text-slate-200"
       }
     },
     "body": {
       "font_family": "Manrope, sans-serif",
       "styles": {
-        "base": "text-base leading-relaxed text-slate-600",
-        "small": "text-sm text-slate-500",
-        "tiny": "text-xs font-medium tracking-wide uppercase text-slate-400"
+        "base": "text-base leading-relaxed text-slate-600 dark:text-slate-300",
+        "small": "text-sm text-slate-500 dark:text-slate-400",
+        "tiny": "text-xs font-medium tracking-wide uppercase text-slate-400 dark:text-slate-500"
       }
     },
-    "instructions": "Import Outfit and Manrope from Google Fonts in index.css. Never use Inter for headings."
+    "instructions": "Use .js files (not .tsx). Import Outfit and Manrope in index.css. Avoid Inter for headings."
   },
   "colors": {
     "primary": "#007aff",
@@ -28,26 +48,29 @@
     "secondary_green": "#00A651",
     "secondary_orange": "#FF7900",
     "pubg_yellow": "#F7C936",
-    "background": "#F8FAFC",
-    "surface": "#FFFFFF",
-    "text_primary": "#0F172A",
-    "text_secondary": "#64748B",
-    "border": "#E2E8F0"
+    "background_light": "#F8FAFC",
+    "background_dark": "#020617",
+    "surface_light": "#FFFFFF",
+    "surface_dark": "#0F172A",
+    "text_primary_light": "#0F172A",
+    "text_primary_dark": "#F8FAFC",
+    "border_light": "#E2E8F0",
+    "border_dark": "#1E293B"
   },
   "visual_enhancers": {
     "shadows": {
-      "sm": "shadow-[0_2px_8px_rgba(0,0,0,0.04)]",
-      "md": "shadow-[0_8px_24px_rgba(0,0,0,0.08)]",
-      "lg": "shadow-[0_12px_32px_rgba(0,0,0,0.12)]"
+      "sm": "shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.4)]",
+      "md": "shadow-[0_8px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_24px_rgba(0,0,0,0.5)]",
+      "lg": "shadow-[0_12px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.6)]"
     },
-    "borders": "rounded-2xl border border-slate-100",
-    "glassmorphism": "bg-white/80 backdrop-blur-xl border-t border-white/40",
+    "borders": "rounded-2xl border border-slate-100 dark:border-slate-800",
+    "glassmorphism": "bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-white/40 dark:border-slate-800/50",
     "hover_effects": "transition-transform duration-200 ease-out hover:-translate-y-1 hover:shadow-md"
   },
   "layouts": {
     "mobile_first": true,
     "bottom_navigation": {
-      "style": "fixed bottom-0 w-full z-50 bg-white/90 backdrop-blur-lg border-t border-slate-200 pb-safe pt-2 px-6 flex justify-between items-center shadow-[0_-4px_24px_rgba(0,0,0,0.06)]"
+      "style": "fixed bottom-0 w-full z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 pb-safe pt-2 px-6 flex justify-between items-center shadow-[0_-4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_24px_rgba(0,0,0,0.4)]"
     },
     "grids": {
       "catalog": "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4",
@@ -61,50 +84,33 @@
     "cart_drawer": "Slide in from right (desktop) or bottom (mobile) with backdrop blur overlay."
   },
   "components": {
+    "theme_toggle": {
+      "description": "Visible theme switcher button (Sun/Moon icon) present in customer header and admin layout header. Toggles light/dark/system mode using next-themes standard hook useTheme(). MUST have data-testid=\"theme-toggle-button\"."
+    },
     "hero": {
-      "description": "Energetic, dark overlay with PUBG yellow highlights over a high-quality game action image. Features a trust strip below it (Admin Online badge, Instant Delivery, MVola/Orange Money accepted)."
+      "description": "Energetic overlay with PUBG yellow highlights. High contrast text visible in both themes."
     },
     "product_card": {
-      "description": "White background, rounded-2xl, subtle shadow. Big UC/Prime icon. Old price crossed out, new price prominent. Popular badge absolute positioned top-right if applicable."
+      "description": "Surface background (bg-white dark:bg-slate-900), rounded-2xl, subtle shadow. High contrast text."
     },
-    "bottom_nav": {
-      "description": "Mobile only glass bottom nav containing: Achat, Abonnement, Event, Commande. Lucide icons, text-xs labels. Active state gets primary color."
-    },
-    "trust_strip": {
-      "description": "Horizontal scrolling or flex-wrap strip containing trust markers. Green dot for 'Admin Online', lightning bolt for 'Livraison Rapide'."
-    },
-    "pdp": {
-      "description": "Sticky bottom Add to Cart bar on mobile. Clear breakdown of bonus UC. Visual guide on how to pay."
-    }
-  },
-  "image_urls": {
-    "hero_background": {
-      "url": "https://images.unsplash.com/photo-1564049489314-60d154ff107d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwxfHxtb2JpbGUlMjBnYW1pbmclMjBhY3Rpb258ZW58MHx8fHwxNzg5NzE3NDg2fDA&ixlib=rb-4.1.0&q=85",
-      "description": "Person playing PUBG Mobile action shot, use with dark overlay and yellow text."
-    },
-    "events_promo": {
-      "url": "https://images.unsplash.com/photo-1639656333400-ee5240f757a0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwyfHxtb2JpbGUlMjBnYW1pbmclMjBhY3Rpb258ZW58MHx8fHwxNzg5NzE3NDg2fDA&ixlib=rb-4.1.0&q=85",
-      "description": "Mobile gaming action for promo banners."
-    },
-    "app_interface_mock": {
-      "url": "https://images.unsplash.com/photo-1760604359281-b738de589439?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTJ8MHwxfHNlYXJjaHwxfHxnYW1lJTIwc3RvcmUlMjBpbnRlcmZhY2V8ZW58MHx8fHwxNzg5NzE3NDg2fDA&ixlib=rb-4.1.0&q=85",
-      "description": "Controller/App interface for admin or feature showcase."
+    "admin_dashboard": {
+      "description": "Admin UI using table components and metric cards. Fully dark-mode responsive using dark: classes."
     }
   },
   "instructions_to_main_agent": [
-    "Build standard React components using .js files (NOT .tsx).",
-    "Include 'data-testid' on all interactive elements (buttons, links, inputs).",
-    "Use Lucide-React for all icons.",
-    "Implement Framer Motion for smooth tab switching (UC vs Prime) and cart drawer.",
-    "Use Shadcn UI where applicable (Tabs, Dialog, Select, Sonner for Toasts).",
-    "Ensure 'mobile-first' CSS rules. Mobile view should prioritize the glass bottom navigation, hide standard header links behind a hamburger, or optimize for thumb-zone.",
-    "Strictly follow the color palette: MVola (#00A651) and Orange Money (#FF7900) should be clearly distinguishable in checkout options.",
-    "Never center text globally. Use left alignment for readable content blocks.",
-    "For Admin dashboard, use 'grid-cols-1 md:grid-cols-3' or similar for stats, dense Table component for orders.",
-    "Do NOT use completely transparent backgrounds where text sits on top of images; use a gradient overlay or backdrop-blur."
+    "Use standard React components with .js files (NOT .tsx).",
+    "Include \"data-testid\" on all interactive elements (buttons, links, inputs, theme toggles).",
+    "Place theme toggle switch visible in both customer Header and Admin layout header.",
+    "Use next-themes ThemeProvider with attribute=\"class\" to toggle the \"dark\" class on <html>.",
+    "Include anti-flash script in index.html or use next-themes inline injection to prevent white flash on load.",
+    "Persist preference with localStorage automatically handled by next-themes.",
+    "Respect system preference initially.",
+    "Do NOT redesign the whole UI, modify existing admin indicators, stock, toasts, payments, Render, MongoDB connection, DNS.",
+    "Ensure all existing pages/components remain readable in both themes with appropriate dark: contrast classes.",
+    "Never use complete transparent backgrounds for headers, dropdowns, overlays - use backdrop-blur and opaque/glass backgrounds."
   ],
   "accessibility": {
-    "contrast": "Ensure white text over PUBG yellow has drop shadow or use dark text for contrast.",
+    "contrast": "Ensure text contrast passes WCAG AA in both Light and Dark mode.",
     "focus": "focus:ring-2 focus:ring-primary focus:ring-offset-2 on all inputs and buttons."
   },
   "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
@@ -112,9 +118,7 @@
     "Use glass-morphism effects with backdrop filters.",
     "NEVER use generic transition: all.",
     "NEVER center align the App container.",
-    "Use modern pill-shaped or rounded-xl buttons with interaction animations.",
-    "Every interaction needs micro-animations - hover states, transitions.",
-    "Use generous spacing (p-6, gap-4).",
-    "Missing image categories must not use generic placeholders; use solid colorful blocks with icons if needed, but refer to provided image_urls first."
+    "All interactive elements MUST include data-testid attribute.",
+    "Ensure readable text contrast on dark mode background (dark:bg-slate-950 / dark:bg-slate-900)."
   ]
 }

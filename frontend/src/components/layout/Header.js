@@ -6,6 +6,8 @@ import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { ChatLink } from "@/components/chat/ChatLink";
 
 export function useStoreStatus() {
   const [online, setOnline] = useState(false);
@@ -37,8 +39,8 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-40 glass border-b border-slate-200/70">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6">
-        <Link to="/" data-testid="header-logo" className="font-display text-lg font-800 tracking-tight text-slate-900 sm:text-xl">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-1 px-3 sm:gap-4 sm:px-6">
+        <Link to="/" data-testid="header-logo" className="shrink-0 font-display text-sm font-800 tracking-tight text-slate-900 sm:text-xl">
           Magic<span className="text-primary">Game</span>Store
         </Link>
         <div className="hidden sm:block"><StatusBadge /></div>
@@ -50,8 +52,10 @@ export function Header() {
           {isAdmin && <NavLink to="/admin" className={link} data-testid="nav-admin"><span className="inline-flex items-center gap-1"><Shield className="h-4 w-4" />{t("nav.admin")}</span></NavLink>}
         </nav>
         <div className="ml-auto flex items-center gap-1 md:ml-0">
+          <ThemeToggle />
+          <ChatLink />
           <Button variant="ghost" size="sm" onClick={toggle} data-testid="lang-toggle" className="gap-1 rounded-full px-2 text-xs font-bold uppercase">
-            <Globe className="h-4 w-4" />{lang}
+            <Globe className="hidden h-4 w-4 sm:block" />{lang}
           </Button>
           <Button variant="ghost" size="icon" onClick={() => setOpen(true)} data-testid="cart-button" className="relative rounded-full">
             <ShoppingBag className="h-5 w-5" />
@@ -63,7 +67,7 @@ export function Header() {
               <Button variant="ghost" size="icon" className="hidden rounded-full md:inline-flex" onClick={logout} data-testid="logout-button"><LogOut className="h-5 w-5" /></Button>
             </>
           ) : (
-            <Button asChild size="sm" className="rounded-full px-4" data-testid="login-button"><Link to="/connexion">{t("nav.login")}</Link></Button>
+            <Button asChild size="sm" className="rounded-full px-3 sm:px-4" data-testid="login-button"><Link to="/connexion" aria-label={t("nav.login")}><UserRound className="h-5 w-5 sm:hidden" /><span className="hidden sm:inline">{t("nav.login")}</span></Link></Button>
           )}
         </div>
       </div>

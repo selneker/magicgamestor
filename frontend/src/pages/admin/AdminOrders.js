@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
@@ -15,7 +16,15 @@ export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [filters, setFilters] = useState({ status: "all", method: "all", q: "" });
 
-  const load = useCallback(() => api.get("/admin/orders", { params: filters }).then((r) => setOrders(r.data)).catch(() => {}), [filters]);
+  const [params, setParams] = useSearchParams();
+  const focusedOrder = params.get("order");
+  const [focusError, setFocusError] = useState("");
+  const load = useCallback(async () => {
+    try {
+      const { data } = focusedOrder ? await api.get(`/orders/${encodeURIComponent(focusedOrder)}`) : await api.get("/admin/orders", { params: filters });
+      setOrders(focusedOrder ? [data] : data); setFocusError("");
+    } catch (e) { if (focusedOrder) { setOrders([]); setFocusError(errorMessage(e)); } }
+  }, [filters, focusedOrder]);
   useEffect(() => { const id = setTimeout(load, 200); return () => clearTimeout(id); }, [load]);
   useEffect(() => { const id = setInterval(load, 15000); return () => clearInterval(id); }, [load]);
 
@@ -32,6 +41,8 @@ export default function AdminOrders() {
 
   return (
     <div data-testid="admin-orders">
+      {focusedOrder && <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-primary bg-accent p-3" data-testid="notification-order-focus"><span className="text-sm">Commande ouverte depuis la notification</span><Button variant="outline" size="sm" data-testid="admin-orders-show-all" onClick={() => setParams({})}>Toutes les commandes</Button></div>}
+      {focusError && <p role="alert" data-testid="notification-order-error" className="mb-3 text-sm text-rose-600">{focusError}</p>}
       <div className="flex flex-wrap gap-2">
         <Input data-testid="admin-orders-search" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder={t("admin.search")} className="h-10 w-full rounded-full sm:w-72" />
         <Select value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>

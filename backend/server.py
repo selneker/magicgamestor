@@ -12,7 +12,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from core.db import client, ensure_indexes
 from core.seed import seed_all
-from routers import auth, products, orders, payments, events
+from routers import auth, products, orders, payments, events, chat, push
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("mgs")
@@ -41,7 +41,7 @@ async def root():
     return {"name": "Magic Game Store API", "status": "ok"}
 
 
-for r in (auth.router, products.router, orders.router, payments.router, events.router):
+for r in (auth.router, products.router, orders.router, payments.router, events.router, chat.router, push.router):
     api.include_router(r)
 app.include_router(api)
 

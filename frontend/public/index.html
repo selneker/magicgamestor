@@ -3,8 +3,21 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#000000" />
+        <meta name="theme-color" content="#f8fafc" />
+        <script>
+            (function () {
+                var theme;
+                try { theme = localStorage.getItem('mgs-theme'); } catch (_) {}
+                var dark = theme === 'dark' || (theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                document.documentElement.classList.toggle('dark', dark);
+                document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+                document.querySelector('meta[name="theme-color"]').content = dark ? '#0b1120' : '#f8fafc';
+            })();
+        </script>
+        <style>html,body{background:#f8fafc;color:#0f172a}html.dark,html.dark body{background:#0b1120;color:#f1f5f9}</style>
         <meta name="description" content="Achetez UC PUBG Mobile et abonnements Prime à Madagascar. Paiement MVola et Orange Money, livraison rapide." />
+        <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+        <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon-192.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet" />

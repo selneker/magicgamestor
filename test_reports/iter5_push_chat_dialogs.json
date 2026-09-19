@@ -1,0 +1,36 @@
+{
+  "push_full_lifecycle": {
+    "click_granted_valid_key": {
+      "rp_calls": 1,
+      "subscribe_calls": 1,
+      "status": "Notifications : activ\u00e9es",
+      "post_status_code": 200,
+      "test_visible": true,
+      "disable_visible": true
+    },
+    "after_reload_registered": {
+      "rp_calls": 0,
+      "subscribe_calls": 0,
+      "status": "Notifications : activ\u00e9es",
+      "test_visible": true,
+      "disable_visible": true
+    },
+    "click_test_MOCKED": {
+      "info_text": "Notification envoy\u00e9e au service Push. V\u00e9rifiez les notifications de votre appareil.",
+      "error_present": false
+    },
+    "click_disable": {
+      "unsubscribe_calls": 1,
+      "delete_calls": 1,
+      "status": "Notifications : non activ\u00e9es",
+      "sub_removed": true,
+      "enable_visible_again": true
+    },
+    "after_disable_reload": {
+      "status": "Notifications : non activ\u00e9es",
+      "test_visible": false,
+      "disable_visible": false,
+      "enable_visible": true
+    }
+  }
+}

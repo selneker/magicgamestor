@@ -2,7 +2,11 @@ import "@/App.css";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { LanguageProvider } from "@/context/LanguageContext";
+import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/context/AuthContext";
+import { ChatProvider } from "@/context/ChatContext";
+import Chat from "@/pages/Chat";
+import AdminChat from "@/pages/admin/AdminChat";
 import { CartProvider } from "@/context/CartContext";
 import AuthCallback from "@/components/AuthCallback";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -37,12 +41,14 @@ function AppRouter() {
         <Route path="/evenements" element={<Events />} />
         <Route path="/connexion" element={<AuthPage mode="login" />} />
         <Route path="/inscription" element={<AuthPage mode="register" />} />
+        <Route path="/chat" element={<Chat />} />
         <Route path="/compte" element={<ProtectedRoute><Account /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute admin><AdminLayout /></ProtectedRoute>}>
           <Route index element={<AdminDashboard />} />
           <Route path="commandes" element={<AdminOrders />} />
           <Route path="catalogue" element={<AdminProducts />} />
           <Route path="evenements" element={<AdminEvents />} />
+          <Route path="messages" element={<AdminChat />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
@@ -52,15 +58,19 @@ function AppRouter() {
 
 export default function App() {
   return (
+    <ThemeProvider attribute="class" storageKey="mgs-theme" defaultTheme="system" enableSystem disableTransitionOnChange>
     <LanguageProvider>
       <AuthProvider>
+        <ChatProvider>
         <CartProvider>
           <BrowserRouter>
             <AppRouter />
             <Toaster position="top-center" richColors />
           </BrowserRouter>
         </CartProvider>
+        </ChatProvider>
       </AuthProvider>
     </LanguageProvider>
+    </ThemeProvider>
   );
 }

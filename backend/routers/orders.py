@@ -2,11 +2,13 @@ import secrets
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, Field, field_validator
 
 from core.db import db
 from core.security import get_current_user, get_optional_user, require_admin
+from services.push import notify_new_order
 
 router = APIRouter(tags=["orders"])
 PUBLIC = {"_id": 0}
@@ -60,7 +62,7 @@ def _order_number():
 
 
 @router.post("/orders", status_code=201)
-async def create_order(body: OrderIn, user=Depends(get_optional_user)):
+async def create_order(body: OrderIn, background_tasks: BackgroundTasks, user=Depends(get_optional_user)):
     if body.payment_method in ("mvola", "orange") and not body.payment_phone:
         raise HTTPException(status_code=400, detail="Payment phone number is required")
     if body.payment_method == "manual" and not body.manual_reference:
@@ -84,7 +86,18 @@ async def create_order(body: OrderIn, user=Depends(get_optional_user)):
         "admin_note": None, "created_at": _now(), "updated_at": _now(),
         "history": [{"status": "created", "at": _now()}],
     }
-    await db.orders.insert_one(order)
+    has_subscription = any(item["type"] in ("prime", "prime_plus") for item in items)
+    subscription_query = {"pubg_id": body.pubg_id, "items.type": {"$in": ["prime", "prime_plus"]}}
+    duplicate_message = "Une commande d’abonnement existe déjà pour ce PUBG ID."
+    if has_subscription and await db.orders.find_one(subscription_query, {"_id": 1}):
+        raise HTTPException(status_code=409, detail=duplicate_message)
+    try:
+        await db.orders.insert_one(order)
+    except DuplicateKeyError as exc:
+        if has_subscription and (exc.details or {}).get("keyPattern") == {"pubg_id": 1}:
+            raise HTTPException(status_code=409, detail=duplicate_message)
+        raise
+    background_tasks.add_task(notify_new_order, order)
     if user and body.pubg_id not in user.get("saved_pubg_ids", []):
         await db.users.update_one({"user_id": user["user_id"]}, {"$push": {"saved_pubg_ids": {"$each": [body.pubg_id], "$slice": -10}}})
     order.pop("_id", None)
