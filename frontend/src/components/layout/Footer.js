@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import { Bug, Facebook, MessageCircle, Phone } from "lucide-react";
 import { useLang } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 
 export function Footer() {
   const { t } = useLang();
+  const { isAdmin } = useAuth();
   const ticker = t("footer.ticker");
   return (
     <footer className="mt-20 border-t border-slate-200 bg-white pb-28 md:pb-10">
@@ -34,6 +36,7 @@ export function Footer() {
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t("footer.support")}</p>
           <ul className="mt-4 space-y-2 text-sm font-medium text-slate-600">
+            <li><Link to={isAdmin ? "/admin/messages" : "/chat"} data-testid="footer-chat-link" className="inline-flex items-center gap-2 hover:text-primary"><MessageCircle className="h-4 w-4" />Chat · Magic Game Store</Link></li>
             <li><a href="https://wa.me/261377519833" className="inline-flex items-center gap-2 hover:text-primary"><MessageCircle className="h-4 w-4" />WhatsApp</a></li>
             <li><a href="tel:+261383905692" className="inline-flex items-center gap-2 hover:text-primary"><Phone className="h-4 w-4" />038 39 056 92</a></li>
             <li><a href="https://wa.me/261377519833" className="inline-flex items-center gap-2 hover:text-primary"><Bug className="h-4 w-4" />{t("footer.report")}</a></li>

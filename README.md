@@ -169,6 +169,48 @@ Google : connexion, création auto du compte, cookie session, logout, refresh, `
 
 ---
 
+## Mise à jour ciblée — thème, notifications, chat et abonnements
+
+- Thème clair/sombre global via `next-themes` déjà installé, préférence `mgs-theme` dans localStorage, préférence système à la première visite et initialisation avant rendu. Les toasts existants restent en place.
+- Chat privé `/chat` (compte obligatoire) et `/admin/messages`, une conversation persistante par compte, historique paginé, messages de 2 000 caractères maximum et non-lus. Polling visible uniquement : messages 5 s, liste 10 s, badge 20 s. L’authentification existante n’a pas été modifiée.
+- Une commande contenant `items.type = prime|prime_plus` maximum par `pubg_id`, tous statuts et toutes durées confondus. Un index unique partiel protège aussi les requêtes concurrentes et prend en compte les commandes existantes. Les commandes UC seules ne sont pas concernées, y compris après un achat Prime. Un panier mixte compte comme commande d’abonnement. L’erreur HTTP 409 est affichée par les toasts existants.
+- Index partiel avec `$in` : MongoDB 6.0+ requis (Atlas compatible). S’il existe déjà plusieurs commandes d’abonnement pour un même PUBG ID, MongoDB refusera la création de l’index ; aucune commande ne sera supprimée automatiquement. Vérifier ces doublons avant une future mise en service. La règle porte sur les commandes conservées en base ; la suppression définitive existante retire aussi l’entrée d’index.
+
+### Notifications système admin (Web Push / VAPID)
+
+Dépendance backend ajoutée : `pywebpush==2.5.0` (dépendances transitives de chiffrement installées par pip). Aucune dépendance frontend ajoutée. Service Worker `/sw.js`, sans cache ni interception des paiements/API. Le manifeste permet l’ajout à l’écran d’accueil.
+
+Variables **backend uniquement**, à configurer ultérieurement dans Render > Environment, sans modifier `render.yaml` :
+
+| Variable | Contenu |
+|---|---|
+| `VAPID_PRIVATE_KEY_PEM` | Clé privée EC P-256 PEM, multiligne ou avec `\n` échappés ; secret serveur uniquement |
+| `VAPID_PUBLIC_KEY` | Clé publique P-256 brute (point non compressé), encodée base64url sans padding |
+| `VAPID_SUBJECT` | Contact valide `mailto:adresse-admin` |
+| `PUSH_ENDPOINT_HOSTS` | `fcm.googleapis.com,updates.push.services.mozilla.com,*.push.apple.com` |
+
+Générer une paire stable dans un environnement de confiance avec `vapid --gen` (fourni par py-vapid), puis convertir la clé publique :
+
+```python
+import base64
+from cryptography.hazmat.primitives import serialization
+with open("public_key.pem", "rb") as f:
+    key = serialization.load_pem_public_key(f.read())
+print(base64.urlsafe_b64encode(key.public_bytes(
+    serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint
+)).decode().rstrip("="))
+```
+
+Conserver la même paire entre déploiements. Ne jamais copier la clé privée dans le frontend, le README ou Git. Les clés locales de test sont uniquement dans le `.env` ignoré. Aucune variable frontend supplémentaire n’est nécessaire.
+
+Dans l’admin : **Activer les notifications** demande la permission après clic, inscrit cet appareil, puis **Tester la notification** envoie un véritable Web Push. **Désactiver** retire l’inscription. Un clic sur une notification ouvre `/admin/commandes?order=<id>` ; la connexion existante est requise si la session a expiré. Les inscriptions 404/410 sont supprimées, les erreurs temporaires conservées. L’inscription, la suppression et les tests sont réservés aux administrateurs. Les destinations sont limitées aux services Push autorisés, sans redirections HTTP.
+
+Limites navigateur : HTTPS et autorisation système nécessaires ; le mode « Ne pas déranger », les politiques du navigateur ou l’arrêt complet du navigateur peuvent empêcher l’affichage. Sur iOS/iPadOS 16.4+, ajouter le site à l’écran d’accueil et l’ouvrir depuis cette icône. La réception en arrière-plan ne dépend pas du polling de l’admin. L’envoi utilise une tâche de fond FastAPI après création de commande ; pas de file durable, donc une interruption du serveur pendant l’envoi peut perdre une notification. Un backend Render Free endormi peut retarder la création de commande au réveil. Le bouton d’activation indique clairement l’absence de configuration VAPID si les variables ne sont pas encore renseignées.
+
+Aucun déploiement n’est effectué par cette mise à jour. Pour enregistrer le code sur GitHub, utiliser **Save to Github**, avec le message demandé : `Add dark mode, admin push notifications and customer chat`.
+
+---
+
 ## 9. Interdits
 
 Ne pas : fusionner les dépôts · utiliser l'ancien `server.js` / `package.json` · utiliser `MONGODB_URI` · déployer React et FastAPI dans un même service · servir React depuis FastAPI · `CORS_ORIGINS=*` · secrets dans Git ou `render.yaml` · réutiliser l'ancienne base · activer PAPI réel avant les tests · envoyer le webhook au frontend · changer le DNS avant validation · supprimer l'ancien service avant validation.

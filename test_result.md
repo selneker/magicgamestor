@@ -101,3 +101,29 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+## Targeted update — main agent handoff for testing
+user_problem_statement: Four features only: global light/dark; real VAPID admin Web Push; authenticated private customer/admin chat with lightweight polling; one subscription-containing order per existing pubg_id, UC orders unlimited. No payment/auth/config/stock/dashboard indicator rewrites, no deployment.
+backend:
+  - task: Partial unique orders.pubg_id index filtered by items.type prime/prime_plus, HTTP 409 duplicates, concurrency-safe
+    implemented: true
+    needs_retesting: true
+  - task: Private chat APIs with existing auth, ownership, 2000-char validation, unread and paginated history
+    implemented: true
+    needs_retesting: true
+  - task: Admin push protected subscriptions/config/test, VAPID background order dispatch, invalid 404/410 cleanup
+    implemented: true
+    needs_retesting: true
+frontend:
+  - task: Global theme, persisted system preference, initial anti-flash script, existing page/dialog/status readability
+    implemented: true
+    needs_retesting: true
+  - task: Chat guest gate, thread client/admin, read/unread, polling paused hidden, history pagination
+    implemented: true
+    needs_retesting: true
+  - task: Push control, explicit permission, SW display/click, deep-linked order
+    implemented: true
+    needs_retesting: true
+agent_communication:
+  - agent: main
+    message: Use current frontend env preview (external API now returns 200, do not reuse old ingress workaround). Read credentials file. Add focused pytest tests only; no live PAPI calls. VAPID generated locally in ignored backend/.env. No mocked runtime API; transport tests may mock provider failures and browser permission to cover headless limits, explicitly report them. Do not print or commit secrets/test credentials. Run final frontend yarn build. Existing initial build passed. Review README for semantics/limitations; subscription index directly covers historical snapshots, all statuses. Need actual push end-to-end verification if browser supports subscription, otherwise be explicit about unverified real device delivery.
