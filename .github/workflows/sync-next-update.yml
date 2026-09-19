@@ -1,0 +1,53 @@
+name: Sync next-update into magicgamestor
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout magicgamestor
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          path: main
+          fetch-depth: 0
+
+      - name: Checkout private next-update
+        uses: actions/checkout@v7
+        with:
+          repository: selneker/next-update
+          ref: main
+          token: ${{ secrets.SYNC_APP_TOKEN }}
+          path: next-update
+          fetch-depth: 1
+
+      - name: Replace project files
+        run: |
+          rsync -a --delete \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            next-update/ main/
+
+      - name: Commit and push to main
+        working-directory: main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Sync next-update into magicgamestor"
+          git push origin HEAD:main
