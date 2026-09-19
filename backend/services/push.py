@@ -61,11 +61,7 @@ async def send_push(subscription, payload):
     return "failed"
 
 
-async def notify_new_order(order):
-    if not configured():
-        return
-    payload = {"title": "Magic Game Store", "body": f"Nouvelle commande {order['order_number']}\n{order['total']:,} Ar".replace(",", " "),
-               "orderId": order["id"], "url": f"/admin/commandes?order={order['id']}"}
+async def _dispatch_to_admins(payload):
     try:
         async for doc in db.push_subscriptions.find({}):
             subscription = PushSubscription.from_mongo(doc)
@@ -74,4 +70,21 @@ async def notify_new_order(order):
             else:
                 await db.push_subscriptions.delete_one({"_id": subscription.id})
     except Exception as exc:
-        logger.warning("Order push dispatch failed (%s)", type(exc).__name__)
+        logger.warning("Push dispatch failed (%s)", type(exc).__name__)
+
+
+async def notify_new_order(order):
+    if not configured():
+        return
+    payload = {"title": "Magic Game Store", "body": f"Nouvelle commande {order['order_number']}\n{order['total']:,} Ar".replace(",", " "),
+               "orderId": order["id"], "url": f"/admin/commandes?order={order['id']}"}
+    await _dispatch_to_admins(payload)
+
+
+async def notify_new_message(conversation_id, sender_name, text):
+    if not configured():
+        return
+    preview = text if len(text) <= 80 else text[:77] + "…"
+    payload = {"title": "Magic Game Store", "body": f"Nouveau message de {sender_name}\n{preview}",
+               "tag": f"chat-{conversation_id}", "url": "/admin/messages"}
+    await _dispatch_to_admins(payload)

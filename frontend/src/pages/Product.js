@@ -4,7 +4,7 @@ import { ChevronLeft, Coins, Crown, ShoppingBag, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { api, formatAr } from "@/lib/api";
 import { useLang, localized } from "@/context/LanguageContext";
-import { useCart } from "@/context/CartContext";
+import { subscriptionLabel, useCart } from "@/context/CartContext";
 import { ProductCard, productName } from "@/components/store/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function Product() {
   const { slug } = useParams();
   const { t, lang } = useLang();
-  const { add, setOpen } = useCart();
+  const { add, setOpen, items } = useCart();
   const navigate = useNavigate();
   const [product, setProduct] = useState(null);
   const [missing, setMissing] = useState(false);
@@ -27,7 +27,8 @@ export default function Product() {
 
   const isUc = product.type === "uc";
   const discount = product.old_price ? Math.round((1 - product.price / product.old_price) * 100) : 0;
-  const buyNow = () => { add(product); navigate("/commande"); };
+  const tryAdd = () => { const r = add(product); if (!r.ok) toast.error(t("product.duplicateSub").replaceAll("{label}", subscriptionLabel(product.type))); return r.ok; };
+  const buyNow = () => { if (tryAdd() || items.some((i) => i.id === product.id)) navigate("/commande"); };
 
   return (
     <div className="pb-32 pt-4">
@@ -51,7 +52,7 @@ export default function Product() {
 
           <div className="mt-8 hidden gap-3 sm:flex">
             <Button size="lg" className="h-12 flex-1 rounded-full text-base font-bold" onClick={buyNow} data-testid="buy-now-button">{t("product.buy")}</Button>
-            <Button size="lg" variant="outline" className="h-12 rounded-full px-6" onClick={() => { add(product); toast.success(t("product.added")); setOpen(true); }} data-testid="product-add-to-cart"><ShoppingBag className="mr-2 h-4 w-4" />{t("product.add")}</Button>
+            <Button size="lg" variant="outline" className="h-12 rounded-full px-6" onClick={() => { if (tryAdd()) { toast.success(t("product.added")); setOpen(true); } }} data-testid="product-add-to-cart"><ShoppingBag className="mr-2 h-4 w-4" />{t("product.add")}</Button>
           </div>
 
           <div className="mt-10 rounded-2xl border border-slate-100 bg-white p-6">

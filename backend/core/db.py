@@ -15,9 +15,11 @@ async def ensure_indexes():
     await db.orders.create_index("order_number", unique=True)
     await db.orders.create_index([("user_id", 1), ("created_at", -1)])
     await db.orders.create_index("pubg_id")
-    # Uses the immutable item snapshot, not today's product catalogue. UC orders are excluded.
-    await db.orders.create_index("pubg_id", unique=True, name="one_subscription_order_per_pubg",
-                                 partialFilterExpression={"items.type": {"$in": ["prime", "prime_plus"]}})
+    # Per-type rule (1 Prime + 1 Prime+ per PUBG ID) replaces the former single-subscription index.
+    if "one_subscription_order_per_pubg" in await db.orders.index_information():
+        await db.orders.drop_index("one_subscription_order_per_pubg")
+    await db.subscription_locks.create_index([("pubg_id", 1), ("type", 1)], unique=True)
+    await db.subscription_locks.create_index("order_id")
     await db.chat_conversations.create_index("user_id", unique=True)
     await db.chat_conversations.create_index([("updated_at", -1), ("_id", -1)])
     await db.chat_messages.create_index([("conversation_id", 1), ("created_at", -1), ("_id", -1)])

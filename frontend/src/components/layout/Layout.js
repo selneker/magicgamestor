@@ -3,6 +3,7 @@ import { Header } from "@/components/layout/Header";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Footer } from "@/components/layout/Footer";
 import { CartDrawer } from "@/components/store/CartDrawer";
+import { FloatingChat } from "@/components/chat/FloatingChat";
 
 export default function Layout() {
   return (
@@ -12,6 +13,7 @@ export default function Layout() {
       <Footer />
       <BottomNav />
       <CartDrawer />
+      <FloatingChat />
     </div>
   );
 }

@@ -22,6 +22,7 @@ logger = logging.getLogger("mgs")
 async def lifespan(_: FastAPI):
     await ensure_indexes()
     await seed_all()
+    await orders.backfill_subscription_locks()
     logger.info("Magic Game Store API ready (payment mode=%s)", os.environ.get("PAYMENT_MODE"))
     yield
     client.close()

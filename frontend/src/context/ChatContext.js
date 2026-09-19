@@ -2,10 +2,11 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
-const ChatContext = createContext({ count: 0, refreshUnread: () => {} });
+const ChatContext = createContext({ count: 0, refreshUnread: () => {}, panelOpen: false, setPanelOpen: () => {} });
 export const ChatProvider = ({ children }) => {
   const { user } = useAuth();
   const [count, setCount] = useState(0);
+  const [panelOpen, setPanelOpen] = useState(false);
   const refreshUnread = useCallback(async () => {
     if (!user || document.hidden) return;
     try { const { data } = await api.get("/chat/unread"); setCount(data.count); } catch (_) {}
@@ -19,6 +20,6 @@ export const ChatProvider = ({ children }) => {
     document.addEventListener("visibilitychange", refreshUnread);
     return () => { stopped = true; clearTimeout(timer); document.removeEventListener("visibilitychange", refreshUnread); };
   }, [user, refreshUnread]);
-  return <ChatContext.Provider value={{ count: user ? count : 0, refreshUnread }}>{children}</ChatContext.Provider>;
+  return <ChatContext.Provider value={{ count: user ? count : 0, refreshUnread, panelOpen, setPanelOpen }}>{children}</ChatContext.Provider>;
 };
 export const useChat = () => useContext(ChatContext);

@@ -6,7 +6,7 @@ self.addEventListener('push', (event) => {
   try { data = event.data ? event.data.json() : {}; } catch (_) {}
   event.waitUntil(self.registration.showNotification(data.title || 'Magic Game Store', {
     body: data.body || 'Une nouvelle commande est arrivée.',
-    tag: data.orderId || 'mgs-order',
+    tag: data.tag || data.orderId || 'mgs-order',
     icon: '/icon-192.png',
     data: { url: data.url || '/admin/commandes' },
   }));
@@ -14,7 +14,7 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const target = new URL(event.notification.data?.url || '/admin/commandes', self.location.origin);
-  if (target.origin !== self.location.origin || target.pathname !== '/admin/commandes') return;
+  if (target.origin !== self.location.origin || !['/admin/commandes', '/admin/messages'].includes(target.pathname)) return;
   event.waitUntil((async () => {
     const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const client = clients.find((item) => new URL(item.url).origin === self.location.origin);

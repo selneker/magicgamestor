@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const CartContext = createContext(null);
+export const SUBSCRIPTION_TYPES = ["prime", "prime_plus"];
+export const subscriptionLabel = (type) => (type === "prime_plus" ? "Prime+" : "Prime");
 
 export function CartProvider({ children }) {
   const [items, setItems] = useState(() => {
@@ -10,14 +12,20 @@ export function CartProvider({ children }) {
 
   useEffect(() => localStorage.setItem("mgs_cart", JSON.stringify(items)), [items]);
 
+  // One Prime and one Prime+ max per cart (regardless of duration); UC unlimited.
   const add = useCallback((product, qty = 1) => {
+    if (SUBSCRIPTION_TYPES.includes(product.type)) {
+      const existing = items.find((i) => i.type === product.type);
+      if (existing) return { ok: false, reason: "duplicate_subscription", existing };
+    }
     setItems((prev) => {
       const found = prev.find((i) => i.id === product.id);
-      if (found) return prev.map((i) => (i.id === product.id ? { ...i, qty: Math.min(20, i.qty + qty) } : i));
-      return [...prev, { id: product.id, slug: product.slug, name: product.name, name_en: product.name_en, type: product.type, price: product.price, qty }];
+      if (found) return prev.map((i) => (i.id === product.id ? { ...i, qty: SUBSCRIPTION_TYPES.includes(i.type) ? 1 : Math.min(20, i.qty + qty) } : i));
+      return [...prev, { id: product.id, slug: product.slug, name: product.name, name_en: product.name_en, type: product.type, price: product.price, qty: SUBSCRIPTION_TYPES.includes(product.type) ? 1 : qty }];
     });
-  }, []);
-  const setQty = useCallback((id, qty) => setItems((prev) => (qty <= 0 ? prev.filter((i) => i.id !== id) : prev.map((i) => (i.id === id ? { ...i, qty } : i)))), []);
+    return { ok: true };
+  }, [items]);
+  const setQty = useCallback((id, qty) => setItems((prev) => (qty <= 0 ? prev.filter((i) => i.id !== id) : prev.map((i) => (i.id === id ? { ...i, qty: SUBSCRIPTION_TYPES.includes(i.type) ? 1 : qty } : i)))), []);
   const remove = useCallback((id) => setItems((prev) => prev.filter((i) => i.id !== id)), []);
   const clear = useCallback(() => setItems([]), []);
 

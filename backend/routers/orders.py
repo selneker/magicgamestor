@@ -13,6 +13,17 @@ from services.push import notify_new_order
 router = APIRouter(tags=["orders"])
 PUBLIC = {"_id": 0}
 STATUSES = ["pending_payment", "awaiting_verification", "paid", "delivered", "cancelled", "failed"]
+SUBSCRIPTION_TYPES = ("prime", "prime_plus")
+SUBSCRIPTION_LABELS = {"prime": "Prime", "prime_plus": "Prime+"}
+INACTIVE_STATUSES = ("cancelled", "failed")
+TRANSITIONS = {
+    "pending_payment": {"paid", "cancelled", "failed"},
+    "awaiting_verification": {"paid", "delivered", "cancelled", "failed"},
+    "paid": {"delivered", "cancelled"},
+    "failed": {"paid", "cancelled"},
+    "delivered": set(),
+    "cancelled": set(),
+}
 
 
 class OrderItemIn(BaseModel):
@@ -61,6 +72,74 @@ def _order_number():
     return "MGS-" + secrets.token_hex(3).upper()
 
 
+def subscription_expiry(created_at: str, months: int) -> str:
+    start = datetime.fromisoformat(created_at)
+    month_index = start.month - 1 + int(months or 1)
+    year, month = start.year + month_index // 12, month_index % 12 + 1
+    day = min(start.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
+    return start.replace(year=year, month=month, day=day).isoformat()
+
+
+def _blocked_message(sub_type: str, expires_at: str) -> str:
+    label = SUBSCRIPTION_LABELS[sub_type]
+    until = datetime.fromisoformat(expires_at).strftime("%d/%m/%Y")
+    return f"Un abonnement {label} est déjà actif ou en attente pour ce PUBG ID (jusqu’au {until}). Un seul {label} actif par PUBG ID."
+
+
+async def release_subscription_locks(order_id: str):
+    await db.subscription_locks.delete_many({"order_id": order_id})
+
+
+async def reserve_subscription(pubg_id: str, sub_type: str, order: dict, months: int):
+    """Atomic per-(pubg_id, type) reservation via the unique index on subscription_locks."""
+    expires_at = subscription_expiry(order["created_at"], months)
+    for _ in range(3):
+        try:
+            await db.subscription_locks.insert_one({"pubg_id": pubg_id, "type": sub_type, "order_id": order["id"],
+                                                    "expires_at": expires_at, "created_at": _now()})
+            return
+        except DuplicateKeyError:
+            existing = await db.subscription_locks.find_one({"pubg_id": pubg_id, "type": sub_type})
+            if not existing:
+                continue
+            holder = await db.orders.find_one({"id": existing["order_id"]}, {"status": 1})
+            stale = not holder or holder["status"] in INACTIVE_STATUSES or existing["expires_at"] <= _now()
+            if not stale:
+                raise HTTPException(status_code=409, detail=_blocked_message(sub_type, existing["expires_at"]))
+            await db.subscription_locks.delete_one({"_id": existing["_id"]})
+    raise HTTPException(status_code=409, detail="Réessayez dans un instant.")
+
+
+async def active_subscriptions(pubg_id: str) -> dict:
+    result = {}
+    async for lock in db.subscription_locks.find({"pubg_id": pubg_id}):
+        holder = await db.orders.find_one({"id": lock["order_id"]}, {"status": 1})
+        if holder and holder["status"] not in INACTIVE_STATUSES and lock["expires_at"] > _now():
+            result[lock["type"]] = {"expires_at": lock["expires_at"], "status": holder["status"], "order_id": lock["order_id"]}
+    return result
+
+
+async def backfill_subscription_locks():
+    """One-off: register still-valid legacy subscription orders that predate the locks collection."""
+    query = {"items.type": {"$in": list(SUBSCRIPTION_TYPES)}, "status": {"$nin": list(INACTIVE_STATUSES)}}
+    async for order in db.orders.find(query, PUBLIC).sort("created_at", 1):
+        for item in order["items"]:
+            if item["type"] not in SUBSCRIPTION_TYPES:
+                continue
+            months = item.get("duration_months")
+            if months is None:
+                product = await db.products.find_one({"id": item["product_id"]}, {"duration_months": 1})
+                months = (product or {}).get("duration_months") or 1
+            expires_at = subscription_expiry(order["created_at"], months)
+            if expires_at <= _now():
+                continue
+            try:
+                await db.subscription_locks.insert_one({"pubg_id": order["pubg_id"], "type": item["type"], "order_id": order["id"],
+                                                        "expires_at": expires_at, "created_at": _now()})
+            except DuplicateKeyError:
+                pass
+
+
 @router.post("/orders", status_code=201)
 async def create_order(body: OrderIn, background_tasks: BackgroundTasks, user=Depends(get_optional_user)):
     if body.payment_method in ("mvola", "orange") and not body.payment_phone:
@@ -75,8 +154,14 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, user=De
     for line in body.items:
         p = products[line.product_id]
         items.append({"product_id": p["id"], "slug": p["slug"], "name": p["name"], "type": p["type"],
+                      "duration_months": p.get("duration_months"),
                       "unit_price": p["price"], "quantity": line.quantity, "line_total": p["price"] * line.quantity})
         total += p["price"] * line.quantity
+    subscriptions = [i for i in items if i["type"] in SUBSCRIPTION_TYPES]
+    for sub_type in SUBSCRIPTION_TYPES:
+        same = [i for i in subscriptions if i["type"] == sub_type]
+        if len(same) > 1 or (same and same[0]["quantity"] > 1):
+            raise HTTPException(status_code=400, detail=f"Un seul abonnement {SUBSCRIPTION_LABELS[sub_type]} par commande et par PUBG ID.")
     order = {
         "id": str(uuid.uuid4()), "order_number": _order_number(), "user_id": user["user_id"] if user else None,
         "email": (user or {}).get("email") or body.email, "pubg_id": body.pubg_id, "pseudo": body.pseudo.strip(),
@@ -86,16 +171,12 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, user=De
         "admin_note": None, "created_at": _now(), "updated_at": _now(),
         "history": [{"status": "created", "at": _now()}],
     }
-    has_subscription = any(item["type"] in ("prime", "prime_plus") for item in items)
-    subscription_query = {"pubg_id": body.pubg_id, "items.type": {"$in": ["prime", "prime_plus"]}}
-    duplicate_message = "Une commande d’abonnement existe déjà pour ce PUBG ID."
-    if has_subscription and await db.orders.find_one(subscription_query, {"_id": 1}):
-        raise HTTPException(status_code=409, detail=duplicate_message)
     try:
+        for item in subscriptions:
+            await reserve_subscription(body.pubg_id, item["type"], order, item.get("duration_months") or 1)
         await db.orders.insert_one(order)
-    except DuplicateKeyError as exc:
-        if has_subscription and (exc.details or {}).get("keyPattern") == {"pubg_id": 1}:
-            raise HTTPException(status_code=409, detail=duplicate_message)
+    except Exception:
+        await release_subscription_locks(order["id"])
         raise
     background_tasks.add_task(notify_new_order, order)
     if user and body.pubg_id not in user.get("saved_pubg_ids", []):
@@ -107,6 +188,11 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, user=De
 @router.get("/orders/me")
 async def my_orders(user=Depends(get_current_user)):
     return await db.orders.find({"user_id": user["user_id"]}, PUBLIC).sort("created_at", -1).to_list(200)
+
+
+@router.get("/orders/subscriptions")
+async def subscription_status(pubg_id: str = Query(min_length=9, max_length=13)):
+    return {"pubg_id": pubg_id.strip(), "active": await active_subscriptions(pubg_id.strip())}
 
 
 @router.get("/orders/track")
@@ -143,12 +229,20 @@ async def admin_orders(status: str | None = None, method: str | None = None, q: 
 
 @router.patch("/admin/orders/{order_id}", dependencies=[Depends(require_admin)])
 async def admin_update_order(order_id: str, body: StatusIn):
+    current = await db.orders.find_one({"id": order_id}, {"status": 1})
+    if not current:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if body.status != current["status"] and body.status not in TRANSITIONS[current["status"]]:
+        raise HTTPException(status_code=409, detail=f"Transition impossible : {current['status']} → {body.status}.")
     updates = {"status": body.status, "updated_at": _now()}
     if body.admin_note is not None:
         updates["admin_note"] = body.admin_note
-    res = await db.orders.update_one({"id": order_id}, {"$set": updates, "$push": {"history": {"status": body.status, "at": _now()}}})
+    push = {"history": {"status": body.status, "at": _now()}} if body.status != current["status"] else None
+    res = await db.orders.update_one({"id": order_id, "status": current["status"]}, {"$set": updates, **({"$push": push} if push else {})})
     if res.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Order not found")
+        raise HTTPException(status_code=409, detail="La commande a changé, rechargez la liste.")
+    if body.status in INACTIVE_STATUSES:
+        await release_subscription_locks(order_id)
     return await db.orders.find_one({"id": order_id}, PUBLIC)
 
 
@@ -158,6 +252,7 @@ async def admin_delete_order(order_id: str):
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Order not found")
     await db.payments.delete_one({"order_id": order_id})
+    await release_subscription_locks(order_id)
     return {"ok": True}
 
 

@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Coins, Crown, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { useCart } from "@/context/CartContext";
+import { subscriptionLabel, useCart } from "@/context/CartContext";
 import { useLang } from "@/context/LanguageContext";
 import { formatAr } from "@/lib/api";
 
@@ -40,7 +40,7 @@ export function ProductCard({ product, index = 0 }) {
       </Link>
       <Button
         size="sm" data-testid={`add-to-cart-${product.slug}`} className="mt-4 w-full rounded-full font-bold active:scale-[0.97]"
-        onClick={() => { add(product); toast.success(t("product.added"), { action: { label: t("nav.cart"), onClick: () => setOpen(true) } }); }}
+        onClick={() => { const r = add(product); if (!r.ok) return toast.error(t("product.duplicateSub").replaceAll("{label}", subscriptionLabel(product.type))); toast.success(t("product.added"), { action: { label: t("nav.cart"), onClick: () => setOpen(true) } }); }}
       >
         {t("product.add")}
       </Button>

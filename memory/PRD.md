@@ -85,3 +85,16 @@ Phase 1 audit: see `/app/memory/AUDIT.md` (delivered & approved).
 - Tout ancien backlog (IA,SEO,a11y complémentaire,email/WhatsApp,réinitialisation mot de passe,tiroir historique/pagination admin,staging/cutoverDNS/rotation anciens secrets) est gelé, hors périmètre de cette demande.
 - Idée optionnelle hors périmètre : réponses rapides dans le chat admin, seulement sur nouvelle demande.
 - Rapport utilisateur complet et liste des fichiers : `memory/UPDATE_REPORT.md`. Contrôle final des nouveaux fichiers/modifications : aucune valeur de secret détectée ; fichiers `.env` et identifiants non suivis. Harness SW rejoué :6/6. Code et tests livrés sans déploiement ; réception Push sur appareil réel reste à confirmer.
+
+## Mise à jour ciblée V2.1 — 2026-09-19 (fork)
+### Réalisé
+- Règle abonnement PAR TYPE : max 1 Prime actif + 1 Prime+ actif par `pubg_id` (Prime+Prime+ autorisé ensemble). Collection `subscription_locks` (index unique `pubg_id+type`) = réservation atomique ; `expires_at` = created_at + duration_months ; lock libéré paresseusement si commande `cancelled`/`failed`/expirée, ou explicitement via PATCH/DELETE admin. `pending` bloque le même type. Ancien index `one_subscription_order_per_pubg` supprimé au démarrage + backfill des locks. 400 si 2 lignes même type dans une commande ; 409 sinon. `GET /api/orders/subscriptions?pubg_id=`.
+- Panier : `add()` renvoie `{ok,reason}` ; un seul Prime / un seul Prime+ (qty forcée à 1) ; toast `product.duplicateSub`.
+- Transitions de statut admin (`TRANSITIONS` backend + miroir AdminOrders) ; select filtré, « Marquer livrée » seulement paid/awaiting_verification ; 409 sinon.
+- Chat flottant `FloatingChat.js` (bouton déplaçable pointer events, snap bord, localStorage `mgs-chat-fab`, gate invité, panneau réutilisant ChatWorkspace) ; `ChatContext.panelOpen`. Nav mobile liquid glass (`.liquid-nav`), item Chat ouvre le panneau.
+- Push : `notify_new_message` (message client → admins, url `/admin/messages`), sw.js accepte `/admin/messages`.
+- Ticker footer remplacé par bénéfices client (FR/EN), marquee 60s.
+- Boutons copier admin (`CopyButton.js`) : n° commande, PUBG ID, téléphone/référence.
+- Tests : `backend/tests/test_subscription_rule.py` 7/7, iteration_6.json 100 %. `yarn build` OK.
+### Backlog
+- Vérifier réception Push sur appareil réel après config VAPID prod (Render). Aucun déploiement effectué.

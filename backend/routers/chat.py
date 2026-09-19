@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pymongo.errors import DuplicateKeyError
 
 from core.db import db
 from core.security import get_current_user
 from models.messaging import Conversation, Message
+from services.push import notify_new_message
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -95,13 +96,15 @@ async def messages(cid: str, before: str | None = Query(default=None, max_length
 
 
 @router.post("/conversations/{cid}/messages", status_code=201)
-async def send_message(cid: str, body: MessageIn, user=Depends(get_current_user)):
-    await allowed_conversation(cid, user)
+async def send_message(cid: str, body: MessageIn, background_tasks: BackgroundTasks, user=Depends(get_current_user)):
+    conversation = await allowed_conversation(cid, user)
     role = "admin" if user.get("role") == "admin" else "customer"
     message = Message(conversation_id=cid, sender_id=user["user_id"], sender_role=role, text=body.text)
     await db.chat_messages.insert_one(message.to_mongo())
     await db.chat_conversations.update_one({"_id": cid, "updated_at": {"$lte": message.created_at}},
                                            {"$set": {"last_message": message.text[:160], "updated_at": message.created_at}})
+    if role == "customer":
+        background_tasks.add_task(notify_new_message, cid, conversation.user_name, message.text)
     return message.model_dump()
 
 

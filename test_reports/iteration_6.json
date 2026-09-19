@@ -1,0 +1,36 @@
+{
+  "summary": "Iteration 6 focused testing (both). Ran targeted subscription pytest suite (7/7 pass) plus new iter6 extras (push config gating + public URL products) 3/3 pass. Frontend verified: floating chat guest gate, drag+snap-to-edge persisting to localStorage 'mgs-chat-fab', cart Prime dedup rule (duplicate Prime blocked with correct French toast, Prime+ still accepted), footer ticker replaced (no 'TACOS GAMING', benefits like 'ACHETEZ VOS UC FACILEMENT' present), mobile bottom nav renders 5 items with data-testids, bottom-nav-chat opens panel (aria-pressed=true), bottom nav hidden on /admin, admin orders /admin/commandes shows 27 copy-order/copy-pubg/copy-phone buttons, clipboard write verified (returned 'MGS-90403D' with 'nº de commande copié' toast), 'Marquer livrée' only appears for paid/awaiting_verification orders (2 of 27), status selects present, theme toggle persists mgs-theme in localStorage.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Mobile floating chat panel (390x844)", "issues": ["Once the near-fullscreen floating chat panel is open, its scrollable inner container overlays the bottom nav and intercepts pointer events on data-testid='bottom-nav-chat', so clicking the same bottom-nav-chat button to toggle-close the panel is blocked. Users must use floating-chat-close. Consider raising bottom-nav z-index above the panel or reserving a safe-area gap at the bottom of the panel equal to nav height."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_subscription_rule.py",
+    "/app/backend/tests/test_iter6_extras.py",
+    "/app/test_reports/pytest/iter6_subscription.xml",
+    "/app/test_reports/pytest/iter6_extras.xml"
+  ],
+  "action_items": [
+    "Optional UX: prevent floating chat panel from overlapping bottom-nav-chat on mobile so single-button toggle-close works (raise bottom-nav z-index above panel, or subtract bottom-nav height from panel's bottom inset)."
+  ],
+  "critical_code_review_comments": [
+    "Copy buttons and admin transition gating look correct and match backend TRANSITIONS map (delivered/cancelled terminal, deliver button only for paid/awaiting_verification).",
+    "FloatingChat correctly guards behind auth; localStorage key 'mgs-chat-fab' persists x/y after drag.",
+    "CartContext returns {ok, reason} and UI surfaces the exact translation product.duplicateSub as expected."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter6_extras.py"],
+  "success_rate": {"backend": "100% (10/10)", "frontend": "100% of tested flows"},
+  "test_credentials": "Admin: admin@magicgame.store / Admin12345! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Several test orders (Prime/Prime+/UC) created during subscription pytest and cart tests; not cleaned up (payment_mode=simulation).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Authenticated customer↔admin chat two-way real-time flow (register via /inscription, send message, admin reply on /admin/messages, verify floating-chat-unread / header-chat-unread badges via 5s poll) was NOT executed in this iteration due to scope; previous iterations 3-5 covered /chat and /admin/messages functionality. Subscription rule pytest (test_subscription_rule.py) is the source of truth for order rule regressions.",
+  "rca of the issue": "Mobile bottom-nav overlap: floating chat panel uses `bottom-[max(0.75rem,env(safe-area-inset-bottom))]` while bottom nav uses same inset region with z-40 vs panel z-50, so the panel visually reaches into nav space and intercepts pointer events on bottom-nav-chat. Mitigation: either set panel bottom to leave space for bottom nav on md:hidden (e.g. bottom-[calc(env(safe-area-inset-bottom)+4.5rem)]) or lift bottom-nav to z-50 and shrink the panel accordingly."
+}
