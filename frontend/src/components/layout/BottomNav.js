@@ -10,7 +10,7 @@ export function BottomNav() {
     { to: "/suivi", icon: Receipt, label: "Commandes", id: "bottom-nav-orders", active: pathname.startsWith("/suivi") || pathname.startsWith("/compte") },
   ];
   if (pathname.startsWith("/admin")) return null;
-  const itemClass = (active) => `relative flex min-h-[56px] w-full flex-col items-center justify-center gap-1 overflow-hidden px-1 text-[9px] font-bold uppercase tracking-[0.04em] leading-none transition-[background-color,color,transform] duration-200 active:scale-[0.94] ${active ? "liquid-active" : "text-[#F4F3EE]/70"}`;
+  const itemClass = (active) => `relative flex min-h-[56px] w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[14px] px-1 text-[9px] font-medium uppercase tracking-[0.04em] leading-none transition-[background-color,color,transform] duration-200 active:scale-[0.94] ${active ? "liquid-active font-semibold" : "text-[#F4F3EE]/70"}`;
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden" data-testid="bottom-nav">
       <ul className="liquid-nav pointer-events-auto mx-auto grid max-w-md grid-cols-4 items-stretch gap-1 p-1">

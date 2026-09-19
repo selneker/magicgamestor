@@ -35,63 +35,69 @@
         --border: 0 0% 4%;
         --input: 0 0% 4%;
         --ring: 72 99% 42%;
-        --radius: 0px;
-        --rule: hsl(0 0% 4% / .16);
+        --radius: 10px;
+        --rule: hsl(0 0% 4% / .15);
+        --rule-strong: hsl(0 0% 4% / .38);
+        --shadow-brut: 3px 3px 0 hsl(0 0% 4% / .18);
         --mvola: #00A651;
         --orange: #FF7900;
         --pubg: #C5FE02;
         --sab: env(safe-area-inset-bottom, 0px);
     }
     .dark {
-        --background: 0 0% 4%;
+        --background: 0 0% 17%;        /* #2B2B2B */
         --foreground: 48 20% 94%;
-        --card: 0 0% 7%;
+        --card: 0 0% 20%;              /* #333333 */
         --card-foreground: 48 20% 94%;
-        --popover: 0 0% 9%;
+        --popover: 0 0% 22%;
         --popover-foreground: 48 20% 94%;
         --primary: 72 99% 50%;
         --primary-foreground: 0 0% 4%;
         --secondary: 48 20% 94%;
         --secondary-foreground: 0 0% 4%;
-        --muted: 0 0% 12%;
-        --muted-foreground: 60 4% 60%;
+        --muted: 0 0% 24%;
+        --muted-foreground: 60 4% 68%;
         --accent: 72 99% 50%;
         --accent-foreground: 0 0% 4%;
         --destructive: 6 70% 50%;
         --border: 48 12% 82%;
         --input: 48 12% 82%;
         --ring: 72 99% 50%;
-        --rule: hsl(48 20% 94% / .22);
+        --rule: hsl(48 20% 94% / .15);
+        --rule-strong: hsl(48 20% 94% / .4);
+        --shadow-brut: 3px 3px 0 hsl(0 0% 0% / .35);
     }
-    * { @apply border-border; }
+    * { border-color: var(--rule); }
     html { scroll-behavior: smooth; }
     body {
         @apply bg-background text-foreground antialiased;
         font-family: var(--font-body);
         font-feature-settings: "tnum" 1;
+        font-weight: 400;
     }
     h1, h2, h3, h4, .font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
-    h1, h2 { text-transform: uppercase; }
-    h1, .font-800 { font-weight: 900; }
+    h1 { font-weight: 700; }
+    h2, h3 { font-weight: 600; }
+    p, li, td, span, label, input, textarea { letter-spacing: 0; }
     ::selection { background: hsl(var(--primary)); color: #0A0A0A; }
     :focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
 }
 
 @layer utilities {
     /* Editorial building blocks */
-    .panel { @apply border border-foreground bg-card; border-radius: 0; }
-    .panel-soft { border: 1px solid var(--rule); background: hsl(var(--card)); }
-    .panel-black { @apply bg-foreground text-background; border-radius: 0; }
-    .panel-neon { background: hsl(var(--primary)); color: #0A0A0A; border: 1px solid #0A0A0A; }
-    .eyebrow { @apply text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground; }
+    .panel { border: 1px solid var(--rule); background: hsl(var(--card)); border-radius: var(--radius); }
+    .panel-soft { border: 1px solid var(--rule); background: hsl(var(--card)); border-radius: var(--radius); }
+    .panel-black { @apply bg-foreground text-background; border-radius: var(--radius); }
+    .panel-neon { background: hsl(var(--primary)); color: #0A0A0A; border: 1px solid var(--rule-strong); border-radius: var(--radius); }
+    .eyebrow { @apply text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground; }
     .rule-t { border-top: 1px solid var(--rule); }
-    .num { font-family: var(--font-display); font-weight: 900; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
-    .hover-slide { @apply transition-[transform,background-color,color] duration-200 ease-out; }
-    .hover-slide:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 hsl(var(--foreground)); }
-    .neon-shadow { box-shadow: 4px 4px 0 hsl(var(--primary)); }
-    .card-lift { @apply transition-[transform,box-shadow] duration-200 ease-out; }
-    .card-lift:hover { transform: translate(-3px, -3px); box-shadow: 6px 6px 0 hsl(var(--foreground)); }
-    .dark .card-lift:hover { box-shadow: 6px 6px 0 hsl(var(--primary)); }
+    .num { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+    .hover-slide { @apply transition-[transform,background-color,color,box-shadow] duration-200 ease-out; }
+    .hover-slide:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow-brut); }
+    .neon-shadow { box-shadow: 3px 3px 0 hsl(var(--primary) / .55); }
+    .card-lift { @apply transition-[transform,box-shadow,border-color] duration-200 ease-out; }
+    .card-lift:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 hsl(var(--foreground) / .22); border-color: var(--rule-strong); }
+    .dark .card-lift:hover { box-shadow: 4px 4px 0 hsl(var(--primary) / .5); }
     .glass { @apply bg-background/85 backdrop-blur-xl; }
     .pb-safe { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }
     .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -103,15 +109,17 @@
     .marquee { animation: marquee 44s linear infinite; }
     /* Mobile nav — original liquid-glass over a brutalist black slab */
     .liquid-nav {
-        background: linear-gradient(180deg, rgba(10,10,10,.92), rgba(10,10,10,.82));
+        background: hsl(0 0% 17% / .82);
         -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%);
-        border: 1px solid rgba(244,243,238,.16);
-        box-shadow: 0 1px 0 rgba(244,243,238,.14) inset, 0 16px 44px rgba(0,0,0,.45);
+        border: 1px solid rgba(244,243,238,.15);
+        border-radius: 18px;
+        box-shadow: 0 1px 0 rgba(244,243,238,.1) inset, 0 10px 28px rgba(0,0,0,.32);
     }
-    .liquid-active { background: hsl(var(--primary)); color: #0A0A0A; box-shadow: 0 0 0 1px #0A0A0A inset, 0 6px 18px hsl(var(--primary) / .35); }
+    .liquid-active { background: hsl(var(--primary)); color: #0A0A0A; border-radius: 14px; box-shadow: 0 2px 10px hsl(var(--primary) / .28); }
     .float-glass {
         -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
-        box-shadow: 6px 6px 0 hsl(var(--foreground));
+        border-radius: 16px;
+        box-shadow: 4px 4px 0 hsl(var(--foreground) / .22), 0 18px 40px hsl(0 0% 0% / .18);
     }
     @media (prefers-reduced-motion: reduce) {
         .marquee { animation: none; }
@@ -125,7 +133,17 @@
 /* ── Brutalist surface mapping ───────────────────────────────────────────
    Existing pages use slate/white utilities. Remapping them here converts
    the whole app (customer + admin, light + dark) without rewriting markup. */
-.rounded-2xl, .rounded-3xl, .rounded-xl, .rounded-\[2rem\], .rounded-\[1\.5rem\], .rounded-\[1\.75rem\], .rounded-\[1\.25rem\], .rounded-lg, .rounded-md, .rounded-full, .rounded-sm { border-radius: 0 !important; }
+.rounded-2xl, .rounded-3xl, .rounded-\[2rem\], .rounded-\[1\.5rem\], .rounded-\[1\.75rem\], .rounded-\[1\.25rem\] { border-radius: 14px !important; }
+.rounded-xl, .rounded-lg { border-radius: 12px !important; }
+.rounded-md { border-radius: 8px !important; }
+.rounded-sm { border-radius: 6px !important; }
+.rounded-none { border-radius: 8px !important; }
+.rounded-full { border-radius: 10px !important; }
+.rounded-full[class*="h-1"], .rounded-full[class*="w-1"], .rounded-full[class*="h-2"], .rounded-full[class*="w-2"], .rounded-full[class*="h-3"], span.rounded-full { border-radius: 9999px !important; }
+/* Ordinary borders stay understated (~15% opacity); strong states opt in explicitly. */
+.border-foreground, .border-slate-900, .border-black { border-color: var(--rule) !important; }
+.divide-foreground > * + * { border-color: var(--rule) !important; }
+.border-strong { border-color: var(--rule-strong) !important; }
 .bg-white, .bg-white\/90, .bg-white\/85 { background-color: hsl(var(--card)); }
 .bg-slate-50, .bg-slate-100 { background-color: hsl(var(--muted)); }
 .bg-slate-200 { background-color: hsl(var(--muted)); }
