@@ -5,7 +5,7 @@ export const translations = {
     hero: {
       eyebrow: "Magic Game Store · PUBG Mobile · Madagascar",
       title: "Achetez vos UC plus simplement",
-      rotate: ["Achetez vos UC\nplus simplement.", "Gérez vos abonnements\nsans complication.", "Suivez vos commandes\nau même endroit.", "Besoin d'aide ?\nDiscutez avec nous."],
+      rotate: ["Achetez vos UC\nfacilement.", "Gérez vos abonnements\nsimplement.", "Suivez vos commandes\nfacilement.", "Retrouvez vos événements\nau même endroit.", "Contactez notre support\ndirectement."],
       subtitle: "UC, Prime et Prime+ livrés sur votre compte PUBG Mobile. Paiement MVola ou Orange Money, confirmation automatique.",
       ctaUc: "Acheter des UC", ctaPrime: "Voir les abonnements",
       trust1: "Livraison rapide", trust2: "Paiement sécurisé", trust3: "Support 7j/7",
@@ -38,7 +38,7 @@ export const translations = {
     hero: {
       eyebrow: "Magic Game Store · PUBG Mobile · Madagascar",
       title: "Buy your UC more simply",
-      rotate: ["Buy your UC\nmore simply.", "Manage your subscriptions\nwithout hassle.", "Track your orders\nall in one place.", "Need a hand?\nChat with us."],
+      rotate: ["Buy your UC\neasily.", "Manage your subscriptions\nsimply.", "Track your orders\neasily.", "Find your events\nall in one place.", "Reach our support\ndirectly."],
       subtitle: "UC, Prime and Prime+ delivered to your PUBG Mobile account. Pay with MVola or Orange Money, confirmed automatically.",
       ctaUc: "Buy UC", ctaPrime: "See subscriptions",
       trust1: "Fast delivery", trust2: "Secure payment", trust3: "WhatsApp support 7/7",
