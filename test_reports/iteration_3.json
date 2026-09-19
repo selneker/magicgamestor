@@ -1,0 +1,85 @@
+{
+  "summary": "Iteration 3: targeted testing of the new features requested. Backend: 27 NEW pytest cases in /app/backend/tests/test_new_features.py all pass, plus the existing regression suite (44 cases) — total 69 passed, 2 skipped (cookie-over-http env), 0 failed, run against the external preview host https://store-api-staging.preview.emergentagent.com (external /api/ now returns 200; probe fallback kept). Frontend: theme toggle works and persists on reload; anti-flash SSR class in index.html; /chat visitor invitation shown in French with login/register links; customer register → /chat → start conversation → send/send-disabled-on-whitespace verified end-to-end with real backend; admin login → /admin shows AdminPush panel (state='refusées' handled cleanly, denied-help visible, enable button disabled); /admin/messages lists conversations, admin reply sent successfully; /admin/commandes loads with no console errors; mobile viewport (390x844) shows bottom-nav with Chat entry, no horizontal overflow. Public /sw.js and /manifest.json served (200) with a push-only SW that navigates to /admin/commandes?order=<id> on notification click. No secrets appear in any response.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_new_features.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/iter3_new.xml",
+    "/app/test_reports/pytest/iter3_full.xml"
+  ],
+  "coverage_matrix": {
+    "chat": {
+      "auth_required_on_all_endpoints": "PASS (401)",
+      "customer_start_idempotent_single_conversation": "PASS",
+      "admin_cannot_start_conversation": "PASS (403)",
+      "empty_message_rejected": "PASS (422)",
+      "over_2000_char_rejected": "PASS (422)",
+      "forged_sender_id_forbidden_extra_forbid": "PASS (422)",
+      "cross_user_read_send_read_isolation": "PASS (404 for other user)",
+      "admin_sees_conversation_with_unread_count": "PASS",
+      "admin_reply_customer_reads_and_marks_read_unread_zeros": "PASS",
+      "customer_sees_only_own_conversations": "PASS",
+      "ui_visitor_invitation_fr_with_login_register_links": "PASS",
+      "ui_customer_flow_start_send_render_disabled_on_whitespace": "PASS",
+      "ui_admin_workspace_list_reply": "PASS",
+      "unread_badge_in_header": "PASS (header-chat-unread visible)",
+      "chat_in_bottom_nav_mobile": "PASS"
+    },
+    "push": {
+      "config_status_subscriptions_test_admin_only": "PASS (403 for customer, 401 anon)",
+      "config_returns_public_key_no_private_leak": "PASS",
+      "endpoint_ssrf_whitelist_enforced": "PASS (evil host 422)",
+      "endpoint_https_only_enforced": "PASS (http 422)",
+      "p256dh_key_validated_secp256r1": "PASS (garbage 422)",
+      "subscribe_upsert_idempotent_per_endpoint": "PASS",
+      "status_reflects_registration": "PASS",
+      "test_send_unknown_endpoint_404": "PASS",
+      "test_send_registered_endpoint_returns_410_or_502_never_500": "PASS (transport-only assertion; real device delivery NOT exercised)",
+      "ui_admin_push_panel_renders_and_reacts_to_permission_state": "PASS (state 'refusées' with denied-help)",
+      "service_worker_and_manifest_served": "PASS (200)",
+      "sw_notificationclick_targets_admin_commandes_query_only": "PASS by code review (pathname whitelist + query passthrough)"
+    },
+    "subscription_rule": {
+      "first_prime_accepted_second_prime_same_pubg_refused_409_fr": "PASS",
+      "uc_never_limited_even_repeated": "PASS",
+      "uc_before_after_prime_accepted": "PASS",
+      "concurrent_first_prime_atomic_exactly_one_201_one_409": "PASS (partial unique index)",
+      "existing_order_price_payment_creation_unchanged_no_papi_calls": "PASS (payments regression suite green, simulation mode)"
+    },
+    "theme": {
+      "toggle_html_class_light_to_dark": "PASS",
+      "persists_across_reload_via_localStorage_mgs-theme": "PASS",
+      "anti_flash_ssr_class_in_index_html_and_next-themes_defaultTheme_system": "PASS (code review)",
+      "all_customer_routes_readable_dark": "PASS (spot-checked home, /inscription, /chat, /compte, /admin, /admin/commandes, /admin/messages)",
+      "admin_status_badge_and_metrics_still_visible": "PASS"
+    }
+  },
+  "push_transport_verification_scope": "The pytest 'test send' hits real FCM through pywebpush and correctly receives a 4xx (endpoint token is bogus) OR a transport error — both branches are covered without ever returning 500 on our API. ACTUAL DEVICE/OS DELIVERY (browser -> FCM/APNs -> user device) was NOT exercised in this run because the Playwright browser context does not have a real user gesture and permission was 'refusées'. That path requires manual verification on a real device.",
+  "action_items": [],
+  "critical_code_review_comments": [
+    "orders.py: subscription duplicate guard uses (a) a pre-insert find + (b) a Mongo partial unique index over pubg_id where items.type in [prime,prime_plus]. Concurrent-race test proves atomicity via the index. Good.",
+    "chat.py MessageIn uses ConfigDict(extra='forbid') which correctly rejects forged sender_id and other client-supplied fields. Good.",
+    "chat.py allowed_conversation() filters by user_id for non-admins, giving 404 rather than 403 so an attacker cannot even confirm a conversation exists. Good.",
+    "push.py validate_endpoint blocks non-https, non-standard ports, user:pass, query/fragment, and any host not in PUSH_ENDPOINT_HOSTS (fcm/mozilla/apple). Explicit SSRF hardening — good.",
+    "services/push.py never logs endpoint/token strings on failure (only exception class name). VAPID private key is loaded from env and never surfaced via /admin/push/config (only public key returned). Good.",
+    "public/sw.js is push-only (no fetch handler, no offline cache) so it can never interfere with API/payment traffic. notificationclick strictly whitelists pathname === '/admin/commandes' before opening, then passes query through — correctly navigates to /admin/commandes?order=<id>.",
+    "next-themes ThemeProvider uses storageKey='mgs-theme', defaultTheme='system', disableTransitionOnChange, attribute='class' — matches the SSR anti-flash class in index.html.",
+    "No new PAPI calls introduced; payments regression path stays in simulation mode (backend/.env PAYMENT_MODE=simulation) and all 8 payments tests pass unchanged.",
+    "MINOR: Duplicate-key error branch in orders.create_order compares keyPattern to {'pubg_id': 1} but the index name is 'one_subscription_order_per_pubg' and Mongo's keyPattern for a partial index is still {'pubg_id': 1}, so the equality holds. Confirmed by concurrent test producing exactly one 409."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_new_features.py — NEW: 27 targeted regression tests for chat, push (admin-only, SSRF, key validation, upsert, test-send transport), and subscription rule (including concurrent race)."
+  ],
+  "success_rate": {"backend": "100% (69/69 executed; 2 skipped by design for http cookies)", "frontend": "100% of in-scope UI flows verified (theme, visitor chat invite, customer chat send, admin chat reply, admin push panel states, mobile bottom-nav)"},
+  "test_credentials": "Admin credentials read from ignored /app/memory/test_credentials.md. QA credentials are stored only in that ignored file; never in reports or tracked test sources.",
+  "seed_data_creation": "Test-created QA customer accounts, one chat conversation per QA user with a few messages, and several MGS-XXXXXX orders (both UC and Prime) tied to freshly generated 10-digit pubg_ids. Small volume; production data untouched.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All backend regression under /app/backend/tests runs green against the external preview host (probe fallback to localhost still in place). The push 'real device' path is the only piece not machine-verified — it needs a real browser+OS to confirm end-to-end delivery. If retesting the subscription rule, always generate a UNIQUE 10-digit pubg_id per test (see _fresh_pubg()) because the partial-unique index is global across historical orders.",
+  "rca_of_the_issue": "N/A — no bugs found this iteration."
+}

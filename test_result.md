@@ -127,3 +127,11 @@ frontend:
 agent_communication:
   - agent: main
     message: Use current frontend env preview (external API now returns 200, do not reuse old ingress workaround). Read credentials file. Add focused pytest tests only; no live PAPI calls. VAPID generated locally in ignored backend/.env. No mocked runtime API; transport tests may mock provider failures and browser permission to cover headless limits, explicitly report them. Do not print or commit secrets/test credentials. Run final frontend yarn build. Existing initial build passed. Review README for semantics/limitations; subscription index directly covers historical snapshots, all statuses. Need actual push end-to-end verification if browser supports subscription, otherwise be explicit about unverified real device delivery.
+
+
+## Follow-up: required coverage gaps from iteration 3
+- Backend executed suite passed, but deterministic Push delivery/404/410/500 cleanup and new-order dispatch were not covered; add isolated mocked transport tests (clearly labelled).
+- Frontend needs the explicit all-route BOTH-theme matrix, portal dialogs/dropdowns, real system preference initial bootstrap, push granted/default/denied activation lifecycle and SW push/click simulation, chat hidden tab/history pagination, checkout duplicate toast.
+- Probable deep-link bug: ProtectedRoute stores pathname only, dropping ?order. Reproduce logged-out /admin/commandes?order=<id> -> login -> target, then change ONLY state.from to pathname+search+hash and re-test. Auth playbook already obtained; no auth/session/backend changes authorized.
+- New test file loads env credentials/preview URL, generates random QA passwords and records them only in ignored test_credentials.md. Iteration3 report sanitized. Do not re-add passwords to code/reports.
+- Finish final frontend yarn build and include actual output. Avoid repeating all old payment/CRUD tests; finish only coverage gaps above.
