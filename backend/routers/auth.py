@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, EmailStr, Field
 
 from core.db import db
-from core.security import (PUBLIC_USER_FIELDS, JWT_ALGORITHM, clear_auth_cookies, create_access_token,
+from core.security import (PUBLIC_USER_FIELDS, JWT_ALGORITHM, clear_auth_cookies, cookie_options, create_access_token,
                            get_current_user, hash_password, new_user_id, set_auth_cookies, verify_password, ACCESS_TTL)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -114,7 +114,7 @@ async def google_session(body: GoogleSessionIn, response: Response):
         {"session_token": session_token},
         {"$set": {"user_id": user["user_id"], "expires_at": (_now() + timedelta(days=7)).isoformat(), "created_at": _now().isoformat()}},
         upsert=True)
-    response.set_cookie("session_token", session_token, httponly=True, secure=True, samesite="none", path="/", max_age=7 * 24 * 3600)
+    response.set_cookie("session_token", session_token, max_age=7 * 24 * 3600, **cookie_options())
     return {"user": await _public_user({"email": email})}
 
 
@@ -130,7 +130,7 @@ async def refresh(request: Request, response: Response):
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid token type")
     access = create_access_token(payload["sub"])
-    response.set_cookie("access_token", access, httponly=True, secure=True, samesite="none", path="/", max_age=ACCESS_TTL)
+    response.set_cookie("access_token", access, max_age=ACCESS_TTL, **cookie_options())
     return {"access_token": access}
 
 

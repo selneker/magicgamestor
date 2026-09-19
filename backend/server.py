@@ -50,5 +50,10 @@ origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o
 frontend = os.environ.get("FRONTEND_URL")
 if frontend and frontend not in origins:
     origins.append(frontend)
+# Accept the apex/www variant of each configured origin so credentialed requests are never wildcarded.
+for origin in list(origins):
+    variant = origin.replace("://www.", "://") if "://www." in origin else origin.replace("://", "://www.")
+    if variant not in origins:
+        origins.append(variant)
 app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=origins or ["http://localhost:3000"],
                    allow_methods=["*"], allow_headers=["*"])

@@ -14,15 +14,35 @@ from models.messaging import PushSubscription
 
 logger = logging.getLogger("mgs.push")
 
+# Render provides VAPID_PRIVATE_KEY; older deployments used VAPID_PRIVATE_KEY_PEM. Accept both.
+DEFAULT_ENDPOINT_HOSTS = ("*.push.services.mozilla.com,*.notify.windows.com,fcm.googleapis.com,"
+                          "updates.push.services.mozilla.com,web.push.apple.com,*.push.apple.com,"
+                          "android.googleapis.com")
+
+
+def private_key() -> str:
+    return (os.environ.get("VAPID_PRIVATE_KEY_PEM") or os.environ.get("VAPID_PRIVATE_KEY") or "").strip()
+
+
+def endpoint_hosts() -> str:
+    return (os.environ.get("PUSH_ENDPOINT_HOSTS") or DEFAULT_ENDPOINT_HOSTS).strip()
+
 
 def configured():
-    return all(os.environ.get(k) for k in ("VAPID_PRIVATE_KEY_PEM", "VAPID_PUBLIC_KEY", "VAPID_SUBJECT", "PUSH_ENDPOINT_HOSTS"))
+    return bool(private_key() and os.environ.get("VAPID_PUBLIC_KEY") and os.environ.get("VAPID_SUBJECT"))
+
+
+def _vapid():
+    key = private_key().replace("\\n", "\n")
+    if "BEGIN" in key:
+        return Vapid.from_pem(key.encode())
+    return Vapid.from_raw(key.encode())
 
 
 def validate_endpoint(value):
     url = urlsplit(value)
     host = (url.hostname or "").lower()
-    allowed = [h.strip().lower() for h in os.environ["PUSH_ENDPOINT_HOSTS"].split(",") if h.strip()]
+    allowed = [h.strip().lower() for h in endpoint_hosts().split(",") if h.strip()]
     if (url.scheme != "https" or not url.path or url.username or url.password or url.query or url.fragment
             or url.port not in (None, 443) or not any(host == h or (h.startswith("*.") and host.endswith(h[1:])) for h in allowed)):
         raise ValueError("Endpoint Push non autorisé.")
@@ -37,7 +57,7 @@ class NoRedirectSession(requests.Session):
 
 def _send(subscription, payload):
     validate_endpoint(subscription.endpoint)
-    vapid = Vapid.from_pem(os.environ["VAPID_PRIVATE_KEY_PEM"].replace("\\n", "\n").encode())
+    vapid = _vapid()
     with NoRedirectSession() as session:
         webpush(subscription_info={"endpoint": subscription.endpoint, "keys": subscription.keys},
                 data=json.dumps(payload, ensure_ascii=False), vapid_private_key=vapid,

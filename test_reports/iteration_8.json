@@ -1,0 +1,24 @@
+{
+  "summary": "Verified iter-8 hotfix (cookie auth + admin push VAPID) end-to-end on preview URL. 13/13 backend tests pass (login sets HttpOnly+Secure cookies, /auth/me works via cookies, /chat/unread returns {count} for authed and 401 unauthed, /auth/refresh works with only refresh cookie and issues new access cookie, /auth/logout clears cookies, /admin/push/config returns {configured:true, public_key:...} without leaking private key, non-admin gets 403, unauth gets 401, push subscription accepts fcm.googleapis.com endpoint and rejects evil.example.com with 422, register/status/delete round trip works, /admin/push/test on unknown endpoint returns 404 not 503). Frontend admin panel loads, admin-push section rendered, push-not-configured message is NOT shown (VAPID configured), /sw.js served with content-type application/javascript. Push-enable button appears disabled in headless because Notification.permission is 'denied' (expected; cannot be granted headlessly per review note). Session persistence verified via cookies.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter8_cookie_push.py",
+    "/app/test_reports/pytest/iter8.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "cookie_options() defaults SameSite=none in preview (COOKIE_DOMAIN unset) which is correct for cross-origin preview URLs; production must set COOKIE_DOMAIN=.magicgame.store to switch to Lax as designed.",
+    "services/push.py accepts VAPID_PRIVATE_KEY (raw base64url) or VAPID_PRIVATE_KEY_PEM; default endpoint hosts list covers FCM/Mozilla/Windows/Apple. Endpoint validation correctly rejects non-allowed hosts and requires https + port None/443 + no query/fragment.",
+    "/admin/push/config correctly gates public_key behind configured() and require_admin; private key is never exposed.",
+    "logout only clears cookies; consider also rotating/revoking refresh token server-side (currently a stolen refresh cookie remains valid until natural expiry). Non-blocking for hotfix scope."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter8_cookie_push.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@magicgame.store / Admin12345!",
+  "seed_data_creation": "None (temporary QA user registered via /auth/register for 403 test).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Hotfix scope: cookie-based auth (SameSite=none in preview, Lax+Domain in prod) and admin push VAPID env acceptance. In headless Chromium Notification.permission is 'denied' so the push-enable button is disabled by design (state='refusées'); to positively confirm the enable button, use a real browser or grant notifications via CDP Browser.grantPermissions at the context level BEFORE page load — grant_permissions after navigation still returned denied. /sw.js is at frontend/public/sw.js and served as application/javascript.",
+  "rca of the issue": "Bug 1 (401 on /auth/me in production): cookies were set with SameSite=None but no Domain, so magicgame.store and api.magicgame.store were treated as cross-site and cookies dropped. Fix adds cookie_options() reading COOKIE_DOMAIN env; when set, cookie is scoped to .magicgame.store (first-party, SameSite=Lax). Verified cookies attach correctly across API paths. Bug 2 ('VAPID requise'): push.py only read VAPID_PRIVATE_KEY_PEM/PUSH_ENDPOINT_HOSTS but Render provided VAPID_PRIVATE_KEY. Fix reads either env var and hard-codes a sensible default endpoint host allowlist. /admin/push/config confirmed configured=true."
+}

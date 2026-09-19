@@ -40,15 +40,33 @@ def create_refresh_token(user_id: str) -> str:
     return jwt.encode(payload, _secret(), algorithm=JWT_ALGORITHM)
 
 
+def cookie_options() -> dict:
+    """Cookie scope for the deployed domains.
+
+    With COOKIE_DOMAIN=.magicgame.store the cookie is shared by magicgame.store and
+    api.magicgame.store as a first-party cookie, so SameSite=Lax is enough and the
+    browser no longer drops it as a blocked third-party cookie. Without that env var
+    (preview/local, different registrable domains) we keep the cross-site settings.
+    """
+    domain = (os.environ.get("COOKIE_DOMAIN") or "").strip() or None
+    samesite = (os.environ.get("COOKIE_SAMESITE") or ("lax" if domain else "none")).strip().lower()
+    options = dict(httponly=True, secure=True, samesite=samesite, path="/")
+    if domain:
+        options["domain"] = domain
+    return options
+
+
 def set_auth_cookies(response: Response, user_id: str):
-    common = dict(httponly=True, secure=True, samesite="none", path="/")
+    common = cookie_options()
     response.set_cookie("access_token", create_access_token(user_id), max_age=ACCESS_TTL, **common)
     response.set_cookie("refresh_token", create_refresh_token(user_id), max_age=REFRESH_TTL, **common)
 
 
 def clear_auth_cookies(response: Response):
+    common = cookie_options()
+    common.pop("httponly", None)
     for name in ("access_token", "refresh_token", "session_token"):
-        response.delete_cookie(name, path="/", secure=True, samesite="none")
+        response.delete_cookie(name, **common)
 
 
 def new_user_id() -> str:
