@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { CalendarRange, Download, LayoutDashboard, Package, ReceiptText, MessageCircle } from "lucide-react";
+import { CalendarRange, Coins, Download, LayoutDashboard, Package, ReceiptText, MessageCircle } from "lucide-react";
 import { AdminPush } from "@/components/admin/AdminPush";
 import { useChat } from "@/context/ChatContext";
 import { api } from "@/lib/api";
@@ -20,6 +20,7 @@ export default function AdminLayout() {
     ["/admin/catalogue", Package, t("admin.products"), "admin-tab-products"],
     ["/admin/evenements", CalendarRange, t("admin.events"), "admin-tab-events"],
     ["/admin/messages", MessageCircle, `Chat${count ? ` (${count})` : ""}`, "admin-tab-chat"],
+    ["/admin/fidelite", Coins, "Fidélité", "admin-tab-loyalty"],
   ];
   const exportCsv = async () => {
     const { data } = await api.get("/admin/export", { responseType: "blob" });

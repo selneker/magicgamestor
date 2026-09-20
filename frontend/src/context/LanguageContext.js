@@ -11,7 +11,10 @@ export function LanguageProvider({ children }) {
     document.documentElement.lang = l;
   }, []);
   const t = useCallback(
-    (path) => path.split(".").reduce((acc, k) => (acc && acc[k] !== undefined ? acc[k] : undefined), translations[lang]) ?? path,
+    (path, vars) => {
+      const value = path.split(".").reduce((acc, k) => (acc && acc[k] !== undefined ? acc[k] : undefined), translations[lang]) ?? path;
+      return vars && typeof value === "string" ? value.replace(/\{(\w+)\}/g, (_, k) => (vars[k] !== undefined ? vars[k] : `{${k}}`)) : value;
+    },
     [lang]
   );
   const value = useMemo(() => ({ lang, setLang, t, toggle: () => setLang(lang === "fr" ? "en" : "fr") }), [lang, setLang, t]);

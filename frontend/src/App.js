@@ -1,5 +1,5 @@
 import "@/App.css";
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { ThemeProvider } from "next-themes";
@@ -18,41 +18,49 @@ import Checkout from "@/pages/Checkout";
 import OrderTrack from "@/pages/OrderTrack";
 import Events from "@/pages/Events";
 import AuthPage from "@/pages/AuthPage";
+import { ForgotPassword, ResetPassword, VerifyEmail } from "@/pages/AuthExtras";
 import Account from "@/pages/Account";
+import Loyalty from "@/pages/Loyalty";
 import AdminLayout from "@/pages/admin/AdminLayout";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminProducts from "@/pages/admin/AdminProducts";
 import AdminEvents from "@/pages/admin/AdminEvents";
+import AdminLoyalty from "@/pages/admin/AdminLoyalty";
 
 function AppRouter() {
-  const location = useLocation();
-  // Google OAuth returns with #session_id=…; exchange it before any route renders.
-  if (location.hash?.includes("session_id=")) return <AuthCallback />;
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route index element={<Home />} />
-        <Route path="/boutique" element={<Catalog />} />
-        <Route path="/produit/:slug" element={<Product />} />
-        <Route path="/commande" element={<Checkout />} />
-        <Route path="/suivi" element={<OrderTrack />} />
-        <Route path="/suivi/:orderNumber" element={<OrderTrack />} />
-        <Route path="/evenements" element={<Events />} />
-        <Route path="/connexion" element={<AuthPage mode="login" />} />
-        <Route path="/inscription" element={<AuthPage mode="register" />} />
-        <Route path="/chat" element={<Chat />} />
-        <Route path="/compte" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-        <Route path="/admin" element={<ProtectedRoute admin><AdminLayout /></ProtectedRoute>}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="commandes" element={<AdminOrders />} />
-          <Route path="catalogue" element={<AdminProducts />} />
-          <Route path="evenements" element={<AdminEvents />} />
-          <Route path="messages" element={<AdminChat />} />
+    <>
+      <AuthCallback />
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<Home />} />
+          <Route path="/boutique" element={<Catalog />} />
+          <Route path="/produit/:slug" element={<Product />} />
+          <Route path="/commande" element={<Checkout />} />
+          <Route path="/suivi" element={<OrderTrack />} />
+          <Route path="/suivi/:orderNumber" element={<OrderTrack />} />
+          <Route path="/evenements" element={<Events />} />
+          <Route path="/connexion" element={<AuthPage mode="login" />} />
+          <Route path="/inscription" element={<AuthPage mode="register" />} />
+          <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
+          <Route path="/reinitialiser/:token" element={<ResetPassword />} />
+          <Route path="/verifier-email/:token" element={<VerifyEmail />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/compte" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+          <Route path="/compte/points" element={<ProtectedRoute><Loyalty /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute admin><AdminLayout /></ProtectedRoute>}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="commandes" element={<AdminOrders />} />
+            <Route path="catalogue" element={<AdminProducts />} />
+            <Route path="evenements" element={<AdminEvents />} />
+            <Route path="messages" element={<AdminChat />} />
+            <Route path="fidelite" element={<AdminLoyalty />} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+      </Routes>
+    </>
   );
 }
 

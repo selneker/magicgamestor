@@ -15,6 +15,7 @@ const STYLE = {
   delivered: ["border-foreground bg-foreground text-background", PackageCheck],
   cancelled: ["border-foreground/40 bg-transparent text-muted-foreground line-through", XCircle],
   failed: ["border-destructive bg-destructive text-destructive-foreground", XCircle],
+  expired: ["border-foreground/40 bg-transparent text-muted-foreground", Clock],
 };
 
 export function StatusPill({ status }) {
@@ -32,6 +33,7 @@ export function OrderCard({ order }) {
         <StatusPill status={order.status} />
       </div>
       <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600" data-testid="order-next-step">{t(`order.next.${order.status}`)}</p>
+      {order.late_payment && <p className="mt-2 rounded-xl border border-strong px-3 py-2 text-xs" data-testid="order-late-payment">{t("order.latePayment")}</p>}
       <ul className="mt-4 divide-y text-sm">
         {order.items.map((i, idx) => <li key={idx} className="flex justify-between py-2"><span>{i.quantity} × {lang === "en" && i.name_en ? i.name_en : i.name}</span><span className="font-semibold">{formatAr(i.line_total)}</span></li>)}
       </ul>
@@ -83,6 +85,16 @@ export default function OrderTrack() {
     return () => { active = false; clearInterval(id); };
   }, [order]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const [retrying, setRetrying] = useState(false);
+  const retry = async () => {
+    setRetrying(true);
+    try {
+      const { data } = await api.post("/payments/initiate", { order_id: order.id });
+      if (data.payment_url && !data.simulated) { window.location.assign(data.payment_url); return; }
+      search(order.order_number, order.pubg_id);
+    } catch (e) { toast.error(errorMessage(e)); } finally { setRetrying(false); }
+  };
+
   useEffect(() => {
     const ret = params.get("return");
     if (ret === "failure") toast.error(t("order.next.failed"));
@@ -105,6 +117,10 @@ export default function OrderTrack() {
             <Button asChild className="h-12 w-full rounded-full font-bold" style={{ background: order.payment_method === "mvola" ? "var(--mvola)" : "var(--orange)" }} data-testid="resume-payment-button">
               <a href={payInfo.payment_url}>{t("checkout.resume")}</a>
             </Button>
+          )}
+          {order.status === "pending_payment" && payInfo?.expires_at && <p className="text-center text-xs text-muted-foreground" data-testid="payment-deadline">{t("checkout.deadline", { time: new Date(payInfo.expires_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) })}</p>}
+          {["failed", "expired"].includes(order.status) && order.payment_method !== "manual" && (
+            <Button onClick={retry} disabled={retrying} variant="outline" className="h-12 w-full rounded-full font-bold" data-testid="retry-payment-button">{t("checkout.retry")}</Button>
           )}
         </div>
       )}

@@ -26,7 +26,7 @@ export default function Checkout() {
   const [order, setOrder] = useState(null);
 
   if (order && order.payment_method !== "manual") {
-    return <div className="py-12"><PaymentStatus order={order} onRetry={() => api.post("/payments/initiate", { order_id: order.id }).then(() => setOrder({ ...order })).catch((e) => toast.error(errorMessage(e)))} /></div>;
+    return <div className="py-12"><PaymentStatus key={order.attempt || 0} order={order} onRetry={() => api.post("/payments/initiate", { order_id: order.id }).then(({ data }) => { if (data.payment_url && !data.simulated) return window.location.assign(data.payment_url); setOrder({ ...order, attempt: (order.attempt || 0) + 1 }); }).catch((e) => toast.error(errorMessage(e)))} /></div>;
   }
 
   if (items.length === 0) {

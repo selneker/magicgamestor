@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
@@ -25,6 +26,7 @@ export default function AuthPage({ mode = "login" }) {
     try {
       const { data } = await api.post(`/auth/${mode}`, mode === "login" ? { email: form.email, password: form.password } : form);
       setUser(data.user);
+      if (mode === "register") toast.message(t("auth.verifySent"));
       navigate(from, { replace: true });
     } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); }
   };
@@ -43,7 +45,8 @@ export default function AuthPage({ mode = "login" }) {
         <form onSubmit={submit} className="space-y-4">
           {mode === "register" && <div><label htmlFor="name" className="text-sm font-semibold text-slate-700">{t("auth.name")}</label><Input id="name" data-testid="name-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required minLength={2} className="mt-1 h-12 rounded-xl" /></div>}
           <div><label htmlFor="email" className="text-sm font-semibold text-slate-700">{t("auth.email")}</label><Input id="email" type="email" data-testid="email-input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required className="mt-1 h-12 rounded-xl" /></div>
-          <div><label htmlFor="password" className="text-sm font-semibold text-slate-700">{t("auth.password")}</label><Input id="password" type="password" data-testid="password-input" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={6} className="mt-1 h-12 rounded-xl" /></div>
+          <div><label htmlFor="password" className="text-sm font-semibold text-slate-700">{t("auth.password")}</label><Input id="password" type="password" data-testid="password-input" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={mode === "register" ? 8 : 6} className="mt-1 h-12 rounded-xl" /></div>
+          {mode === "login" && <p className="text-right text-xs"><Link to="/mot-de-passe-oublie" className="font-medium text-muted-foreground hover:text-foreground" data-testid="login-forgot-password-link">{t("auth.forgot")}</Link></p>}
           {error && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700" data-testid="auth-error">{error}</p>}
           <Button type="submit" disabled={busy} className="h-12 w-full rounded-full text-base font-bold" data-testid="auth-submit">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.submit")}</Button>
         </form>

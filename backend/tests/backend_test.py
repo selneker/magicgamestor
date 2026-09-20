@@ -395,9 +395,16 @@ class TestAdmin:
         r = requests.patch(f"{API}/admin/orders/{order['id']}", headers=admin_headers, json={"status": "delivered"})
         assert r.status_code == 200
         assert r.json()["status"] == "delivered"
-        # delete
+        # paid/delivered orders are financial records: deletion refused (traceability)
         r2 = requests.delete(f"{API}/admin/orders/{order['id']}", headers=admin_headers)
-        assert r2.status_code == 200
+        assert r2.status_code == 409
+        # an unpaid order can be deleted
+        other = requests.post(f"{API}/orders", json={
+            "pubg_id": "5123456789", "pseudo": "AdminTest",
+            "items": [{"product_id": pid, "quantity": 1}],
+            "payment_method": "manual", "manual_reference": "ADM-QA2",
+        }).json()
+        assert requests.delete(f"{API}/admin/orders/{other['id']}", headers=admin_headers).status_code == 200
 
     def test_admin_stats(self, admin_headers):
         r = requests.get(f"{API}/admin/stats", headers=admin_headers)

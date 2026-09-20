@@ -30,13 +30,13 @@ def _secret() -> str:
     return os.environ["JWT_SECRET"]
 
 
-def create_access_token(user_id: str) -> str:
-    payload = {"sub": user_id, "type": "access", "exp": datetime.now(timezone.utc) + timedelta(seconds=ACCESS_TTL)}
+def create_access_token(user_id: str, auth_version: int = 0) -> str:
+    payload = {"sub": user_id, "type": "access", "v": auth_version, "exp": datetime.now(timezone.utc) + timedelta(seconds=ACCESS_TTL)}
     return jwt.encode(payload, _secret(), algorithm=JWT_ALGORITHM)
 
 
-def create_refresh_token(user_id: str) -> str:
-    payload = {"sub": user_id, "type": "refresh", "exp": datetime.now(timezone.utc) + timedelta(seconds=REFRESH_TTL)}
+def create_refresh_token(user_id: str, auth_version: int = 0) -> str:
+    payload = {"sub": user_id, "type": "refresh", "v": auth_version, "exp": datetime.now(timezone.utc) + timedelta(seconds=REFRESH_TTL)}
     return jwt.encode(payload, _secret(), algorithm=JWT_ALGORITHM)
 
 
@@ -56,10 +56,10 @@ def cookie_options() -> dict:
     return options
 
 
-def set_auth_cookies(response: Response, user_id: str):
+def set_auth_cookies(response: Response, user_id: str, auth_version: int = 0):
     common = cookie_options()
-    response.set_cookie("access_token", create_access_token(user_id), max_age=ACCESS_TTL, **common)
-    response.set_cookie("refresh_token", create_refresh_token(user_id), max_age=REFRESH_TTL, **common)
+    response.set_cookie("access_token", create_access_token(user_id, auth_version), max_age=ACCESS_TTL, **common)
+    response.set_cookie("refresh_token", create_refresh_token(user_id, auth_version), max_age=REFRESH_TTL, **common)
 
 
 def clear_auth_cookies(response: Response):
@@ -73,6 +73,15 @@ def new_user_id() -> str:
     return f"user_{uuid.uuid4().hex[:12]}"
 
 
+def _active(user: dict | None, token_version: int | None = None):
+    """Deleted/anonymised accounts and tokens issued before a password reset are rejected."""
+    if not user or user.get("deleted_at"):
+        return None
+    if token_version is not None and int(token_version) != int(user.get("auth_version", 0)):
+        return None
+    return user
+
+
 async def _user_from_jwt(token: str):
     try:
         payload = jwt.decode(token, _secret(), algorithms=[JWT_ALGORITHM])
@@ -80,7 +89,7 @@ async def _user_from_jwt(token: str):
         return None
     if payload.get("type") != "access" or not payload.get("sub"):
         return None
-    return await db.users.find_one({"user_id": payload["sub"]}, PUBLIC_USER_FIELDS)
+    return _active(await db.users.find_one({"user_id": payload["sub"]}, PUBLIC_USER_FIELDS), payload.get("v", 0))
 
 
 async def _user_from_session(token: str):
@@ -94,7 +103,7 @@ async def _user_from_session(token: str):
         expires_at = expires_at.replace(tzinfo=timezone.utc)
     if expires_at < datetime.now(timezone.utc):
         return None
-    return await db.users.find_one({"user_id": session["user_id"]}, PUBLIC_USER_FIELDS)
+    return _active(await db.users.find_one({"user_id": session["user_id"]}, PUBLIC_USER_FIELDS))
 
 
 async def resolve_user(request: Request):

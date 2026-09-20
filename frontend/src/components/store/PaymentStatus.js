@@ -20,7 +20,8 @@ export function PaymentStatus({ order, onRetry }) {
         if (cancelled) return;
         setSimulated(data.simulated);
         if (data.payment_status === "completed") return setState("completed");
-        if (data.payment_status === "failed") return setState("failed");
+        if (data.payment_status === "expired") return setState("expired");
+        if (["failed", "cancelled"].includes(data.payment_status)) return setState("failed");
       } catch (_) { /* keep polling */ }
       timer.current = setTimeout(poll, 3000);
     };
@@ -52,11 +53,11 @@ export function PaymentStatus({ order, onRetry }) {
           <Button asChild className="mt-6 h-12 w-full rounded-full font-bold" data-testid="view-order-button"><Link to={trackUrl}>{t("checkout.viewOrder")}</Link></Button>
         </>
       )}
-      {state === "failed" && (
+      {(state === "failed" || state === "expired") && (
         <>
           <XCircle className="mx-auto h-20 w-20 text-rose-500" />
-          <h2 className="mt-6 font-display text-2xl font-bold text-slate-900" data-testid="payment-failed">{t("checkout.failed")}</h2>
-          <p className="mt-2 text-slate-500">{t("order.next.failed")}</p>
+          <h2 className="mt-6 font-display text-2xl font-bold text-slate-900" data-testid={state === "expired" ? "payment-expired" : "payment-failed"}>{state === "expired" ? t("checkout.expired") : t("checkout.failed")}</h2>
+          <p className="mt-2 text-slate-500">{state === "expired" ? t("order.next.expired") : t("order.next.failed")}</p>
           <Button onClick={onRetry} variant="outline" className="mt-6 h-12 w-full rounded-full font-bold" data-testid="retry-payment-button">{t("checkout.retry")}</Button>
         </>
       )}

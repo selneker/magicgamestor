@@ -2,25 +2,30 @@ import secrets
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
 from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, Field, field_validator
 
+from core import ratelimit
+from core.audit import audit
 from core.db import db
 from core.security import get_current_user, get_optional_user, require_admin
+from services import loyalty, mailer
+from services.fulfillment import on_order_paid
 from services.push import notify_new_order
 
 router = APIRouter(tags=["orders"])
 PUBLIC = {"_id": 0}
-STATUSES = ["pending_payment", "awaiting_verification", "paid", "delivered", "cancelled", "failed"]
+STATUSES = ["pending_payment", "awaiting_verification", "paid", "delivered", "cancelled", "failed", "expired"]
 SUBSCRIPTION_TYPES = ("prime", "prime_plus")
 SUBSCRIPTION_LABELS = {"prime": "Prime", "prime_plus": "Prime+"}
-INACTIVE_STATUSES = ("cancelled", "failed")
+INACTIVE_STATUSES = ("cancelled", "failed", "expired")
 TRANSITIONS = {
-    "pending_payment": {"paid", "cancelled", "failed"},
+    "pending_payment": {"paid", "cancelled", "failed", "expired"},
     "awaiting_verification": {"paid", "delivered", "cancelled", "failed"},
     "paid": {"delivered", "cancelled"},
     "failed": {"paid", "cancelled"},
+    "expired": {"paid", "cancelled"},
     "delivered": set(),
     "cancelled": set(),
 }
@@ -141,7 +146,11 @@ async def backfill_subscription_locks():
 
 
 @router.post("/orders", status_code=201)
-async def create_order(body: OrderIn, background_tasks: BackgroundTasks, user=Depends(get_optional_user)):
+async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request: Request, user=Depends(get_optional_user)):
+    ip = ratelimit.client_ip(request)
+    ratelimit.check(f"orders:ip:{ip}", ratelimit.setting("ORDERS_PER_HOUR_PER_IP", 30), 3600)
+    if user:
+        ratelimit.check(f"orders:user:{user['user_id']}", ratelimit.setting("ORDERS_PER_HOUR_PER_USER", 20), 3600)
     if body.payment_method in ("mvola", "orange") and not body.payment_phone:
         raise HTTPException(status_code=400, detail="Payment phone number is required")
     if body.payment_method == "manual" and not body.manual_reference:
@@ -179,6 +188,8 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, user=De
         await release_subscription_locks(order["id"])
         raise
     background_tasks.add_task(notify_new_order, order)
+    if order.get("email"):
+        background_tasks.add_task(mailer.send_order_created, order)
     if user and body.pubg_id not in user.get("saved_pubg_ids", []):
         await db.users.update_one({"user_id": user["user_id"]}, {"$push": {"saved_pubg_ids": {"$each": [body.pubg_id], "$slice": -10}}})
     order.pop("_id", None)
@@ -200,6 +211,13 @@ async def track_order(order_number: str = Query(min_length=6), pubg_id: str = Qu
     order = await db.orders.find_one({"order_number": order_number.upper().strip(), "pubg_id": pubg_id.strip()}, PUBLIC)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    if order["status"] == "pending_payment" and order["payment_method"] != "manual":
+        from routers.payments import latest_attempt, expire_attempt
+        from services.payments import is_expired
+        attempt = await latest_attempt(order["id"])
+        if attempt and attempt["status"] == "pending" and is_expired(attempt):
+            await expire_attempt(attempt)
+            order = await db.orders.find_one({"id": order["id"]}, PUBLIC)
     return order
 
 
@@ -216,6 +234,8 @@ async def get_order(order_id: str, user=Depends(get_optional_user)):
 # ---------- Admin ----------
 @router.get("/admin/orders", dependencies=[Depends(require_admin)])
 async def admin_orders(status: str | None = None, method: str | None = None, q: str | None = None, limit: int = 200):
+    from routers.payments import expire_stale_attempts
+    await expire_stale_attempts()
     query = {}
     if status and status != "all":
         query["status"] = status
@@ -227,9 +247,19 @@ async def admin_orders(status: str | None = None, method: str | None = None, q: 
     return await db.orders.find(query, PUBLIC).sort("created_at", -1).to_list(min(limit, 1000))
 
 
-@router.patch("/admin/orders/{order_id}", dependencies=[Depends(require_admin)])
-async def admin_update_order(order_id: str, body: StatusIn):
-    current = await db.orders.find_one({"id": order_id}, {"status": 1})
+@router.get("/admin/audit", dependencies=[Depends(require_admin)])
+async def admin_audit(target: str | None = None, action: str | None = None, limit: int = 100):
+    query = {}
+    if target:
+        query["target"] = target
+    if action:
+        query["action"] = {"$regex": f"^{action}"}
+    return await db.orders.database.audit_logs.find(query, PUBLIC).sort("created_at", -1).to_list(min(limit, 500))
+
+
+@router.patch("/admin/orders/{order_id}")
+async def admin_update_order(order_id: str, body: StatusIn, background_tasks: BackgroundTasks, admin=Depends(require_admin)):
+    current = await db.orders.find_one({"id": order_id}, {"status": 1, "user_id": 1})
     if not current:
         raise HTTPException(status_code=404, detail="Order not found")
     if body.status != current["status"] and body.status not in TRANSITIONS[current["status"]]:
@@ -241,18 +271,29 @@ async def admin_update_order(order_id: str, body: StatusIn):
     res = await db.orders.update_one({"id": order_id, "status": current["status"]}, {"$set": updates, **({"$push": push} if push else {})})
     if res.matched_count == 0:
         raise HTTPException(status_code=409, detail="La commande a changé, rechargez la liste.")
+    if body.status != current["status"]:
+        await audit("order.status_change", admin["user_id"], order_id, {"from": current["status"], "to": body.status, "note": body.admin_note})
+        if body.status == "paid":
+            background_tasks.add_task(on_order_paid, order_id, "manual", f"admin:{admin['user_id']}")
+        if body.status == "cancelled" and current["status"] in ("paid", "delivered") and current.get("user_id"):
+            order = await db.orders.find_one({"id": order_id}, PUBLIC)
+            await loyalty.reverse_for_order(order, f"admin:{admin['user_id']}")
     if body.status in INACTIVE_STATUSES:
         await release_subscription_locks(order_id)
     return await db.orders.find_one({"id": order_id}, PUBLIC)
 
 
-@router.delete("/admin/orders/{order_id}", dependencies=[Depends(require_admin)])
-async def admin_delete_order(order_id: str):
-    res = await db.orders.delete_one({"id": order_id})
-    if res.deleted_count == 0:
+@router.delete("/admin/orders/{order_id}")
+async def admin_delete_order(order_id: str, admin=Depends(require_admin)):
+    order = await db.orders.find_one({"id": order_id}, PUBLIC)
+    if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    await db.payments.delete_one({"order_id": order_id})
+    if order["status"] in ("paid", "delivered") or await db.payments.find_one({"order_id": order_id, "status": {"$in": ["completed", "late_success"]}}):
+        raise HTTPException(status_code=409, detail="Une commande payée ne peut pas être supprimée (traçabilité). Annulez-la.")
+    await db.orders.delete_one({"id": order_id})
+    await db.payments.update_many({"order_id": order_id, "status": "pending"}, {"$set": {"status": "cancelled", "updated_at": _now()}})
     await release_subscription_locks(order_id)
+    await audit("order.deleted", admin["user_id"], order_id, {"order_number": order["order_number"], "status": order["status"]})
     return {"ok": True}
 
 

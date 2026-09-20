@@ -10,11 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CopyButton } from "@/components/admin/CopyButton";
 
-const STATUSES = ["pending_payment", "awaiting_verification", "paid", "delivered", "cancelled", "failed"];
+const STATUSES = ["pending_payment", "awaiting_verification", "paid", "delivered", "cancelled", "failed", "expired"];
 // Mirrors backend TRANSITIONS in routers/orders.py
 const TRANSITIONS = {
-  pending_payment: ["paid", "cancelled", "failed"], awaiting_verification: ["paid", "delivered", "cancelled", "failed"],
-  paid: ["delivered", "cancelled"], failed: ["paid", "cancelled"], delivered: [], cancelled: [],
+  pending_payment: ["paid", "cancelled", "failed", "expired"], awaiting_verification: ["paid", "delivered", "cancelled", "failed"],
+  paid: ["delivered", "cancelled"], failed: ["paid", "cancelled"], expired: ["paid", "cancelled"], delivered: [], cancelled: [],
 };
 const canDeliver = (s) => TRANSITIONS[s]?.includes("delivered");
 

@@ -18,14 +18,7 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  useEffect(() => {
-    // CRITICAL: skip /me when returning from Google OAuth; AuthCallback exchanges the session_id first.
-    if (window.location.hash?.includes("session_id=")) {
-      setLoading(false);
-      return;
-    }
-    checkAuth();
-  }, [checkAuth]);
+  useEffect(() => { checkAuth(); }, [checkAuth]);
 
   const logout = useCallback(async () => {
     await api.post("/auth/logout").catch(() => {});
