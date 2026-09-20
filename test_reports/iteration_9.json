@@ -1,0 +1,27 @@
+{
+  "summary": "Frontend E2E testing completed on preview URL. All 8 requested flows work end-to-end: (1) /connexion → 'Mot de passe oublié ?' link navigates to /mot-de-passe-oublie and submitting an email shows neutral forgot-sent confirmation. (2) Registration at /inscription redirects to /compte; verify-email-banner + resend-verification-button + account-points-card (0 pts) present; change-password succeeds and user stays logged in. (3) Account delete flow: submit disabled until 'SUPPRIMER' typed → deletion logs user out and re-login with old creds fails with 'Invalid email or password'. (4) /compte/points shows loyalty-total/earned/promo, rewards-empty, ledger-empty and transfer-needs-verification because email is unverified. (5) Admin login → admin-tab-loyalty → /admin/fidelite: switches present, created reward appears in list, points adjustment for a customer succeeds (toast 'Nouveau solde : 250 pts') and customer /compte/points then shows total=250, promo=250. (6) Simulation checkout (30 UC pack → /commande → MVola + phone → pay-button) transitions to payment-success in ~10s; /suivi/<order>?pubg_id=... shows status-paid. (7) After forcing payments.expires_at to the past in Mongo, /suivi shows status-expired and retry-payment-button; clicking retry creates a new attempt (status-pending_payment) and payment-deadline text 'Paiement possible jusqu'à HH:MM (15 min)' appears. (8) Header wordmark 'MagicGameStore' rendered, theme-toggle present, bottom-nav testids present, floating-chat-button present. Only console errors observed are 401 on /auth/me for anonymous pages (expected).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/compte/points (Loyalty)", "issues": ["The 'SOLDE' black panel visually appears without its number in some screenshots even though data-testid=loyalty-total holds the correct value (e.g. 250). The `text-primary` (neon yellow) num rendered on `.panel-black` may have poor contrast at certain zoom/font-loading states — worth a visual QA in a real browser. Not a functional blocker; DOM value is correct."]}
+    ]
+  },
+  "test_report_links": ["/tmp/test_expire.py"],
+  "action_items": [
+    "Optional: verify the visual rendering of the SOLDE number (loyalty-total) on the black hero panel — text_content is correct but the number was not clearly visible in the captured screenshot; likely fine in real browsers but worth a quick sanity check."
+  ],
+  "critical_code_review_comments": [
+    "SIMULATION_DELAY_S = 8 in services/payments.py — review request mentions ~15s; consider aligning documentation or the constant.",
+    "GET /api/orders/track still returns raw order without stripping potential internal fields (verified _id excluded via PUBLIC projection — OK).",
+    "Frontend Loyalty page defaults to `{total:0, earned:0, promo:0}` on API failure which is graceful; ensure the 'SOLDE' text on `.panel-black` uses a color reliably contrasted (currently `text-primary` neon yellow on black — high contrast, but relies on the display font `num` being loaded)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "100%"},
+  "test_credentials": "Admin: ravelomantsoamichel@gmail.com / Admin12345! (from /app/memory/test_credentials.md). QA customer created during this run: cust_1789918850@example.com / Passw0rd!123 (holds 250 promo pts from admin adjustment).",
+  "seed_data_creation": "Created 1 admin reward 'Test Reward 1789918859' (100 pts → 60), 1 loyalty adjust ledger entry (+250 promo, reason 'QA test bonus') on cust_1789918850@example.com, 1 paid guest order MGS-0ACBEB, 1 pending-then-expired-then-retried guest order MGS-DF3E54.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend has PAYMENT_MODE=simulation with SIMULATION_DELAY_S=8, so payment-success appears ~8s after pay-button. To exercise the expired-then-retry path, use /tmp/test_expire.py which places a guest order via API and sets payments.expires_at + created_at in the past via motor. Rate limits: preview URL goes through a proxy, so keep order creation modest (30/hour/IP). Google login button returns 503 (OAuth not configured) — expected. SMTP not configured, no real emails sent — expected."
+}

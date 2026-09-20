@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 from fastapi import HTTPException
 
-SIMULATION_DELAY_S = 8
+SIMULATION_DELAY_S = 8  # simulated payments auto-complete after ~8s (local/dev only)
 SIGNATURE_TOLERANCE_S = 300
 PROVIDER_CODES = {"mvola": "MVOLA", "orange": "ORANGE_MONEY"}
 # Papi validDuration is in WHOLE HOURS (min 1). The 15-minute business deadline is enforced internally.

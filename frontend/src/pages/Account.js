@@ -107,8 +107,8 @@ export default function Account() {
         <VerifyBanner user={user} />
         {points && (
           <Link to="/compte/points" className="card-lift mt-4 flex items-center justify-between rounded-xl border border-strong bg-foreground px-4 py-3 text-background" data-testid="account-points-card">
-            <span className="flex items-center gap-2 text-sm"><Coins className="h-4 w-4 text-primary" />{t("loyalty.title")}</span>
-            <span className="num text-xl text-primary" data-testid="account-points-balance">{points.total} pts</span>
+            <span className="flex items-center gap-2 text-sm"><Coins className="h-4 w-4 text-[#C5FE02]" />{t("loyalty.title")}</span>
+            <span className="num text-xl text-[#C5FE02]" data-testid="account-points-balance">{points.total} pts</span>
           </Link>
         )}
         <form onSubmit={save} className="mt-6 space-y-4 rounded-[2rem] border border-slate-100 bg-white p-6">

@@ -101,7 +101,7 @@ export default function Loyalty() {
       <p className="eyebrow">{t("account.title")}</p>
       <h1 className="font-display text-3xl font-bold sm:text-4xl">{t("loyalty.title")}</h1>
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <div className="panel-black p-5"><p className="eyebrow text-background/70">{t("loyalty.balance")}</p><p className="num mt-1 text-4xl text-primary" data-testid="loyalty-total">{data.balance.total}</p></div>
+        <div className="panel-black p-5"><p className="eyebrow text-background/70">{t("loyalty.balance")}</p><p className="num mt-1 text-4xl text-[#C5FE02]" data-testid="loyalty-total">{data.balance.total}</p></div>
         <div className="panel p-5"><p className="eyebrow">{t("loyalty.earned")}</p><p className="num mt-1 text-3xl" data-testid="loyalty-earned">{data.balance.earned}</p></div>
         <div className="panel p-5"><p className="eyebrow">{t("loyalty.promo")}</p><p className="num mt-1 text-3xl" data-testid="loyalty-promo">{data.balance.promo}</p></div>
       </div>
