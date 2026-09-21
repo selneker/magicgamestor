@@ -53,34 +53,28 @@ export function PaymentMethodPicker({ method, setMethod, phone, setPhone, refere
       )}
 
       {method === "manual" && merchant && (
-        <div className="space-y-3 border border-foreground bg-muted/40 p-4" data-testid="ussd-panel">
+        <div className="space-y-3 rounded-[14px] border bg-muted/40 p-4" data-testid="ussd-panel">
           <div className="flex gap-2">
             {PROVIDERS.map((p) => (
               <button key={p.key} type="button" data-testid={`manual-provider-${p.key}`} onClick={() => setReference({ ...reference, provider: p.key })} className={`rounded-full px-3 py-1 text-xs font-bold ${provider === p.key ? "text-white" : "bg-card text-muted-foreground"}`} style={provider === p.key ? { background: p.color } : undefined}>{p.label}</button>
             ))}
           </div>
 
-          <div className="space-y-2 border border-foreground bg-card p-3">
-            <p className="text-sm text-foreground"><span className="font-semibold">{t("checkout.ussdName")} :</span> <span data-testid="merchant-name">{merchant.name}</span></p>
+          <div className="space-y-2 rounded-[12px] border bg-card p-3">
+            <p className="text-sm text-foreground"><span className="font-medium">{t("checkout.ussdName")} :</span> <span data-testid="merchant-name">{merchant.name}</span></p>
             <div className="flex items-center justify-between gap-2">
-              <p className="min-w-0 text-sm text-foreground"><span className="font-semibold">{t("checkout.ussdNumberShort")} :</span> <span className="num break-all" data-testid="merchant-number">{pretty(merchant.merchant)}</span></p>
-              <button type="button" onClick={() => copy(merchant.merchant)} data-testid="copy-merchant" className="inline-flex shrink-0 items-center gap-1 border border-foreground bg-primary px-3 py-1.5 text-xs font-bold text-[#0A0A0A] transition-transform hover:-translate-y-0.5">
+              <p className="min-w-0 text-sm text-foreground"><span className="font-medium">{t("checkout.ussdNumberShort")} :</span> <span className="num break-all" data-testid="merchant-number">{pretty(merchant.merchant)}</span></p>
+              <button type="button" onClick={() => copy(merchant.merchant)} data-testid="copy-merchant" aria-label={`${t("checkout.copy")} ${merchant.merchant}`}
+                className="ml-auto inline-flex h-8 shrink-0 items-center gap-1 rounded-[8px] border px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:border-foreground hover:bg-primary hover:text-[#0A0A0A]">
                 <Copy className="h-3.5 w-3.5" />{t("checkout.copy")}
               </button>
             </div>
           </div>
 
           <a href={`tel:*${code.slice(1)}`} data-testid="ussd-button"
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full font-bold text-white" style={{ background: active.color }}>
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-[12px] font-semibold text-white" style={{ background: active.color }}>
             <Smartphone className="h-4 w-4" />{t("checkout.ussd")} · {total.toLocaleString("fr-FR")} Ar
           </a>
-
-          <div className="flex items-center justify-between gap-2 border border-foreground bg-card p-3">
-            <p className="min-w-0 text-sm text-foreground"><span className="font-semibold">{t("checkout.ussdCode")} :</span> <span className="num break-all" data-testid="ussd-code">{code}</span></p>
-            <button type="button" onClick={() => copy(code)} data-testid="copy-ussd-code" className="inline-flex shrink-0 items-center gap-1 border border-foreground bg-primary px-3 py-1.5 text-xs font-bold text-[#0A0A0A] transition-transform hover:-translate-y-0.5">
-              <Copy className="h-3.5 w-3.5" />{t("checkout.copy")}
-            </button>
-          </div>
 
           <div>
             <label className="text-sm font-semibold" htmlFor="manual-reference">{t("checkout.reference")}</label>
