@@ -11,6 +11,7 @@ from core.audit import audit
 from core.db import db
 from core.security import get_current_user, get_optional_user, require_admin
 from services import loyalty, mailer
+from services import payments as gw
 from services.fulfillment import on_order_paid
 from services.push import notify_new_order
 
@@ -151,8 +152,11 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
     ratelimit.check(f"orders:ip:{ip}", ratelimit.setting("ORDERS_PER_HOUR_PER_IP", 30), 3600)
     if user:
         ratelimit.check(f"orders:user:{user['user_id']}", ratelimit.setting("ORDERS_PER_HOUR_PER_USER", 20), 3600)
-    if body.payment_method in ("mvola", "orange") and not body.payment_phone:
-        raise HTTPException(status_code=400, detail="Payment phone number is required")
+    if body.payment_method in ("mvola", "orange"):
+        if not body.payment_phone:
+            raise HTTPException(status_code=400, detail="Payment phone number is required")
+        if not await gw.papi_auto_enabled():
+            raise HTTPException(status_code=409, detail=gw.PAPI_AUTO_OFF_MESSAGE)
     if body.payment_method == "manual" and not body.manual_reference:
         raise HTTPException(status_code=400, detail="Transaction reference is required")
     ids = [i.product_id for i in body.items]

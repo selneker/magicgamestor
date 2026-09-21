@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -24,6 +24,15 @@ export default function Checkout() {
   const [reference, setReference] = useState({ provider: "mvola", value: "" });
   const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState(null);
+  const [config, setConfig] = useState(null);
+
+  useEffect(() => {
+    api.get("/payments/config").then(({ data }) => {
+      setConfig(data);
+      if (data.papi_auto === false) setMethod("manual");
+    }).catch(() => {});
+  }, []);
+  const manual = method === "manual";
 
   if (order && order.payment_method !== "manual") {
     return <div className="py-12"><PaymentStatus key={order.attempt || 0} order={order} onRetry={() => api.post("/payments/initiate", { order_id: order.id }).then(({ data }) => { if (data.payment_url && !data.simulated) return window.location.assign(data.payment_url); setOrder({ ...order, attempt: (order.attempt || 0) + 1 }); }).catch((e) => toast.error(errorMessage(e)))} /></div>;
@@ -34,8 +43,9 @@ export default function Checkout() {
   }
 
   const submit = async (e) => {
-    e.preventDefault();
+    if (e?.preventDefault) e.preventDefault();
     if (!/^\d{9,13}$/.test(pubgId.trim())) return toast.error(t("checkout.pubgId"));
+    if (manual && !(reference.value || "").trim()) return toast.error(t("checkout.refRequired"));
     setBusy(true);
     try {
       const payload = {
@@ -90,7 +100,7 @@ export default function Checkout() {
         </section>
         <section className="rounded-[2rem] border border-slate-100 bg-white p-6">
           <h2 className="font-display text-lg font-bold text-slate-900">{t("checkout.payment")}</h2>
-          <div className="mt-4"><PaymentMethodPicker method={method} setMethod={setMethod} phone={phone} setPhone={setPhone} reference={reference} setReference={setReference} total={total} /></div>
+          <div className="mt-4"><PaymentMethodPicker method={method} setMethod={setMethod} phone={phone} setPhone={setPhone} reference={reference} setReference={setReference} total={total} config={config} onManualSubmit={submit} busy={busy} /></div>
         </section>
       </div>
       <aside className="lg:sticky lg:top-24 lg:self-start">
@@ -101,7 +111,7 @@ export default function Checkout() {
           </ul>
           <div className="mt-4 flex items-center justify-between border-t pt-4"><span className="font-semibold text-slate-600">{t("cart.total")}</span><span data-testid="checkout-total" className="font-display text-2xl font-bold text-slate-900">{formatAr(total)}</span></div>
           <Button type="submit" disabled={busy} data-testid="pay-button" className="mt-6 h-12 w-full rounded-full text-base font-bold" style={{ background: method === "mvola" ? "var(--mvola)" : method === "orange" ? "var(--orange)" : undefined }}>
-            {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.processing")}</> : `${t("checkout.pay")} ${formatAr(total)}`}
+            {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.processing")}</> : manual ? t("checkout.send") : `${t("checkout.pay")} ${formatAr(total)}`}
           </Button>
         </div>
       </aside>

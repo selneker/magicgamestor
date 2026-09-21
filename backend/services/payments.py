@@ -30,6 +30,16 @@ def papi_configured() -> bool:
     return bool(os.environ.get("PAPI_API_KEY") and os.environ.get("PAPI_WEBHOOK_SECRET"))
 
 
+PAPI_AUTO_OFF_MESSAGE = "Le paiement automatique est désactivé. Utilisez le paiement manuel (USSD + référence)."
+
+
+async def papi_auto_enabled() -> bool:
+    """Admin switch (db.settings/store.papi_auto). OFF ⇒ no Papi link/API call for new orders."""
+    from core.db import db
+    doc = await db.settings.find_one({"key": "store"}, {"_id": 0, "papi_auto": 1})
+    return bool(doc and doc.get("papi_auto"))
+
+
 def timeout_minutes() -> int:
     try:
         return max(1, int(os.environ.get("PAYMENT_TIMEOUT_MINUTES", 15)))

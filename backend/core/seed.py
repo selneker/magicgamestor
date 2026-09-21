@@ -76,4 +76,6 @@ async def seed_all():
     if await db.events.count_documents({}) == 0:
         await db.events.insert_one(dict(DEFAULT_EVENT))
     if not await db.settings.find_one({"key": "store"}):
-        await db.settings.insert_one({"key": "store", "admin_online": True, "updated_at": _now()})
+        await db.settings.insert_one({"key": "store", "admin_online": True, "papi_auto": False, "updated_at": _now()})
+    # Papi auto OFF par défaut (USSD manuel) pour les installations existantes sans le réglage.
+    await db.settings.update_one({"key": "store", "papi_auto": {"$exists": False}}, {"$set": {"papi_auto": False}})

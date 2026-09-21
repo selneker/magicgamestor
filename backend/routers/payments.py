@@ -30,6 +30,10 @@ class SimulateIn(BaseModel):
     outcome: str = Field(pattern=r"^(completed|failed)$")
 
 
+class PapiAutoIn(BaseModel):
+    papi_auto: bool
+
+
 def _now():
     return datetime.now(timezone.utc)
 
@@ -141,9 +145,11 @@ async def record_late_success(attempt: dict, source: str, extra: dict | None = N
 
 @router.get("/config")
 async def payment_config():
+    papi_auto = await gw.papi_auto_enabled()
     live = gw.mode() == "papi" and gw.papi_configured()
     return {
-        "mode": gw.mode(), "gateway": "papi", "live": live, "timeout_minutes": gw.timeout_minutes(),
+        "mode": gw.mode(), "gateway": "papi", "live": live, "papi_auto": papi_auto,
+        "manual_only": not papi_auto, "timeout_minutes": gw.timeout_minutes(),
         "providers": {
             "mvola": {"configured": live, "merchant": os.environ.get("MVOLA_MERCHANT_MSISDN", ""), "name": "Selneker Dino"},
             "orange": {"configured": live, "merchant": os.environ.get("ORANGE_MERCHANT_NUMBER", ""), "name": "Selneker Dino"},
@@ -164,6 +170,8 @@ async def initiate(body: InitiateIn, request: Request, background: BackgroundTas
         raise HTTPException(status_code=403, detail="Forbidden")
     if order["payment_method"] not in ("mvola", "orange"):
         raise HTTPException(status_code=400, detail="Order does not use an API payment method")
+    if not await gw.papi_auto_enabled():
+        raise HTTPException(status_code=409, detail=gw.PAPI_AUTO_OFF_MESSAGE)
     latest = await latest_attempt(order["id"])
     if latest and latest["status"] == "pending":
         if gw.is_expired(latest):
@@ -290,6 +298,18 @@ async def papi_notification(request: Request, background: BackgroundTasks):
 async def attempts(order_id: str):
     docs = await db.payments.find({"order_id": order_id}, PUBLIC).sort("created_at", -1).to_list(50)
     return [{k: v for k, v in d.items() if k != "notif_token"} for d in docs]
+
+
+@router.get("/admin/settings", dependencies=[Depends(require_admin)])
+async def admin_payment_settings():
+    return {"papi_auto": await gw.papi_auto_enabled(), "payment_mode": gw.mode()}
+
+
+@router.patch("/admin/settings")
+async def admin_update_payment_settings(body: PapiAutoIn, admin=Depends(require_admin)):
+    await db.settings.update_one({"key": "store"}, {"$set": {"papi_auto": body.papi_auto, "updated_at": _iso()}}, upsert=True)
+    await audit("payment.papi_auto_changed", admin["user_id"], None, {"papi_auto": body.papi_auto})
+    return {"papi_auto": body.papi_auto, "payment_mode": gw.mode()}
 
 
 @router.post("/{order_id}/simulate")
