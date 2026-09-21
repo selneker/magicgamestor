@@ -27,3 +27,12 @@ Prime/Prime+ (1 Prime + 1 Prime+ actifs max par pubg_id).
 - P1 : exporter le wordmark en PNG pour Google Console ; configurer SMTP + Google dans Render ; page admin audit UI.
 - P2 : reset des points promo expirants ; notifications push pour late_success ; remplacer manifest icons par la charte.
 - P2 : rate limiter distribué (Redis) si plusieurs instances Render.
+
+
+## Itération (juin 2026) — Mailjet API, suppression admin delivered, Loyalty dark mode
+- Transport email migré de SMTP vers Mailjet Send API v3.1 (HTTPS, Basic Auth clé/secret) : `backend/services/mailer.py`. Logique métier, templates, sujets, tokens inchangés. Tests unitaires HTTP mockés : `backend/tests/test_mailjet.py` (14 tests verts).
+- Nouvelles variables Render : MAILJET_API_KEY, MAILJET_SECRET_KEY, MAILJET_FROM_EMAIL=admin@magicgame.store, MAILJET_FROM_NAME=Magic Game Store. Variables SMTP_* obsolètes.
+- Admin peut supprimer une commande `delivered` ; snapshot archivé dans `deleted_orders` + audit `order.deleted` enrichi (total, archived). Protection `paid`/paiement complété conservée.
+- Loyalty : nouvelle classe `.panel-points` / `.eyebrow-invert` (surface sombre stable + accent #C5FE02) pour la carte de solde (page Loyalty + carte Compte) — lisible en light et dark.
+- Papi, Google OAuth, chat, abonnements, ledger : non modifiés.
+- Reste à faire : push GitHub (credentials absentes dans le workspace) + saisie des clés Mailjet dans Render.
