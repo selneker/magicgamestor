@@ -1,0 +1,34 @@
+{
+  "summary": "Iteration 11 (Admin Users + roles + delegated permissions) validated end-to-end. Backend: 32/33 pytest passed, 1 skipped (no paid non-delivered order available at run time). All authorization matrix cases verified: customer=403 on every /api/admin/users endpoint, unauth=401; super admin lists with pagination/search/filter (no password_hash/token leaked); PATCH role customer->admin works & audit admin.role_granted written; permissions body containing orders.delete is sanitised out (never returned); PATCH role {super_admin} rejected 422; super admin protected (cannot change own role, cannot be blocked/deleted); delegated admin with users.manage lists users but cannot PATCH role/permissions (403 even on self); delegated admin without catalog.manage cannot POST /api/admin/products (403); delegated admin cannot DELETE order (403); block/unblock invalidates existing token (401 on /auth/me), blocked account cannot login (403), unblock restores login; role change increments auth_version so old delegated token → 401; anonymize sets email deleted_*@anonyme.invalid, blocked=true, role=customer and old token → 401; audit trail contains admin.role_granted/role_revoked/permissions_changed/user.blocked/user.unblocked/user.anonymized. Regression: /payments/config papi_auto=false, /auth/me and /loyalty/me OK. Frontend: super admin sees admin-tab-users; /admin/utilisateurs shows users-list, users-total, users-prev/next/page, users-search, users-filter-role/status/verified; role/status filters work; grant-dialog opens with EXACTLY 6 grant-perm-* switches (users/orders/loyalty/catalog/events/chat.manage), NO orders.delete switch, grant-delete-note present; user-detail opens with detail-balance and detail-orders-count; super admin row has NO block button and NO delete button; /admin/commandes shows 15 admin-delete-* buttons for super admin; a fresh customer navigating to /admin or /admin/utilisateurs is redirected to '/'. Test credentials from /app/memory/test_credentials.md were used (admin@magicgame.store / AdminLocal2026!). Super admin state restored intact; anonymised test customer, revoked delegated admin at end (records preserved). papi_auto left OFF.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin/utilisateurs at 390x844", "issues": ["Slight horizontal overflow detected (documentElement.scrollWidth > clientWidth by a few px). Visually the layout still fits; likely caused by long row action buttons (Voir/Bloquer/Donner accès admin/Retirer admin/trash) not wrapping on very narrow screens. Consider wrapping the action button group or truncating the badges row."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter11_admin_users.py",
+    "/app/test_reports/pytest/iter11_results.xml"
+  ],
+  "action_items": [
+    "(Optional) Improve mobile 390px layout of /admin/utilisateurs — small horizontal overflow when action buttons collide with badges."
+  ],
+  "critical_code_review_comments": [
+    "admin_users.RoleIn: pattern is ^(customer|admin)$ so 422 is returned for 'super_admin' — correct. Note: for the 'own role' case the endpoint raises 409 BEFORE writing, but body validation runs first, so patching own role to 'super_admin' returns 422 (schema) rather than 409. Acceptable, but tests must accept both.",
+    "admin_users.update_status: when body.blocked=true and target is admin AND admin is super_admin, _assert_admin_remains is called; if the target *is* the super admin, _protect_super_admin already rejected it. OK.",
+    "admin_users.delete_user: order.email is scrubbed with $set email:null, but pubg_id, pseudo, phone snapshots inside past orders remain. If regulator requests, may need to anonymise historic orders too. Financial traceability is preserved as intended.",
+    "AdminUsers.js openDetail after setStatus: passes the pre-block row 'u' to openDetail, so the stale row's role is used — but the API returns fresh data so the UI reflects blocked=true. OK.",
+    "AdminUsers.js window.confirm() is used for permission toggle / revoke / delete — jarring UX vs the styled Dialogs used elsewhere; consider a consistent Dialog confirmation.",
+    "AdminLayout: Users tab visibility is gated by can('users.manage') on the client, but backend is source of truth (verified). Good."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "97% (32/33, 1 env-skip)", "frontend": "100% of requested selectors"},
+  "test_credentials": "Super admin: admin@magicgame.store / AdminLocal2026! (from /app/memory/test_credentials.md). Test customer + delegated admin were created via /api/auth/register (test_customer_*@example.com / test_delegated_*@example.com, Passw0rd!*) and anonymised/demoted at the end of the run.",
+  "seed_data_creation": "Ephemeral test users created via POST /api/auth/register and cleaned by anonymisation. No admin promotion left over. papi_auto left OFF.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run: `cd /app/backend && python -m pytest tests/test_iter11_admin_users.py -n 0 -v` (module-scope fixtures require sequential; do NOT use xdist parallel). Emails must use a valid public domain (e.g. @example.com) — Pydantic EmailStr rejects reserved TLDs like .invalid. Frontend admin flow reachable at /admin/utilisateurs after super-admin login. To test delegated-admin UI without users.manage tab, promote a fresh account via PATCH /api/admin/users/{id}/role {role:'admin', permissions:['orders.manage']} then log in with it — the 'Utilisateurs' tab must NOT render.",
+  "rca of the issue": "N/A — no bug found. Behavior of protected super admin & role permission gates confirmed matches spec including auth_version-based session invalidation on role/permission/block changes."
+}

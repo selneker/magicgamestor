@@ -133,7 +133,7 @@ export default function AdminUsers() {
           {data.items.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground" data-testid="users-empty">Aucun utilisateur.</p>}
           {data.items.map((u) => (
             <div key={u.user_id} data-testid={`user-row-${u.user_id}`} className="flex flex-wrap items-center gap-3 border border-foreground bg-card p-3">
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 basis-full sm:basis-auto">
                 <p className="truncate font-bold text-foreground">{u.name || "—"}</p>
                 <p className="truncate text-xs text-muted-foreground">{u.email}</p>
                 <div className="mt-1 flex flex-wrap items-center gap-1">
@@ -146,7 +146,7 @@ export default function AdminUsers() {
                   {(u.saved_pubg_ids || []).slice(0, 2).map((id) => <Badge key={id}>PUBG {id}</Badge>)}
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-1">
+              <div className="flex w-full shrink-0 flex-wrap items-center gap-1 sm:w-auto">
                 <Button size="sm" variant="outline" className="rounded-full" onClick={() => openDetail(u)} data-testid={`user-view-${u.user_id}`}>Voir</Button>
                 {u.role !== "super_admin" && (u.blocked
                   ? <Button size="sm" variant="outline" className="rounded-full" disabled={busy} onClick={() => setStatus(u, false)} data-testid={`user-unblock-${u.user_id}`}><Check className="mr-1 h-3.5 w-3.5" />Débloquer</Button>
