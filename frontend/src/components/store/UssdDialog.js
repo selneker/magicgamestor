@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Copy, Loader2, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { useLang } from "@/context/LanguageContext";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -12,7 +12,7 @@ const Row = ({ label, value, sub, onCopy, testid, copyTestid }) => {
     <div className="flex items-center justify-between gap-3 border border-foreground bg-card p-3">
       <div className="min-w-0">
         <p className="eyebrow">{label}</p>
-        <p className="num mt-1 truncate text-lg text-foreground" data-testid={testid}>{value}</p>
+        <p className="num mt-1 break-all text-lg text-foreground" data-testid={testid}>{value}</p>
         {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
       </div>
       {onCopy && (
@@ -40,11 +40,12 @@ export function UssdDialog({ open, onOpenChange, providerLabel, color, merchant,
 
   return (
     <Dialog open={open} onOpenChange={change}>
-      <DialogContent className="max-h-[90vh] gap-0 overflow-y-auto border-2 border-foreground bg-background p-0 sm:max-w-lg" data-testid="ussd-dialog">
+      <DialogContent className="max-h-[90vh] w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] gap-0 overflow-y-auto border-2 border-foreground bg-background p-0 sm:w-full sm:max-w-lg" data-testid="ussd-dialog">
         <DialogHeader className="border-b border-foreground px-5 py-4 text-left">
           <DialogTitle className="font-display text-lg font-bold" data-testid="ussd-dialog-title">
             {step === "instructions" ? t("checkout.ussdTitle") : t("checkout.confirmTitle")}
           </DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground" data-testid="ussd-dialog-description">{t("checkout.ussdNote")}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 px-5 py-4">
           <div className="flex items-center gap-2">
