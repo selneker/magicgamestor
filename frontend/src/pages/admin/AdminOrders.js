@@ -4,6 +4,7 @@ import { RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 import { StatusPill } from "@/pages/OrderTrack";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ const canDeliver = (s) => TRANSITIONS[s]?.includes("delivered");
 
 export default function AdminOrders() {
   const { t } = useLang();
+  const { isSuperAdmin } = useAuth();
   const [orders, setOrders] = useState([]);
   const [filters, setFilters] = useState({ status: "all", method: "all", q: "" });
 
@@ -39,6 +41,7 @@ export default function AdminOrders() {
     try { await api.patch(`/admin/orders/${o.id}`, { status }); toast.success(t(`order.status.${status}`)); load(); } catch (e) { toast.error(errorMessage(e)); }
   };
   const remove = async (o) => {
+    if (!isSuperAdmin) return;
     if (!window.confirm(t("admin.confirmDelete"))) return;
     try { await api.delete(`/admin/orders/${o.id}`); load(); } catch (e) { toast.error(errorMessage(e)); }
   };
@@ -83,7 +86,7 @@ export default function AdminOrders() {
                 <><Button size="sm" variant="outline" className="rounded-full text-xs" onClick={() => simulate(o, "completed")} data-testid={`admin-simulate-paid-${o.order_number}`}>{t("admin.forcePaid")}</Button>
                 <Button size="sm" variant="outline" className="rounded-full text-xs" onClick={() => simulate(o, "failed")} data-testid={`admin-simulate-failed-${o.order_number}`}>{t("admin.forceFailed")}</Button></>
               )}
-              <Button size="icon" variant="ghost" className="rounded-full text-slate-400 hover:text-rose-600" onClick={() => remove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>
+              {isSuperAdmin && <Button size="icon" variant="ghost" className="rounded-full text-slate-400 hover:text-rose-600" onClick={() => remove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
             </div>
           </article>
         ))}

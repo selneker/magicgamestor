@@ -6,7 +6,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from core.audit import audit
 from core.db import db
-from core.security import get_current_user, require_admin
+from core.security import get_current_user, require_permission
 from services import loyalty
 
 router = APIRouter(prefix="/loyalty", tags=["loyalty"])
@@ -175,13 +175,13 @@ async def cancel_transfer(transfer_id: str, user=Depends(get_current_user)):
 
 
 # ---------- Admin ----------
-@router.get("/admin/settings", dependencies=[Depends(require_admin)])
+@router.get("/admin/settings", dependencies=[Depends(require_permission("loyalty.manage"))])
 async def admin_settings():
     return await loyalty.settings()
 
 
 @router.patch("/admin/settings")
-async def admin_update_settings(body: SettingsIn, admin=Depends(require_admin)):
+async def admin_update_settings(body: SettingsIn, admin=Depends(require_permission("loyalty.manage"))):
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if updates:
         await db.settings.update_one({"key": "loyalty"}, {"$set": {**updates, "updated_at": _now().isoformat()}}, upsert=True)
@@ -189,13 +189,13 @@ async def admin_update_settings(body: SettingsIn, admin=Depends(require_admin)):
     return await loyalty.settings()
 
 
-@router.get("/admin/rewards", dependencies=[Depends(require_admin)])
+@router.get("/admin/rewards", dependencies=[Depends(require_permission("loyalty.manage"))])
 async def admin_rewards():
     return await db.loyalty_rewards.find({}, PUBLIC).sort("cost_points", 1).to_list(200)
 
 
 @router.post("/admin/rewards", status_code=201)
-async def admin_create_reward(body: RewardIn, admin=Depends(require_admin)):
+async def admin_create_reward(body: RewardIn, admin=Depends(require_permission("loyalty.manage"))):
     reward = {"id": str(uuid.uuid4()), **body.model_dump(), "created_at": _now().isoformat()}
     await db.loyalty_rewards.insert_one(reward)
     await audit("loyalty.reward_created", admin["user_id"], reward["id"], {"name": body.name})
@@ -204,7 +204,7 @@ async def admin_create_reward(body: RewardIn, admin=Depends(require_admin)):
 
 
 @router.patch("/admin/rewards/{reward_id}")
-async def admin_update_reward(reward_id: str, body: RewardIn, admin=Depends(require_admin)):
+async def admin_update_reward(reward_id: str, body: RewardIn, admin=Depends(require_permission("loyalty.manage"))):
     res = await db.loyalty_rewards.update_one({"id": reward_id}, {"$set": body.model_dump()})
     if res.matched_count == 0:
         raise HTTPException(404, "Récompense introuvable.")
@@ -212,14 +212,14 @@ async def admin_update_reward(reward_id: str, body: RewardIn, admin=Depends(requ
     return await db.loyalty_rewards.find_one({"id": reward_id}, PUBLIC)
 
 
-@router.get("/admin/redemptions", dependencies=[Depends(require_admin)])
+@router.get("/admin/redemptions", dependencies=[Depends(require_permission("loyalty.manage"))])
 async def admin_redemptions(status: str | None = None):
     query = {"status": status} if status and status != "all" else {}
     return await db.loyalty_redemptions.find(query, PUBLIC).sort("created_at", -1).to_list(300)
 
 
 @router.post("/admin/redemptions/{redemption_id}/{action}")
-async def admin_resolve_redemption(redemption_id: str, action: str, admin=Depends(require_admin)):
+async def admin_resolve_redemption(redemption_id: str, action: str, admin=Depends(require_permission("loyalty.manage"))):
     if action not in ("fulfill", "cancel"):
         raise HTTPException(400, "Action invalide.")
     new_status = "fulfilled" if action == "fulfill" else "cancelled"
@@ -234,7 +234,7 @@ async def admin_resolve_redemption(redemption_id: str, action: str, admin=Depend
 
 
 @router.post("/admin/adjust")
-async def admin_adjust(body: AdjustIn, admin=Depends(require_admin)):
+async def admin_adjust(body: AdjustIn, admin=Depends(require_permission("loyalty.manage"))):
     target = await db.users.find_one({"email": body.user_email.lower()}, PUBLIC)
     if not target:
         raise HTTPException(404, "Utilisateur introuvable.")

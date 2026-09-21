@@ -25,7 +25,11 @@ export function AuthProvider({ children }) {
     setUser(false);
   }, []);
 
-  const value = useMemo(() => ({ user, loading, setUser, logout, refresh: checkAuth, isAdmin: user?.role === "admin" }), [user, loading, logout, checkAuth]);
+  const role = user?.role;
+  const isSuperAdmin = role === "super_admin";
+  const isAdmin = role === "admin" || isSuperAdmin;
+  const can = useCallback((permission) => isSuperAdmin || (user?.permissions || []).includes(permission), [isSuperAdmin, user]);
+  const value = useMemo(() => ({ user, loading, setUser, logout, refresh: checkAuth, isAdmin, isSuperAdmin, can }), [user, loading, logout, checkAuth, isAdmin, isSuperAdmin, can]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

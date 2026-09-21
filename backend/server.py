@@ -11,8 +11,9 @@ from fastapi import FastAPI, APIRouter
 from starlette.middleware.cors import CORSMiddleware
 
 from core.db import client, ensure_indexes
+from core.security import PERMISSIONS as DEFAULT_ADMIN_PERMISSIONS
 from core.seed import seed_all
-from routers import auth, products, orders, payments, events, chat, push, loyalty
+from routers import admin_users, auth, products, orders, payments, events, chat, push, loyalty
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("mgs")
@@ -36,6 +37,10 @@ async def migrate_users():
     await db.users.update_many({"email_verified": {"$exists": False}}, {"$set": {"email_verified": False}})
     await db.users.update_many({"loyalty": {"$exists": False}}, {"$set": {"loyalty": {"earned": 0, "promo": 0}}})
     await db.users.update_many({"auth_version": {"$exists": False}}, {"$set": {"auth_version": 0}})
+    await db.users.update_many({"blocked": {"$exists": False}}, {"$set": {"blocked": False}})
+    # Roles: the seeded ADMIN_EMAIL account becomes super_admin, other staff keep "admin" with explicit permissions.
+    await db.users.update_many({"role": "admin", "permissions": {"$exists": False}},
+                               {"$set": {"permissions": list(DEFAULT_ADMIN_PERMISSIONS)}})
 
 
 app = FastAPI(title="Magic Game Store API", lifespan=lifespan)
@@ -52,7 +57,8 @@ async def root():
     return {"name": "Magic Game Store API", "status": "ok"}
 
 
-for r in (auth.router, products.router, orders.router, payments.router, events.router, chat.router, push.router, loyalty.router):
+for r in (auth.router, products.router, orders.router, payments.router, events.router, chat.router, push.router,
+          loyalty.router, admin_users.router):
     api.include_router(r)
 app.include_router(api)
 

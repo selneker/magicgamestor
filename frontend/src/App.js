@@ -27,6 +27,7 @@ import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminProducts from "@/pages/admin/AdminProducts";
 import AdminEvents from "@/pages/admin/AdminEvents";
 import AdminLoyalty from "@/pages/admin/AdminLoyalty";
+import AdminUsers from "@/pages/admin/AdminUsers";
 
 function AppRouter() {
   return (
@@ -56,6 +57,7 @@ function AppRouter() {
             <Route path="evenements" element={<AdminEvents />} />
             <Route path="messages" element={<AdminChat />} />
             <Route path="fidelite" element={<AdminLoyalty />} />
+            <Route path="utilisateurs" element={<AdminUsers />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

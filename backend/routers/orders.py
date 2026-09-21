@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field, field_validator
 from core import ratelimit
 from core.audit import audit
 from core.db import db
-from core.security import get_current_user, get_optional_user, require_admin
+from core.security import (ADMIN_ROLES, get_current_user, get_optional_user, require_admin,
+                           require_permission, require_super_admin)
 from services import loyalty, mailer
 from services import payments as gw
 from services.fulfillment import on_order_paid
@@ -230,13 +231,13 @@ async def get_order(order_id: str, user=Depends(get_optional_user)):
     order = await db.orders.find_one({"id": order_id}, PUBLIC)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    if order.get("user_id") and (not user or (user["user_id"] != order["user_id"] and user.get("role") != "admin")):
+    if order.get("user_id") and (not user or (user["user_id"] != order["user_id"] and user.get("role") not in ADMIN_ROLES)):
         raise HTTPException(status_code=403, detail="Forbidden")
     return order
 
 
 # ---------- Admin ----------
-@router.get("/admin/orders", dependencies=[Depends(require_admin)])
+@router.get("/admin/orders", dependencies=[Depends(require_permission("orders.manage"))])
 async def admin_orders(status: str | None = None, method: str | None = None, q: str | None = None, limit: int = 200):
     from routers.payments import expire_stale_attempts
     await expire_stale_attempts()
@@ -262,7 +263,7 @@ async def admin_audit(target: str | None = None, action: str | None = None, limi
 
 
 @router.patch("/admin/orders/{order_id}")
-async def admin_update_order(order_id: str, body: StatusIn, background_tasks: BackgroundTasks, admin=Depends(require_admin)):
+async def admin_update_order(order_id: str, body: StatusIn, background_tasks: BackgroundTasks, admin=Depends(require_permission("orders.manage"))):
     current = await db.orders.find_one({"id": order_id}, {"status": 1, "user_id": 1})
     if not current:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -288,7 +289,7 @@ async def admin_update_order(order_id: str, body: StatusIn, background_tasks: Ba
 
 
 @router.delete("/admin/orders/{order_id}")
-async def admin_delete_order(order_id: str, admin=Depends(require_admin)):
+async def admin_delete_order(order_id: str, admin=Depends(require_super_admin)):
     order = await db.orders.find_one({"id": order_id}, PUBLIC)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -331,7 +332,7 @@ async def admin_stats():
     }
 
 
-@router.get("/admin/export", dependencies=[Depends(require_admin)])
+@router.get("/admin/export", dependencies=[Depends(require_permission("orders.manage"))])
 async def admin_export():
     orders = await db.orders.find({}, PUBLIC).sort("created_at", -1).to_list(5000)
     header = "order_number,date,status,pubg_id,pseudo,items,total,payment_method,payment_phone,manual_reference,email\n"

@@ -3,6 +3,7 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { toast } from "sonner";
 import { api, formatAr } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 import { Switch } from "@/components/ui/switch";
 
 export default function AdminDashboard() {
@@ -10,6 +11,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [papiAuto, setPapiAuto] = useState(null);
   const [saving, setSaving] = useState(false);
+  const { isSuperAdmin } = useAuth();
   useEffect(() => { api.get("/admin/stats").then((r) => setStats(r.data)).catch(() => {}); }, []);
   useEffect(() => { api.get("/payments/admin/settings").then((r) => setPapiAuto(r.data.papi_auto)).catch(() => {}); }, []);
   const togglePapi = async () => {
@@ -37,7 +39,7 @@ export default function AdminDashboard() {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs font-bold uppercase tracking-widest" data-testid="papi-auto-state">{papiAuto === null ? "…" : papiAuto ? "ON" : "OFF"}</span>
-          <Switch checked={!!papiAuto} disabled={papiAuto === null || saving} onCheckedChange={togglePapi} data-testid="papi-auto-toggle" />
+          <Switch checked={!!papiAuto} disabled={papiAuto === null || saving || !isSuperAdmin} onCheckedChange={togglePapi} data-testid="papi-auto-toggle" />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">

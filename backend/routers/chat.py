@@ -3,7 +3,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pymongo.errors import DuplicateKeyError
 
 from core.db import db
-from core.security import get_current_user
+from core.security import get_current_user, has_permission
 from models.messaging import Conversation, Message
 from services.push import notify_new_message
 
@@ -26,13 +26,18 @@ class ReadIn(BaseModel):
     message_ids: list[str] = Field(min_length=1, max_length=100)
 
 
+def is_chat_staff(user) -> bool:
+    """Staff side of the chat = super admin, or delegated admin holding chat.manage."""
+    return has_permission(user, "chat.manage")
+
+
 def incoming_role(user):
-    return "customer" if user.get("role") == "admin" else "admin"
+    return "customer" if is_chat_staff(user) else "admin"
 
 
 async def allowed_conversation(cid, user):
     query = {"_id": cid}
-    if user.get("role") != "admin":
+    if not is_chat_staff(user):
         query["user_id"] = user["user_id"]
     doc = await db.chat_conversations.find_one(query)
     if not doc:
@@ -43,7 +48,7 @@ async def allowed_conversation(cid, user):
 @router.get("/unread")
 async def unread(user=Depends(get_current_user)):
     query = {"sender_role": incoming_role(user), "read": False}
-    if user.get("role") != "admin":
+    if not is_chat_staff(user):
         conversation = await db.chat_conversations.find_one({"user_id": user["user_id"]}, {"_id": 1})
         if not conversation:
             return {"count": 0}
@@ -53,7 +58,7 @@ async def unread(user=Depends(get_current_user)):
 
 @router.post("/conversations", status_code=201)
 async def start_conversation(user=Depends(get_current_user)):
-    if user.get("role") == "admin":
+    if is_chat_staff(user):
         raise HTTPException(403, "Ouvrez une conversation client pour répondre.")
     conversation = Conversation(user_id=user["user_id"], user_name=user.get("name") or user["email"], user_email=user["email"])
     doc = conversation.to_mongo()
@@ -66,7 +71,7 @@ async def start_conversation(user=Depends(get_current_user)):
 
 @router.get("/conversations")
 async def conversations(before: str | None = Query(default=None, max_length=64), user=Depends(get_current_user)):
-    query = {} if user.get("role") == "admin" else {"user_id": user["user_id"]}
+    query = {} if is_chat_staff(user) else {"user_id": user["user_id"]}
     if before:
         cursor = await allowed_conversation(before, user)
         query["$or"] = [{"updated_at": {"$lt": cursor.updated_at}}, {"updated_at": cursor.updated_at, "_id": {"$lt": cursor.id}}]
@@ -98,7 +103,7 @@ async def messages(cid: str, before: str | None = Query(default=None, max_length
 @router.post("/conversations/{cid}/messages", status_code=201)
 async def send_message(cid: str, body: MessageIn, background_tasks: BackgroundTasks, user=Depends(get_current_user)):
     conversation = await allowed_conversation(cid, user)
-    role = "admin" if user.get("role") == "admin" else "customer"
+    role = "admin" if is_chat_staff(user) else "customer"
     message = Message(conversation_id=cid, sender_id=user["user_id"], sender_role=role, text=body.text)
     await db.chat_messages.insert_one(message.to_mongo())
     await db.chat_conversations.update_one({"_id": cid, "updated_at": {"$lte": message.created_at}},

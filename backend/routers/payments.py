@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from core import ratelimit
 from core.audit import audit
 from core.db import db
-from core.security import get_optional_user, require_admin
+from core.security import ADMIN_ROLES, get_optional_user, require_admin, require_permission, require_super_admin
 from services import payments as gw
 from services.fulfillment import on_order_paid, on_payment_failed
 
@@ -166,7 +166,7 @@ async def initiate(body: InitiateIn, request: Request, background: BackgroundTas
     order = await db.orders.find_one({"id": body.order_id}, PUBLIC)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    if order.get("user_id") and (not user or (user["user_id"] != order["user_id"] and user.get("role") != "admin")):
+    if order.get("user_id") and (not user or (user["user_id"] != order["user_id"] and user.get("role") not in ADMIN_ROLES)):
         raise HTTPException(status_code=403, detail="Forbidden")
     if order["payment_method"] not in ("mvola", "orange"):
         raise HTTPException(status_code=400, detail="Order does not use an API payment method")
@@ -294,7 +294,7 @@ async def papi_notification(request: Request, background: BackgroundTasks):
     return {"ok": True}
 
 
-@router.get("/{order_id}/attempts", dependencies=[Depends(require_admin)])
+@router.get("/{order_id}/attempts", dependencies=[Depends(require_permission("orders.manage"))])
 async def attempts(order_id: str):
     docs = await db.payments.find({"order_id": order_id}, PUBLIC).sort("created_at", -1).to_list(50)
     return [{k: v for k, v in d.items() if k != "notif_token"} for d in docs]
@@ -306,14 +306,14 @@ async def admin_payment_settings():
 
 
 @router.patch("/admin/settings")
-async def admin_update_payment_settings(body: PapiAutoIn, admin=Depends(require_admin)):
+async def admin_update_payment_settings(body: PapiAutoIn, admin=Depends(require_super_admin)):
     await db.settings.update_one({"key": "store"}, {"$set": {"papi_auto": body.papi_auto, "updated_at": _iso()}}, upsert=True)
     await audit("payment.papi_auto_changed", admin["user_id"], None, {"papi_auto": body.papi_auto})
     return {"papi_auto": body.papi_auto, "payment_mode": gw.mode()}
 
 
 @router.post("/{order_id}/simulate")
-async def simulate(order_id: str, body: SimulateIn, background: BackgroundTasks, admin=Depends(require_admin)):
+async def simulate(order_id: str, body: SimulateIn, background: BackgroundTasks, admin=Depends(require_permission("orders.manage"))):
     attempt = await latest_attempt(order_id)
     if not attempt or not attempt.get("simulated"):
         raise HTTPException(status_code=400, detail="Only simulated payments can be forced")

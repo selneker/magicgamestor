@@ -64,12 +64,15 @@ async def seed_all():
     existing = await db.users.find_one({"email": admin_email})
     if not existing:
         await db.users.insert_one({
-            "user_id": new_user_id(), "email": admin_email, "name": "Admin", "role": "admin",
+            "user_id": new_user_id(), "email": admin_email, "name": "Admin", "role": "super_admin", "permissions": [],
             "password_hash": hash_password(admin_password), "auth_provider": "password",
             "picture": None, "saved_pubg_ids": [], "created_at": _now(),
         })
     elif not existing.get("password_hash") or not verify_password(admin_password, existing["password_hash"]):
-        await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password), "role": "admin"}})
+        await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password), "role": "super_admin"}})
+
+    # The historical admin account is the super admin (full control, incl. order deletion).
+    await db.users.update_one({"email": admin_email}, {"$set": {"role": "super_admin", "blocked": False}})
 
     if await db.products.count_documents({}) == 0:
         await db.products.insert_many(build_products())

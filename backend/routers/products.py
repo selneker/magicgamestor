@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from core.db import db
-from core.security import require_admin
+from core.security import require_permission
 
 router = APIRouter(tags=["products"])
 PUBLIC = {"_id": 0}
@@ -63,7 +63,7 @@ async def get_product(slug: str):
     return {**product, "related": related[:4]}
 
 
-@router.post("/admin/products", dependencies=[Depends(require_admin)])
+@router.post("/admin/products", dependencies=[Depends(require_permission("catalog.manage"))])
 async def create_product(body: ProductIn):
     if await db.products.find_one({"slug": body.slug}):
         raise HTTPException(status_code=409, detail="Slug already exists")
@@ -73,7 +73,7 @@ async def create_product(body: ProductIn):
     return doc
 
 
-@router.put("/admin/products/{product_id}", dependencies=[Depends(require_admin)])
+@router.put("/admin/products/{product_id}", dependencies=[Depends(require_permission("catalog.manage"))])
 async def update_product(product_id: str, body: ProductIn):
     clash = await db.products.find_one({"slug": body.slug, "id": {"$ne": product_id}})
     if clash:
@@ -84,7 +84,7 @@ async def update_product(product_id: str, body: ProductIn):
     return await db.products.find_one({"id": product_id}, PUBLIC)
 
 
-@router.delete("/admin/products/{product_id}", dependencies=[Depends(require_admin)])
+@router.delete("/admin/products/{product_id}", dependencies=[Depends(require_permission("catalog.manage"))])
 async def delete_product(product_id: str):
     res = await db.products.delete_one({"id": product_id})
     if res.deleted_count == 0:

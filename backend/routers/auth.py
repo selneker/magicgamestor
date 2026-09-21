@@ -15,7 +15,7 @@ from pydantic import BaseModel, EmailStr, Field
 from core import ratelimit
 from core.audit import audit
 from core.db import db
-from core.security import (PUBLIC_USER_FIELDS, JWT_ALGORITHM, clear_auth_cookies, cookie_options, create_access_token,
+from core.security import (ADMIN_ROLES, PUBLIC_USER_FIELDS, JWT_ALGORITHM, clear_auth_cookies, cookie_options, create_access_token,
                            get_current_user, hash_password, new_user_id, set_auth_cookies, verify_password, ACCESS_TTL)
 from services import mailer
 
@@ -161,6 +161,8 @@ async def login(body: LoginIn, request: Request, response: Response):
     if not user or user.get("deleted_at") or not user.get("password_hash") or not verify_password(body.password, user["password_hash"]):
         await _record_failure(email)
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    if user.get("blocked"):
+        raise HTTPException(status_code=403, detail="Ce compte est bloqué. Contactez le support.")
     await db.login_attempts.delete_one({"identifier": email})
     return _auth_response(response, user)
 
@@ -291,8 +293,8 @@ async def google_callback(request: Request, code: str | None = None, state: str 
         return failure
     email = claims["email"].lower()
     user = await db.users.find_one({"email": email})
-    if user and user.get("deleted_at"):
-        user = None
+    if user and (user.get("deleted_at") or user.get("blocked")):
+        return failure
     if user:
         await db.users.update_one({"email": email}, {"$set": {"picture": claims.get("picture") or user.get("picture"), "name": user.get("name") or claims.get("name"),
                                                              "email_verified": True, "google_sub": claims.get("sub")}})
@@ -356,7 +358,7 @@ async def logout(request: Request, response: Response):
 # ---------- Account deletion (anonymisation, transactional history preserved) ----------
 @router.post("/me/delete")
 async def delete_account(body: DeleteIn, response: Response, user=Depends(get_current_user)):
-    if user.get("role") == "admin":
+    if user.get("role") in ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Un compte administrateur ne peut pas être supprimé ici.")
     if body.confirmation.strip().upper() != "SUPPRIMER":
         raise HTTPException(status_code=400, detail="Tapez SUPPRIMER pour confirmer.")

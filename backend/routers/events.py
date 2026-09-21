@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from core.db import db
-from core.security import require_admin
+from core.security import require_admin, require_permission
 
 router = APIRouter(tags=["events"])
 PUBLIC = {"_id": 0}
@@ -82,12 +82,12 @@ async def set_status(body: StatusIn):
     return {"online": body.online}
 
 
-@router.get("/admin/events", dependencies=[Depends(require_admin)])
+@router.get("/admin/events", dependencies=[Depends(require_permission("events.manage"))])
 async def admin_events():
     return [await _with_counts(e) for e in await db.events.find({}, PUBLIC).sort("created_at", -1).to_list(100)]
 
 
-@router.post("/admin/events", dependencies=[Depends(require_admin)])
+@router.post("/admin/events", dependencies=[Depends(require_permission("events.manage"))])
 async def create_event(body: EventIn):
     if await db.events.find_one({"slug": body.slug}):
         raise HTTPException(status_code=409, detail="Slug already exists")
@@ -97,7 +97,7 @@ async def create_event(body: EventIn):
     return doc
 
 
-@router.put("/admin/events/{event_id}", dependencies=[Depends(require_admin)])
+@router.put("/admin/events/{event_id}", dependencies=[Depends(require_permission("events.manage"))])
 async def update_event(event_id: str, body: EventIn):
     res = await db.events.update_one({"id": event_id}, {"$set": body.model_dump()})
     if res.matched_count == 0:
@@ -105,7 +105,7 @@ async def update_event(event_id: str, body: EventIn):
     return await db.events.find_one({"id": event_id}, PUBLIC)
 
 
-@router.delete("/admin/events/{event_id}", dependencies=[Depends(require_admin)])
+@router.delete("/admin/events/{event_id}", dependencies=[Depends(require_permission("events.manage"))])
 async def delete_event(event_id: str):
     res = await db.events.delete_one({"id": event_id})
     if res.deleted_count == 0:

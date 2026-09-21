@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { CalendarRange, Coins, Download, LayoutDashboard, Package, ReceiptText, MessageCircle } from "lucide-react";
+import { CalendarRange, Coins, Download, LayoutDashboard, Package, ReceiptText, MessageCircle, Users } from "lucide-react";
 import { AdminPush } from "@/components/admin/AdminPush";
 import { useChat } from "@/context/ChatContext";
+import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { Switch } from "@/components/ui/switch";
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 export default function AdminLayout() {
   const { t } = useLang();
   const { count } = useChat();
+  const { can } = useAuth();
   const [online, setOnline] = useState(false);
   useEffect(() => { api.get("/settings/status").then((r) => setOnline(r.data.online)).catch(() => {}); }, []);
   const toggle = async (v) => { setOnline(v); await api.post("/admin/status", { online: v }).catch(() => setOnline(!v)); };
@@ -21,6 +23,7 @@ export default function AdminLayout() {
     ["/admin/evenements", CalendarRange, t("admin.events"), "admin-tab-events"],
     ["/admin/messages", MessageCircle, `Chat${count ? ` (${count})` : ""}`, "admin-tab-chat"],
     ["/admin/fidelite", Coins, "Fidélité", "admin-tab-loyalty"],
+    ...(can("users.manage") ? [["/admin/utilisateurs", Users, "Utilisateurs", "admin-tab-users"]] : []),
   ];
   const exportCsv = async () => {
     const { data } = await api.get("/admin/export", { responseType: "blob" });
