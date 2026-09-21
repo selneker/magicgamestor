@@ -18,9 +18,13 @@ Nouvelles (toutes optionnelles avec valeur par défaut, sauf mention) :
 | `LOGIN_PER_10MIN_PER_IP`, `REGISTER_PER_HOUR_PER_IP`, `AUTH_EMAILS_PER_HOUR_PER_IP`, `FORGOT_PER_HOUR_PER_EMAIL`, `VERIFY_EMAILS_PER_HOUR` | Anti-abus auth | `30`,`10`,`10`,`3`,`3` |
 | `RATE_LIMIT_TRUSTED_IPS` | IPs exemptées (laisser vide en prod) | vide |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | **Requis** pour le bouton Google | — |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY` (`starttls`/`ssl`/`none`), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | **Requis** pour les emails | — |
+| `MAILJET_API_KEY`, `MAILJET_SECRET_KEY` | **Requis** pour les emails (Mailjet Send API v3.1, HTTPS) | — |
+| `MAILJET_FROM_EMAIL`, `MAILJET_FROM_NAME` | Expéditeur validé dans Mailjet | `admin@magicgame.store`, `Magic Game Store` |
 
-Sans `SMTP_*`, les emails sont journalisés comme « skipped » (aucune erreur côté utilisateur).
+Les emails partent en HTTPS vers `https://api.mailjet.com/v3.1/send` (Basic Auth clé/secret) : Render Free bloque
+le trafic sortant SMTP 25/465/587, ce qui provoquait les `TimeoutError`. Aucune variable `SMTP_*` n'est plus utilisée
+(elles peuvent être supprimées du service Render). Sans `MAILJET_*`, les emails sont journalisés « skipped »
+(aucune erreur côté utilisateur).
 Sans `GOOGLE_*`, `/api/auth/google/start` répond 503 et le bouton affiche un toast d'erreur.
 
 Frontend (Render → magicgamestore-web-v2) : rien de nouveau (`REACT_APP_BACKEND_URL` inchangé).

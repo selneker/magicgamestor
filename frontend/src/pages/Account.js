@@ -106,7 +106,7 @@ export default function Account() {
         <p className="mt-2 text-xs text-slate-400">{t("account.memberSince")} {new Date(user.created_at).toLocaleDateString(lang === "en" ? "en-GB" : "fr-FR")}</p>
         <VerifyBanner user={user} />
         {points && (
-          <Link to="/compte/points" className="card-lift mt-4 flex items-center justify-between rounded-xl border border-strong bg-foreground px-4 py-3 text-background" data-testid="account-points-card">
+          <Link to="/compte/points" className="panel-points card-lift mt-4 flex items-center justify-between px-4 py-3" data-testid="account-points-card">
             <span className="flex items-center gap-2 text-sm"><Coins className="h-4 w-4 text-[#C5FE02]" />{t("loyalty.title")}</span>
             <span className="num text-xl text-[#C5FE02]" data-testid="account-points-balance">{points.total} pts</span>
           </Link>

@@ -288,12 +288,19 @@ async def admin_delete_order(order_id: str, admin=Depends(require_admin)):
     order = await db.orders.find_one({"id": order_id}, PUBLIC)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    if order["status"] in ("paid", "delivered") or await db.payments.find_one({"order_id": order_id, "status": {"$in": ["completed", "late_success"]}}):
+    delivered = order["status"] == "delivered"
+    if not delivered and (order["status"] == "paid" or await db.payments.find_one({"order_id": order_id, "status": {"$in": ["completed", "late_success"]}})):
         raise HTTPException(status_code=409, detail="Une commande payée ne peut pas être supprimée (traçabilité). Annulez-la.")
+    if delivered:
+        # Traçabilité financière : archive append-only, les paiements/ledger loyalty restent intacts.
+        await db.deleted_orders.insert_one({**order, "archived_at": _now(), "archived_by": admin["user_id"]})
     await db.orders.delete_one({"id": order_id})
     await db.payments.update_many({"order_id": order_id, "status": "pending"}, {"$set": {"status": "cancelled", "updated_at": _now()}})
     await release_subscription_locks(order_id)
-    await audit("order.deleted", admin["user_id"], order_id, {"order_number": order["order_number"], "status": order["status"]})
+    await audit("order.deleted", admin["user_id"], order_id, {
+        "order_number": order["order_number"], "status": order["status"],
+        "total": order.get("total"), "archived": delivered,
+    })
     return {"ok": True}
 
 

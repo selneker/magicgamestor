@@ -1,18 +1,21 @@
-"""Transactional email over generic SMTP (SMTP_* env vars). Never logs recipients or token links."""
-import asyncio
+"""Transactional email over the Mailjet Send API v3.1 (HTTPS — Render Free blocks SMTP ports).
+Never logs recipients, token links or Mailjet credentials."""
 import html
 import logging
 import os
-import smtplib
-from email.message import EmailMessage
+
+import httpx
 
 logger = logging.getLogger("mgs.mail")
 
 BRAND = "Magic Game Store"
+MAILJET_ENDPOINT = "https://api.mailjet.com/v3.1/send"
+TIMEOUT = 15.0
 
 
 def configured() -> bool:
-    return bool(os.environ.get("SMTP_HOST") and os.environ.get("SMTP_FROM"))
+    return bool(os.environ.get("MAILJET_API_KEY") and os.environ.get("MAILJET_SECRET_KEY")
+                and os.environ.get("MAILJET_FROM_EMAIL"))
 
 
 def frontend_url() -> str:
@@ -42,38 +45,45 @@ def layout(title: str, body_html: str, cta: tuple[str, str] | None = None) -> st
 </div></body></html>"""
 
 
-def _send_sync(to: str, subject: str, html_body: str, text_body: str):
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = os.environ["SMTP_FROM"]
-    msg["To"] = to
-    msg.set_content(text_body)
-    msg.add_alternative(html_body, subtype="html")
-    host, port = os.environ["SMTP_HOST"], int(os.environ.get("SMTP_PORT", 587))
-    security = (os.environ.get("SMTP_SECURITY") or "starttls").lower()
-    user, password = os.environ.get("SMTP_USER"), os.environ.get("SMTP_PASSWORD")
-    if security == "ssl":
-        server = smtplib.SMTP_SSL(host, port, timeout=20)
-    else:
-        server = smtplib.SMTP(host, port, timeout=20)
-    with server:
-        if security == "starttls":
-            server.starttls()
-        if user and password:
-            server.login(user, password)
-        server.send_message(msg)
+def _mask(email: str) -> str:
+    name, _, domain = (email or "").partition("@")
+    return f"{name[:1]}***@{domain}" if domain else "***"
+
+
+def _payload(to: str, subject: str, html_body: str, text_body: str) -> dict:
+    return {"Messages": [{
+        "From": {"Email": os.environ["MAILJET_FROM_EMAIL"], "Name": os.environ.get("MAILJET_FROM_NAME") or BRAND},
+        "To": [{"Email": to}],
+        "Subject": subject,
+        "TextPart": text_body,
+        "HTMLPart": html_body,
+    }]}
 
 
 async def send(to: str, subject: str, title: str, body_html: str, text_body: str, cta: tuple[str, str] | None = None) -> bool:
     if not configured():
-        logger.info("SMTP not configured — email '%s' skipped", subject)
+        logger.info("Mailjet not configured — email '%s' skipped", subject)
         return False
+    payload = _payload(to, subject, layout(title, body_html, cta), text_body)
     try:
-        await asyncio.to_thread(_send_sync, to, subject, layout(title, body_html, cta), text_body)
-        return True
+        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+            res = await client.post(MAILJET_ENDPOINT, json=payload,
+                                    auth=(os.environ["MAILJET_API_KEY"], os.environ["MAILJET_SECRET_KEY"]))
     except Exception as exc:
-        logger.warning("Email '%s' failed (%s)", subject, type(exc).__name__)
+        logger.warning("Email '%s' to %s failed (%s)", subject, _mask(to), type(exc).__name__)
         return False
+    if 200 <= res.status_code < 300:
+        try:
+            status = (res.json().get("Messages") or [{}])[0].get("Status")
+        except Exception:
+            status = None
+        if status and status != "success":
+            logger.warning("Email '%s' to %s rejected by Mailjet (status=%s)", subject, _mask(to), status)
+            return False
+        logger.info("Email '%s' sent to %s (HTTP %s)", subject, _mask(to), res.status_code)
+        return True
+    logger.warning("Email '%s' to %s failed (Mailjet HTTP %s)", subject, _mask(to), res.status_code)
+    return False
 
 
 # ---------- Account ----------
