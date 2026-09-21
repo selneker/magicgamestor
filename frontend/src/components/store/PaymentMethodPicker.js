@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { Smartphone } from "lucide-react";
+import { Copy, Smartphone } from "lucide-react";
+import { toast } from "sonner";
 import { useLang } from "@/context/LanguageContext";
 import { Input } from "@/components/ui/input";
-import { UssdDialog } from "@/components/store/UssdDialog";
 
 const USSD = {
   mvola: (phone, amount) => `#111*1*2*${phone}*${amount}*1*0#`,
@@ -14,13 +13,17 @@ const PROVIDERS = [
   { key: "orange", label: "Orange Money", color: "var(--orange)" },
 ];
 
-export function PaymentMethodPicker({ method, setMethod, phone, setPhone, reference, setReference, total, config, onManualSubmit, busy }) {
+export function PaymentMethodPicker({ method, setMethod, phone, setPhone, reference, setReference, total, config }) {
   const { t } = useLang();
-  const [dialog, setDialog] = useState(false);
   const papiAuto = config ? config.papi_auto !== false : true;
-  const manualProvider = method === "manual" ? (reference.provider || "mvola") : null;
-  const merchant = config?.providers?.[manualProvider || "mvola"];
-  const active = PROVIDERS.find((p) => p.key === (manualProvider || "mvola"));
+  const provider = reference.provider || "mvola";
+  const merchant = config?.providers?.[provider];
+  const active = PROVIDERS.find((p) => p.key === provider);
+  const code = merchant ? USSD[provider](merchant.merchant, total) : "";
+
+  const copy = async (value) => {
+    try { await navigator.clipboard.writeText(value); toast.success(t("checkout.copied")); } catch { toast.error(t("common.error")); }
+  };
 
   return (
     <div className="space-y-4" data-testid="payment-methods">
@@ -50,27 +53,40 @@ export function PaymentMethodPicker({ method, setMethod, phone, setPhone, refere
       )}
 
       {method === "manual" && merchant && (
-        <div className="space-y-3 border border-foreground bg-muted/40 p-4">
+        <div className="space-y-3 border border-foreground bg-muted/40 p-4" data-testid="ussd-panel">
           <div className="flex gap-2">
             {PROVIDERS.map((p) => (
-              <button key={p.key} type="button" data-testid={`manual-provider-${p.key}`} onClick={() => setReference({ ...reference, provider: p.key })} className={`rounded-full px-3 py-1 text-xs font-bold ${manualProvider === p.key ? "text-white" : "bg-card text-muted-foreground"}`} style={manualProvider === p.key ? { background: p.color } : undefined}>{p.label}</button>
+              <button key={p.key} type="button" data-testid={`manual-provider-${p.key}`} onClick={() => setReference({ ...reference, provider: p.key })} className={`rounded-full px-3 py-1 text-xs font-bold ${provider === p.key ? "text-white" : "bg-card text-muted-foreground"}`} style={provider === p.key ? { background: p.color } : undefined}>{p.label}</button>
             ))}
           </div>
-          <button type="button" data-testid="ussd-button" onClick={() => setDialog(true)}
+
+          <div className="space-y-2 border border-foreground bg-card p-3">
+            <p className="text-sm text-foreground"><span className="font-semibold">{t("checkout.ussdName")} :</span> <span data-testid="merchant-name">{merchant.name}</span></p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="min-w-0 text-sm text-foreground"><span className="font-semibold">{t("checkout.ussdNumberShort")} :</span> <span className="num break-all" data-testid="merchant-number">{pretty(merchant.merchant)}</span></p>
+              <button type="button" onClick={() => copy(merchant.merchant)} data-testid="copy-merchant" className="inline-flex shrink-0 items-center gap-1 border border-foreground bg-primary px-3 py-1.5 text-xs font-bold text-[#0A0A0A] transition-transform hover:-translate-y-0.5">
+                <Copy className="h-3.5 w-3.5" />{t("checkout.copy")}
+              </button>
+            </div>
+          </div>
+
+          <a href={`tel:*${code.slice(1)}`} data-testid="ussd-button"
             className="flex h-12 w-full items-center justify-center gap-2 rounded-full font-bold text-white" style={{ background: active.color }}>
             <Smartphone className="h-4 w-4" />{t("checkout.ussd")} · {total.toLocaleString("fr-FR")} Ar
-          </button>
-          <div className="flex items-center justify-between border border-foreground bg-card p-3">
-            <div><p className="num text-lg text-foreground" data-testid="merchant-number">{pretty(merchant.merchant)}</p><p className="text-xs text-muted-foreground">{merchant.name}</p></div>
+          </a>
+
+          <div className="flex items-center justify-between gap-2 border border-foreground bg-card p-3">
+            <p className="min-w-0 text-sm text-foreground"><span className="font-semibold">{t("checkout.ussdCode")} :</span> <span className="num break-all" data-testid="ussd-code">{code}</span></p>
+            <button type="button" onClick={() => copy(code)} data-testid="copy-ussd-code" className="inline-flex shrink-0 items-center gap-1 border border-foreground bg-primary px-3 py-1.5 text-xs font-bold text-[#0A0A0A] transition-transform hover:-translate-y-0.5">
+              <Copy className="h-3.5 w-3.5" />{t("checkout.copy")}
+            </button>
           </div>
+
           <div>
             <label className="text-sm font-semibold" htmlFor="manual-reference">{t("checkout.reference")}</label>
             <Input id="manual-reference" data-testid="manual-reference" value={reference.value || ""} onChange={(e) => setReference({ ...reference, value: e.target.value })} placeholder="Ex : Ref 1148190***" className="mt-1 h-12 rounded-xl" />
             <p className="mt-1 text-xs text-muted-foreground">{t("checkout.refHint")}</p>
           </div>
-          <UssdDialog open={dialog} onOpenChange={setDialog} providerLabel={active.label} color={active.color}
-            merchant={pretty(merchant.merchant)} merchantName={merchant.name} ussdCode={USSD[manualProvider](merchant.merchant, total)}
-            total={total} reference={reference} setReference={setReference} onSubmit={onManualSubmit} busy={busy} />
         </div>
       )}
     </div>

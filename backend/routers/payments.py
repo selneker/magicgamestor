@@ -151,8 +151,8 @@ async def payment_config():
         "mode": gw.mode(), "gateway": "papi", "live": live, "papi_auto": papi_auto,
         "manual_only": not papi_auto, "timeout_minutes": gw.timeout_minutes(),
         "providers": {
-            "mvola": {"configured": live, "merchant": os.environ.get("MVOLA_MERCHANT_MSISDN", ""), "name": "Selneker Dino"},
-            "orange": {"configured": live, "merchant": os.environ.get("ORANGE_MERCHANT_NUMBER", ""), "name": "Selneker Dino"},
+            "mvola": {"configured": live, "merchant": os.environ.get("MVOLA_MERCHANT_MSISDN") or "0383905692", "name": "Selneker Dino"},
+            "orange": {"configured": live, "merchant": os.environ.get("ORANGE_MERCHANT_NUMBER") or "0377519833", "name": "Selneker Dino"},
         },
     }
 

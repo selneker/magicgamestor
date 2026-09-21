@@ -100,12 +100,17 @@ export default function Checkout() {
         </section>
         <section className="rounded-[2rem] border border-slate-100 bg-white p-6">
           <h2 className="font-display text-lg font-bold text-slate-900">{t("checkout.payment")}</h2>
-          <div className="mt-4"><PaymentMethodPicker method={method} setMethod={setMethod} phone={phone} setPhone={setPhone} reference={reference} setReference={setReference} total={total} config={config} onManualSubmit={submit} busy={busy} /></div>
+          <div className="mt-4"><PaymentMethodPicker method={method} setMethod={setMethod} phone={phone} setPhone={setPhone} reference={reference} setReference={setReference} total={total} config={config} /></div>
         </section>
       </div>
       <aside className="lg:sticky lg:top-24 lg:self-start">
         <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-[0_8px_24px_rgba(15,23,42,0.06)]" data-testid="order-summary">
           <h2 className="font-display text-lg font-bold text-slate-900">{t("checkout.summary")}</h2>
+          <div className="mt-4 border border-foreground bg-muted/40 p-3 text-sm" data-testid="summary-pubg">
+            <p className="eyebrow">{t("checkout.pubgAccount")}</p>
+            <p className="mt-1 text-foreground"><span className="font-semibold">{t("checkout.pubgIdShort")} :</span> <span className="num break-all" data-testid="summary-pubg-id">{pubgId || "—"}</span></p>
+            <p className="text-foreground"><span className="font-semibold">{t("checkout.pseudo")} :</span> <span className="break-all" data-testid="summary-pubg-pseudo">{pseudo || "—"}</span></p>
+          </div>
           <ul className="mt-4 divide-y">
             {items.map((i) => <li key={i.id} className="flex justify-between py-2 text-sm"><span className="text-slate-600">{i.qty} × {lang === "en" && i.name_en ? i.name_en : i.name}</span><span className="font-semibold">{formatAr(i.qty * i.price)}</span></li>)}
           </ul>
