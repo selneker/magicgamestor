@@ -24,7 +24,7 @@ export function StatusBadge() {
   const online = useStoreStatus();
   const { t } = useLang();
   return (
-    <span data-testid="admin-status-badge" className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] ${online ? "border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]" : "text-muted-foreground"}`}>
+    <span data-testid="admin-status-badge" className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[10px] font-medium uppercase leading-none tracking-[0.08em] ${online ? "border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]" : "text-muted-foreground"}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${online ? "animate-pulse bg-[#0A0A0A]" : "bg-current"}`} />
       {online ? t("status.online") : t("status.offline")}
     </span>

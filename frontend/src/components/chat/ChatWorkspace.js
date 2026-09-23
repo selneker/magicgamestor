@@ -49,12 +49,12 @@ export const ChatWorkspace = ({ admin = false }) => {
     {loading ? <p data-testid="chat-loading" className="p-6 text-muted-foreground">Chargement des conversations…</p> : <div className={admin ? "grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]" : ""}>
       {admin && <aside className="max-h-[65vh] space-y-2 overflow-y-auto rounded-2xl border bg-card p-3" data-testid="chat-conversations">
         {conversations.length === 0 && <p className="p-3 text-sm text-muted-foreground" data-testid="chat-admin-empty">Aucune conversation pour le moment.</p>}
-        {conversations.map((c) => <button type="button" key={c.id} onClick={() => setSelected(c.id)} aria-pressed={selected === c.id} data-testid={`chat-conversation-${c.id}`} className={`w-full rounded-xl border p-3 text-left transition-colors ${selected === c.id ? "border-primary bg-accent" : "border-transparent hover:bg-muted"}`}>
-          <span className="flex items-center justify-between gap-2"><span className="truncate font-semibold">{c.user_name}</span><span data-testid={`chat-unread-${c.id}`} className={c.unread_count ? "rounded-full bg-primary px-2 text-xs text-white" : "text-xs text-muted-foreground"}>{c.unread_count ? `${c.unread_count} non lus` : "Lu"}</span></span>
-          <span className="block truncate text-xs text-muted-foreground">{c.user_email}</span>
-          <span className="mt-2 block truncate text-sm">{c.last_message || "Nouvelle conversation"}</span>
-          <time className="mt-1 block text-xs text-muted-foreground">{new Date(c.updated_at).toLocaleString("fr-FR")}</time>
-        </button>)}
+        {conversations.map((c) => { const sel = selected === c.id; return <button type="button" key={c.id} onClick={() => setSelected(c.id)} aria-pressed={sel} data-testid={`chat-conversation-${c.id}`} className={`w-full rounded-xl border p-3 text-left transition-colors ${sel ? "border-primary bg-accent" : "border-transparent hover:bg-muted"}`}>
+          <span className="flex items-center justify-between gap-2"><span className={`truncate font-semibold ${sel ? "text-[#0A0A0A]" : ""}`}>{c.user_name}</span><span data-testid={`chat-unread-${c.id}`} className={c.unread_count ? "rounded-full bg-primary px-2 text-xs text-white" : `text-xs ${sel ? "text-[#0A0A0A]/70" : "text-muted-foreground"}`}>{c.unread_count ? `${c.unread_count} non lus` : "Lu"}</span></span>
+          <span className={`block truncate text-xs ${sel ? "text-[#0A0A0A]/70" : "text-muted-foreground"}`}>{c.user_email}</span>
+          <span className={`mt-2 block truncate text-sm ${sel ? "text-[#0A0A0A]" : ""}`}>{c.last_message || "Nouvelle conversation"}</span>
+          <time className={`mt-1 block text-xs ${sel ? "text-[#0A0A0A]/70" : "text-muted-foreground"}`}>{new Date(c.updated_at).toLocaleString("fr-FR")}</time>
+        </button>; })}
         {more && <Button variant="outline" size="sm" className="w-full" onClick={() => load(conversations[conversations.length - 1]?.id)} data-testid="chat-more-conversations">Voir plus</Button>}
       </aside>}
       {selected ? <ChatThread key={selected} conversationId={selected} admin={admin} onChanged={changed} /> : <div className="rounded-2xl border bg-card p-6" data-testid="chat-empty">

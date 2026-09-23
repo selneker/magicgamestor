@@ -146,17 +146,24 @@ export default function OrderTrack() {
           ) : (
             <ul className="mt-4 space-y-3">
               {history.slice(0, showAll ? 100 : 5).map((o) => (
-                <li key={o.id} data-testid={`history-order-${o.order_number}`} className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="flex flex-wrap items-center gap-2"><span className="num text-base text-foreground">{o.order_number}</span><StatusPill status={o.status} /></p>
-                    <p className="mt-1 truncate text-sm text-slate-600">{o.items.map((i) => `${i.quantity}× ${i.name}`).join(", ")}</p>
-                    <p className="text-xs text-slate-500">{new Date(o.created_at).toLocaleString("fr-FR")} · PUBG ID {o.pubg_id}</p>
+                <li key={o.id} data-testid={`history-order-${o.order_number}`} className="rounded-2xl border border-slate-100 bg-white p-5">
+                  <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+                    <div className="min-w-0">
+                      <p className="flex flex-wrap items-center gap-2.5">
+                        <span className="num text-lg text-foreground">{o.order_number}</span>
+                        <StatusPill status={o.status} />
+                      </p>
+                      <p className="mt-2 truncate text-sm font-medium text-slate-700">{o.items.map((i) => `${i.quantity}× ${i.name}`).join(", ")}</p>
+                      <p className="mt-1.5 text-xs text-slate-500">{new Date(o.created_at).toLocaleString("fr-FR")} · PUBG ID {o.pubg_id}</p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-2.5">
+                      <span className="num text-xl text-foreground">{formatAr(o.total)}</span>
+                      <Button size="sm" variant="outline" className="h-8 rounded-full px-4 text-xs font-bold" data-testid={`history-track-${o.order_number}`}
+                        onClick={() => { setNumber(o.order_number); setPubgId(o.pubg_id); search(o.order_number, o.pubg_id); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                        {t("order.viewTrack")}
+                      </Button>
+                    </div>
                   </div>
-                  <span className="num text-lg text-foreground">{formatAr(o.total)}</span>
-                  <Button size="sm" variant="outline" className="rounded-full text-xs font-bold" data-testid={`history-track-${o.order_number}`}
-                    onClick={() => { setNumber(o.order_number); setPubgId(o.pubg_id); search(o.order_number, o.pubg_id); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
-                    {t("order.viewTrack")}
-                  </Button>
                 </li>
               ))}
             </ul>
