@@ -16,6 +16,7 @@ import Catalog from "@/pages/Catalog";
 import Product from "@/pages/Product";
 import Checkout from "@/pages/Checkout";
 import OrderTrack from "@/pages/OrderTrack";
+import PackEvolutif from "@/pages/PackEvolutif";
 import Events from "@/pages/Events";
 import AuthPage from "@/pages/AuthPage";
 import { ForgotPassword, ResetPassword, VerifyEmail } from "@/pages/AuthExtras";
@@ -41,6 +42,7 @@ function AppRouter() {
           <Route path="/commande" element={<Checkout />} />
           <Route path="/suivi" element={<OrderTrack />} />
           <Route path="/suivi/:orderNumber" element={<OrderTrack />} />
+          <Route path="/pack-evolutif" element={<PackEvolutif />} />
           <Route path="/evenements" element={<Events />} />
           <Route path="/connexion" element={<AuthPage mode="login" />} />
           <Route path="/inscription" element={<AuthPage mode="register" />} />

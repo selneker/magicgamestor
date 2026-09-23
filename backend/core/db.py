@@ -24,6 +24,10 @@ async def ensure_indexes():
     await _drop_if_exists(db.orders, "one_subscription_order_per_pubg")
     await db.subscription_locks.create_index([("pubg_id", 1), ("type", 1)], unique=True)
     await db.subscription_locks.create_index("order_id")
+    # Pack évolutif: one order per (PUBG ID, offer, period) enforced atomically.
+    await db.evo_locks.create_index([("pubg_id", 1), ("offer_slug", 1), ("period_key", 1)], unique=True)
+    await db.evo_locks.create_index("order_id")
+    await db.seasons.create_index("id", unique=True)
     await db.chat_conversations.create_index("user_id", unique=True)
     await db.chat_conversations.create_index([("updated_at", -1), ("_id", -1)])
     await db.chat_messages.create_index([("conversation_id", 1), ("created_at", -1), ("_id", -1)])

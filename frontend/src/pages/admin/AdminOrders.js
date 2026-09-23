@@ -72,7 +72,7 @@ export default function AdminOrders() {
             <div><p className="flex items-center gap-1 num text-base text-foreground">{o.order_number}<CopyButton value={o.order_number} label="n° de commande" testId={`copy-order-${o.order_number}`} /></p><p className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground">{new Date(o.created_at).toLocaleString("fr-FR")}</p><div className="mt-1"><StatusPill status={o.status} /></div></div>
             <div className="text-sm">
               <p className="flex flex-wrap items-center gap-1 font-semibold text-slate-900">{o.pseudo} · <span className="font-mono">{o.pubg_id}</span><CopyButton value={o.pubg_id} label="PUBG ID" testId={`copy-pubg-${o.order_number}`} /></p>
-              <p className="text-slate-600">{o.items.map((i) => `${i.quantity}× ${i.name}`).join(", ")}</p>
+              <p className="text-slate-600">{o.items.map((i) => `${i.quantity}× ${i.name}${i.season_name ? ` · ${i.season_name}` : ""}${i.week_key ? ` · sem. ${i.week_key}` : ""}`).join(", ")}</p>
               <p className="flex flex-wrap items-center gap-1 text-xs text-slate-500">{o.payment_method === "manual" ? <>USSD · {o.manual_reference || ""}<CopyButton value={o.manual_reference} label="référence de transaction" testId={`copy-ref-${o.order_number}`} /></> : <>{o.payment_method === "mvola" ? "MVola" : "Orange Money"} · {o.payment_phone || ""}<CopyButton value={o.payment_phone} label="numéro de paiement" testId={`copy-phone-${o.order_number}`} /></>}{o.email ? ` · ${o.email}` : ""}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">

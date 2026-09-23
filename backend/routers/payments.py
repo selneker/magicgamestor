@@ -218,6 +218,18 @@ async def initiate(body: InitiateIn, request: Request, background: BackgroundTas
                     await db.payments.update_one({"client_ref": client_ref}, {"$set": {"status": "cancelled", "updated_at": _iso(), "cancel_reason": "subscription_conflict"}})
                     await _set_order_status(order["id"], "cancelled", ("pending_payment",))
                     raise exc
+        from routers.evo import EVO_TYPE, reserve_evo
+        for item in order["items"]:
+            if item["type"] == EVO_TYPE:
+                product = await db.products.find_one({"id": item["product_id"]}, PUBLIC)
+                try:
+                    if not product or not product.get("active"):
+                        raise HTTPException(status_code=409, detail="Cette offre Pack évolutif n'est plus disponible.")
+                    await reserve_evo(order["pubg_id"], product, order["id"])
+                except HTTPException as exc:
+                    await db.payments.update_one({"client_ref": client_ref}, {"$set": {"status": "cancelled", "updated_at": _iso(), "cancel_reason": "evo_conflict"}})
+                    await _set_order_status(order["id"], "cancelled", ("pending_payment",))
+                    raise exc
     await audit("payment.attempt", (user or {}).get("user_id") or f"ip:{ip}", order["id"], {"client_ref": client_ref, "attempt_no": attempt_no, "amount": order["total"]})
     return _public(attempt)
 

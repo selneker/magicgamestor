@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
@@ -16,7 +16,8 @@ export default function Checkout() {
   const { items, total, clear } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [pubgId, setPubgId] = useState(user?.saved_pubg_ids?.[0] || "");
+  const [searchParams] = useSearchParams();
+  const [pubgId, setPubgId] = useState(searchParams.get("pubg_id") || user?.saved_pubg_ids?.[0] || "");
   const [pseudo, setPseudo] = useState("");
   const [email, setEmail] = useState("");
   const [method, setMethod] = useState("mvola");

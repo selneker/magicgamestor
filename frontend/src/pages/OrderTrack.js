@@ -57,6 +57,13 @@ export default function OrderTrack() {
   const [order, setOrder] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [history, setHistory] = useState(null);
+  const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    if (!user) { setHistory(null); return; }
+    api.get("/orders/me").then((r) => setHistory(r.data)).catch(() => setHistory([]));
+  }, [user]);
 
   const search = async (n = number, p = pubgId) => {
     if (!n || !p) return;
@@ -123,6 +130,38 @@ export default function OrderTrack() {
             <Button onClick={retry} disabled={retrying} variant="outline" className="h-12 w-full rounded-full font-bold" data-testid="retry-payment-button">{t("checkout.retry")}</Button>
           )}
         </div>
+      )}
+      {user && history && (
+        <section className="mt-12" data-testid="order-history">
+          <div className="flex items-end justify-between gap-3">
+            <h2 className="font-display text-xl font-bold text-slate-900 sm:text-2xl">{t("order.history")}</h2>
+            {history.length > 5 && (
+              <button onClick={() => setShowAll((s) => !s)} className="text-sm font-semibold text-primary" data-testid="order-history-toggle">
+                {showAll ? t("order.seeLess") : `${t("order.seeAll")} (${history.length})`}
+              </button>
+            )}
+          </div>
+          {history.length === 0 ? (
+            <p className="mt-4 rounded-2xl border border-slate-100 bg-white p-6 text-sm text-slate-500" data-testid="order-history-empty">{t("order.historyEmpty")}</p>
+          ) : (
+            <ul className="mt-4 space-y-3">
+              {history.slice(0, showAll ? 100 : 5).map((o) => (
+                <li key={o.id} data-testid={`history-order-${o.order_number}`} className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="flex flex-wrap items-center gap-2"><span className="num text-base text-foreground">{o.order_number}</span><StatusPill status={o.status} /></p>
+                    <p className="mt-1 truncate text-sm text-slate-600">{o.items.map((i) => `${i.quantity}× ${i.name}`).join(", ")}</p>
+                    <p className="text-xs text-slate-500">{new Date(o.created_at).toLocaleString("fr-FR")} · PUBG ID {o.pubg_id}</p>
+                  </div>
+                  <span className="num text-lg text-foreground">{formatAr(o.total)}</span>
+                  <Button size="sm" variant="outline" className="rounded-full text-xs font-bold" data-testid={`history-track-${o.order_number}`}
+                    onClick={() => { setNumber(o.order_number); setPubgId(o.pubg_id); search(o.order_number, o.pubg_id); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                    {t("order.viewTrack")}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
     </div>
   );

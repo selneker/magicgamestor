@@ -13,7 +13,8 @@ PUBLIC = {"_id": 0}
 
 class ProductIn(BaseModel):
     slug: str = Field(min_length=2, max_length=60, pattern=r"^[a-z0-9-]+$")
-    type: str = Field(pattern=r"^(uc|prime|prime_plus)$")
+    type: str = Field(pattern=r"^(uc|prime|prime_plus|evo)$")
+    evo_limit: str | None = Field(default=None, pattern=r"^(season|lifetime|week)$")
     name: str = Field(min_length=1, max_length=60)
     name_en: str | None = None
     uc_amount: int | None = None

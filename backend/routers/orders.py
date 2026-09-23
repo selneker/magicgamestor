@@ -11,6 +11,7 @@ from core.audit import audit
 from core.db import db
 from core.security import (ADMIN_ROLES, get_current_user, get_optional_user, require_admin,
                            require_permission, require_super_admin)
+from routers.evo import EVO_TYPE, release_evo_locks, reserve_evo
 from services import loyalty, mailer
 from services import payments as gw
 from services.fulfillment import on_order_paid
@@ -95,6 +96,7 @@ def _blocked_message(sub_type: str, expires_at: str) -> str:
 
 async def release_subscription_locks(order_id: str):
     await db.subscription_locks.delete_many({"order_id": order_id})
+    await release_evo_locks(order_id)  # evo locks follow the exact same order lifecycle
 
 
 async def reserve_subscription(pubg_id: str, sub_type: str, order: dict, months: int):
@@ -176,6 +178,9 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         same = [i for i in subscriptions if i["type"] == sub_type]
         if len(same) > 1 or (same and same[0]["quantity"] > 1):
             raise HTTPException(status_code=400, detail=f"Un seul abonnement {SUBSCRIPTION_LABELS[sub_type]} par commande et par PUBG ID.")
+    evo_items = [i for i in items if i["type"] == EVO_TYPE]
+    if len(evo_items) != len({i["product_id"] for i in evo_items}) or any(i["quantity"] > 1 for i in evo_items):
+        raise HTTPException(status_code=400, detail="Une seule offre Pack évolutif identique par commande et par PUBG ID.")
     order = {
         "id": str(uuid.uuid4()), "order_number": _order_number(), "user_id": user["user_id"] if user else None,
         "email": (user or {}).get("email") or body.email, "pubg_id": body.pubg_id, "pseudo": body.pseudo.strip(),
@@ -188,6 +193,12 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
     try:
         for item in subscriptions:
             await reserve_subscription(body.pubg_id, item["type"], order, item.get("duration_months") or 1)
+        for item in evo_items:
+            product = products[item["product_id"]]
+            period_key, season = await reserve_evo(body.pubg_id, product, order["id"])
+            item.update({"evo_limit": product.get("evo_limit"), "period_key": period_key,
+                         "season_id": (season or {}).get("id"), "season_name": (season or {}).get("name"),
+                         "week_key": period_key.removeprefix("week:") if period_key.startswith("week:") else None})
         await db.orders.insert_one(order)
     except Exception:
         await release_subscription_locks(order["id"])

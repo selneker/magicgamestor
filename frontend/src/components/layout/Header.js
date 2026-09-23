@@ -47,6 +47,7 @@ export function Header() {
         <nav className="ml-auto hidden items-center gap-7 md:flex">
           <NavLink to="/boutique?type=uc" className={link} data-testid="nav-uc">{t("nav.uc")}</NavLink>
           <NavLink to="/boutique?type=prime,prime_plus" className={link} data-testid="nav-prime">{t("nav.prime")}</NavLink>
+          <NavLink to="/pack-evolutif" className={link} data-testid="nav-evo">{t("nav.evo")}</NavLink>
           <NavLink to="/evenements" className={link} data-testid="nav-events">{t("nav.events")}</NavLink>
           <NavLink to="/suivi" className={link} data-testid="nav-track">{t("nav.track")}</NavLink>
           {isAdmin && <NavLink to="/admin" className={link} data-testid="nav-admin">{t("nav.admin")}</NavLink>}

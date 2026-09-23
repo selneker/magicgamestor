@@ -16,6 +16,16 @@ PRIME_PACKS = [
     ("prime_plus", 1, 42000, 41000), ("prime_plus", 3, 191000, 188000), ("prime_plus", 6, 233000, 229000),
     ("prime_plus", 12, 457000, 448000),
 ]
+EVO_PACKS = [
+    ("evo-fragments-materiaux", "Fragments matériaux", "Material Fragments",
+     "9 fragments matériaux + 180 UC", "9 material fragments + 180 UC", 17000, "season"),
+    ("evo-premier-achat", "Premier achat", "First Purchase",
+     "170 UC + 900 AG après l'activation", "170 UC + 900 AG after activation", 5800, "lifetime"),
+    ("evo-embleme-mythique", "Emblème mythique", "Mythic Emblem",
+     "Seulement 1 fois par semaine.", "Only once per week.", 20500, "week"),
+    ("evo-fragments-mythique", "Fragments mythique", "Mythic Fragments",
+     "79 fragments et d'autres récompenses.", "79 fragments and other rewards.", 24000, "season"),
+]
 
 
 def _now():
@@ -76,6 +86,17 @@ async def seed_all():
 
     if await db.products.count_documents({}) == 0:
         await db.products.insert_many(build_products())
+    for i, (slug, name, name_en, desc_fr, desc_en, price, limit) in enumerate(EVO_PACKS):
+        if not await db.products.find_one({"slug": slug}):
+            await db.products.insert_one({
+                "id": str(uuid.uuid4()), "slug": slug, "type": "evo", "name": name, "name_en": name_en,
+                "uc_amount": None, "duration_months": None, "price": price, "old_price": None, "popular": False,
+                "badge": None, "evo_limit": limit, "description_fr": desc_fr, "description_en": desc_en,
+                "active": True, "sort_order": 200 + i, "created_at": _now(),
+            })
+    if await db.seasons.count_documents({}) == 0:
+        await db.seasons.insert_one({"id": str(uuid.uuid4()), "name": "Saison A18", "active": True,
+                                     "created_at": _now(), "created_by": "seed"})
     if await db.events.count_documents({}) == 0:
         await db.events.insert_one(dict(DEFAULT_EVENT))
     if not await db.settings.find_one({"key": "store"}):

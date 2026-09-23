@@ -13,7 +13,7 @@ from starlette.middleware.cors import CORSMiddleware
 from core.db import client, ensure_indexes
 from core.security import PERMISSIONS as DEFAULT_ADMIN_PERMISSIONS
 from core.seed import seed_all
-from routers import admin_users, auth, products, orders, payments, events, chat, push, loyalty
+from routers import admin_users, auth, evo, products, orders, payments, events, chat, push, loyalty
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("mgs")
@@ -58,7 +58,7 @@ async def root():
 
 
 for r in (auth.router, products.router, orders.router, payments.router, events.router, chat.router, push.router,
-          loyalty.router, admin_users.router):
+          loyalty.router, admin_users.router, evo.router):
     api.include_router(r)
 app.include_router(api)
 

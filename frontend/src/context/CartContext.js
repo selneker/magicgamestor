@@ -12,20 +12,21 @@ export function CartProvider({ children }) {
 
   useEffect(() => localStorage.setItem("mgs_cart", JSON.stringify(items)), [items]);
 
-  // One Prime and one Prime+ max per cart (regardless of duration); UC unlimited.
+  // One Prime and one Prime+ max per cart (regardless of duration); evo offers max 1; UC unlimited.
   const add = useCallback((product, qty = 1) => {
+    const single = SUBSCRIPTION_TYPES.includes(product.type) || product.type === "evo";
     if (SUBSCRIPTION_TYPES.includes(product.type)) {
       const existing = items.find((i) => i.type === product.type);
       if (existing) return { ok: false, reason: "duplicate_subscription", existing };
     }
     setItems((prev) => {
       const found = prev.find((i) => i.id === product.id);
-      if (found) return prev.map((i) => (i.id === product.id ? { ...i, qty: SUBSCRIPTION_TYPES.includes(i.type) ? 1 : Math.min(20, i.qty + qty) } : i));
-      return [...prev, { id: product.id, slug: product.slug, name: product.name, name_en: product.name_en, type: product.type, price: product.price, qty: SUBSCRIPTION_TYPES.includes(product.type) ? 1 : qty }];
+      if (found) return prev.map((i) => (i.id === product.id ? { ...i, qty: single ? 1 : Math.min(20, i.qty + qty) } : i));
+      return [...prev, { id: product.id, slug: product.slug, name: product.name, name_en: product.name_en, type: product.type, price: product.price, qty: single ? 1 : qty }];
     });
     return { ok: true };
   }, [items]);
-  const setQty = useCallback((id, qty) => setItems((prev) => (qty <= 0 ? prev.filter((i) => i.id !== id) : prev.map((i) => (i.id === id ? { ...i, qty: SUBSCRIPTION_TYPES.includes(i.type) ? 1 : qty } : i)))), []);
+  const setQty = useCallback((id, qty) => setItems((prev) => (qty <= 0 ? prev.filter((i) => i.id !== id) : prev.map((i) => (i.id === id ? { ...i, qty: SUBSCRIPTION_TYPES.includes(i.type) || i.type === "evo" ? 1 : qty } : i)))), []);
   const remove = useCallback((id) => setItems((prev) => prev.filter((i) => i.id !== id)), []);
   const clear = useCallback(() => setItems([]), []);
 
