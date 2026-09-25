@@ -24,6 +24,8 @@ export const translations = {
       pay: "Payer", summary: "Récapitulatif", email: "Email (reçu de commande)", guest: "Vous commandez en tant qu'invité.", loginHint: "Connectez-vous pour retrouver vos commandes.", processing: "Traitement…", simulated: "Mode simulation : aucun débit réel. Le paiement sera confirmé automatiquement dans quelques secondes.",
       waiting: "En attente de votre validation sur le téléphone…", success: "Paiement confirmé !", failed: "Paiement échoué", expired: "Paiement expiré", retry: "Réessayer", viewOrder: "Voir ma commande", saved: "IDs enregistrés",
       redirect: "Vous serez redirigé vers la page de paiement sécurisée (PAPI) pour valider avec votre code MVola / Orange Money.", resume: "Reprendre le paiement", deadline: "Paiement possible jusqu'à {time} (15 min).",
+      verify: "Vérifier l'ID", verifying: "Vérification…", verifyValid: "ID valide", verifyFound: "Compte trouvé", verifyPlayerName: "Nom du joueur", verifyRegion: "Région",
+      verifyConfirm: "Vérifiez que cet ID correspond bien à votre compte PUBG Mobile.", verifyInvalid: "ID PUBG Mobile invalide", verifyError: "Vérification impossible pour le moment. Réessayez plus tard.",
     },
     order: {
       title: "Commande", track: "Suivre une commande", number: "Numéro de commande", find: "Rechercher", notFound: "Commande introuvable.", items: "Articles", method: "Paiement", date: "Date", none: "Aucune commande pour le moment.",
@@ -74,6 +76,8 @@ export const translations = {
       pay: "Pay", summary: "Summary", email: "Email (order receipt)", guest: "You are ordering as a guest.", loginHint: "Log in to keep track of your orders.", processing: "Processing…", simulated: "Simulation mode: no real debit. Payment will be confirmed automatically in a few seconds.",
       waiting: "Waiting for your validation on the phone…", success: "Payment confirmed!", failed: "Payment failed", expired: "Payment expired", retry: "Retry", viewOrder: "View my order", saved: "Saved IDs",
       redirect: "You will be redirected to the secure payment page (PAPI) to confirm with your MVola / Orange Money PIN.", resume: "Resume payment", deadline: "Payment possible until {time} (15 min).",
+      verify: "Verify ID", verifying: "Verifying…", verifyValid: "Valid ID", verifyFound: "Account found", verifyPlayerName: "Player name", verifyRegion: "Region",
+      verifyConfirm: "Make sure this ID matches your PUBG Mobile account.", verifyInvalid: "Invalid PUBG Mobile ID", verifyError: "Verification unavailable right now. Try again later.",
     },
     order: {
       title: "Order", track: "Track an order", number: "Order number", find: "Find", notFound: "Order not found.", items: "Items", method: "Payment", date: "Date", none: "No orders yet.",

@@ -7,6 +7,7 @@ import { useLang } from "@/context/LanguageContext";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { PaymentMethodPicker } from "@/components/store/PaymentMethodPicker";
+import { PubgIdVerify } from "@/components/store/PubgIdVerify";
 import { PaymentStatus } from "@/components/store/PaymentStatus";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,7 @@ export default function Checkout() {
               {user?.saved_pubg_ids?.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">{user.saved_pubg_ids.map((id) => <button type="button" key={id} data-testid={`saved-id-${id}`} onClick={() => setPubgId(id)} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 hover:bg-slate-200">{id}</button>)}</div>
               )}
+              <PubgIdVerify pubgId={pubgId} />
             </div>
             <div>
               <label htmlFor="pseudo" className="text-sm font-semibold text-slate-700">{t("checkout.pseudo")}</label>
