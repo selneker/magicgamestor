@@ -16,6 +16,14 @@ Tâche (juin 2026) : ajouter **Pack évolutif** (4 offres à limitations par ID 
 - Admin délégué : gère catalogue/commandes selon permissions.
 - Super admin : tout, incl. suppression de commandes.
 
+## Implémenté (25/09/2026 pod) — FazerCards Phase 2 : catalogue PUBG + pseudo depuis FazerCards
+- `services/fazercards.py` : `pubg_categories()` (GET /topups, pagination cursor, filtre PUBG Mobile — 4 catégories : pubg_mobile_auto/fast/manual/reserve), `pubg_offers(category_id)` (offer_id, name, price_usd, fields), cache TTL 10 min. Ids jamais hardcodés.
+- `GET /api/fazercards/pubg/catalog` (admin, `catalog.manage`) : coûts fournisseur USD non exposés au public.
+- Mapping proposé (voir `memory/fazercards_order_workflow.md`) : Premier achat→first_purchase_pack $0.88 ; Fragments matériaux→upgradable_firearm_materials_pack $2.636 ; Emblème mythique→weekly_mythic_emblem_value_pack $2.625 ; Fragments mythique→mythic_emblem_pack $4.389 (À CONFIRMER, nom non exact). Catégorie d'achat : pubg_mobile_auto. Fields requis : player_id.
+- Checkout : champ « Pseudo en jeu » + helper supprimés ; pseudo = player_name FazerCards (source de vérité), vérification obligatoire avant soumission (toast sinon), récap affiche « ✓ Compte vérifié · nom » + pseudo vérifié. FR+EN.
+- Tests : 27/27 pytest (validate 14 + catalog 13) + testing agent 100% (`test_reports/iteration_14.json`). Commit `3ce60d3`. Push toujours impossible depuis le pod (pas de credentials GitHub).
+- Phase 3 documentée mais NON codée : POST /topups/order + Idempotency-Key, revalidation prix/dispo, mapping persistant admin, webhooks/statuts.
+
 ## Implémenté (25/09/2026 pod) — FazerCards Phase 1 : validation ID PUBG Mobile
 - `services/fazercards.py` : client X-API-Key (`FAZERCARDS_API_BASE`/`FAZERCARDS_API_KEY` en env), découverte dynamique de `category_id`+`fields` via `GET /topups/validate-id` (cache mémoire 10 min), `POST /topups/validate-id`, retry unique sur 5xx upstream (fournisseur flaky), mapping erreurs : 503 clé absente/jeu indispo, 502 erreur fournisseur (jamais masquée en « ID invalide »), 504 timeout, 429 relayé.
 - Route `POST /api/fazercards/pubg/validate-id` (rate limit réutilisé : 30/10min/IP) → réponse normalisée `{valid, player_name, region}` ou `{valid:false, message}` — aucun secret/payload brut exposé.
