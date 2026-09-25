@@ -16,6 +16,14 @@ Tâche (juin 2026) : ajouter **Pack évolutif** (4 offres à limitations par ID 
 - Admin délégué : gère catalogue/commandes selon permissions.
 - Super admin : tout, incl. suppression de commandes.
 
+## Implémenté (25/09/2026 pod) — FazerCards Phase 1 : validation ID PUBG Mobile
+- `services/fazercards.py` : client X-API-Key (`FAZERCARDS_API_BASE`/`FAZERCARDS_API_KEY` en env), découverte dynamique de `category_id`+`fields` via `GET /topups/validate-id` (cache mémoire 10 min), `POST /topups/validate-id`, retry unique sur 5xx upstream (fournisseur flaky), mapping erreurs : 503 clé absente/jeu indispo, 502 erreur fournisseur (jamais masquée en « ID invalide »), 504 timeout, 429 relayé.
+- Route `POST /api/fazercards/pubg/validate-id` (rate limit réutilisé : 30/10min/IP) → réponse normalisée `{valid, player_name, region}` ou `{valid:false, message}` — aucun secret/payload brut exposé.
+- Frontend : composant `PubgIdVerify` sous le champ ID PUBG du checkout (bouton « Vérifier l'ID », états chargement / ✓ Compte trouvé + nom du joueur + confirmation / ✕ invalide / erreur fournisseur), FR+EN. Checkout/paiement NON modifiés.
+- Sécurité : `backend/.env` et `frontend/.env` retirés de l'index Git + .gitignore (ATTENTION : l'historique Git antérieur contient encore les anciens .env commis — rotation des anciens secrets recommandée).
+- Tests : `backend/tests/test_fazercards_validate.py` 14/14 (9 unitaires mockés + 5 live) + testing agent 100% backend/frontend (`test_reports/iteration_13.json`). Test réel : `/me` 200 OK, ID 5123456789 → player_name « Eliah2 ». Commit `73e7385` (push impossible depuis le pod — pas de credentials GitHub).
+- HORS SCOPE (phase suivante, décidé) : `GET /topups/categories`, `GET /topups/offers`, création de commande, Idempotency-Key, webhooks, paiement auto/manuel, tarification admin.
+
 ## Implémenté (23/06/2026… date env : sept 2026 pod) — Pack évolutif + historique
 - 4 offres seedées (type produit `evo`, champ `evo_limit`) : Fragments matériaux 17 000 Ar (saison), Premier achat 5 800 Ar (lifetime), Emblème mythique 20 500 Ar (semaine ISO serveur), Fragments mythique 24 000 Ar (saison). Prix modifiables via Admin → Catalogue (`catalog.manage`), prix historisé dans la commande (snapshot `unit_price`).
 - Saisons gérées par l'admin (collection `seasons`, une seule active, création/activation dans Admin → Catalogue). Saison seedée : « Saison A18 ».
