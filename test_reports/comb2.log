@@ -1,0 +1,886 @@
+bringing up nodes...
+bringing up nodes...
+
+..................FF.FFF.FFF..F.........FFF.FFFFFEFF..                   [100%]
+==================================== ERRORS ====================================
+_ ERROR at teardown of TestPriceSnapshot.test_no_secret_in_fulfillment_record __
+[gw1] linux -- Python 3.11.16 /root/.venv/bin/python
+
+    @pytest.fixture(scope="session", autouse=True)
+    def cleanup_test_artifacts():
+        yield
+>       run(db.products.delete_many({"slug": {"$regex": "^test-60-uc-"}}))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_fzr_phase3.py:105: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/root/.venv/lib/python3.11/site-packages/motor/metaprogramming.py:73: in method
+    loop = self.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:1351: in get_io_loop
+    return self.database.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:862: in get_io_loop
+    return self._client.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:158: in get_io_loop
+    return self.io_loop
+           ^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:154: in io_loop
+    self._io_loop = self._framework.get_event_loop()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0xfe8e3eeaf6d0>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+/usr/local/lib/python3.11/asyncio/events.py:681: RuntimeError
+=================================== FAILURES ===================================
+____ TestFulfillPreconditions.test_payment_not_confirmed_no_provider_order _____
+[gw1] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fzr_phase3.TestFulfillPreconditions object at 0xfe8e3d719610>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0xfe8e3c51f590>
+
+    def test_payment_not_confirmed_no_provider_order(self, monkeypatch):
+        calls = []
+        mock_transport(monkeypatch, happy_handler(calls))
+>       pid = make_mapped_product()
+              ^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_fzr_phase3.py:139: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_fzr_phase3.py:79: in make_mapped_product
+    run(db.products.insert_one({
+/root/.venv/lib/python3.11/site-packages/motor/metaprogramming.py:73: in method
+    loop = self.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:1351: in get_io_loop
+    return self.database.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:862: in get_io_loop
+    return self._client.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:158: in get_io_loop
+    return self.io_loop
+           ^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:154: in io_loop
+    self._io_loop = self._framework.get_event_loop()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0xfe8e3eeaf6d0>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+/usr/local/lib/python3.11/asyncio/events.py:681: RuntimeError
+________________ TestWebhook.test_webhook_event_completes_order ________________
+[gw0] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fzr_phase3.TestWebhook object at 0xfb526cf02d50>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0xfb526cf4ff90>
+
+    def test_webhook_event_completes_order(self, monkeypatch):
+        h = happy_handler()
+        mock_transport(monkeypatch, h)
+>       order = make_order(status="paid", product_id=make_mapped_product())
+                                                     ^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_fzr_phase3.py:303: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_fzr_phase3.py:79: in make_mapped_product
+    run(db.products.insert_one({
+/root/.venv/lib/python3.11/site-packages/motor/metaprogramming.py:73: in method
+    loop = self.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:1351: in get_io_loop
+    return self.database.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:862: in get_io_loop
+    return self._client.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:158: in get_io_loop
+    return self.io_loop
+           ^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:154: in io_loop
+    self._io_loop = self._framework.get_event_loop()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0xfb526f8f8bd0>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+/usr/local/lib/python3.11/asyncio/events.py:681: RuntimeError
+_________ TestFulfillPreconditions.test_unmapped_product_not_eligible __________
+[gw1] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fzr_phase3.TestFulfillPreconditions object at 0xfe8e3c4cdb90>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0xfe8e3eea6210>
+
+    def test_unmapped_product_not_eligible(self, monkeypatch):
+        calls = []
+        mock_transport(monkeypatch, happy_handler(calls))
+>       order = make_order(status="paid")  # produit sans mapping
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_fzr_phase3.py:148: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_fzr_phase3.py:73: in make_order
+    run(db.orders.insert_one(dict(order)))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/metaprogramming.py:73: in method
+    loop = self.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:1351: in get_io_loop
+    return self.database.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:862: in get_io_loop
+    return self._client.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:158: in get_io_loop
+    return self.io_loop
+           ^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:154: in io_loop
+    self._io_loop = self._framework.get_event_loop()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0xfe8e3eeaf6d0>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+/usr/local/lib/python3.11/asyncio/events.py:681: RuntimeError
+___________ TestFulfillPreconditions.test_invalid_player_id_no_order ___________
+[gw1] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fzr_phase3.TestFulfillPreconditions object at 0xfe8e3c4ce310>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0xfe8e3c2961d0>
+
+    def test_invalid_player_id_no_order(self, monkeypatch):
+        calls = []
+        mock_transport(monkeypatch, happy_handler(calls, validate={"ok": True, "valid": False}))
+>       order = make_order(status="paid", product_id=make_mapped_product())
+                                                     ^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_fzr_phase3.py:156: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_fzr_phase3.py:79: in make_mapped_product
+    run(db.products.insert_one({
+/root/.venv/lib/python3.11/site-packages/motor/metaprogramming.py:73: in method
+    loop = self.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:1351: in get_io_loop
+    return self.database.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:862: in get_io_loop
+    return self._client.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:158: in get_io_loop
+    return self.io_loop
+           ^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:154: in io_loop
+    self._io_loop = self._framework.get_event_loop()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0xfe8e3eeaf6d0>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+/usr/local/lib/python3.11/asyncio/events.py:681: RuntimeError
+_ TestFulfillPreconditions.test_provider_down_is_service_error_not_invalid_id __
+[gw1] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fzr_phase3.TestFulfillPreconditions object at 0xfe8e3c4cead0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0xfe8e3c4cf410>
+
+    def test_provider_down_is_service_error_not_invalid_id(self, monkeypatch):
+        def handler(req):
+            if req.url.path.endswith("/topups/validate-id") and req.method == "GET":
+                return httpx.Response(200, json=VALIDATE_LIST)
+            raise httpx.ConnectTimeout("t")
+        mock_transport(monkeypatch, handler)
+>       order = make_order(status="paid", product_id=make_mapped_product())
+                                                     ^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_fzr_phase3.py:167: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_fzr_phase3.py:79: in make_mapped_product
+    run(db.products.insert_one({
+/root/.venv/lib/python3.11/site-packages/motor/metaprogramming.py:73: in method
+    loop = self.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:1351: in get_io_loop
+    return self.database.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:862: in get_io_loop
+    return self._client.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:158: in get_io_loop
+    return self.io_loop
+           ^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:154: in io_loop
+    self._io_loop = self._framework.get_event_loop()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0xfe8e3eeaf6d0>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+/usr/local/lib/python3.11/asyncio/events.py:681: RuntimeError
+__________ TestFulfillPreconditions.test_offer_gone_from_live_catalog __________
+[gw1] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fzr_phase3.TestFulfillPreconditions object at 0xfe8e3c4cf250>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0xfe8e3c4ccf50>
+
+    def test_offer_gone_from_live_catalog(self, monkeypatch):
+        def handler(req):
+            if req.url.path.endswith("/topups/validate-id"):
+                return httpx.Response(200, json=VALIDATE_LIST if req.method == "GET" else VALIDATE_OK)
+            if req.url.path.endswith("/topups/offers"):
+                return httpx.Response(200, json={**OFFERS, "offers": []})
+            return httpx.Response(500)
+        mock_transport(monkeypatch, handler)
+>       order = make_order(status="paid", product_id=make_mapped_product())
+                                                     ^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_fzr_phase3.py:180: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_fzr_phase3.py:79: in make_mapped_product
+    run(db.products.insert_one({
+/root/.venv/lib/python3.11/site-packages/motor/metaprogramming.py:73: in method
+    loop = self.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:1351: in get_io_loop
+    return self.database.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:862: in get_io_loop
+    return self._client.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:158: in get_io_loop
+    return self.io_loop
+           ^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:154: in io_loop
+    self._io_loop = self._framework.get_event_loop()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0xfe8e3eeaf6d0>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+/usr/local/lib/python3.11/asyncio/events.py:681: RuntimeError
+______________ TestLiveEndpoint.test_valid_id_returns_player_name ______________
+[gw0] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fazercards_validate.TestLiveEndpoint object at 0xfb526cf35110>
+
+    def test_valid_id_returns_player_name(self):
+        r = requests.post(ENDPOINT, json={"player_id": VALID_PUBG_ID}, timeout=40)
+>       assert r.status_code == 200, r.text
+E       AssertionError: {"detail":"Vérification d'ID indisponible (service non configuré)."}
+E       assert 503 == 200
+E        +  where 503 = <Response [503]>.status_code
+
+tests/test_fazercards_validate.py:131: AssertionError
+_____________ TestLiveEndpoint.test_invalid_id_returns_valid_false _____________
+[gw0] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fazercards_validate.TestLiveEndpoint object at 0xfb526cf35750>
+
+    def test_invalid_id_returns_valid_false(self):
+        # FazerCards upstream is intermittently flaky on unknown IDs -> tolerate provider 502 retries
+        for _ in range(3):
+            r = requests.post(ENDPOINT, json={"player_id": INVALID_PUBG_ID}, timeout=60)
+            if r.status_code == 200:
+                break
+>       assert r.status_code == 200, r.text
+E       AssertionError: {"detail":"Vérification d'ID indisponible (service non configuré)."}
+E       assert 503 == 200
+E        +  where 503 = <Response [503]>.status_code
+
+tests/test_fazercards_validate.py:142: AssertionError
+___________ TestLiveEndpoint.test_no_secret_or_raw_leak_in_response ____________
+[gw0] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fazercards_validate.TestLiveEndpoint object at 0xfb526cf36bd0>
+
+    def test_no_secret_or_raw_leak_in_response(self):
+        r = requests.post(ENDPOINT, json={"player_id": VALID_PUBG_ID}, timeout=40)
+>       assert r.status_code == 200
+E       assert 503 == 200
+E        +  where 503 = <Response [503]>.status_code
+
+tests/test_fazercards_validate.py:158: AssertionError
+_________ TestFulfillPreconditions.test_multi_item_order_not_eligible __________
+[gw1] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fzr_phase3.TestFulfillPreconditions object at 0xfe8e3c4cf9d0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0xfe8e3c281190>
+
+    def test_multi_item_order_not_eligible(self, monkeypatch):
+        mock_transport(monkeypatch, happy_handler())
+>       pid = make_mapped_product()
+              ^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_fzr_phase3.py:187: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_fzr_phase3.py:79: in make_mapped_product
+    run(db.products.insert_one({
+/root/.venv/lib/python3.11/site-packages/motor/metaprogramming.py:73: in method
+    loop = self.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:1351: in get_io_loop
+    return self.database.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:862: in get_io_loop
+    return self._client.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:158: in get_io_loop
+    return self.io_loop
+           ^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:154: in io_loop
+    self._io_loop = self._framework.get_event_loop()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0xfe8e3eeaf6d0>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+/usr/local/lib/python3.11/asyncio/events.py:681: RuntimeError
+_________ TestIdempotencyRetry.test_timeout_then_retry_reuses_same_key _________
+[gw1] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fzr_phase3.TestIdempotencyRetry object at 0xfe8e3c4d51d0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0xfe8e3c4eb4d0>
+
+    def test_timeout_then_retry_reuses_same_key(self, monkeypatch):
+        calls = []
+        fail_first = {"n": 0}
+    
+        def order_resp(req):
+            fail_first["n"] += 1
+            if fail_first["n"] == 1:
+                raise httpx.ReadTimeout("t")
+            return httpx.Response(200, json=ORDER_OK)
+        mock_transport(monkeypatch, happy_handler(calls, order_response=order_resp))
+>       order = make_order(status="paid", product_id=make_mapped_product())
+                                                     ^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_fzr_phase3.py:234: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_fzr_phase3.py:79: in make_mapped_product
+    run(db.products.insert_one({
+/root/.venv/lib/python3.11/site-packages/motor/metaprogramming.py:73: in method
+    loop = self.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:1351: in get_io_loop
+    return self.database.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:862: in get_io_loop
+    return self._client.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:158: in get_io_loop
+    return self.io_loop
+           ^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:154: in io_loop
+    self._io_loop = self._framework.get_event_loop()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0xfe8e3eeaf6d0>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+/usr/local/lib/python3.11/asyncio/events.py:681: RuntimeError
+__ TestIdempotencyRetry.test_insufficient_balance_maps_to_409_and_error_state __
+[gw1] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fzr_phase3.TestIdempotencyRetry object at 0xfe8e3c4d5950>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0xfe8e3c29ac50>
+
+    def test_insufficient_balance_maps_to_409_and_error_state(self, monkeypatch):
+        resp = httpx.Response(400, json={"ok": False, "error": "Insufficient balance", "code": "insufficient_balance"})
+        mock_transport(monkeypatch, happy_handler(order_response=resp))
+>       order = make_order(status="paid", product_id=make_mapped_product())
+                                                     ^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_fzr_phase3.py:247: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_fzr_phase3.py:79: in make_mapped_product
+    run(db.products.insert_one({
+/root/.venv/lib/python3.11/site-packages/motor/metaprogramming.py:73: in method
+    loop = self.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:1351: in get_io_loop
+    return self.database.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:862: in get_io_loop
+    return self._client.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:158: in get_io_loop
+    return self.io_loop
+           ^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:154: in io_loop
+    self._io_loop = self._framework.get_event_loop()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0xfe8e3eeaf6d0>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+/usr/local/lib/python3.11/asyncio/events.py:681: RuntimeError
+______________ TestIdempotencyRetry.test_provider_5xx_maps_to_502 ______________
+[gw1] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fzr_phase3.TestIdempotencyRetry object at 0xfe8e3c4d60d0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0xfe8e3c3a17d0>
+
+    def test_provider_5xx_maps_to_502(self, monkeypatch):
+        resp = httpx.Response(500, json={"ok": False, "error": "boom"})
+        mock_transport(monkeypatch, happy_handler(order_response=resp))
+>       order = make_order(status="paid", product_id=make_mapped_product())
+                                                     ^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_fzr_phase3.py:257: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_fzr_phase3.py:79: in make_mapped_product
+    run(db.products.insert_one({
+/root/.venv/lib/python3.11/site-packages/motor/metaprogramming.py:73: in method
+    loop = self.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:1351: in get_io_loop
+    return self.database.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:862: in get_io_loop
+    return self._client.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:158: in get_io_loop
+    return self.io_loop
+           ^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:154: in io_loop
+    self._io_loop = self._framework.get_event_loop()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0xfe8e3eeaf6d0>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+/usr/local/lib/python3.11/asyncio/events.py:681: RuntimeError
+_______ TestFulfillSuccess.test_order_accepted_snapshot_and_provider_id ________
+[gw1] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fzr_phase3.TestFulfillSuccess object at 0xfe8e3c4d4210>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0xfe8e3c32ec90>
+
+    def test_order_accepted_snapshot_and_provider_id(self, monkeypatch):
+        calls = []
+        h = happy_handler(calls)
+        mock_transport(monkeypatch, h)
+>       order = make_order(status="paid", product_id=make_mapped_product())
+                                                     ^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_fzr_phase3.py:200: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_fzr_phase3.py:79: in make_mapped_product
+    run(db.products.insert_one({
+/root/.venv/lib/python3.11/site-packages/motor/metaprogramming.py:73: in method
+    loop = self.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:1351: in get_io_loop
+    return self.database.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:862: in get_io_loop
+    return self._client.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:158: in get_io_loop
+    return self.io_loop
+           ^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:154: in io_loop
+    self._io_loop = self._framework.get_event_loop()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0xfe8e3eeaf6d0>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+/usr/local/lib/python3.11/asyncio/events.py:681: RuntimeError
+_______________ TestFulfillSuccess.test_double_fulfill_rejected ________________
+[gw1] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fzr_phase3.TestFulfillSuccess object at 0xfe8e3c4d4990>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0xfe8e3c6c1810>
+
+    def test_double_fulfill_rejected(self, monkeypatch):
+        h = happy_handler()
+        mock_transport(monkeypatch, h)
+>       order = make_order(status="paid", product_id=make_mapped_product())
+                                                     ^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_fzr_phase3.py:216: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_fzr_phase3.py:79: in make_mapped_product
+    run(db.products.insert_one({
+/root/.venv/lib/python3.11/site-packages/motor/metaprogramming.py:73: in method
+    loop = self.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:1351: in get_io_loop
+    return self.database.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:862: in get_io_loop
+    return self._client.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:158: in get_io_loop
+    return self.io_loop
+           ^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:154: in io_loop
+    self._io_loop = self._framework.get_event_loop()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0xfe8e3eeaf6d0>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+/usr/local/lib/python3.11/asyncio/events.py:681: RuntimeError
+_________ TestPriceSnapshot.test_price_change_never_touches_past_order _________
+[gw1] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fzr_phase3.TestPriceSnapshot object at 0xfe8e3c4dc350>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0xfe8e3eea60d0>
+
+    def test_price_change_never_touches_past_order(self, monkeypatch):
+        mock_transport(monkeypatch, happy_handler())
+>       order = make_order(status="paid", product_id=make_mapped_product())
+                                                     ^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_fzr_phase3.py:328: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_fzr_phase3.py:79: in make_mapped_product
+    run(db.products.insert_one({
+/root/.venv/lib/python3.11/site-packages/motor/metaprogramming.py:73: in method
+    loop = self.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:1351: in get_io_loop
+    return self.database.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:862: in get_io_loop
+    return self._client.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:158: in get_io_loop
+    return self.io_loop
+           ^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:154: in io_loop
+    self._io_loop = self._framework.get_event_loop()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0xfe8e3eeaf6d0>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+/usr/local/lib/python3.11/asyncio/events.py:681: RuntimeError
+____________ TestPriceSnapshot.test_no_secret_in_fulfillment_record ____________
+[gw1] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fzr_phase3.TestPriceSnapshot object at 0xfe8e3c4dc9d0>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0xfe8e3c43a550>
+
+    def test_no_secret_in_fulfillment_record(self, monkeypatch):
+        mock_transport(monkeypatch, happy_handler())
+>       order = make_order(status="paid", product_id=make_mapped_product())
+                                                     ^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_fzr_phase3.py:338: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_fzr_phase3.py:79: in make_mapped_product
+    run(db.products.insert_one({
+/root/.venv/lib/python3.11/site-packages/motor/metaprogramming.py:73: in method
+    loop = self.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:1351: in get_io_loop
+    return self.database.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:862: in get_io_loop
+    return self._client.get_io_loop()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:158: in get_io_loop
+    return self.io_loop
+           ^^^^^^^^^^^^
+/root/.venv/lib/python3.11/site-packages/motor/core.py:154: in io_loop
+    self._io_loop = self._framework.get_event_loop()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <asyncio.unix_events._UnixDefaultEventLoopPolicy object at 0xfe8e3eeaf6d0>
+
+    def get_event_loop(self):
+        """Get the event loop for the current context.
+    
+        Returns an instance of EventLoop or raises an exception.
+        """
+        if (self._local._loop is None and
+                not self._local._set_called and
+                threading.current_thread() is threading.main_thread()):
+            self.set_event_loop(self.new_event_loop())
+    
+        if self._local._loop is None:
+>           raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
+E           RuntimeError: There is no current event loop in thread 'MainThread'.
+
+/usr/local/lib/python3.11/asyncio/events.py:681: RuntimeError
+___________ TestLiveCatalog.test_live_catalog_pubg_offers_and_fields ___________
+[gw0] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fazercards_catalog.TestLiveCatalog object at 0xfb526cf20c50>
+admin = <requests.sessions.Session object at 0xfb526cc86dd0>
+
+    def test_live_catalog_pubg_offers_and_fields(self, admin):
+        r = admin.get(CATALOG, timeout=60)
+>       assert r.status_code == 200, r.text
+E       AssertionError: {"detail":"Vérification d'ID indisponible (service non configuré)."}
+E       assert 503 == 200
+E        +  where 503 = <Response [503]>.status_code
+
+tests/test_fazercards_catalog.py:161: AssertionError
+__________________ TestLiveCatalog.test_no_secret_in_response __________________
+[gw0] linux -- Python 3.11.16 /root/.venv/bin/python
+
+self = <test_fazercards_catalog.TestLiveCatalog object at 0xfb526cf21390>
+admin = <requests.sessions.Session object at 0xfb526cc86dd0>
+
+    def test_no_secret_in_response(self, admin):
+        r = admin.get(CATALOG, timeout=60)
+>       assert r.status_code == 200
+E       assert 503 == 200
+E        +  where 503 = <Response [503]>.status_code
+
+tests/test_fazercards_catalog.py:174: AssertionError
+=============================== warnings summary ===============================
+../../root/.venv/lib/python3.11/site-packages/starlette/formparsers.py:12
+../../root/.venv/lib/python3.11/site-packages/starlette/formparsers.py:12
+  /root/.venv/lib/python3.11/site-packages/starlette/formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+tests/test_fazercards_catalog.py::TestLiveCatalog::test_live_catalog_pubg_offers_and_fields
+  /root/.venv/lib/python3.11/site-packages/_pytest/fixtures.py:1313: PytestRemovedIn10Warning: Class-scoped fixture defined as instance method is deprecated.
+  Instance attributes set in this fixture will NOT be visible to test methods,
+  as each test gets a new instance while the fixture runs only once per class.
+  Use @classmethod decorator and set attributes on cls instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#class-scoped-fixture-as-instance-method
+    fixturefunc = resolve_fixture_function(fixturedef, request)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_fzr_phase3.py::TestFulfillPreconditions::test_payment_not_confirmed_no_provider_order
+FAILED tests/test_fzr_phase3.py::TestWebhook::test_webhook_event_completes_order
+FAILED tests/test_fzr_phase3.py::TestFulfillPreconditions::test_unmapped_product_not_eligible
+FAILED tests/test_fzr_phase3.py::TestFulfillPreconditions::test_invalid_player_id_no_order
+FAILED tests/test_fzr_phase3.py::TestFulfillPreconditions::test_provider_down_is_service_error_not_invalid_id
+FAILED tests/test_fzr_phase3.py::TestFulfillPreconditions::test_offer_gone_from_live_catalog
+FAILED tests/test_fazercards_validate.py::TestLiveEndpoint::test_valid_id_returns_player_name
+FAILED tests/test_fazercards_validate.py::TestLiveEndpoint::test_invalid_id_returns_valid_false
+FAILED tests/test_fazercards_validate.py::TestLiveEndpoint::test_no_secret_or_raw_leak_in_response
+FAILED tests/test_fzr_phase3.py::TestFulfillPreconditions::test_multi_item_order_not_eligible
+FAILED tests/test_fzr_phase3.py::TestIdempotencyRetry::test_timeout_then_retry_reuses_same_key
+FAILED tests/test_fzr_phase3.py::TestIdempotencyRetry::test_insufficient_balance_maps_to_409_and_error_state
+FAILED tests/test_fzr_phase3.py::TestIdempotencyRetry::test_provider_5xx_maps_to_502
+FAILED tests/test_fzr_phase3.py::TestFulfillSuccess::test_order_accepted_snapshot_and_provider_id
+FAILED tests/test_fzr_phase3.py::TestFulfillSuccess::test_double_fulfill_rejected
+FAILED tests/test_fzr_phase3.py::TestPriceSnapshot::test_price_change_never_touches_past_order
+FAILED tests/test_fzr_phase3.py::TestPriceSnapshot::test_no_secret_in_fulfillment_record
+FAILED tests/test_fazercards_catalog.py::TestLiveCatalog::test_live_catalog_pubg_offers_and_fields
+FAILED tests/test_fazercards_catalog.py::TestLiveCatalog::test_no_secret_in_response
+ERROR tests/test_fzr_phase3.py::TestPriceSnapshot::test_no_secret_in_fulfillment_record
+19 failed, 34 passed, 3 warnings, 1 error in 3.08s

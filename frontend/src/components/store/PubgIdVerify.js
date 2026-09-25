@@ -3,7 +3,7 @@ import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 
-export const PubgIdVerify = ({ pubgId, onVerified }) => {
+export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0 }) => {
   const { t } = useLang();
   const [state, setState] = useState({ status: "idle" });
 
@@ -25,6 +25,12 @@ export const PubgIdVerify = ({ pubgId, onVerified }) => {
       setState({ status: "error", message: errorMessage(e, t("checkout.verifyError")) });
     }
   };
+
+  // ID mémorisé sélectionné → revalidation FazerCards immédiate (jamais considéré comme définitivement vérifié).
+  useEffect(() => {
+    if (autoTrigger > 0) verify();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTrigger]);
 
   return (
     <div className="mt-2">

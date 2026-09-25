@@ -146,3 +146,52 @@ async def pubg_offers(category_id: str) -> dict:
 
 async def pubg_catalog() -> list[dict]:
     return [await pubg_offers(c["category_id"]) for c in await pubg_categories()]
+
+
+async def pubg_offers_fresh(category_id: str) -> dict:
+    """Bypass cache: live offers/prices revalidated right before a provider order."""
+    _catalog_cache.pop(f"offers:{category_id}", None)
+    return await pubg_offers(category_id)
+
+
+class ProviderTimeout(Exception):
+    """Network timeout after submitting POST /topups/order — retry MUST reuse the same Idempotency-Key."""
+
+
+class ProviderOrderError(Exception):
+    def __init__(self, status_code: int, error: str, code: str | None = None):
+        super().__init__(error)
+        self.status_code, self.error, self.code = status_code, error, code
+
+
+async def create_topup_order(category_id: str, offer_id: str, fields: dict, idempotency_key: str) -> dict:
+    """POST /topups/order — single attempt, no auto-retry (idempotency key is managed by the caller)."""
+    base, headers = _config()
+    headers = {**headers, "Idempotency-Key": idempotency_key}
+    try:
+        async with httpx.AsyncClient(timeout=TIMEOUT_S) as client:
+            r = await client.post(f"{base}/topups/order", headers=headers,
+                                  json={"category_id": category_id, "offer_id": offer_id, "fields": fields})
+    except httpx.TimeoutException:
+        raise ProviderTimeout()
+    except httpx.HTTPError:
+        raise ProviderOrderError(502, "Fournisseur injoignable.")
+    try:
+        data = r.json()
+    except ValueError:
+        data = {}
+    if r.is_error or data.get("ok") is not True:
+        raise ProviderOrderError(r.status_code if r.is_error else 502,
+                                 str(data.get("error") or "Erreur fournisseur inattendue.")[:300], data.get("code"))
+    order = data.get("order")
+    if not isinstance(order, dict) or not order.get("id"):
+        raise ProviderOrderError(502, "Réponse fournisseur inattendue (commande absente).")
+    return order
+
+
+async def get_provider_order(provider_order_id: str) -> dict:
+    data = await _request("GET", f"/orders/{provider_order_id}")
+    order = data.get("order")
+    if not isinstance(order, dict):
+        raise HTTPException(status_code=502, detail=PROVIDER_ERROR)
+    return order

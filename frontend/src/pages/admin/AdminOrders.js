@@ -6,6 +6,7 @@ import { api, errorMessage, formatAr } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { StatusPill } from "@/pages/OrderTrack";
+import { FzrFulfillment } from "@/components/admin/FzrFulfillment";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +25,13 @@ export default function AdminOrders() {
   const { isSuperAdmin } = useAuth();
   const [orders, setOrders] = useState([]);
   const [filters, setFilters] = useState({ status: "all", method: "all", q: "" });
+  const [mappedIds, setMappedIds] = useState({});
+  useEffect(() => {
+    api.get("/admin/fazercards/mappings").then(({ data }) => {
+      setMappedIds(Object.fromEntries(data.products.filter((p) => p.fazercards_mapping).map((p) => [p.id, true])));
+    }).catch(() => {});
+  }, []);
+  const isMapped = (o) => o.items?.length === 1 && o.items[0].quantity === 1 && !!mappedIds[o.items[0].product_id];
 
   const [params, setParams] = useSearchParams();
   const focusedOrder = params.get("order");
@@ -88,6 +96,7 @@ export default function AdminOrders() {
               )}
               {isSuperAdmin && <Button size="icon" variant="ghost" className="rounded-full text-slate-400 hover:text-rose-600" onClick={() => remove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
             </div>
+            <FzrFulfillment order={o} mapped={isMapped(o)} onChanged={load} />
           </article>
         ))}
       </div>

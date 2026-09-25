@@ -20,6 +20,11 @@ async def on_order_paid(order_id: str, client_ref: str, source: str):
         logger.warning("loyalty award failed for %s (%s)", order_id, type(exc).__name__)
     if order.get("email"):
         await mailer.send_payment_confirmed(order)
+    try:
+        from services import fzr_fulfillment
+        await fzr_fulfillment.auto_fulfill(order)  # no-op si mode manuel ou commande non éligible
+    except Exception as exc:  # fulfillment fournisseur must never block payment confirmation
+        logger.warning("fzr auto fulfillment hook failed for %s (%s)", order_id, type(exc).__name__)
 
 
 async def on_payment_failed(order_id: str, reason: str):

@@ -62,3 +62,9 @@ async def ensure_indexes():
     await db.loyalty_transfers.create_index([("to_user_id", 1), ("status", 1)])
     await db.audit_logs.create_index([("created_at", -1)])
     await db.audit_logs.create_index([("target", 1), ("created_at", -1)])
+    # FazerCards Phase 3: snapshot prix fournisseur + alertes + dédup webhook.
+    await db.fzr_offer_prices.create_index([("category_id", 1), ("offer_id", 1)], unique=True)
+    await db.fzr_price_alerts.create_index("id", unique=True)
+    await db.fzr_price_alerts.create_index([("acknowledged", 1), ("detected_at", -1)])
+    await db.fzr_webhook_events.create_index("event_id", unique=True)
+    await db.orders.create_index("fazercards.provider_order_id", sparse=True)

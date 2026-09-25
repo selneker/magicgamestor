@@ -27,6 +27,7 @@ export default function Checkout() {
   const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState(null);
   const [config, setConfig] = useState(null);
+  const [autoVerify, setAutoVerify] = useState(0);
 
   useEffect(() => {
     api.get("/payments/config").then(({ data }) => {
@@ -84,9 +85,9 @@ export default function Checkout() {
               <label htmlFor="pubg-id" className="text-sm font-semibold text-slate-700">{t("checkout.pubgId")}</label>
               <Input id="pubg-id" data-testid="pubg-id-input" inputMode="numeric" value={pubgId} onChange={(e) => setPubgId(e.target.value.replace(/\D/g, ""))} required className="mt-1 h-12 rounded-xl sm:max-w-sm" placeholder="5123456789" />
               {user?.saved_pubg_ids?.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">{user.saved_pubg_ids.map((id) => <button type="button" key={id} data-testid={`saved-id-${id}`} onClick={() => setPubgId(id)} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 hover:bg-slate-200">{id}</button>)}</div>
+                <div className="mt-2 flex flex-wrap gap-1">{user.saved_pubg_ids.map((id) => <button type="button" key={id} data-testid={`saved-id-${id}`} onClick={() => { setPubgId(id); setAutoVerify((n) => n + 1); }} className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 hover:bg-slate-200">{id}</button>)}</div>
               )}
-              <PubgIdVerify pubgId={pubgId} onVerified={setVerified} />
+              <PubgIdVerify pubgId={pubgId} onVerified={setVerified} autoTrigger={autoVerify} />
             </div>
           </div>
           {!user && (

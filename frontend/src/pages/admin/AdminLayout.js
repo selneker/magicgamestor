@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { CalendarRange, Coins, Download, LayoutDashboard, Package, ReceiptText, MessageCircle, Users } from "lucide-react";
+import { CalendarRange, Coins, Download, LayoutDashboard, Package, PlugZap, ReceiptText, MessageCircle, Users } from "lucide-react";
 import { AdminPush } from "@/components/admin/AdminPush";
 import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/context/AuthContext";
@@ -14,12 +14,15 @@ export default function AdminLayout() {
   const { count } = useChat();
   const { can } = useAuth();
   const [online, setOnline] = useState(false);
+  const [fzrAlerts, setFzrAlerts] = useState(0);
   useEffect(() => { api.get("/settings/status").then((r) => setOnline(r.data.online)).catch(() => {}); }, []);
+  useEffect(() => { api.get("/admin/fazercards/price-alerts", { params: { limit: 1 } }).then((r) => setFzrAlerts(r.data.unacknowledged)).catch(() => {}); }, []);
   const toggle = async (v) => { setOnline(v); await api.post("/admin/status", { online: v }).catch(() => setOnline(!v)); };
   const tabs = [
     ["/admin", LayoutDashboard, t("admin.dashboard"), "admin-tab-dashboard", true],
     ["/admin/commandes", ReceiptText, t("admin.orders"), "admin-tab-orders"],
     ["/admin/catalogue", Package, t("admin.products"), "admin-tab-products"],
+    ["/admin/fournisseur", PlugZap, `${t("admin.fzr.tab")}${fzrAlerts ? ` (${fzrAlerts})` : ""}`, "admin-tab-fzr"],
     ["/admin/evenements", CalendarRange, t("admin.events"), "admin-tab-events"],
     ["/admin/messages", MessageCircle, `Chat${count ? ` (${count})` : ""}`, "admin-tab-chat"],
     ["/admin/fidelite", Coins, "Fidélité", "admin-tab-loyalty"],
