@@ -3,11 +3,11 @@ import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 
-export const PubgIdVerify = ({ pubgId }) => {
+export const PubgIdVerify = ({ pubgId, onVerified }) => {
   const { t } = useLang();
   const [state, setState] = useState({ status: "idle" });
 
-  useEffect(() => { setState({ status: "idle" }); }, [pubgId]);
+  useEffect(() => { setState({ status: "idle" }); onVerified(null); }, [pubgId, onVerified]);
 
   const verify = async () => {
     const id = (pubgId || "").trim();
@@ -15,9 +15,12 @@ export const PubgIdVerify = ({ pubgId }) => {
     setState({ status: "loading" });
     try {
       const { data } = await api.post("/fazercards/pubg/validate-id", { player_id: id });
-      setState(data.valid
-        ? { status: "valid", name: data.player_name, region: data.region }
-        : { status: "invalid" });
+      if (data.valid) {
+        setState({ status: "valid", name: data.player_name });
+        onVerified({ name: data.player_name || null });
+      } else {
+        setState({ status: "invalid" });
+      }
     } catch (e) {
       setState({ status: "error", message: errorMessage(e, t("checkout.verifyError")) });
     }
@@ -30,11 +33,12 @@ export const PubgIdVerify = ({ pubgId }) => {
         {state.status === "loading" ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" data-testid="pubg-verify-loading" />{t("checkout.verifying")}</>) : t("checkout.verify")}
       </button>
       {state.status === "valid" && (
-        <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm" data-testid="pubg-verify-valid">
-          <p className="flex items-center gap-1.5 font-semibold text-emerald-700"><CheckCircle2 className="h-4 w-4" />{t("checkout.verifyValid")} — {t("checkout.verifyFound")}</p>
-          {state.name && <p className="mt-1 text-emerald-800">{t("checkout.verifyPlayerName")} : <span className="font-bold" data-testid="pubg-verify-player-name">{state.name}</span></p>}
-          {state.region && <p className="text-emerald-800">{t("checkout.verifyRegion")} : <span data-testid="pubg-verify-region">{state.region}</span></p>}
-          <p className="mt-1 text-xs text-emerald-600" data-testid="pubg-verify-confirm">{t("checkout.verifyConfirm")}</p>
+        <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm" data-testid="pubg-verify-valid">
+          <p className="flex items-center gap-1.5 font-semibold text-emerald-700">
+            <CheckCircle2 className="h-4 w-4" />{t("checkout.verified")}
+            {state.name && <span className="font-bold" data-testid="pubg-verify-player-name">· {state.name}</span>}
+          </p>
+          <p className="mt-0.5 text-xs text-emerald-600" data-testid="pubg-verify-confirm">{t("checkout.verifyConfirm")}</p>
         </div>
       )}
       {state.status === "invalid" && (

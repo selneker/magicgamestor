@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, field_validator
 
 from core.ratelimit import check, client_ip, setting
+from core.security import require_permission
 from services import fazercards
 
 router = APIRouter(tags=["fazercards"])
@@ -28,3 +29,9 @@ async def validate_pubg_id(body: PubgValidateIn, request: Request):
     if not result["valid"]:
         return {"valid": False, "message": "ID PUBG Mobile invalide"}
     return {"valid": True, "player_name": result.get("player_name"), "region": result.get("region")}
+
+
+@router.get("/fazercards/pubg/catalog", dependencies=[Depends(require_permission("catalog.manage"))])
+async def pubg_catalog():
+    """Admin only: live FazerCards PUBG Mobile categories, offers, supplier USD prices and required fields."""
+    return {"categories": await fazercards.pubg_catalog()}

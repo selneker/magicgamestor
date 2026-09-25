@@ -1,4 +1,4 @@
-"""FazerCards reseller API client — Phase 1: PUBG Mobile Player ID validation only."""
+"""FazerCards reseller API client — Phase 1: validation ID PUBG Mobile. Phase 2: découverte catalogue/offres."""
 import os
 import time
 
@@ -84,3 +84,65 @@ async def validate_pubg_id(player_id: str) -> dict:
     if not data["valid"]:
         return {"valid": False}
     return {"valid": True, "player_name": data.get("player_name"), "region": data.get("region")}
+
+
+CATALOG_TTL_S = 600
+_catalog_cache: dict = {}
+
+
+def _cached(key: str):
+    hit = _catalog_cache.get(key)
+    return hit[1] if hit and time.time() - hit[0] < CATALOG_TTL_S else None
+
+
+def _store(key: str, value):
+    _catalog_cache[key] = (time.time(), value)
+    return value
+
+
+async def pubg_categories() -> list[dict]:
+    """PUBG Mobile purchasable categories via GET /topups (cursor pagination — ids never hardcoded)."""
+    cached = _cached("categories")
+    if cached is not None:
+        return cached
+    items, cursor = [], None
+    for _ in range(20):
+        params = {"limit": "500"}
+        if cursor:
+            params["cursor"] = cursor
+        data = await _request("GET", "/topups", params=params)
+        page, meta = data.get("items"), data.get("meta")
+        if not isinstance(page, list) or not isinstance(meta, dict):
+            raise HTTPException(status_code=502, detail=PROVIDER_ERROR)
+        items += page
+        cursor = meta.get("next_cursor")
+        if not meta.get("has_more") or not cursor:
+            break
+    pubg = [{"category_id": c.get("category_id"), "name": c.get("name"), "note": c.get("note")}
+            for c in items
+            if "pubg_mobile" in (c.get("category_id") or "").lower() or "pubg mobile" in (c.get("name") or "").lower()]
+    if not pubg:
+        raise HTTPException(status_code=503, detail="Aucune catégorie PUBG Mobile disponible chez le fournisseur.")
+    return _store("categories", pubg)
+
+
+async def pubg_offers(category_id: str) -> dict:
+    """Offers + required fields for one category via GET /topups/offers."""
+    cached = _cached(f"offers:{category_id}")
+    if cached is not None:
+        return cached
+    data = await _request("GET", "/topups/offers", params={"category_id": category_id})
+    offers, fields = data.get("offers"), data.get("fields")
+    if not isinstance(offers, list) or not isinstance(fields, list):
+        raise HTTPException(status_code=502, detail=PROVIDER_ERROR)
+    return _store(f"offers:{category_id}", {
+        "category_id": data.get("category_id") or category_id,
+        "name": data.get("name"),
+        "note": data.get("note"),
+        "offers": [{"offer_id": o.get("offer_id"), "name": o.get("name"), "price_usd": o.get("price_usd")} for o in offers],
+        "fields": [{"key": f.get("key"), "label": f.get("label"), "type": f.get("type")} for f in fields],
+    })
+
+
+async def pubg_catalog() -> list[dict]:
+    return [await pubg_offers(c["category_id"]) for c in await pubg_categories()]
