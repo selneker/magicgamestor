@@ -13,14 +13,17 @@ const STATUS_STYLE = {
   submit_timeout: "bg-amber-100 text-amber-700", error: "bg-rose-100 text-rose-700", creating: "bg-slate-100 text-slate-600",
 };
 
-export const FzrFulfillment = ({ order, mapped, single, onChanged }) => {
+export const lineRecord = (order, idx) => (idx === 0 ? order.fazercards : order.fazercards_lines?.[String(idx)]);
+export const lineSendable = (rec) => !rec || (!rec.provider_order_id && ["submit_timeout", "error"].includes(rec.status));
+
+export const FzrFulfillment = ({ order, mappedIds, readyCount, onChanged }) => {
   const { t } = useLang();
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState(null);
-  const fzr = order.fazercards;
-  const eligible = mapped && order.status === "paid" && (!fzr || (!fzr.provider_order_id && ["submit_timeout", "error"].includes(fzr.status)));
-  const missingMapping = single && !mapped && order.status === "paid" && !fzr;
-  if (!fzr && !eligible && !missingMapping) return null;
+  const items = order.items || [];
+  const records = items.map((_, idx) => lineRecord(order, idx));
+  const hasAny = records.some(Boolean);
+  if (!hasAny && order.status !== "paid") return null;
 
   const openPreflight = async () => {
     setBusy(true);
@@ -32,8 +35,10 @@ export const FzrFulfillment = ({ order, mapped, single, onChanged }) => {
   const fulfill = async () => {
     setBusy(true);
     try {
-      await api.post(`/admin/orders/${order.id}/fazercards/fulfill`);
-      toast.success(t("admin.fzr.sent"));
+      const { data } = await api.post(`/admin/orders/${order.id}/fazercards/fulfill`);
+      const failed = (data.results || []).filter((r) => !r.ok);
+      if (failed.length) failed.forEach((r) => toast.error(`${r.product} : ${r.error}`));
+      else toast.success(t("admin.fzr.sent"));
       setReport(null); onChanged();
     } catch (e) { toast.error(errorMessage(e)); setReport(null); onChanged(); } finally { setBusy(false); }
   };
@@ -43,52 +48,71 @@ export const FzrFulfillment = ({ order, mapped, single, onChanged }) => {
     catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); }
   };
 
+  const canRefresh = records.some((r) => r?.provider_order_id && !["completed", "refunded"].includes(r.provider_status));
+
   return (
-    <div className="col-span-full flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs" data-testid={`fzr-block-${order.order_number}`}>
-      <span className="font-black uppercase tracking-[0.1em] text-slate-500">FazerCards</span>
-      {missingMapping && (
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700" data-testid={`fzr-missing-${order.order_number}`}>
-          {t("admin.fzr.mappingMissingOrder")}
-        </span>
-      )}
-      {fzr && (
-        <>
-          <span className={`rounded-full px-2 py-0.5 font-semibold ${STATUS_STYLE[fzr.provider_status || fzr.status] || "bg-slate-100 text-slate-600"}`} data-testid={`fzr-status-${order.order_number}`}>
-            {fzr.provider_status || fzr.status}
-          </span>
-          {fzr.provider_order_id && <span className="font-mono" data-testid={`fzr-provider-id-${order.order_number}`}>{fzr.provider_order_id}</span>}
-          {fzr.supplier_price_usd_at_order && <span className="text-slate-500">{t("admin.fzr.supplierPrice")} : ${fzr.supplier_price_usd_at_order}</span>}
-          {fzr.player_name_at_validation && <span className="text-slate-500">{fzr.player_name_at_validation}</span>}
-          {fzr.last_error && !fzr.provider_order_id && <span className="text-rose-600">{fzr.last_error}</span>}
-          {fzr.provider_order_id && !["completed", "refunded"].includes(fzr.provider_status) && (
-            <Button size="sm" variant="outline" className="h-7 rounded-full text-xs" onClick={refresh} disabled={busy} data-testid={`fzr-refresh-${order.order_number}`}>
-              <RefreshCw className="mr-1 h-3 w-3" />{t("admin.fzr.refresh")}
-            </Button>
-          )}
-        </>
-      )}
-      {eligible && (
-        <Button size="sm" className="h-7 rounded-full text-xs" onClick={openPreflight} disabled={busy} data-testid={`fzr-send-${order.order_number}`}>
-          {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />}
-          {fzr ? t("admin.fzr.retry") : t("admin.fzr.send")}
-        </Button>
-      )}
+    <div className="col-span-full space-y-1 rounded-xl bg-slate-50 px-3 py-2 text-xs" data-testid={`fzr-block-${order.order_number}`}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-black uppercase tracking-[0.1em] text-slate-500">FazerCards</span>
+        {readyCount > 0 && order.status === "paid" && (
+          <Button size="sm" className="h-7 rounded-full text-xs" onClick={openPreflight} disabled={busy} data-testid={`fzr-send-${order.order_number}`}>
+            {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />}
+            {t("admin.fzr.send")} ({readyCount})
+          </Button>
+        )}
+        {canRefresh && (
+          <Button size="sm" variant="outline" className="h-7 rounded-full text-xs" onClick={refresh} disabled={busy} data-testid={`fzr-refresh-${order.order_number}`}>
+            <RefreshCw className="mr-1 h-3 w-3" />{t("admin.fzr.refresh")}
+          </Button>
+        )}
+      </div>
+      <ul className="space-y-0.5">
+        {items.map((item, idx) => {
+          const rec = records[idx];
+          return (
+            <li key={idx} className="flex flex-wrap items-center gap-2" data-testid={`fzr-line-${order.order_number}-${idx}`}>
+              <span className="text-slate-600">{item.quantity}× {item.name}</span>
+              {rec ? (
+                <>
+                  <span className={`rounded-full px-2 py-0.5 font-semibold ${STATUS_STYLE[rec.provider_status || rec.status] || "bg-slate-100 text-slate-600"}`} data-testid={`fzr-line-status-${order.order_number}-${idx}`}>
+                    {rec.provider_order_id ? `✓ ${rec.provider_status || rec.status}` : rec.status}
+                  </span>
+                  {rec.provider_order_id && <span className="font-mono" data-testid={`fzr-line-provider-id-${order.order_number}-${idx}`}>{rec.provider_order_id}</span>}
+                  {rec.supplier_price_usd_at_order && <span className="text-slate-500">${rec.supplier_price_usd_at_order}</span>}
+                  {rec.last_error && !rec.provider_order_id && <span className="text-rose-600">{rec.last_error}</span>}
+                </>
+              ) : order.status === "paid" ? (
+                item.quantity === 1 && mappedIds[item.product_id]
+                  ? <span className="rounded-full bg-slate-200 px-2 py-0.5 font-semibold text-slate-600" data-testid={`fzr-line-ready-${order.order_number}-${idx}`}>○ {t("admin.fzr.lineToSend")}</span>
+                  : <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700" data-testid={`fzr-line-blocked-${order.order_number}-${idx}`}>{item.quantity !== 1 ? t("admin.fzr.lineQty") : t("admin.fzr.lineUnmapped")}</span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
       <Dialog open={!!report} onOpenChange={(o) => !o && setReport(null)}>
         <DialogContent data-testid="fzr-preflight-dialog">
           <DialogHeader><DialogTitle>{t("admin.fzr.preflightTitle")}</DialogTitle></DialogHeader>
           {report && (
-            <div className="space-y-1 text-sm">
-              {[[t("admin.fzr.mgsOrder"), report.order_number], [t("admin.fzr.product"), report.product],
-                [t("admin.fzr.offer"), `${report.offer_name} (${report.offer_id})`], ["category_id", report.category_id],
-                ["price_usd", `$${report.price_usd}`], [t("admin.fzr.playerId"), report.player_id],
-                [t("admin.fzr.playerName"), report.player_name || "—"], [t("admin.fzr.idem"), report.idempotency_key]].map(([k, v]) => (
-                <p key={k} className="flex justify-between gap-4 border-b border-slate-100 py-1"><span className="text-slate-500">{k}</span><span className="font-semibold break-all text-right">{v}</span></p>
+            <div className="space-y-2 text-sm">
+              <p className="flex justify-between gap-4 border-b border-slate-100 py-1"><span className="text-slate-500">{t("admin.fzr.mgsOrder")}</span><span className="font-semibold">{report.order_number}</span></p>
+              <p className="flex justify-between gap-4 border-b border-slate-100 py-1"><span className="text-slate-500">{t("admin.fzr.playerId")}</span><span className="font-semibold">{report.player_id}</span></p>
+              <p className="flex justify-between gap-4 border-b border-slate-100 py-1"><span className="text-slate-500">{t("admin.fzr.playerName")}</span><span className="font-semibold">{report.player_name || "—"}</span></p>
+              {(report.lines || []).map((l) => (
+                <div key={l.index} className="rounded-lg bg-slate-50 p-2" data-testid={`fzr-preflight-line-${l.index}`}>
+                  <p className="font-semibold">{l.product}</p>
+                  <p className="text-xs text-slate-600">{l.offer_name} ({l.offer_id}) · ${l.price_usd}</p>
+                  <p className="break-all text-xs text-slate-500">{t("admin.fzr.idem")} : {l.idempotency_key}</p>
+                  {l.retry && <p className="text-xs text-amber-700">{t("admin.fzr.preflightRetryNote")}</p>}
+                </div>
               ))}
-              {report.retry && <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-700">{t("admin.fzr.preflightRetryNote")}</p>}
-              <div className="flex justify-end gap-2 pt-3">
+              {(report.skipped || []).map((s) => (
+                <p key={s.index} className="rounded-lg bg-amber-50 p-2 text-xs text-amber-700" data-testid={`fzr-preflight-skipped-${s.index}`}>{s.product} : {s.reason}</p>
+              ))}
+              <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" className="rounded-full" onClick={() => setReport(null)} data-testid="fzr-preflight-cancel">{t("admin.fzr.preflightCancel")}</Button>
                 <Button className="rounded-full" onClick={fulfill} disabled={busy} data-testid="fzr-preflight-confirm">
-                  {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}{t("admin.fzr.preflightConfirm")}
+                  {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}{t("admin.fzr.preflightConfirm")} ({(report.lines || []).length})
                 </Button>
               </div>
             </div>
