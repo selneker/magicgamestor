@@ -16,7 +16,7 @@ const STATUS_STYLE = {
 export const lineRecord = (order, idx) => (idx === 0 ? order.fazercards : order.fazercards_lines?.[String(idx)]);
 export const lineSendable = (rec) => !rec || (!rec.provider_order_id && ["submit_timeout", "error"].includes(rec.status));
 
-export const FzrFulfillment = ({ order, mappedIds, readyCount, onChanged }) => {
+export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, readyCount, onChanged }) => {
   const { t } = useLang();
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState(null);
@@ -50,6 +50,15 @@ export const FzrFulfillment = ({ order, mappedIds, readyCount, onChanged }) => {
 
   const canRefresh = records.some((r) => r?.provider_order_id && !["completed", "refunded"].includes(r.provider_status));
 
+  const lineBadge = (item) => {
+    if (item.quantity !== 1) return { cls: "bg-amber-100 text-amber-700", label: t("admin.fzr.lineQty"), kind: "blocked" };
+    if (mappedIds[item.product_id]) return { cls: "bg-slate-200 text-slate-600", label: `○ ${t("admin.fzr.lineToSend")}`, kind: "ready" };
+    const st = mapStatus[item.product_id];
+    if (st === "composite") return { cls: "bg-sky-100 text-sky-700", label: t("admin.fzr.lineComposite"), kind: "composite" };
+    if (st === "unconfirmed") return { cls: "bg-amber-100 text-amber-700", label: t("admin.fzr.lineUnconfirmed"), kind: "unconfirmed" };
+    return { cls: "bg-amber-100 text-amber-700", label: t("admin.fzr.lineUnmapped"), kind: "blocked" };
+  };
+
   return (
     <div className="col-span-full space-y-1 rounded-xl bg-slate-50 px-3 py-2 text-xs" data-testid={`fzr-block-${order.order_number}`}>
       <div className="flex flex-wrap items-center gap-2">
@@ -81,11 +90,10 @@ export const FzrFulfillment = ({ order, mappedIds, readyCount, onChanged }) => {
                   {rec.supplier_price_usd_at_order && <span className="text-slate-500">${rec.supplier_price_usd_at_order}</span>}
                   {rec.last_error && !rec.provider_order_id && <span className="text-rose-600">{rec.last_error}</span>}
                 </>
-              ) : order.status === "paid" ? (
-                item.quantity === 1 && mappedIds[item.product_id]
-                  ? <span className="rounded-full bg-slate-200 px-2 py-0.5 font-semibold text-slate-600" data-testid={`fzr-line-ready-${order.order_number}-${idx}`}>○ {t("admin.fzr.lineToSend")}</span>
-                  : <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700" data-testid={`fzr-line-blocked-${order.order_number}-${idx}`}>{item.quantity !== 1 ? t("admin.fzr.lineQty") : t("admin.fzr.lineUnmapped")}</span>
-              ) : null}
+              ) : order.status === "paid" ? (() => {
+                const b = lineBadge(item);
+                return <span className={`rounded-full px-2 py-0.5 font-semibold ${b.cls}`} data-testid={`fzr-line-${b.kind}-${order.order_number}-${idx}`}>{b.label}</span>;
+              })() : null}
             </li>
           );
         })}

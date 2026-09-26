@@ -116,6 +116,24 @@ async def fzr_coverage():
     return {"offers": offers}
 
 
+# ---------- Audit générique des mappings UC (direct / composition exacte / manquant) ----------
+@router.get("/admin/fazercards/uc-audit", dependencies=[Depends(require_admin)])
+async def fzr_uc_audit():
+    """Audit LECTURE SEULE : chaque produit UC MGS confronté au catalogue FazerCards live."""
+    catalog = await fazercards.pubg_catalog()
+    return {"rows": await fzr_mapping.audit_uc_products(catalog)}
+
+
+@router.post("/admin/fazercards/uc-audit/apply")
+async def fzr_uc_audit_apply(admin=Depends(require_permission("catalog.manage"))):
+    """Applique la règle générale : SKU exact → direct, somme exacte → composition, sinon mapping manquant."""
+    catalog = await fazercards.pubg_catalog()
+    result = await fzr_mapping.apply_uc_audit(catalog, admin["user_id"])
+    await audit("fzr.uc_audit_apply", admin["user_id"], None,
+                {"fixed": result["fixed_count"], "removed": result["removed_count"]})
+    return result
+
+
 # ---------- Fulfillment fournisseur ----------
 @router.get("/admin/orders/{order_id}/fazercards/preflight", dependencies=[Depends(require_permission("orders.manage"))])
 async def fzr_preflight(order_id: str):

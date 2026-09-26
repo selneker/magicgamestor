@@ -39,6 +39,7 @@ def _default_base() -> str:
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", _default_base()).rstrip("/")
 API = f"{BASE_URL}/api"
 RealAsyncClient = httpx.AsyncClient
+WORKER = os.environ.get("PYTEST_XDIST_WORKER", "master")  # scope test orders per xdist worker (no cross-worker cleanup)
 
 VALIDATE_LIST = {"ok": True, "items": [{"category_id": "pubg_mobile", "name": "PUBG Mobile",
                                         "fields": [{"key": "player_id", "label": "Player ID", "type": "text"}]}]}
@@ -66,7 +67,7 @@ def make_order(status="paid", product_id=None, qty=1, items=None):
         "items": items if items is not None else [{"product_id": product_id or str(uuid.uuid4()), "slug": "60-uc",
                                                    "name": "60 UC", "type": "uc", "unit_price": 5000, "quantity": qty,
                                                    "line_total": 5000 * qty}],
-        "total": 5000, "currency": "Ar", "payment_method": "manual", "manual_reference": "mvola:X",
+        "total": 5000, "currency": "Ar", "payment_method": "manual", "manual_reference": "mvola:X", "_tw": WORKER,
         "status": status, "admin_note": None, "created_at": _now(), "updated_at": _now(),
         "history": [{"status": "created", "at": _now()}],
     }
@@ -105,7 +106,7 @@ def cleanup_test_artifacts():
     yield
     asyncio.set_event_loop(_LOOP)
     run(db.products.delete_many({"slug": {"$regex": "^test-60-uc-"}}))
-    run(db.orders.delete_many({"pubg_id": "52328390220", "manual_reference": "mvola:X"}))
+    run(db.orders.delete_many({"pubg_id": "52328390220", "_tw": WORKER}))
 
 
 def happy_handler(order_calls: list | None = None, order_response=None, validate=VALIDATE_OK, provider_id=None):

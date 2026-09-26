@@ -36,6 +36,7 @@ export default function AdminFazercards() {
   const [products, setProducts] = useState([]);
   const [catalog, setCatalog] = useState(null);
   const [coverage, setCoverage] = useState(null);
+  const [audit, setAudit] = useState(null);
   const [busy, setBusy] = useState("");
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(null);
@@ -76,6 +77,20 @@ export default function AdminFazercards() {
     setBusy("coverage");
     try { const { data } = await api.get("/admin/fazercards/coverage"); setCoverage(data.offers); }
     catch (e) { toast.error(errorMessage(e)); } finally { setBusy(""); }
+  };
+
+  const runAudit = async () => {
+    setBusy("audit");
+    try { const { data } = await api.get("/admin/fazercards/uc-audit"); setAudit(data.rows); }
+    catch (e) { toast.error(errorMessage(e)); } finally { setBusy(""); }
+  };
+  const applyAudit = async () => {
+    setBusy("audit-apply");
+    try {
+      const { data } = await api.post("/admin/fazercards/uc-audit/apply");
+      toast.success(t("admin.fzr.ucAuditDone").replace("{f}", data.fixed_count).replace("{r}", data.removed_count));
+      setAudit(data.rows); load();
+    } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(""); }
   };
 
   const openConfig = async (p) => {
@@ -188,6 +203,33 @@ export default function AdminFazercards() {
             </Button>
           )}
         </div>
+        {can("catalog.manage") && (
+          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3" data-testid="fzr-uc-audit">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-slate-800">{t("admin.fzr.ucAudit")}</p>
+              <p className="text-xs text-slate-500">{t("admin.fzr.ucAuditHint")}</p>
+            </div>
+            <Button size="sm" variant="outline" className="rounded-full" onClick={runAudit} disabled={busy === "audit"} data-testid="fzr-uc-audit-run">
+              {busy === "audit" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}{t("admin.fzr.ucAuditRun")}
+            </Button>
+            <Button size="sm" className="rounded-full" onClick={applyAudit} disabled={busy === "audit-apply"} data-testid="fzr-uc-audit-apply">
+              {busy === "audit-apply" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}{t("admin.fzr.ucAuditApply")}
+            </Button>
+          </div>
+        )}
+        {audit && (
+          <div className="mt-2 space-y-1" data-testid="fzr-uc-audit-rows">
+            {audit.map((r) => (
+              <div key={r.product_id} className={`flex flex-wrap items-center gap-2 rounded-lg px-3 py-1.5 text-xs ${r.action === "ok" ? "bg-emerald-50" : r.action === "fix" ? "bg-amber-50" : r.action === "remove" ? "bg-rose-50" : "bg-slate-50"}`} data-testid={`fzr-uc-audit-row-${r.slug}`}>
+                <span className="w-20 font-bold">{r.uc_amount} UC</span>
+                <span className="min-w-0 flex-1 truncate text-slate-600">{r.resolved_mode === "missing" ? t("admin.fzr.auditMissing") : `${r.resolved_mode === "direct" ? t("admin.fzr.direct") : t("admin.fzr.composite")} · ${r.resolved_summary}`}</span>
+                <span className={`rounded-full px-2 py-0.5 font-bold ${r.action === "ok" ? "bg-emerald-100 text-emerald-700" : r.action === "fix" ? "bg-amber-100 text-amber-700" : r.action === "remove" ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"}`} data-testid={`fzr-uc-audit-action-${r.slug}`}>
+                  {r.action === "ok" ? t("admin.fzr.auditOk") : r.action === "fix" ? t("admin.fzr.auditFix") : r.action === "remove" ? t("admin.fzr.auditRemove") : t("admin.fzr.auditMissing")}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
         {GROUPS.map(([type, labelKey]) => {
           const group = products.filter((p) => p.type === type);
           if (!group.length) return null;
@@ -206,7 +248,7 @@ export default function AdminFazercards() {
                       {m && (
                         <span className="min-w-0 flex-1 truncate text-xs text-slate-600" data-testid={`fzr-map-detail-${p.slug}`}>
                           {m.mode === "composite"
-                            ? m.components.map((c) => `${c.quantity} × ${c.offer_name}`).join(" + ")
+                            ? m.components.flatMap((c) => Array.from({ length: c.quantity }, () => `1 × ${c.offer_name}`)).join(" + ")
                             : <>{m.offer_name} · <span className="font-mono">{m.offer_id}</span></>}
                           {" "}· {m.category_id}
                         </span>
