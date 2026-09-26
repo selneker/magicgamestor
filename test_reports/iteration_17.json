@@ -1,0 +1,39 @@
+{
+  "summary": "Backend: ran the 4 requested pytest suites (test_fzr_composite_fulfillment, test_fzr_multiline, test_fzr_phase3, test_fzr_uc_audit) -> 71 passed / 0 failed, 1 warning (unrelated PendingDeprecationWarning from starlette). Frontend: verified the Admin decomposition display for MGS-DEMO01/02/03 in the orders list. All three orders render as specified: correct 'Envoyer au fournisseur (N)' counters (2 / 1 / 3), Composition badge on the composite 720 UC parent line, nested component rows (660 UC + 60 UC) with pending 'À envoyer' badges, completed component in DEMO02 with provider id 'ord-demo-660', DEMO03 correctly shows 2 client lines (720 UC 44 500 Ar + 60 UC 4 500 Ar = 49 000 Ar) with the direct 60 UC line rendered as a single '○ À envoyer' row (no composition). Dark mode: badges (green completed, neutral 'À envoyer', blue Composition, blue-bordered parent) remain legible; parent vs component rows visually distinct.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AdminOrders (focused single-order view)",
+        "issue": "Navigating to /admin/commandes?order=MGS-DEMO01 (and DEMO02/DEMO03) shows 'Order not found'. The page calls GET /api/orders/{focusedOrder} which only matches by internal UUID `id` field, not by `order_number`. So the notification/deeplink flow using order_number always 404s for admins. Workaround used during testing: search by order_number in the list. Not part of the composite feature itself but blocks the requested URL flow.",
+        "selector": "notification-order-error / GET /api/orders/{order_number}",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_fzr_composite_fulfillment.py",
+    "/app/backend/tests/test_fzr_multiline.py",
+    "/app/backend/tests/test_fzr_phase3.py",
+    "/app/backend/tests/test_fzr_uc_audit.py"
+  ],
+  "action_items": [
+    "(Optional / out of composite scope) Make GET /api/orders/{id_or_number} also resolve by order_number, OR change the frontend focused fetch to /admin/orders/{id} + resolve order_number server-side, so the /admin/commandes?order=MGS-DEMO01 deeplink works. Everything else is passing."
+  ],
+  "critical_code_review_comments": [
+    "backend/routers/orders.py get_order() matches only by `id`; add order_number fallback for admins to support notification deeplinks.",
+    "Seeded demo orders have user_id=None and email=None; they work in admin list view via search but fail single-order deeplink due to the id-only lookup.",
+    "Composite decomposition rendering in FzrFulfillment.js correctly uses data-testids fzr-comp-<order>-<idx>-<u> and fzr-comp-status-* — good testability.",
+    "Send button counter (readyCount) correctly aggregates units across composite and direct lines (DEMO01=2, DEMO02=1 after 1 completed, DEMO03=3)."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "100% (71/71)", "frontend": "100% for the composite display; 1 unrelated deeplink bug found" },
+  "test_credentials": "admin@magicgame.store / Admin#12345",
+  "seed_data_creation": "None (used existing seeded MGS-DEMO01/02/03).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Composite decomposition feature is functionally complete on both backend (mocked pytest 71/71) and frontend display. When re-testing, note that ?order=MGS-DEMO01 deeplink 404s because /api/orders/{id} only accepts UUID id — use the search box (MGS-DEMO01/02/03) to load the orders in list view. Live FazerCards is disabled; do not click 'Envoyer au fournisseur' or preflight.",
+  "rca of the issue": "Deeplink 'Order not found': frontend calls GET /api/orders/MGS-DEMO01 (order_number), but backend routers/orders.py:247 does db.orders.find_one({'id': order_id}) — matches only the internal UUID `id` field, never the human-readable `order_number`. Fix: extend lookup to `{'$or':[{'id':order_id},{'order_number':order_id}]}` for admin roles, or add a dedicated /admin/orders/by-number/{n} endpoint."
+}
