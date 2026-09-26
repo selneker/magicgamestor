@@ -6,7 +6,7 @@ import { api, errorMessage, formatAr } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { StatusPill } from "@/pages/OrderTrack";
-import { FzrFulfillment, lineRecord, lineSendable } from "@/components/admin/FzrFulfillment";
+import { FzrFulfillment, lineRecord, unitRecord, lineSendable } from "@/components/admin/FzrFulfillment";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,14 +27,32 @@ export default function AdminOrders() {
   const [filters, setFilters] = useState({ status: "all", method: "all", q: "" });
   const [mappedIds, setMappedIds] = useState({});
   const [mapStatus, setMapStatus] = useState({});
+  const [mapComponents, setMapComponents] = useState({});
   useEffect(() => {
     api.get("/admin/fazercards/mappings").then(({ data }) => {
       setMappedIds(Object.fromEntries(data.products.filter((p) => p.fulfillable).map((p) => [p.id, true])));
       setMapStatus(Object.fromEntries(data.products.map((p) => [p.id, p.mapping_status])));
+      const comps = {};
+      data.products.forEach((p) => {
+        const m = p.fazercards_mapping;
+        if (m && m.mode === "composite" && Array.isArray(m.components)) {
+          comps[p.id] = m.components.flatMap((c) => Array.from({ length: c.quantity }, () => ({ offer_name: c.offer_name, offer_id: c.offer_id })));
+        }
+      });
+      setMapComponents(comps);
     }).catch(() => {});
   }, []);
-  const readyCount = (o) => (o.status !== "paid" ? 0
-    : (o.items || []).filter((it, idx) => it.quantity === 1 && !!mappedIds[it.product_id] && lineSendable(lineRecord(o, idx))).length);
+  const readyCount = (o) => {
+    if (o.status !== "paid") return 0;
+    let n = 0;
+    (o.items || []).forEach((it, idx) => {
+      if (it.quantity !== 1) return;
+      const comps = mapComponents[it.product_id];
+      if (comps?.length) comps.forEach((_, u) => { if (lineSendable(unitRecord(o, idx, u))) n += 1; });
+      else if (mappedIds[it.product_id] && lineSendable(lineRecord(o, idx))) n += 1;
+    });
+    return n;
+  };
 
   const [params, setParams] = useSearchParams();
   const focusedOrder = params.get("order");
@@ -99,7 +117,7 @@ export default function AdminOrders() {
               )}
               {isSuperAdmin && <Button size="icon" variant="ghost" className="rounded-full text-slate-400 hover:text-rose-600" onClick={() => remove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
             </div>
-            <FzrFulfillment order={o} mappedIds={mappedIds} mapStatus={mapStatus} readyCount={readyCount(o)} onChanged={load} />
+            <FzrFulfillment order={o} mappedIds={mappedIds} mapStatus={mapStatus} mapComponents={mapComponents} readyCount={readyCount(o)} onChanged={load} />
           </article>
         ))}
       </div>

@@ -48,8 +48,9 @@ def mapping_ok(mapping: dict | None) -> bool:
 
 
 def fulfillable(mapping: dict | None) -> bool:
-    """Envoi fournisseur réel : mapping direct confirmé uniquement (multi-commandes hors scope)."""
-    return mapping_ok(mapping) and mapping.get("mode", "direct") == "direct"
+    """Envoi fournisseur réel : mapping DIRECT ou COMPOSÉ confirmé.
+    Un mapping composé est décomposé en interne au fulfillment (chaque composant = 1 commande FazerCards directe)."""
+    return mapping_ok(mapping)
 
 
 def mapping_status(mapping: dict | None) -> str:
