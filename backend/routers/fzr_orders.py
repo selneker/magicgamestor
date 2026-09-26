@@ -8,12 +8,12 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.audit import audit
 from core.db import db
 from core.security import require_admin, require_permission, require_super_admin
-from services import fazercards, fzr_fulfillment
+from services import fazercards, fzr_fulfillment, fzr_mapping
 
 router = APIRouter(tags=["fazercards-fulfillment"])
 logger = logging.getLogger("mgs.fzr")
@@ -28,9 +28,17 @@ class FzrAutoIn(BaseModel):
     fzr_auto: bool
 
 
-class MappingIn(BaseModel):
-    category_id: str
+class ComponentIn(BaseModel):
     offer_id: str
+    quantity: int = Field(ge=1, le=50)
+
+
+class MappingIn(BaseModel):
+    mode: str = Field(default="direct", pattern=r"^(direct|composite)$")
+    category_id: str
+    offer_id: str | None = None
+    components: list[ComponentIn] | None = None
+    confirmed: bool = True
 
 
 # ---------- Réglage global manuel / automatique (kill switch) ----------
@@ -47,35 +55,65 @@ async def fzr_update_settings(body: FzrAutoIn, admin=Depends(require_super_admin
     return {"fzr_auto": body.fzr_auto}
 
 
-# ---------- Mapping produit MGS ↔ offre FazerCards ----------
+# ---------- Mapping produit MGS ↔ offre(s) FazerCards (direct ou composé, tous types) ----------
 @router.get("/admin/fazercards/mappings", dependencies=[Depends(require_admin)])
 async def fzr_mappings():
     products = await db.products.find({}, {"_id": 0, "id": 1, "slug": 1, "name": 1, "type": 1, "price": 1,
-                                           "active": 1, "fazercards_mapping": 1}).sort("sort_order", 1).to_list(500)
+                                           "uc_amount": 1, "duration_months": 1, "active": 1,
+                                           "requires_mapping": 1, "fazercards_mapping": 1}) \
+        .sort("sort_order", 1).to_list(500)
+    for p in products:
+        mapping = p.get("fazercards_mapping")
+        p["mapping_status"] = fzr_mapping.mapping_status(mapping)
+        p["fulfillable"] = fzr_mapping.fulfillable(mapping)
+        p["supplier_cost_usd"] = fzr_mapping.supplier_cost_usd(mapping)
     return {"products": products}
 
 
-@router.patch("/admin/fazercards/products/{product_id}/mapping", dependencies=[Depends(require_permission("catalog.manage"))])
-async def fzr_set_mapping(product_id: str, body: MappingIn):
+@router.patch("/admin/fazercards/products/{product_id}/mapping")
+async def fzr_set_mapping(product_id: str, body: MappingIn, admin=Depends(require_permission("catalog.manage"))):
     product = await db.products.find_one({"id": product_id}, PUBLIC)
     if not product:
         raise HTTPException(status_code=404, detail="Produit introuvable")
-    offers = await fazercards.pubg_offers_fresh(body.category_id)
-    offer = next((o for o in offers["offers"] if o["offer_id"] == body.offer_id), None)
-    if not offer:
-        raise HTTPException(status_code=409, detail="Cette offre n'existe pas dans le catalogue FazerCards live.")
-    mapping = {"category_id": body.category_id, "offer_id": body.offer_id, "offer_name": offer["name"],
-               "price_usd_at_link": offer["price_usd"], "linked_at": _now()}
+    mapping = await fzr_mapping.build_mapping(product, body)
     await db.products.update_one({"id": product_id}, {"$set": {"fazercards_mapping": mapping}})
-    return {"product_id": product_id, "fazercards_mapping": mapping}
+    await audit("fzr.mapping_set", admin["user_id"], product_id,
+                {"slug": product["slug"], "mode": mapping["mode"], "category_id": mapping["category_id"],
+                 "offer_id": mapping.get("offer_id"),
+                 "components": [{"offer_id": c["offer_id"], "quantity": c["quantity"]} for c in mapping.get("components", [])],
+                 "confirmed": mapping["confirmed"]})
+    return {"product_id": product_id, "fazercards_mapping": mapping,
+            "mapping_status": fzr_mapping.mapping_status(mapping), "fulfillable": fzr_mapping.fulfillable(mapping),
+            "supplier_cost_usd": fzr_mapping.supplier_cost_usd(mapping)}
 
 
-@router.delete("/admin/fazercards/products/{product_id}/mapping", dependencies=[Depends(require_permission("catalog.manage"))])
-async def fzr_unset_mapping(product_id: str):
+@router.delete("/admin/fazercards/products/{product_id}/mapping")
+async def fzr_unset_mapping(product_id: str, admin=Depends(require_permission("catalog.manage"))):
     res = await db.products.update_one({"id": product_id}, {"$unset": {"fazercards_mapping": ""}})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Produit introuvable")
+    await audit("fzr.mapping_unset", admin["user_id"], product_id, {})
     return {"ok": True}
+
+
+@router.get("/admin/fazercards/coverage", dependencies=[Depends(require_admin)])
+async def fzr_coverage():
+    """Couverture live : chaque offre fournisseur avec son état — utilisée par MGS ou « disponible, non activée »."""
+    categories = await fazercards.pubg_catalog()
+    used = {}
+    async for p in db.products.find({"fazercards_mapping": {"$exists": True}},
+                                    {"_id": 0, "name": 1, "slug": 1, "fazercards_mapping": 1}):
+        m = p["fazercards_mapping"]
+        refs = [m["offer_id"]] if m.get("mode", "direct") == "direct" else [c["offer_id"] for c in m.get("components", [])]
+        for oid in refs:
+            used.setdefault((m["category_id"], oid), []).append({"name": p["name"], "slug": p["slug"]})
+    offers = []
+    for cat in categories:
+        for o in cat["offers"]:
+            offers.append({"category_id": cat["category_id"], "offer_id": o["offer_id"], "name": o["name"],
+                           "price_usd": o["price_usd"], "kind": fzr_mapping.classify_offer(o),
+                           "used_by": used.get((cat["category_id"], o["offer_id"]), [])})
+    return {"offers": offers}
 
 
 # ---------- Fulfillment fournisseur ----------
@@ -107,7 +145,9 @@ async def fzr_catalog_refresh(admin=Depends(require_permission("catalog.manage")
             prev = await db.fzr_offer_prices.find_one(key, PUBLIC)
             if prev and prev.get("price_usd") != offer["price_usd"]:
                 product = await db.products.find_one(
-                    {"fazercards_mapping.category_id": key["category_id"], "fazercards_mapping.offer_id": key["offer_id"]},
+                    {"fazercards_mapping.category_id": key["category_id"],
+                     "$or": [{"fazercards_mapping.offer_id": key["offer_id"]},
+                             {"fazercards_mapping.components.offer_id": key["offer_id"]}]},
                     {"_id": 0, "name": 1, "price": 1, "slug": 1})
                 try:
                     up = float(offer["price_usd"]) > float(prev["price_usd"])

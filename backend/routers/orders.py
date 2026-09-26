@@ -15,6 +15,7 @@ from routers.evo import EVO_TYPE, release_evo_locks, reserve_evo
 from services import loyalty, mailer
 from services import payments as gw
 from services.fulfillment import on_order_paid
+from services.fzr_mapping import purchase_blocked
 from services.push import notify_new_order
 
 router = APIRouter(tags=["orders"])
@@ -166,6 +167,10 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
     products = {p["id"]: p for p in await db.products.find({"id": {"$in": ids}, "active": True}, PUBLIC).to_list(100)}
     if len(products) != len(set(ids)):
         raise HTTPException(status_code=400, detail="One or more products are unavailable")
+    for p in products.values():
+        blocked = purchase_blocked(p)
+        if blocked:
+            raise HTTPException(status_code=409, detail=blocked)
     items, total = [], 0
     for line in body.items:
         p = products[line.product_id]

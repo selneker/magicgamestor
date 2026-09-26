@@ -13,13 +13,14 @@ const STATUS_STYLE = {
   submit_timeout: "bg-amber-100 text-amber-700", error: "bg-rose-100 text-rose-700", creating: "bg-slate-100 text-slate-600",
 };
 
-export const FzrFulfillment = ({ order, mapped, onChanged }) => {
+export const FzrFulfillment = ({ order, mapped, single, onChanged }) => {
   const { t } = useLang();
   const [busy, setBusy] = useState(false);
   const [report, setReport] = useState(null);
   const fzr = order.fazercards;
   const eligible = mapped && order.status === "paid" && (!fzr || (!fzr.provider_order_id && ["submit_timeout", "error"].includes(fzr.status)));
-  if (!fzr && !eligible) return null;
+  const missingMapping = single && !mapped && order.status === "paid" && !fzr;
+  if (!fzr && !eligible && !missingMapping) return null;
 
   const openPreflight = async () => {
     setBusy(true);
@@ -45,6 +46,11 @@ export const FzrFulfillment = ({ order, mapped, onChanged }) => {
   return (
     <div className="col-span-full flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs" data-testid={`fzr-block-${order.order_number}`}>
       <span className="font-black uppercase tracking-[0.1em] text-slate-500">FazerCards</span>
+      {missingMapping && (
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700" data-testid={`fzr-missing-${order.order_number}`}>
+          {t("admin.fzr.mappingMissingOrder")}
+        </span>
+      )}
       {fzr && (
         <>
           <span className={`rounded-full px-2 py-0.5 font-semibold ${STATUS_STYLE[fzr.provider_status || fzr.status] || "bg-slate-100 text-slate-600"}`} data-testid={`fzr-status-${order.order_number}`}>

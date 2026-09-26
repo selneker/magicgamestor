@@ -26,6 +26,16 @@ EVO_PACKS = [
     ("evo-fragments-mythique", "Fragments mythique", "Mythic Fragments",
      "79 fragments et d'autres récompenses.", "79 fragments and other rewards.", 24000, "season"),
 ]
+# Phase 4 : offres spéciales FazerCards pas encore présentées par MGS. Créées INACTIVES et requires_mapping :
+# l'admin configure le mapping live (Admin → Fournisseur) puis active. Aucun id/prix fournisseur hardcodé.
+NEW_EVO_PACKS = [
+    ("evo-weekly-deal-1", "Weekly Deal Pack 1", "Weekly Deal Pack 1",
+     "Pack promo hebdomadaire PUBG Mobile — contenu défini en jeu.",
+     "Weekly PUBG Mobile deal pack — contents defined in game.", 5900, "week"),
+    ("evo-weekly-deal-2", "Weekly Deal Pack 2", "Weekly Deal Pack 2",
+     "Grand pack promo hebdomadaire PUBG Mobile — contenu défini en jeu.",
+     "Large weekly PUBG Mobile deal pack — contents defined in game.", 17500, "week"),
+]
 
 
 def _now():
@@ -93,6 +103,14 @@ async def seed_all():
                 "uc_amount": None, "duration_months": None, "price": price, "old_price": None, "popular": False,
                 "badge": None, "evo_limit": limit, "description_fr": desc_fr, "description_en": desc_en,
                 "active": True, "sort_order": 200 + i, "created_at": _now(),
+            })
+    for i, (slug, name, name_en, desc_fr, desc_en, price, limit) in enumerate(NEW_EVO_PACKS):
+        if not await db.products.find_one({"slug": slug}):
+            await db.products.insert_one({
+                "id": str(uuid.uuid4()), "slug": slug, "type": "evo", "name": name, "name_en": name_en,
+                "uc_amount": None, "duration_months": None, "price": price, "old_price": None, "popular": False,
+                "badge": None, "evo_limit": limit, "description_fr": desc_fr, "description_en": desc_en,
+                "active": False, "requires_mapping": True, "sort_order": 210 + i, "created_at": _now(),
             })
     if await db.seasons.count_documents({}) == 0:
         await db.seasons.insert_one({"id": str(uuid.uuid4()), "name": "Saison A18", "active": True,

@@ -28,7 +28,7 @@ export default function AdminOrders() {
   const [mappedIds, setMappedIds] = useState({});
   useEffect(() => {
     api.get("/admin/fazercards/mappings").then(({ data }) => {
-      setMappedIds(Object.fromEntries(data.products.filter((p) => p.fazercards_mapping).map((p) => [p.id, true])));
+      setMappedIds(Object.fromEntries(data.products.filter((p) => p.fulfillable).map((p) => [p.id, true])));
     }).catch(() => {});
   }, []);
   const isMapped = (o) => o.items?.length === 1 && o.items[0].quantity === 1 && !!mappedIds[o.items[0].product_id];
@@ -96,7 +96,7 @@ export default function AdminOrders() {
               )}
               {isSuperAdmin && <Button size="icon" variant="ghost" className="rounded-full text-slate-400 hover:text-rose-600" onClick={() => remove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
             </div>
-            <FzrFulfillment order={o} mapped={isMapped(o)} onChanged={load} />
+            <FzrFulfillment order={o} mapped={isMapped(o)} single={o.items?.length === 1 && o.items[0].quantity === 1} onChanged={load} />
           </article>
         ))}
       </div>

@@ -60,7 +60,11 @@ export default function PackEvolutif() {
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2" data-testid="evo-grid">
+      <div className="mt-8 flex items-center gap-3">
+        <p className="eyebrow" data-testid="evo-specials-title">{t("evo.specials")}</p>
+        <span className="h-px flex-1 bg-border" />
+      </div>
+      <div className="mt-4 grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2" data-testid="evo-grid">
         {offers === null && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-52" />)}
         {offers?.map((p) => (
           <article key={p.id} data-testid={`evo-offer-${p.slug}`} className="flex flex-col border border-foreground bg-card p-6">
@@ -77,7 +81,11 @@ export default function PackEvolutif() {
                 {p.old_price && <p className="text-xs text-muted-foreground line-through">{formatAr(p.old_price)}</p>}
                 <p className="num text-2xl text-foreground" data-testid={`evo-price-${p.slug}`}>{formatAr(p.price)}</p>
               </div>
-              <Button onClick={() => openOffer(p)} data-testid={`evo-buy-${p.slug}`} className="rounded-full px-6 font-bold">{t("evo.buy")}</Button>
+              {p.purchasable === false ? (
+                <Button disabled variant="outline" data-testid={`evo-soon-${p.slug}`} className="rounded-full px-6 font-bold opacity-70">{t("evo.soon")}</Button>
+              ) : (
+                <Button onClick={() => openOffer(p)} data-testid={`evo-buy-${p.slug}`} className="rounded-full px-6 font-bold">{t("evo.buy")}</Button>
+              )}
             </div>
           </article>
         ))}

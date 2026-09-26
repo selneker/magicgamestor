@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 from core.audit import audit
 from core.db import db
-from services import fazercards
+from services import fazercards, fzr_mapping
 
 logger = logging.getLogger("mgs.fzr")
 PUBLIC = {"_id": 0}
@@ -26,15 +26,28 @@ async def auto_enabled() -> bool:
 
 
 async def mapped_item(order: dict):
-    """Éligible ssi exactement 1 article, quantité 1, produit lié à une offre FazerCards (pas de multi-SKU)."""
+    """Éligible ssi 1 article (qté 1) avec mapping DIRECT confirmé (composition = multi-commandes, hors scope)."""
     items = order.get("items") or []
     if len(items) != 1 or items[0].get("quantity") != 1:
         return None
     product = await db.products.find_one({"id": items[0]["product_id"]}, {"_id": 0, "fazercards_mapping": 1})
     mapping = (product or {}).get("fazercards_mapping")
-    if not mapping or not mapping.get("category_id") or not mapping.get("offer_id"):
+    if not fzr_mapping.fulfillable(mapping):
         return None
     return items[0], mapping
+
+
+async def ineligible_reason(order: dict) -> str:
+    items = order.get("items") or []
+    if len(items) != 1 or items[0].get("quantity") != 1:
+        return "Commande non éligible : un seul article (qté 1) lié à une offre FazerCards est requis."
+    product = await db.products.find_one({"id": items[0]["product_id"]}, {"_id": 0, "fazercards_mapping": 1})
+    status = fzr_mapping.mapping_status((product or {}).get("fazercards_mapping"))
+    return {
+        "missing": "⚠ Mapping fournisseur manquant : liez ce produit à une offre FazerCards dans Admin → Fournisseur.",
+        "unconfirmed": "⚠ Mapping fournisseur « à confirmer » : confirmez la correspondance avant tout envoi.",
+        "composite": "Mapping composé : l'envoi multi-commandes fournisseur n'est pas encore activé.",
+    }.get(status, "Mapping fournisseur invalide.")
 
 
 async def preflight(order_id: str) -> dict:
@@ -49,7 +62,7 @@ async def preflight(order_id: str) -> dict:
         raise HTTPException(status_code=409, detail="Paiement non confirmé : la commande doit être au statut « payée ».")
     eligible = await mapped_item(order)
     if not eligible:
-        raise HTTPException(status_code=409, detail="Commande non éligible : un seul article (qté 1) lié à une offre FazerCards est requis.")
+        raise HTTPException(status_code=409, detail=await ineligible_reason(order))
     item, mapping = eligible
     validation = await fazercards.validate_pubg_id(order["pubg_id"])  # 502/504 si service indisponible
     if not validation["valid"]:
