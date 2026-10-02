@@ -1,0 +1,43 @@
+{
+  "summary": "Phase 2 Binance USDT crypto + 4-step checkout tested on preview. Wrote /app/backend/tests/test_binance_crypto.py (19 pytests) covering admin settings, create_payment uniqueness/idempotency, watcher confirm/detect/expire paths, and all unmatched reasons (wrong_network, wrong_amount, wrong_address, wrong_memo, duplicate, unknown, deposit-after-expiry). All 19 pass. test_payment_fees.py (10/10) also passes with new conftest. Playwright e2e verified: BottomNav/GameButton hidden on /commande, PubG verify (mocked) auto-slides to step 2, Binance flow renders TRC20/TON/BEP20 cards and crypto-amount/qr/address/memo at step 3 (memo only on TON), manual flow has no reference field at step 2, shared BackButton exits on step 1 and goes to previous step on step 2.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "env", "issue": "backend/.env lacks PAPI_WEBHOOK_SECRET → tests/test_payment_lifecycle.py cannot be collected (pre-existing; blocks lifecycle regression)."},
+      {"endpoint": "tests/test_iter23_manual_fee.py", "issue": "Hardcoded admin password 'Admin1234!' is wrong (preview uses MgsAdmin2026!) → all 7 cases ERROR at login. Pre-existing test bug, not Phase 2 regression."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/commande", "issues": ["Cart icon in header remains visible on /commande; spec only says BottomNav+GameButton must be hidden, so this is informational only."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_binance_crypto.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/all.xml"
+  ],
+  "action_items": [
+    "Fix tests/test_iter23_manual_fee.py credentials (change ADMIN_PASS to env var or MgsAdmin2026!).",
+    "Add PAPI_WEBHOOK_SECRET to backend/.env (even a dummy) so test_payment_lifecycle.py can at least be collected in preview; else exclude it from the default suite."
+  ],
+  "critical_code_review_comments": [
+    "services/crypto.create_payment: amount-unique retry loop uses random.sample(range(1,100), 99) — fine for 99 concurrent same-base amounts; after that returns 503. Acceptable.",
+    "binance_watcher._no_candidate: when `amount` matches an open slot on a different network, reports 'wrong_network' tied to that other order's payment_id — behavior matches spec. OK.",
+    "crypto_payments index enforces one open slot per (network, amount) and per order_id — good. tx_hash unique partial index prevents double-confirm.",
+    "routers/crypto.initiate rate-limited per IP (15/10min). Fine but tests must vary X-Forwarded-For.",
+    "orders.py line 167-171: binance payment_provider='binance' set only after available() check — correct."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_binance_crypto.py (new)",
+    "/app/backend/tests/conftest.py (new; adds backend to sys.path and loads .env for all tests)"
+  ],
+  "success_rate": {"backend": "100% on new Binance suite (19/19) + fees unit tests (10/10); pre-existing lifecycle/iter23 blocked by env/password issues unrelated to Phase 2", "frontend": "100% of smoke-tested checkout flows"},
+  "test_credentials": "admin@magicgame.store / MgsAdmin2026!",
+  "seed_data_creation": "Created ~15 TEST_* orders + crypto_payments + crypto_unmatched rows during test run. Reset admin settings: binance.enabled=false, all wallets cleared, papi_auto=false.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Binance tests require sync pymongo for DB assertions + a single persistent asyncio loop (see _PERSIST_LOOP in test_binance_crypto.py) because motor's AsyncIOMotorClient binds to the first loop it uses. Run with `-n 0` because pytest-xdist loadscope parallelism conflicts with the admin-settings fixture that toggles binance.enabled. Set BACKEND_TEST_URL=http://localhost:8001 (or preview URL) and REACT_APP_BACKEND_URL for test_iter23_manual_fee.py. Admin password is MgsAdmin2026!. Frontend uses mock on **/api/fazercards/pubg/validate-id (preview has no FazerCards key). Binance preview env has dummy keys so services.binance.configured() is True and crypto availability can be enabled via API."
+}
