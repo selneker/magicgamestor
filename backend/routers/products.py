@@ -1,0 +1,124 @@
+import re
+import uuid
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field, field_validator
+
+from core.db import db
+from core.security import require_permission
+from services.fzr_mapping import mapping_ok
+
+router = APIRouter(tags=["products"])
+PUBLIC = {"_id": 0}
+
+
+def _public(p: dict) -> dict:
+    """Vue publique : coût fournisseur jamais exposé + drapeau achetable."""
+    mapping = p.pop("fazercards_mapping", None)
+    p["purchasable"] = not p.get("requires_mapping") or mapping_ok(mapping)
+    return p
+
+
+class ProductIn(BaseModel):
+    slug: str = Field(min_length=2, max_length=60, pattern=r"^[a-z0-9-]+$")
+    type: str = Field(pattern=r"^(uc|prime|prime_plus|evo)$")
+    evo_limit: str | None = Field(default=None, pattern=r"^(season|lifetime|week)$")
+    name: str = Field(min_length=1, max_length=60)
+    name_en: str | None = None
+    uc_amount: int | None = None
+    duration_months: int | None = None
+    price: int = Field(gt=0)
+    old_price: int | None = None
+    popular: bool = False
+    badge: str | None = None
+    image_url: str | None = Field(default=None, max_length=500)
+    description_fr: str = ""
+    description_en: str = ""
+    active: bool = True
+    sort_order: int = 0
+    requires_mapping: bool | None = None
+
+    @field_validator("image_url")
+    @classmethod
+    def _http_url(cls, value):
+        value = (value or "").strip()
+        if not value:
+            return None
+        if not re.match(r"^https?://[^\s]+$", value):
+            raise ValueError("URL d'image invalide (https://…)")
+        return value
+
+
+@router.get("/products")
+async def list_products(
+    type: str | None = None, q: str | None = None, min_price: int | None = None, max_price: int | None = None,
+    popular: bool | None = None, sort: str = Query("default", pattern=r"^(default|price_asc|price_desc|uc_desc)$"),
+    include_inactive: bool = False,
+):
+    query = {} if include_inactive else {"active": True}
+    if type:
+        query["type"] = {"$in": type.split(",")}
+    if popular is not None:
+        query["popular"] = popular
+    price = {}
+    if min_price is not None:
+        price["$gte"] = min_price
+    if max_price is not None:
+        price["$lte"] = max_price
+    if price:
+        query["price"] = price
+    if q:
+        query["$or"] = [{"name": {"$regex": q, "$options": "i"}}, {"slug": {"$regex": q, "$options": "i"}}]
+    sort_map = {"default": [("sort_order", 1)], "price_asc": [("price", 1)], "price_desc": [("price", -1)], "uc_desc": [("uc_amount", -1)]}
+    return [_public(p) for p in await db.products.find(query, PUBLIC).sort(sort_map[sort]).to_list(500)]
+
+
+@router.get("/products/{slug}")
+async def get_product(slug: str):
+    product = await db.products.find_one({"slug": slug, "active": True}, PUBLIC)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    related = await db.products.find({"type": product["type"], "slug": {"$ne": slug}, "active": True}, PUBLIC) \
+        .sort([("price", 1)]).to_list(50)
+    related.sort(key=lambda p: abs(p["price"] - product["price"]))
+    return {**_public(product), "related": [_public(r) for r in related[:4]]}
+
+
+@router.post("/admin/products", dependencies=[Depends(require_permission("catalog.manage"))])
+async def create_product(body: ProductIn):
+    if await db.products.find_one({"slug": body.slug}):
+        raise HTTPException(status_code=409, detail="Slug already exists")
+    data = body.model_dump()
+    data["requires_mapping"] = bool(data.get("requires_mapping"))
+    if data["active"] and data["requires_mapping"]:
+        raise HTTPException(status_code=409, detail="Mapping fournisseur manquant : créez le produit inactif, configurez le mapping (Admin → Fournisseur) puis activez-le.")
+    doc = {**data, "id": str(uuid.uuid4()), "created_at": datetime.now(timezone.utc).isoformat()}
+    await db.products.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@router.put("/admin/products/{product_id}", dependencies=[Depends(require_permission("catalog.manage"))])
+async def update_product(product_id: str, body: ProductIn):
+    existing = await db.products.find_one({"id": product_id}, PUBLIC)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Product not found")
+    clash = await db.products.find_one({"slug": body.slug, "id": {"$ne": product_id}})
+    if clash:
+        raise HTTPException(status_code=409, detail="Slug already exists")
+    data = body.model_dump()
+    if body.requires_mapping is None:
+        data["requires_mapping"] = existing.get("requires_mapping", False)
+    if data["active"] and data["requires_mapping"] and not mapping_ok(existing.get("fazercards_mapping")):
+        raise HTTPException(status_code=409, detail="⚠ Mapping fournisseur manquant ou non confirmé : impossible d'activer ce produit.")
+    await db.products.update_one({"id": product_id}, {"$set": data})
+    return await db.products.find_one({"id": product_id}, PUBLIC)
+
+
+@router.delete("/admin/products/{product_id}", dependencies=[Depends(require_permission("catalog.manage"))])
+async def delete_product(product_id: str):
+    res = await db.products.delete_one({"id": product_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return {"ok": True}
