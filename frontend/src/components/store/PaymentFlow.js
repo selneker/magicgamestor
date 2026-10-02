@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Banknote, Copy } from "lucide-react";
+import { Banknote, ChevronDown, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { useLang } from "@/context/LanguageContext";
 import { formatAr } from "@/lib/api";
@@ -58,9 +58,9 @@ export function PaymentFlow({ method, setMethod, phone, setPhone, reference, set
         const selected = method === c.key;
         const fee = paymentFee(config, c.key, subtotal);
         return (
-          <div key={c.key} className={`overflow-hidden rounded-[18px] border-2 bg-card transition-colors ${selected ? "border-foreground" : "border-[color:var(--rule)]"}`}>
-            <button type="button" data-testid={`method-${c.key}`} aria-pressed={selected} onClick={() => select(c.key)} className="flex w-full items-center gap-3 p-4 text-left active:scale-[0.99]">
-              <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${selected ? "border-foreground" : "border-[color:var(--rule-strong)]"}`}>
+          <div key={c.key} className={`overflow-hidden rounded-[18px] border-2 bg-card transition-colors ${selected ? "border-foreground" : "border-[color:var(--rule)] hover:border-[color:var(--rule-strong)]"}`}>
+            <button type="button" data-testid={`method-${c.key}`} aria-pressed={selected} aria-expanded={selected} onClick={() => select(c.key)} className="flex w-full items-center gap-3 p-4 text-left active:scale-[0.99]">
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${selected ? "border-foreground" : "border-[color:var(--rule-strong)]"}`}>
                 {selected && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
               </span>
               {PAYMENT_LOGOS[c.key] ? (
@@ -74,6 +74,10 @@ export function PaymentFlow({ method, setMethod, phone, setPhone, reference, set
                 <span className="block font-display text-[15px] font-bold leading-tight text-foreground">{c.title}</span>
                 <span className="mt-0.5 block text-[12px] text-muted-foreground">{c.sub}</span>
               </span>
+              <span className="flex shrink-0 items-center gap-2 pl-1" aria-hidden="true">
+                {fee > 0 && <span className="num text-[11px] font-semibold text-muted-foreground">+{formatAr(fee)}</span>}
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${selected ? "rotate-180" : ""}`} />
+              </span>
             </button>
             <AnimatePresence initial={false}>
               {selected && (
@@ -83,12 +87,12 @@ export function PaymentFlow({ method, setMethod, phone, setPhone, reference, set
                     {c.key === "manual" && <ManualPanel reference={reference} setReference={setReference} config={config} copy={copy} />}
                     {c.key === "binance" && <NetworkPicker crypto={crypto} network={network} setNetwork={setNetwork} />}
 
-                    <div className="space-y-2 rounded-[14px] border-2 border-[color:var(--rule)] bg-muted/40 p-3 text-sm" data-testid={`payment-summary-${c.key}`}>
+                    <div className="space-y-2.5 rounded-[14px] border-2 border-[color:var(--rule)] bg-muted/40 p-4 text-sm" data-testid={`payment-summary-${c.key}`}>
                       <SummaryRow label={t("checkout.amount")} value={formatAr(subtotal)} />
                       <SummaryRow label={c.key === "binance" ? t("checkout.paymentFee") : t("checkout.verificationFee")} value={formatAr(fee)} />
-                      <div className="flex items-center justify-between border-t-2 border-[color:var(--rule)] pt-2 font-bold">
-                        <span>{t("checkout.total")}</span>
-                        <span className="num" data-testid={`payment-total-${c.key}`}>{formatAr(subtotal + fee)}</span>
+                      <div className="flex items-center justify-between border-t-2 border-[color:var(--rule)] pt-2.5">
+                        <span className="font-display text-[15px] font-bold">{t("checkout.total")}</span>
+                        <span className="num text-lg" data-testid={`payment-total-${c.key}`}>{formatAr(subtotal + fee)}</span>
                       </div>
                       {c.key === "binance" && <p className="text-xs text-muted-foreground">{t("checkout.binanceUsdtNext")}</p>}
                     </div>
@@ -105,9 +109,9 @@ export function PaymentFlow({ method, setMethod, phone, setPhone, reference, set
                       </AcceptBox>
                     )}
 
-                    <div className="flex gap-3">
-                      <Button type="button" variant="outline" onClick={() => select(c.key)} data-testid="payment-cancel" className="flex-1 rounded-full border-[color:var(--rule-strong)] font-semibold">{t("checkout.cancel")}</Button>
-                      <Button type="button" onClick={onContinue} disabled={!canContinue || busy} data-testid="payment-pay" className="flex-1 rounded-full font-bold">{busy ? t("checkout.processing") : t("checkout.continue")}</Button>
+                    <div className="flex gap-3 pt-1">
+                      <Button type="button" variant="outline" onClick={() => select(c.key)} data-testid="payment-cancel" className="h-12 flex-[0.6] rounded-full border-[color:var(--rule-strong)] font-semibold">{t("checkout.cancel")}</Button>
+                      <Button type="button" onClick={onContinue} disabled={!canContinue || busy} data-testid="payment-pay" className="h-12 flex-[1.4] rounded-full text-[15px] font-bold">{busy ? t("checkout.processing") : t("checkout.continue")}</Button>
                     </div>
                   </div>
                 </motion.div>
@@ -135,7 +139,7 @@ function AutoPanel({ c, phone, setPhone, config }) {
 
 function AcceptBox({ testId, checked, onChange, children }) {
   return (
-    <label className={`flex cursor-pointer items-start gap-3 rounded-[14px] border-2 p-3 text-sm transition-colors ${checked ? "border-foreground" : "border-[color:var(--rule)]"}`}>
+    <label className={`flex cursor-pointer items-start gap-3 rounded-[14px] border-2 p-3 text-sm transition-colors ${checked ? "border-foreground bg-primary/5" : "border-[color:var(--rule)]"}`}>
       <Checkbox data-testid={testId} checked={checked} onCheckedChange={(v) => onChange(!!v)} className="mt-0.5" />
       <span className="min-w-0 flex-1">{children}</span>
     </label>
@@ -151,8 +155,8 @@ function NetworkPicker({ crypto, network, setNetwork }) {
         {crypto.networks.map((n) => {
           const on = network === n.key;
           return (
-            <button key={n.key} type="button" data-testid={`binance-network-${n.key}`} aria-pressed={on} onClick={() => setNetwork(n.key)} className={`flex items-center gap-2 rounded-[12px] border-2 p-3 text-left transition-colors ${on ? "border-foreground bg-primary/20" : "border-[color:var(--rule)] hover:border-foreground"}`}>
-              <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${on ? "border-foreground" : "border-[color:var(--rule-strong)]"}`}>{on && <span className="h-2 w-2 rounded-full bg-foreground" />}</span>
+            <button key={n.key} type="button" data-testid={`binance-network-${n.key}`} aria-pressed={on} onClick={() => setNetwork(n.key)} className={`flex items-center gap-2.5 rounded-[12px] border-2 p-3 text-left transition-colors ${on ? "border-foreground bg-primary/10" : "border-[color:var(--rule)] hover:border-foreground"}`}>
+              <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${on ? "border-foreground" : "border-[color:var(--rule-strong)]"}`}>{on && <span className="h-2.5 w-2.5 rounded-full bg-foreground" />}</span>
               <span className="min-w-0"><span className="block text-sm font-black">{n.key}</span><span className="block truncate text-[11px] text-muted-foreground">{n.label}</span></span>
             </button>
           );
@@ -185,15 +189,15 @@ function ManualPanel({ reference, setReference, config, copy }) {
       <p className="text-sm font-semibold">{t("checkout.chooseOperator")}</p>
       <div className="flex gap-2">
         {PROVIDERS.map((p) => (
-          <button key={p.key} type="button" data-testid={`manual-provider-${p.key}`} onClick={() => setReference({ ...reference, provider: p.key })} className={`rounded-full px-3 py-1 text-xs font-bold ${provider === p.key ? "text-white" : "border bg-card text-muted-foreground"}`} style={provider === p.key ? { background: p.color } : undefined}>{p.label}</button>
+          <button key={p.key} type="button" data-testid={`manual-provider-${p.key}`} aria-pressed={provider === p.key} onClick={() => setReference({ ...reference, provider: p.key })} className={`rounded-full px-4 py-1.5 text-xs font-bold transition-opacity ${provider === p.key ? "text-white" : "border bg-card text-muted-foreground hover:opacity-80"}`} style={provider === p.key ? { background: p.color } : undefined}>{p.label}</button>
         ))}
       </div>
       {merchant && (
         <div className="space-y-2 rounded-[12px] border-2 border-[color:var(--rule)] bg-card p-3">
           <p className="text-sm text-foreground"><span className="font-medium">{t("checkout.ussdName")} :</span> <span data-testid="merchant-name">{merchant.name}</span></p>
           <div className="flex items-center justify-between gap-2">
-            <p className="min-w-0 text-sm text-foreground"><span className="font-medium">{t("checkout.ussdNumberShort")} :</span> <span className="num break-all" data-testid="merchant-number">{pretty(merchant.merchant)}</span></p>
-            <button type="button" onClick={() => copy(merchant.merchant)} data-testid="copy-merchant" aria-label={`${t("checkout.copy")} ${merchant.merchant}`} className="ml-auto inline-flex h-8 shrink-0 items-center gap-1 rounded-[8px] border px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:border-foreground hover:bg-primary hover:text-[#0A0A0A]">
+            <p className="min-w-0 text-sm text-foreground"><span className="font-medium">{t("checkout.ussdNumberShort")} :</span> <span className="num break-all text-base font-bold" data-testid="merchant-number">{pretty(merchant.merchant)}</span></p>
+            <button type="button" onClick={() => copy(merchant.merchant)} data-testid="copy-merchant" aria-label={`${t("checkout.copy")} ${merchant.merchant}`} className="ml-auto inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-foreground px-3.5 text-xs font-bold text-background transition-opacity hover:opacity-85">
               <Copy className="h-3.5 w-3.5" />{t("checkout.copy")}
             </button>
           </div>
