@@ -54,11 +54,6 @@ export default function Checkout() {
 
   const go = useCallback((n) => { setDir(n > step ? 1 : -1); setStep(n); window.scrollTo({ top: 0, behavior: "smooth" }); }, [step]);
 
-  useEffect(() => {
-    if (step !== 0 || !verified) return undefined;
-    const id = setTimeout(() => go(1), 1000);
-    return () => clearTimeout(id);
-  }, [verified]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (items.length === 0 && !order) {
     return <div className="py-24 text-center" data-testid="checkout-empty"><p className="text-muted-foreground">{t("cart.empty")}</p><Button asChild className="mt-4 rounded-full"><Link to="/boutique">{t("cart.browse")}</Link></Button></div>;

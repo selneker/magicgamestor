@@ -62,10 +62,7 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
       {state.status === "valid" && checkout && (
         <div className="mt-3 rounded-[18px] border-2 border-foreground bg-primary/15 p-4" data-testid="pubg-verify-valid">
           <p className="flex items-center gap-2 font-display text-lg font-bold"><CheckCircle2 className="h-5 w-5 text-emerald-600" />{t("checkout.verified")}</p>
-          <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-            <dt className="text-muted-foreground">{t("checkout.verifyPlayerName")}</dt><dd className="font-bold" data-testid="pubg-verify-player-name">{state.name || "—"}</dd>
-            <dt className="text-muted-foreground">{t("checkout.pubgIdShort")}</dt><dd className="num font-bold" data-testid="pubg-verify-id">{pubgId}</dd>
-          </dl>
+          <p className="mt-1.5 pl-7 text-base font-bold" data-testid="pubg-verify-player-name">{state.name || "—"}</p>
           <p className="mt-2 text-xs text-muted-foreground" data-testid="pubg-verify-confirm">{t("checkout.verifyConfirm")}</p>
         </div>
       )}
