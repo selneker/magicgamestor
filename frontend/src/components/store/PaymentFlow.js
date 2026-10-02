@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Copy } from "lucide-react";
+import { Banknote, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { useLang } from "@/context/LanguageContext";
 import { formatAr } from "@/lib/api";
@@ -63,12 +63,17 @@ export function PaymentFlow({ method, setMethod, phone, setPhone, reference, set
               <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${selected ? "border-foreground" : "border-[color:var(--rule-strong)]"}`}>
                 {selected && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
               </span>
-              {c.color && <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: c.color }} />}
+              {PAYMENT_LOGOS[c.key] ? (
+                <img src={PAYMENT_LOGOS[c.key]} alt="" aria-hidden="true" className="h-6 w-14 shrink-0 object-contain object-left" />
+              ) : (
+                <span className="flex h-6 w-14 shrink-0 items-center text-muted-foreground" aria-hidden="true">
+                  <Banknote className="h-5 w-5" />
+                </span>
+              )}
               <span className="min-w-0 flex-1">
                 <span className="block font-display text-[15px] font-bold leading-tight text-foreground">{c.title}</span>
                 <span className="mt-0.5 block text-[12px] text-muted-foreground">{c.sub}</span>
               </span>
-              {PAYMENT_LOGOS[c.key] && <img src={PAYMENT_LOGOS[c.key]} alt="" aria-hidden="true" className="h-6 max-w-24 shrink-0 object-contain" />}
             </button>
             <AnimatePresence initial={false}>
               {selected && (
