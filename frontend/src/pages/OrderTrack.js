@@ -127,7 +127,7 @@ export default function OrderTrack() {
             </Button>
           )}
           {order.status === "pending_payment" && payInfo?.expires_at && <p className="text-center text-xs text-muted-foreground" data-testid="payment-deadline">{t("checkout.deadline", { time: new Date(payInfo.expires_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) })}</p>}
-          {["failed", "expired"].includes(order.status) && order.payment_method !== "manual" && (
+          {["failed", "expired"].includes(order.status) && !["manual", "binance"].includes(order.payment_method) && (
             <Button onClick={retry} disabled={retrying} variant="outline" className="h-12 w-full rounded-full font-bold" data-testid="retry-payment-button">{t("checkout.retry")}</Button>
           )}
         </div>

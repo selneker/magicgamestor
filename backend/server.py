@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent / ".env")
 
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -13,7 +14,8 @@ from starlette.middleware.cors import CORSMiddleware
 from core.db import client, ensure_indexes
 from core.security import PERMISSIONS as DEFAULT_ADMIN_PERMISSIONS
 from core.seed import seed_all
-from routers import admin_users, auth, evo, fazercards, fiveone, fzr_orders, products, orders, payments, events, chat, push, loyalty
+from routers import admin_users, auth, crypto, evo, fazercards, fiveone, fzr_orders, products, orders, payments, events, chat, push, loyalty
+from services import binance_watcher
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("mgs")
@@ -25,8 +27,10 @@ async def lifespan(_: FastAPI):
     await seed_all()
     await orders.backfill_subscription_locks()
     await migrate_users()
+    watcher = asyncio.create_task(binance_watcher.run_forever())
     logger.info("Magic Game Store API ready (payment mode=%s)", os.environ.get("PAYMENT_MODE"))
     yield
+    watcher.cancel()
     client.close()
 
 
@@ -58,7 +62,7 @@ async def root():
 
 
 for r in (auth.router, products.router, orders.router, payments.router, events.router, chat.router, push.router,
-          loyalty.router, admin_users.router, evo.router, fazercards.router, fzr_orders.router, fiveone.router):
+          loyalty.router, admin_users.router, evo.router, fazercards.router, fzr_orders.router, fiveone.router, crypto.router):
     api.include_router(r)
 app.include_router(api)
 

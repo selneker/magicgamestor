@@ -42,7 +42,7 @@ export function BottomNav() {
     },
   ];
 
-  if (pathname.startsWith("/admin") || pathname.startsWith("/compte") || pathname.startsWith("/privacy") || pathname.startsWith("/terms") || pathname.startsWith("/commande/confirmation")) return null;
+  if (pathname.startsWith("/admin") || pathname.startsWith("/compte") || pathname.startsWith("/privacy") || pathname.startsWith("/terms") || pathname.startsWith("/commande")) return null;
 
   return (
     <>

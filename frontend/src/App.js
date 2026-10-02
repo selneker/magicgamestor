@@ -33,6 +33,7 @@ import AdminFazercards from "@/pages/admin/AdminFazercards";
 import AdminEvents from "@/pages/admin/AdminEvents";
 import AdminLoyalty from "@/pages/admin/AdminLoyalty";
 import AdminUsers from "@/pages/admin/AdminUsers";
+import AdminBinance from "@/pages/admin/AdminBinance";
 
 function AppRouter() {
   return (
@@ -69,6 +70,7 @@ function AppRouter() {
             <Route path="messages" element={<AdminChat />} />
             <Route path="fidelite" element={<AdminLoyalty />} />
             <Route path="utilisateurs" element={<AdminUsers />} />
+            <Route path="paiements/binance" element={<AdminBinance />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

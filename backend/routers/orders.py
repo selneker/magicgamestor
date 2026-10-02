@@ -44,7 +44,7 @@ class OrderIn(BaseModel):
     pubg_id: str
     pseudo: str = Field(min_length=2, max_length=40)
     items: list[OrderItemIn] = Field(min_length=1, max_length=20)
-    payment_method: str = Field(pattern=r"^(mvola|orange|manual)$")
+    payment_method: str = Field(pattern=r"^(mvola|orange|manual|binance)$")
     payment_phone: str | None = None
     manual_reference: str | None = Field(default=None, max_length=60)
     email: str | None = None
@@ -164,6 +164,11 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         payment_provider = await fiveone.resolve_provider()
         if not payment_provider:
             raise HTTPException(status_code=409, detail=gw.PAPI_AUTO_OFF_MESSAGE)
+    if body.payment_method == "binance":
+        from services import crypto
+        if not await crypto.available():
+            raise HTTPException(status_code=409, detail="Paiement Binance USDT indisponible.")
+        payment_provider = "binance"
     if body.payment_method == "manual" and not body.manual_reference:
         raise HTTPException(status_code=400, detail="Transaction reference is required")
     ids = [i.product_id for i in body.items]

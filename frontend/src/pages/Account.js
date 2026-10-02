@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "next-themes";
 import {
-  ArrowLeft,
   ChevronRight,
   Coins,
   Eye,
@@ -29,6 +28,7 @@ import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/common/BackButton";
 import { PubgPlayerCard } from "@/components/PubgPlayerCard";
 
 function VerifyBanner({ user }) {
@@ -157,9 +157,7 @@ export default function Account() {
     <div className="mx-auto max-w-xl pb-[calc(7rem+env(safe-area-inset-bottom))] pt-3 md:pb-16" data-testid="account-page">
       {/* HEADER — centered profile card matching the mobile reference. */}
       <div className="flex items-center justify-between">
-        <Button asChild variant="ghost" size="icon" className="h-10 w-10 shrink-0 rounded-full border border-[color:var(--rule-strong)] bg-card" data-testid="account-back">
-          <Link to="/" aria-label={t("common.back")}><ArrowLeft className="h-4 w-4" strokeWidth={2} /></Link>
-        </Button>
+        <BackButton to="/" testId="account-back" />
         <span className="w-10 shrink-0" aria-hidden="true" />
       </div>
 

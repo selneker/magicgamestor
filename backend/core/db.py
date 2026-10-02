@@ -68,3 +68,16 @@ async def ensure_indexes():
     await db.fzr_price_alerts.create_index([("acknowledged", 1), ("detected_at", -1)])
     await db.fzr_webhook_events.create_index("event_id", unique=True)
     await db.orders.create_index("fazercards.provider_order_id", sparse=True)
+    # Binance USDT: txHash unique, one open slot per order and per (network, exact amount).
+    await db.crypto_payments.create_index("id", unique=True)
+    await db.crypto_payments.create_index([("order_id", 1), ("created_at", -1)])
+    await db.crypto_payments.create_index("tx_hash", unique=True, name="crypto_tx_hash_unique",
+                                          partialFilterExpression={"tx_hash": {"$type": "string"}})
+    await db.crypto_payments.create_index("order_id", unique=True, name="crypto_open_order_id",
+                                          partialFilterExpression={"slot_open": True})
+    await db.crypto_payments.create_index([("network", 1), ("amount_usdt", 1)], unique=True, name="crypto_open_amount",
+                                          partialFilterExpression={"slot_open": True})
+    await db.crypto_payments.create_index([("status", 1), ("expires_at", 1)])
+    await db.crypto_unmatched.create_index("deposit_key", unique=True)
+    await db.crypto_unmatched.create_index("tx_hash")
+    await db.crypto_unmatched.create_index([("reviewed", 1), ("created_at", -1)])

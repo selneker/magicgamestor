@@ -12,7 +12,7 @@ export function GameButton() {
   const { setOpen, open, selected } = useGames();
   const { t } = useLang();
 
-  if (pathname.startsWith("/admin") || pathname.startsWith("/compte") || pathname.startsWith("/privacy") || pathname.startsWith("/terms") || pathname.startsWith("/commande/confirmation")) return null;
+  if (pathname.startsWith("/admin") || pathname.startsWith("/compte") || pathname.startsWith("/privacy") || pathname.startsWith("/terms") || pathname.startsWith("/commande")) return null;
 
   return (
     <div

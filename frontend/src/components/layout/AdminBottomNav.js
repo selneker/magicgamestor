@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { CalendarRange, Coins, Home, LayoutDashboard, LogOut, MessageCircle, MoreHorizontal, Package, PlugZap, ReceiptText, Users, X } from "lucide-react";
+import { CalendarRange, Coins, Home, LayoutDashboard, LogOut, MessageCircle, MoreHorizontal, Package, PlugZap, ReceiptText, Users, Wallet, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 import { useLang } from "@/context/LanguageContext";
@@ -26,6 +26,7 @@ export function AdminBottomNav() {
 
   const secondary = [
     { to: "/admin/fournisseur", icon: PlugZap, label: t("admin.fzr.tab"), id: "admin-bnav-fzr" },
+    { to: "/admin/paiements/binance", icon: Wallet, label: "Binance", id: "admin-bnav-binance" },
     { to: "/admin/evenements", icon: CalendarRange, label: t("admin.events"), id: "admin-bnav-events" },
     { to: "/admin/fidelite", icon: Coins, label: "Fidélité", id: "admin-bnav-loyalty" },
     ...(can("users.manage") ? [{ to: "/admin/utilisateurs", icon: Users, label: "Utilisateurs", id: "admin-bnav-users" }] : []),
