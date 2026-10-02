@@ -7,6 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 
+const PAYMENT_LOGOS = {
+  mvola: "/payment-logos/mvola.svg",
+  orange: "/payment-logos/orange-money.svg",
+  binance: "/payment-logos/binance.svg",
+};
+
 export const USSD = {
   mvola: (phone, amount) => `#111*1*2*${phone}*${amount}*1*0#`,
   orange: (phone, amount) => `#144*1*1*${phone}*${phone}*${amount}*1#`,
@@ -62,6 +68,7 @@ export function PaymentFlow({ method, setMethod, phone, setPhone, reference, set
                 <span className="block font-display text-[15px] font-bold leading-tight text-foreground">{c.title}</span>
                 <span className="mt-0.5 block text-[12px] text-muted-foreground">{c.sub}</span>
               </span>
+              {PAYMENT_LOGOS[c.key] && <img src={PAYMENT_LOGOS[c.key]} alt="" aria-hidden="true" className="h-6 max-w-24 shrink-0 object-contain" />}
             </button>
             <AnimatePresence initial={false}>
               {selected && (
