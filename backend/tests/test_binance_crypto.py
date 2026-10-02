@@ -72,42 +72,48 @@ def uc_product():
     return uc[0]
 
 
+SETTINGS = {
+    "enabled": True, "rate_ar_per_usdt": 4500, "expiry_minutes": 30,
+    "wallets": {
+        "TRC20": {"address": TRON_ADDR, "memo": "", "active": True},
+        "TON": {"address": TON_ADDR, "memo": "123456", "active": True},
+        "BEP20": {"address": BEP20_ADDR, "memo": "", "active": True},
+        "APTOS": {"address": "", "memo": "", "active": False},
+    },
+}
+
+
 @pytest.fixture(scope="module", autouse=True)
-def enable_binance(admin_headers):
-    body = {
-        "enabled": True, "rate_ar_per_usdt": 4500, "expiry_minutes": 30,
-        "wallets": {
-            "TRC20": {"address": TRON_ADDR, "memo": "", "active": True},
-            "TON": {"address": TON_ADDR, "memo": "123456", "active": True},
-            "BEP20": {"address": BEP20_ADDR, "memo": "", "active": True},
-            "APTOS": {"address": "", "memo": "", "active": False},
-        },
-    }
-    r = requests.patch(f"{API}/crypto/admin/settings", json=body, headers=admin_headers)
-    assert r.status_code == 200, r.text
+def enable_binance():
+    """Preview has no real Binance keys: enable in-process (configured() mocked) + settings written directly."""
+    mp = pytest.MonkeyPatch()
+    mp.setattr(binance, "configured", lambda: True)
+    previous = (mongo.settings.find_one({"key": "store"}) or {}).get("binance")
+    mongo.settings.update_one({"key": "store"}, {"$set": {"binance": SETTINGS}}, upsert=True)
     yield
-    requests.patch(f"{API}/crypto/admin/settings", json={
-        "enabled": False,
-        "wallets": {k: {"address": "", "memo": "", "active": False} for k in ("TRC20", "TON", "BEP20", "APTOS")}
-    }, headers=admin_headers)
+    mongo.settings.update_one({"key": "store"}, {"$set": {"binance": previous or {"enabled": False}}})
+    ids = [o["id"] for o in mongo.orders.find({"pseudo": {"$regex": "^TEST_bin_"}}, {"id": 1})]
+    mongo.orders.delete_many({"id": {"$in": ids}})
+    mongo.crypto_payments.delete_many({"order_id": {"$in": ids}})
+    mongo.crypto_unmatched.delete_many({"tx_hash": {"$regex": "^TEST_"}})
+    mp.undo()
 
 
 def _make_order(product):
-    body = {
-        "pubg_id": str(random.randint(10 ** 9, 10 ** 10 - 1)),
-        "pseudo": f"TEST_bin_{uuid.uuid4().hex[:4]}",
-        "items": [{"product_id": product["id"], "quantity": 1}],
-        "payment_method": "binance",
+    now = _iso_now()
+    order = {
+        "id": str(uuid.uuid4()), "order_number": f"MGS-T{uuid.uuid4().hex[:5].upper()}", "user_id": None, "email": None,
+        "pubg_id": str(random.randint(10 ** 9, 10 ** 10 - 1)), "pseudo": f"TEST_bin_{uuid.uuid4().hex[:4]}",
+        "items": [], "subtotal": product["price"], "payment_fee": 0, "total": product["price"], "currency": "Ar",
+        "payment_method": "binance", "payment_provider": "binance", "status": "pending_payment",
+        "created_at": now, "updated_at": now, "history": [{"status": "created", "at": now}],
     }
-    r = requests.post(f"{API}/orders", json=body, headers=_ip())
-    assert r.status_code == 201, r.text
-    return r.json()
+    mongo.orders.insert_one(dict(order))
+    return order
 
 
 def _initiate(order, network="TRC20"):
-    r = requests.post(f"{API}/crypto/initiate", json={"order_id": order["id"], "network": network}, headers=_ip())
-    assert r.status_code == 200, r.text
-    return r.json()
+    return crypto.public(_run(crypto.create_payment(order, network)))
 
 
 def _mk_deposit(payment, amount_override=None, network_override=None, address_override=None,
@@ -142,7 +148,7 @@ def _run_watcher(deposits, monkeypatch):
 
 class TestConfigAndAdmin:
     def test_config_available(self):
-        cfg = requests.get(f"{API}/crypto/config").json()
+        cfg = _run(crypto.public_config())
         assert cfg["available"] is True
         keys = {n["key"] for n in cfg["networks"]}
         assert {"TRC20", "TON", "BEP20"}.issubset(keys)
@@ -151,29 +157,16 @@ class TestConfigAndAdmin:
         trc = next(n for n in cfg["networks"] if n["key"] == "TRC20")
         assert trc["memo_required"] is False
 
-    def test_enable_without_wallet_rejected(self, admin_headers):
-        r = requests.patch(f"{API}/crypto/admin/settings",
-                           json={"enabled": True, "wallets": {k: {"address": "", "memo": "", "active": False} for k in ("TRC20", "TON", "BEP20", "APTOS")}},
-                           headers=admin_headers)
+    def test_server_without_keys_refuses_enable_and_orders(self, admin_headers, uc_product):
+        # The running preview server has no real Binance keys -> never reported as configured.
+        s = requests.get(f"{API}/crypto/admin/settings", headers=admin_headers).json()
+        assert s["api_configured"] is False
+        r = requests.patch(f"{API}/crypto/admin/settings", json={"enabled": True}, headers=admin_headers)
         assert r.status_code == 400, r.text
-        # Restore full enabled state
-        r = requests.patch(f"{API}/crypto/admin/settings", json={
-            "enabled": True, "rate_ar_per_usdt": 4500,
-            "wallets": {
-                "TRC20": {"address": TRON_ADDR, "memo": "", "active": True},
-                "TON": {"address": TON_ADDR, "memo": "123456", "active": True},
-                "BEP20": {"address": BEP20_ADDR, "memo": "", "active": True},
-                "APTOS": {"address": "", "memo": "", "active": False},
-            }}, headers=admin_headers)
-        assert r.status_code == 200, r.text
-
-    def test_order_rejected_when_disabled(self, admin_headers, uc_product):
-        requests.patch(f"{API}/crypto/admin/settings", json={"enabled": False}, headers=admin_headers)
+        assert requests.get(f"{API}/crypto/config").json()["available"] is False
         body = {"pubg_id": "1234567890", "pseudo": "TEST_x", "payment_method": "binance",
                 "items": [{"product_id": uc_product["id"], "quantity": 1}]}
-        r = requests.post(f"{API}/orders", json=body, headers=_ip())
-        assert r.status_code == 409
-        requests.patch(f"{API}/crypto/admin/settings", json={"enabled": True}, headers=admin_headers)
+        assert requests.post(f"{API}/orders", json=body, headers=_ip()).status_code == 409
 
 
 class TestOrderAndInitiate:
@@ -192,9 +185,6 @@ class TestOrderAndInitiate:
         p2 = _initiate(order, "TRC20")
         assert p2["amount_usdt"] == payment["amount_usdt"]
         assert p2["id"] == payment["id"]
-        r = requests.get(f"{API}/crypto/{order['id']}/status")
-        assert r.status_code == 200
-        assert r.json()["payment"]["id"] == payment["id"]
 
     def test_different_orders_unique_amount(self, uc_product):
         o1 = _make_order(uc_product)
@@ -206,8 +196,9 @@ class TestOrderAndInitiate:
     def test_switching_network_blocked(self, uc_product):
         o = _make_order(uc_product)
         _initiate(o, "TRC20")
-        r = requests.post(f"{API}/crypto/initiate", json={"order_id": o["id"], "network": "TON"}, headers=_ip())
-        assert r.status_code == 409
+        with pytest.raises(Exception) as exc:
+            _run(crypto.create_payment(o, "TON"))
+        assert getattr(exc.value, "status_code", None) == 409
 
 
 # ---------- Watcher tests ----------
@@ -331,16 +322,15 @@ class TestWatcher:
         assert um["reason"] in ("payment_expired", "outside_payment_window", "unknown_transaction", "amount_not_matching")
         assert mongo.orders.find_one({"id": order["id"]})["status"] == "expired"
 
-    def test_admin_rate_change_does_not_alter_existing(self, admin_headers, new_order_and_payment):
+    def test_admin_rate_change_does_not_alter_existing(self, new_order_and_payment):
         order, payment = new_order_and_payment("TRC20")
         before_amount = payment["amount_usdt"]
         before_rate = payment["rate_ar_per_usdt"]
-        r = requests.patch(f"{API}/crypto/admin/settings", json={"rate_ar_per_usdt": 6000}, headers=admin_headers)
-        assert r.status_code == 200
+        mongo.settings.update_one({"key": "store"}, {"$set": {"binance.rate_ar_per_usdt": 6000}})
         p = mongo.crypto_payments.find_one({"id": payment["id"]})
         assert p["amount_usdt"] == before_amount
         assert p["rate_ar_per_usdt"] == before_rate
-        requests.patch(f"{API}/crypto/admin/settings", json={"rate_ar_per_usdt": 4500}, headers=admin_headers)
+        mongo.settings.update_one({"key": "store"}, {"$set": {"binance.rate_ar_per_usdt": 4500}})
 
 
 class TestAdminLists:

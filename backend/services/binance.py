@@ -2,6 +2,7 @@
 import hashlib
 import hmac
 import os
+import re
 import time
 from urllib.parse import urlencode
 
@@ -16,17 +17,25 @@ NETWORK_KEYS = {v: k for k, v in NETWORKS.items()}
 DEPOSIT_PENDING = {0, 8}
 DEPOSIT_SUCCESS = {1, 6}
 DEPOSIT_REJECTED = {2, 7}
+HMAC_CREDENTIAL = re.compile(r"^[A-Za-z0-9]{64}$")  # Binance HMAC API key / secret format
+PLACEHOLDER_MARKERS = ("dummy", "placeholder", "changeme", "example", "preview", "yourapi", "yourkey", "yoursecret")
+
+
+def _real_credential(value: str | None) -> bool:
+    v = (value or "").strip()
+    return bool(HMAC_CREDENTIAL.match(v)) and len(set(v)) >= 16 and not any(m in v.lower() for m in PLACEHOLDER_MARKERS)
 
 
 def configured() -> bool:
-    return bool(os.environ.get("BINANCE_API_KEY") and os.environ.get("BINANCE_API_SECRET"))
+    """True only for real-looking keys: absent, empty or placeholder values never count as configured."""
+    return _real_credential(os.environ.get("BINANCE_API_KEY")) and _real_credential(os.environ.get("BINANCE_API_SECRET"))
 
 
 async def _signed_get(path: str, params: dict) -> list | dict:
-    key, secret = os.environ.get("BINANCE_API_KEY"), os.environ.get("BINANCE_API_SECRET")
-    if not key or not secret:
+    if not configured():
         raise HTTPException(status_code=503, detail="Clés API Binance absentes côté serveur.")
     base = os.environ.get("BINANCE_API_BASE", "https://api.binance.com").rstrip("/")
+    key, secret = os.environ["BINANCE_API_KEY"].strip(), os.environ["BINANCE_API_SECRET"].strip()
     query = urlencode({**params, "timestamp": int(time.time() * 1000), "recvWindow": 10000})
     signature = hmac.new(secret.encode(), query.encode(), hashlib.sha256).hexdigest()
     try:
