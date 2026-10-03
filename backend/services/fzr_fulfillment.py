@@ -18,17 +18,27 @@ from fastapi import HTTPException
 
 from core.audit import audit
 from core.db import db
-from services import fazercards, fzr_mapping
+from services import fazercards, fzr_mapping, providers
+from services.providers.base import OrderStatus
 
 logger = logging.getLogger("mgs.fzr")
 PUBLIC = {"_id": 0}
 RETRYABLE = ("submit_timeout", "error")
-PROVIDER_TO_MGS_DELIVERED = ("completed",)
-PROVIDER_ALERT = ("failed", "refunded", "cancelled")
+PROVIDER_ALERT_NORMALIZED = (OrderStatus.FAILED, OrderStatus.REFUND)
 
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _identity_fields(order: dict) -> dict:
+    """Champs d'identité transmis au provider, pilotés par la donnée (jamais hardcodés PUBG).
+    Priorité au snapshot d'identité (fields dynamiques) ; repli legacy sur pubg_id."""
+    snapshot = order.get("identity_snapshot") or {}
+    fields = {k: v for k, v in (snapshot.get("fields") or {}).items() if v}
+    if not fields and order.get("pubg_id"):
+        fields = {"player_id": order["pubg_id"]}
+    return fields
 
 
 def _line_path(idx: int) -> str:
@@ -151,8 +161,9 @@ async def preflight(order_id: str) -> dict:
         detail = skipped[0]["reason"] if single and skipped else \
             "Aucune ligne éligible : " + "; ".join(f"{s['product']} — {s['reason']}" for s in skipped)
         raise HTTPException(status_code=409, detail=detail or "Aucune ligne éligible.")
-    validation = await fazercards.validate_pubg_id(order["pubg_id"])  # 502/504 si service indisponible
-    if not validation["valid"]:
+    validation = await providers.get_provider(order.get("game_id")).validate_identity(
+        order.get("game_id"), _identity_fields(order))  # 502/504 si service indisponible
+    if not validation.valid:
         raise HTTPException(status_code=409, detail="ID PUBG Mobile invalide chez le fournisseur — commande non envoyée.")
     offers_by_cat, lines = {}, []
     for u in pending:
@@ -180,7 +191,7 @@ async def preflight(order_id: str) -> dict:
         raise HTTPException(status_code=409, detail=skipped[-1]["reason"] if skipped else "Aucune ligne éligible.")
     report = {
         "order_number": order["order_number"], "provider": "fazercards", "player_id": order["pubg_id"],
-        "player_name": validation.get("player_name"), "mgs_total": order["total"],
+        "player_name": validation.player_name, "mgs_total": order["total"],
         "lines": lines, "skipped": skipped, "ready_count": len(lines),
     }
     if single:  # compat mono-ligne directe : champs historiques au premier niveau
@@ -223,26 +234,28 @@ async def _fulfill_unit(order: dict, line: dict, actor: str) -> dict:
             {"$set": {path: record, "updated_at": _now()}})
     if claim.modified_count != 1:
         raise HTTPException(status_code=409, detail="Un envoi fournisseur est déjà en cours pour cette unité.")
+    provider = providers.get_provider(order.get("game_id"))
+    fields_payload = _identity_fields(order) or {line["field_key"]: order["pubg_id"]}
     try:
-        provider_order = await fazercards.create_topup_order(
-            line["category_id"], line["offer_id"], {line["field_key"]: order["pubg_id"]}, line["idempotency_key"])
-    except fazercards.ProviderTimeout:
+        provider_order = await provider.create_order(
+            line["category_id"], line["offer_id"], fields_payload, line["idempotency_key"])
+    except providers.ProviderTimeout:
         await _update_record(order_id, path, {"status": "submit_timeout", "last_error": "timeout après soumission"})
         await audit("fzr.order_timeout", actor, order_id, {"idempotency_key": line["idempotency_key"], "line": idx, "component": cidx})
         raise HTTPException(status_code=504, detail="La requête fournisseur a expiré. Réessayez : la même clé d'idempotence sera réutilisée (aucun double top-up).")
-    except fazercards.ProviderOrderError as exc:
+    except providers.ProviderOrderError as exc:
         await _update_record(order_id, path, {"status": "error", "last_error": exc.error})
         await audit("fzr.order_error", actor, order_id, {"error": exc.error, "code": exc.code, "http": exc.status_code, "line": idx, "component": cidx})
         raise HTTPException(status_code=409 if exc.status_code < 500 else 502,
                             detail=f"Commande fournisseur refusée : {exc.error}")
-    provider_status = str(provider_order.get("status") or "processing")
-    await _update_record(order_id, path, {"status": "submitted", "provider_order_id": provider_order["id"],
+    provider_status = provider_order.status
+    await _update_record(order_id, path, {"status": "submitted", "provider_order_id": provider_order.id,
                                           "provider_status": provider_status})
-    await db.orders.update_one({"id": order_id}, {"$addToSet": {"fazercards_provider_ids": provider_order["id"]}})
+    await db.orders.update_one({"id": order_id}, {"$addToSet": {"fazercards_provider_ids": provider_order.id}})
     await audit("fzr.order_created", actor, order_id, {
-        "provider_order_id": provider_order["id"], "offer_id": line["offer_id"], "line": idx, "component": cidx,
+        "provider_order_id": provider_order.id, "offer_id": line["offer_id"], "line": idx, "component": cidx,
         "supplier_price_usd": line["price_usd"], "idempotency_key": line["idempotency_key"]})
-    if provider_status in PROVIDER_ALERT:
+    if provider.normalize_status(provider_status) in PROVIDER_ALERT_NORMALIZED:
         await audit("fzr.provider_failed", actor, order_id, {"provider_status": provider_status, "line": idx, "component": cidx})
     await _sync_mgs_status(order_id, actor)
     updated = await db.orders.find_one({"id": order_id}, PUBLIC)
@@ -284,11 +297,12 @@ async def refresh_status(order_id: str, actor: str) -> dict:
     targets = [(u, r) for u, r in targets if r and r.get("provider_order_id")]
     if not targets:
         raise HTTPException(status_code=404, detail="Aucune commande fournisseur pour cette commande.")
+    prov = providers.get_provider(order.get("game_id"))
     for u, rec in targets:
-        provider = await fazercards.get_provider_order(rec["provider_order_id"])
-        provider_status = str(provider.get("status") or rec.get("provider_status") or "processing")
+        provider_order = await prov.get_order(rec["provider_order_id"])
+        provider_status = provider_order.status or rec.get("provider_status") or "processing"
         await _update_record(order_id, u["path"], {"provider_status": provider_status})
-        if provider_status in PROVIDER_ALERT:
+        if prov.normalize_status(provider_status) in PROVIDER_ALERT_NORMALIZED:
             await audit("fzr.provider_failed", actor, order_id, {"provider_status": provider_status, "line": u["line_index"], "component": u["component_index"]})
     await _sync_mgs_status(order_id, actor)
     updated = await db.orders.find_one({"id": order_id}, PUBLIC)
@@ -306,8 +320,9 @@ async def _sync_mgs_status(order_id: str, actor: str):
     units, skipped = await _all_units(order)
     if not units or skipped:
         return
+    prov = providers.get_provider(order.get("game_id"))
     records = [unit_record(order, u) for u in units]
-    if not all(r and r.get("provider_status") in PROVIDER_TO_MGS_DELIVERED for r in records):
+    if not all(r and prov.normalize_status(r.get("provider_status")) == OrderStatus.COMPLETED for r in records):
         return
     res = await db.orders.update_one(
         {"id": order_id, "status": "paid"},
@@ -353,8 +368,9 @@ async def apply_webhook_event(event: dict) -> dict:
         return {"ok": True, "ignored": True}
     if event.get("event") == "order.status_changed" and data.get("status"):
         provider_status = str(data["status"])
+        prov = providers.get_provider(order.get("game_id"))
         await _update_record(order["id"], target["path"], {"provider_status": provider_status})
-        if provider_status in PROVIDER_ALERT:
+        if prov.normalize_status(provider_status) in PROVIDER_ALERT_NORMALIZED:
             await audit("fzr.provider_failed", "webhook:fazercards", order["id"], {"provider_status": provider_status, "line": target["line_index"], "component": target["component_index"]})
         await _sync_mgs_status(order["id"], "webhook:fazercards")
         await audit("fzr.webhook_status", "fazercards", order["id"],

@@ -3,7 +3,7 @@ from pydantic import BaseModel, field_validator
 
 from core.ratelimit import check, client_ip, setting
 from core.security import require_permission
-from services import fazercards
+from services import fazercards, providers
 
 router = APIRouter(tags=["fazercards"])
 
@@ -25,10 +25,10 @@ class PubgValidateIn(BaseModel):
 @router.post("/fazercards/pubg/validate-id")
 async def validate_pubg_id(body: PubgValidateIn, request: Request):
     check(f"fzr_validate:ip:{client_ip(request)}", setting("FZR_VALIDATE_PER_10MIN_PER_IP", 30), 600)
-    result = await fazercards.validate_pubg_id(body.player_id)
-    if not result["valid"]:
+    result = await providers.get_provider("pubg-mobile").validate_identity("pubg-mobile", {"player_id": body.player_id})
+    if not result.valid:
         return {"valid": False, "message": "ID PUBG Mobile invalide"}
-    return {"valid": True, "player_name": result.get("player_name"), "region": result.get("region")}
+    return {"valid": True, "player_name": result.player_name, "region": result.region}
 
 
 @router.get("/fazercards/pubg/catalog", dependencies=[Depends(require_permission("catalog.manage"))])

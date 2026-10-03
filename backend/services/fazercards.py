@@ -5,6 +5,9 @@ import time
 import httpx
 from fastapi import HTTPException
 
+from services.providers.errors import (ProviderInsufficientBalanceError, ProviderOrderError,
+                                        ProviderTimeout)
+
 TIMEOUT_S = 20
 DISCOVERY_TTL_S = 600
 PROVIDER_ERROR = "Service de vérification momentanément indisponible. Réessayez plus tard."
@@ -75,15 +78,24 @@ async def pubg_validation_target() -> tuple[str, str]:
     raise HTTPException(status_code=503, detail="La validation PUBG Mobile n'est pas disponible chez le fournisseur.")
 
 
-async def validate_pubg_id(player_id: str) -> dict:
+async def validate_identity(fields: dict) -> dict:
+    """Validation générique à partir de `fields` dynamiques (ex: {player_id}, {player_id, zone_id}).
+    La clé provider est découverte dynamiquement ; le domaine ne suppose jamais player_id universel."""
     category_id, field_key = await pubg_validation_target()
+    send = dict(fields) if field_key in (fields or {}) else (
+        {field_key: next(iter(fields.values()))} if fields else {})
     data = await _request("POST", "/topups/validate-id",
-                          json={"category_id": category_id, "fields": {field_key: player_id}})
+                          json={"category_id": category_id, "fields": send})
     if "valid" not in data:
         raise HTTPException(status_code=502, detail=PROVIDER_ERROR)
     if not data["valid"]:
         return {"valid": False}
     return {"valid": True, "player_name": data.get("player_name"), "region": data.get("region")}
+
+
+async def validate_pubg_id(player_id: str) -> dict:
+    """Compat legacy : délègue à la validation générique."""
+    return await validate_identity({"player_id": player_id})
 
 
 CATALOG_TTL_S = 600
@@ -154,14 +166,8 @@ async def pubg_offers_fresh(category_id: str) -> dict:
     return await pubg_offers(category_id)
 
 
-class ProviderTimeout(Exception):
-    """Network timeout after submitting POST /topups/order — retry MUST reuse the same Idempotency-Key."""
-
-
-class ProviderOrderError(Exception):
-    def __init__(self, status_code: int, error: str, code: str | None = None):
-        super().__init__(error)
-        self.status_code, self.error, self.code = status_code, error, code
+# Erreurs fournisseur normalisées : voir services.providers.errors (importées en tête de fichier).
+# services.fazercards.ProviderTimeout / ProviderOrderError restent valides pour compat.
 
 
 async def create_topup_order(category_id: str, offer_id: str, fields: dict, idempotency_key: str) -> dict:
@@ -181,8 +187,12 @@ async def create_topup_order(category_id: str, offer_id: str, fields: dict, idem
     except ValueError:
         data = {}
     if r.is_error or data.get("ok") is not True:
-        raise ProviderOrderError(r.status_code if r.is_error else 502,
-                                 str(data.get("error") or "Erreur fournisseur inattendue.")[:300], data.get("code"))
+        status = r.status_code if r.is_error else 502
+        error = str(data.get("error") or "Erreur fournisseur inattendue.")[:300]
+        code = data.get("code")
+        if code == "insufficient_balance":
+            raise ProviderInsufficientBalanceError(status, error, code)
+        raise ProviderOrderError(status, error, code)
     order = data.get("order")
     if not isinstance(order, dict) or not order.get("id"):
         raise ProviderOrderError(502, "Réponse fournisseur inattendue (commande absente).")

@@ -1,6 +1,4 @@
 """FazerCards Phase 3 — endpoints admin fulfillment, réglage auto, alertes prix, mapping produit, webhook."""
-import hashlib
-import hmac
 import json
 import logging
 import os
@@ -13,7 +11,7 @@ from pydantic import BaseModel, Field
 from core.audit import audit
 from core.db import db
 from core.security import require_admin, require_permission, require_super_admin
-from services import fazercards, fzr_fulfillment, fzr_mapping
+from services import fazercards, fzr_fulfillment, fzr_mapping, providers
 
 router = APIRouter(tags=["fazercards-fulfillment"])
 logger = logging.getLogger("mgs.fzr")
@@ -199,13 +197,10 @@ async def fzr_ack_alert(alert_id: str, admin=Depends(require_admin)):
     return {"ok": True}
 
 
-# ---------- Webhook FazerCards (signature HMAC-SHA256, header X-Webhook-Signature) ----------
+# ---------- Webhook FazerCards (signature + parsing encapsulés dans l'adapter Provider) ----------
 def verify_fzr_signature(raw: bytes, signature: str | None) -> bool:
-    secret = os.environ.get("FAZERCARDS_WEBHOOK_SECRET", "")
-    if not secret or not signature:
-        return False
-    expected = "sha256=" + hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(signature, expected)
+    """Signature HMAC-SHA256 sur le RAW BODY — déléguée à l'adapter FazerCards."""
+    return providers.get_provider("pubg-mobile").verify_webhook_signature(raw, signature)
 
 
 @router.post("/fazercards/webhook")
