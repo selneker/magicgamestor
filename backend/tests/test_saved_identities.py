@@ -69,3 +69,27 @@ def test_account_crud_owner_only_and_checkout_with_migrated_identity(monkeypatch
     assert requests.get(f"{API}/orders/{o['id']}", headers=h).json()["identity_snapshot"] == o["identity_snapshot"]
     legacy = _order(_ip())
     assert legacy.status_code == 201 and legacy.json()["identity_snapshot"]["source"] == "checkout"
+
+
+def test_checkout_verified_new_id_synced_without_restart(monkeypatch):
+    """Frontend creates the identity right after a successful verification; backend dedups and keeps migration coherent."""
+    h, uid = _user()
+    body = {"game_id": GAME, "label": "PUBG 5222222222", "fields": {"player_id": "5222222222"}, "player_name": "Verified"}
+    a = requests.post(f"{API}/me/game-identities", json=body, headers=h).json()
+    b = requests.post(f"{API}/me/game-identities", json=body, headers=h).json()  # verified twice
+    assert a["id"] == b["id"] and len(_idents(uid)) == 1
+    r = _order(h, game_id=GAME, identity_id=a["id"], pubg_id="5222222222")
+    assert r.status_code == 201 and r.json()["identity_snapshot"]["identity_id"] == a["id"] and r.json()["game_id"] == GAME
+    u = mongo.users.find_one({"user_id": uid})
+    assert "5222222222" in u["saved_pubg_ids"] and "5222222222" in u["pubg_ids_migrated"]
+    _migrate(monkeypatch)
+    assert len(_idents(uid)) == 1  # restart: no duplicate
+    requests.delete(f"{API}/me/game-identities/{a['id']}", headers=h)
+    _migrate(monkeypatch)
+    assert _idents(uid) == [] and "5222222222" in mongo.users.find_one({"user_id": uid})["saved_pubg_ids"]
+
+
+def test_invalid_pubg_id_creates_nothing():
+    h, uid = _user()
+    assert _order(h, pubg_id="123").status_code == 422
+    assert _idents(uid) == [] and mongo.users.find_one({"user_id": uid})["saved_pubg_ids"] == []
