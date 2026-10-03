@@ -1,19 +1,49 @@
-# MGS — Phase 2 (Checkout UX/UI + Paiements + Binance USDT auto)
+# Magic Game Store — PRD
 
 ## Original problem statement
-Cahier des charges client "MAGIC GAME STORE (MGS) — PHASE 2 : CHECKOUT UX/UI + PAYMENT SYSTEM + BINANCE AUTO VERIFICATION" : checkout 4 étapes (Vérif ID PUBG via FazerCards existant → choix paiement radio cards → paiement → confirmation), slide ~240ms ease-out, bottom nav + game button cachés, bouton retour identique au profil, MVola/Orange auto avec checkbox frais obligatoire, paiement manuel simplifié (référence demandée à l'étape 4), Binance USDT on-chain (TRC20/BEP20/Aptos/TON, PAS Binance Pay), BinanceWallet/CryptoPayment (WAITING/DETECTED/CONFIRMED/FAILED), BinancePaymentWatcher, Admin > Paiements > Binance, sécurité (mauvais réseau/montant, double tx, tx inconnue, txHash unique). Ne pas reconstruire MGS. Repo : https://github.com/selneker/magicgamestor.git
-Validated decisions: Binance Exchange/CEX deposit-history API (read-only), admin rate stored per payment, server-side unique amount + expiry, shared BackButton, reuse fulfillment.on_order_paid, no parallel architecture.
+Phase 2 — Provider / FazerCards Abstraction. Make MGS domain provider-agnostic while keeping
+FazerCards as the current provider. Target architecture:
+MGS Core -> Provider abstraction -> FazerCards adapter -> FazerCards.
+Prepare for Phase 3 (second game) with no PUBG code duplication. Do not start Phase 3 work.
 
-## Architecture
-- Frontend CRA React 19, framer-motion, shadcn, i18n FR/EN, Neon Brutalism.
-- Backend FastAPI + motor (routers/services/core). Binance: services/binance.py (signed GET /sapi/v1/capital/deposit/hisrec + config/getall), services/crypto.py (settings in settings.store.binance, quotes, crypto_payments), services/binance_watcher.py (30s loop + on-demand checks, crypto_unmatched log), routers/crypto.py.
+## Repo / environment
+- GitHub: https://github.com/selneker/magicgamestor.git — base branch: `phase-1-multigame`.
+- Working branch for this phase: `phase-2-provider` (committed locally; push requires user credentials).
+- Stack: FastAPI + MongoDB (motor) + React (CRA/craco, Neo-Brutalism). Backend routes under /api.
+- Secrets (FazerCards API key / webhook secret) live only in deployment env; never in repo.
+  Env var names used by code: FAZERCARDS_API_BASE, FAZERCARDS_API_KEY, FAZERCARDS_WEBHOOK_SECRET.
 
-## Implemented (2026-10-02)
-- 4-step checkout (Checkout.js + components/store/checkout/*), shared BackButton (Account + Checkout), BottomNav/GameButton hidden on /commande, PubgIdVerify `checkout` mode (same FazerCards call, temporary/provider errors), PaymentFlow radio cards + fee checkbox + Binance card, PaymentStatus theme + onCompleted.
-- Binance backend + admin page /admin/paiements/binance + checkout (QR via qrcode.react).
-- Tests: backend/tests/test_binance_crypto.py (19 pass, mocked Binance), lifecycle 17/17, fees 10/10, MVola simulation e2e OK.
+## Architecture — Provider boundary (Phase 2, implemented 2026-06)
+- `backend/services/providers/` (NEW):
+  - `base.py`: `Provider` ABC; normalized `OrderStatus` {created,processing,completed,failed,refund};
+    dataclasses `IdentityValidation`, `ProviderOrder`, `ProviderWebhookEvent`.
+  - `errors.py`: normalized `ProviderError` hierarchy (ProviderTimeout, ProviderOrderError,
+    ProviderInsufficientBalanceError, ProviderUnavailableError, ProviderValidationError, ProviderUnknownError).
+  - `fazercards_adapter.py`: `FazerCardsProvider` — wraps `services.fazercards`; holds all FazerCards
+    specifics (endpoints, raw status strings, HMAC-SHA256 webhook signature over raw body, event parse).
+  - `__init__.py`: `get_provider(game_id)` via config table `GAME_PROVIDER` ({"pubg-mobile":"fazercards"}).
+- `services/fazercards.py`: low-level HTTP client (kept). Added generic `validate_identity(fields)`;
+  `validate_pubg_id` delegates. Provider errors centralized in providers.errors (re-exported for compat).
+- `services/fzr_fulfillment.py`: routes validate/create/get-order through `get_provider`; forwards
+  `identity_snapshot.fields` dynamically (legacy fallback {player_id: pubg_id}); stable idempotency keys
+  preserved; delivered/alert decisions use normalized status (raw status still stored).
+- `routers/fazercards.py`: validate endpoint uses provider. `routers/fzr_orders.py`: `verify_fzr_signature`
+  delegates to adapter; webhook event_id dedup preserved.
 
-## Backlog
-- P0: real Binance read-only key in production env, configure wallets/rate, live small-amount test per network (TRC20/BEP20/APTOS/TON incl. memo).
-- P1: apply client UI reference screenshots; fix pre-existing test_iter23 hardcoded admin password.
-- P2: admin action to manually link an unmatched deposit to an order.
+## Preserved (Phase 1 / 1.1)
+Game, GameIdentity, Product.game_id, Order.game_id, Order.identity_snapshot, pubg_id, saved_pubg_ids.
+No destructive migration, no frontend redesign.
+
+## Tests
+- NEW `backend/tests/test_phase2_provider.py` (8 tests): interface, status normalization, dynamic
+  fields validation, create_order + idempotency passthrough, webhook signature + parse, error
+  normalization, PUBG legacy fallback. All pass.
+- Regression (localhost): Phase 1 `test_multigame_core` 8/8, Phase 1.1 `test_saved_identities` 5/5,
+  fzr phase3/composite/catalog/validate/uc_audit/multiline — all green EXCEPT pre-existing failures
+  (confirmed identical on original branch): quantity>1 assertions in test_fzr_phase3
+  `test_multi_item_order_not_eligible` and test_fzr_multiline `test_qty_gt1_line_skipped_others_sent`
+  (superseded by phase-4 composite quantity repetition). `TestLive*` require production FazerCards key.
+
+## Phase 3 backlog (NOT implemented)
+Game Admin, Provider Admin, Provider Mapping UI, catalog import UI, second game (Free Fire / Mobile
+Legends) as user feature, enabling/disabling games via admin.
