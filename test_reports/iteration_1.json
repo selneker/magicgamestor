@@ -1,0 +1,49 @@
+{
+  "summary": "Frontend-only testing for Magic Game Store Phase 1 Multi-Game Core. Home page loads cleanly on mobile (390x844). /suivi tracking renders fine for both unknown and real order numbers. Backend integration verified: POST /api/orders with game_id='pubg-mobile' responds 201 with game_id and identity_snapshot {source:'checkout', game_id, fields:{player_id}, player_name, validated, captured_at}. CRITICAL regression found: opening the mobile Game selector (GameButton -> GameSelector) immediately crashes the React tree because the backend /api/games returns `description` as a localized object {fr, en} while GameSelector.js renders `{g.description}` directly as a React child -> 'Objects are not valid as a React child (found: object with keys {fr, en})'. FazerCards is unconfigured in preview so the UI-driven e2e checkout cannot progress past Step 1 (verify-continue only renders after a successful FazerCards validation); treated as environment limitation per task brief and payload shape was validated by directly posting /api/orders from the same origin.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "GameSelector (src/components/layout/GameSelector.js line ~78)",
+        "issue": "Renders `{g.description}` directly, but /api/games returns description as a localized object {fr, en}. First tap on the mobile 🎮 button triggers a React runtime error ('Objects are not valid as a React child (found: object with keys {fr, en})') and the Emergent runtime-error overlay. Needs localized access, e.g. `g.description?.[lang] || g.description?.fr || ''` (also apply same pattern to g.name if backend ever returns a localized object).",
+        "selector": "[data-testid=\"game-selector-panel\"]",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Checkout Step 1 (StepVerify)",
+        "issue": "FazerCards is unconfigured in preview, so POST /api/fazercards/pubg/validate-id errors out. StepVerify only renders the 'Continuer' button once `verified` is truthy, so UI-driven e2e past Step 1 is blocked. This is an environment limitation (not a regression). Direct POST /api/orders with the exact Checkout.js payload (game_id='pubg-mobile', pubg_id, pseudo, items, payment_method='manual', manual_reference) returned 201 and the response correctly contains game_id='pubg-mobile' and identity_snapshot.",
+        "affected_selectors": ["[data-testid=\"pubg-verify-btn\"]", "[data-testid=\"checkout-verify-continue\"]"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Boutique toast on mobile 390px",
+        "issues": ["Sonner 'Ajouté au panier' toast with 'Panier' CTA overlaps the header cart-button, so taps intended for the cart icon land on the toast. Minor UX hit, not blocking."]
+      }
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Fix GameSelector.js (and any other place that renders g.description/g.name) to handle the localized object shape returned by /api/games — e.g. pick g.description?.[lang] with fr fallback. Repro: open the site on a mobile viewport, tap the fixed 🎮 button in the bottom-right; the Emergent 'Runtime error' overlay appears immediately after /api/games resolves.",
+    "Optionally: in GameContext.js, normalize the API response (coerce description/name objects to the current-language string) so downstream consumers stay simple.",
+    "Verify toast placement vs header cart-button on narrow mobile widths."
+  ],
+  "critical_code_review_comments": [
+    "GameSelector.js uses `{g.description}` and `{g.name}` without accounting for the backend returning localized objects. Backend contract and frontend DEFAULT_GAMES disagree (string vs {fr,en}).",
+    "Checkout.js correctly reads game_id from useGames() and includes it in POST /orders payload. Verified via direct same-origin fetch -> 201 with game_id + identity_snapshot.",
+    "StepVerify gates 'Continuer' strictly on `verified` state; when FazerCards is unavailable in an env, users cannot checkout from UI at all. Consider a graceful fallback (allow proceeding with unvalidated identity) for ops/dev or at minimum surface a clearer env-level banner."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (backend tests already green; POST /orders integration confirmed)", "frontend": "60% (home + /suivi OK; GameSelector crash; checkout e2e blocked by env)"},
+  "test_credentials": "admin@magicgame.store / AdminLocal2026! (not used; frontend-only test, no admin UI touched)",
+  "seed_data_creation": "Created one test order MGS-6E9DCC (manual, mvola:TEST123, 120 UC x1, pubg_id 5123456789, pseudo TestPlayer, game_id pubg-mobile) by calling POST /api/orders from the browser context to validate payload shape.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend /api/games returns description as {fr,en}. If main agent patches GameSelector.js (and possibly normalizes in GameContext), retest by: (1) mobile 390px home load, (2) tap [data-testid=game-button], (3) [data-testid=game-selector-panel] should contain 'PUBG Mobile' and the French description without triggering the Emergent runtime-error overlay. FazerCards remains unconfigured — do not expect full UI checkout; validate /orders payload via direct fetch or by stubbing verify.",
+  "rca of the issue": "Backend /api/games returns description/name as internationalized objects ({fr, en}). Frontend GameSelector.js assumed string (matches DEFAULT_GAMES fallback shape in GameContext.js, which uses a plain string). When /api/games succeeds, GameContext.setGames overwrites the fallback with the object-shaped list, and the first attempt to render `{g.description}` throws. Mitigation: in GameSelector.js (lines ~76-79) render `g.description?.[lang] || g.description?.fr || g.description` and `g.name?.[lang] || g.name?.fr || g.name`, or normalize in GameContext before setState."
+}
