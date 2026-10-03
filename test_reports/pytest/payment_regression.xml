@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="11" failures="0" skipped="0" tests="11" time="1.453" timestamp="2026-10-02T03:35:49.964207+00:00" hostname="agent-env-18999e7a-bbce-4b83-93f9-999bb0745ba2"><testcase classname="" name="tests.test_payment_lifecycle" time="0.000"><error message="collection failure">tests/test_payment_lifecycle.py:26: in &lt;module&gt;
+    SECRET = _env["PAPI_WEBHOOK_SECRET"]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'PAPI_WEBHOOK_SECRET'</error><error message="collection failure">tests/test_payment_lifecycle.py:26: in &lt;module&gt;
+    SECRET = _env["PAPI_WEBHOOK_SECRET"]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'PAPI_WEBHOOK_SECRET'</error></testcase><testcase classname="" name="tests.test_payment_fees" time="0.000"><error message="collection failure">tests/test_payment_fees.py:4: in &lt;module&gt;
+    from services import fees
+services/fees.py:2: in &lt;module&gt;
+    from core.db import db
+core/db.py:4: in &lt;module&gt;
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+                                ^^^^^^^^^^^^^^^^^^^^^^^
+&lt;frozen os&gt;:679: in __getitem__
+    ???
+E   KeyError: 'MONGO_URL'</error><error message="collection failure">tests/test_payment_fees.py:4: in &lt;module&gt;
+    from services import fees
+services/fees.py:2: in &lt;module&gt;
+    from core.db import db
+core/db.py:4: in &lt;module&gt;
+    client = AsyncIOMotorClient(os.environ["MONGO_URL"])
+                                ^^^^^^^^^^^^^^^^^^^^^^^
+&lt;frozen os&gt;:679: in __getitem__
+    ???
+E   KeyError: 'MONGO_URL'</error></testcase><testcase classname="tests.test_iter23_manual_fee" name="test_config_exposes_manual_zero" time="0.354"><error message="failed on setup with &quot;AssertionError: 404 page not found&#10;  &#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404]&gt;.status_code&quot;">tests/test_iter23_manual_fee.py:25: in admin_session
+    assert r.status_code == 200, r.text
+E   AssertionError: 404 page not found
+E     
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404]&gt;.status_code</error></testcase><testcase classname="tests.test_iter23_manual_fee" name="test_patch_rejects_manual_key" time="0.000"><error message="failed on setup with &quot;AssertionError: 404 page not found&#10;  &#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404]&gt;.status_code&quot;">tests/test_iter23_manual_fee.py:25: in admin_session
+    assert r.status_code == 200, r.text
+E   AssertionError: 404 page not found
+E     
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404]&gt;.status_code</error></testcase><testcase classname="tests.test_iter23_manual_fee" name="test_patch_accepts_papi_and_fiveone" time="0.000"><error message="failed on setup with &quot;AssertionError: 404 page not found&#10;  &#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404]&gt;.status_code&quot;">tests/test_iter23_manual_fee.py:25: in admin_session
+    assert r.status_code == 200, r.text
+E   AssertionError: 404 page not found
+E     
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404]&gt;.status_code</error></testcase><testcase classname="tests.test_iter23_manual_fee" name="test_manual_order_small_cart_fee_zero" time="0.000"><error message="failed on setup with &quot;AssertionError: 404 page not found&#10;  &#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404]&gt;.status_code&quot;">tests/test_iter23_manual_fee.py:25: in admin_session
+    assert r.status_code == 200, r.text
+E   AssertionError: 404 page not found
+E     
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404]&gt;.status_code</error></testcase><testcase classname="tests.test_iter23_manual_fee" name="test_manual_order_large_cart_fee_zero" time="0.000"><error message="failed on setup with &quot;AssertionError: 404 page not found&#10;  &#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404]&gt;.status_code&quot;">tests/test_iter23_manual_fee.py:25: in admin_session
+    assert r.status_code == 200, r.text
+E   AssertionError: 404 page not found
+E     
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404]&gt;.status_code</error></testcase><testcase classname="tests.test_iter23_manual_fee" name="test_fiveone_fee_brackets" time="0.001"><error message="failed on setup with &quot;AssertionError: 404 page not found&#10;  &#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404]&gt;.status_code&quot;">tests/test_iter23_manual_fee.py:25: in admin_session
+    assert r.status_code == 200, r.text
+E   AssertionError: 404 page not found
+E     
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404]&gt;.status_code</error></testcase><testcase classname="tests.test_iter23_manual_fee" name="test_both_off_blocks_auto_but_allows_manual" time="0.000"><error message="failed on setup with &quot;AssertionError: 404 page not found&#10;  &#10;assert 404 == 200&#10; +  where 404 = &lt;Response [404]&gt;.status_code&quot;">tests/test_iter23_manual_fee.py:25: in admin_session
+    assert r.status_code == 200, r.text
+E   AssertionError: 404 page not found
+E     
+E   assert 404 == 200
+E    +  where 404 = &lt;Response [404]&gt;.status_code</error></testcase></testsuite></testsuites>

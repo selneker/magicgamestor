@@ -135,23 +135,26 @@ def test_startup_migration_is_idempotent_and_additive(monkeypatch):
     p_new, p_done = f"qa-legacy-{tag}", f"qa-migrated-{tag}"
     mongo.products.insert_many([{"id": p_new, "slug": p_new, "type": "uc", "price": 1, "active": False},
                                 {"id": p_done, "slug": p_done, "type": "uc", "price": 1, "active": False, "game_id": "kept-game"}])
-    o_full, o_empty, o_done = (f"qa-o-{k}-{tag}" for k in ("full", "empty", "done"))
+    o_full, o_empty, o_done, o_nosnap = (f"qa-o-{k}-{tag}" for k in ("full", "empty", "done", "nosnap"))
     kept_snap = {"source": "identity", "fields": {"player_id": "1"}}
     mongo.orders.insert_many([
         {"id": o_full, "order_number": f"QA-F-{tag}", "pubg_id": "5222222222", "pseudo": "Legacy", "status": "paid"},
         {"id": o_empty, "order_number": f"QA-E-{tag}", "status": "cancelled"},
         {"id": o_done, "order_number": f"QA-D-{tag}", "pubg_id": "5333333333", "game_id": "kept-game", "identity_snapshot": kept_snap},
+        {"id": o_nosnap, "order_number": f"QA-N-{tag}", "pubg_id": "5444444444", "pseudo": "NoSnap", "game_id": "kept-game"},
     ])
+    ids = (o_full, o_empty, o_done, o_nosnap)
+    before_count = mongo.orders.count_documents({"id": {"$in": list(ids)}})
     try:
         async def run_twice():
             monkeypatch.setattr(games, "db", AsyncIOMotorClient(_env["MONGO_URL"])[_env["DB_NAME"]])  # loop-local client
             await games.migrate_multigame()
-            first = {i: mongo.orders.find_one({"id": i}, {"_id": 0}) for i in (o_full, o_empty, o_done)}
+            first = {i: mongo.orders.find_one({"id": i}, {"_id": 0}) for i in ids}
             await games.migrate_multigame()
             return first
         first = asyncio.run(run_twice())
-        second = {i: mongo.orders.find_one({"id": i}, {"_id": 0}) for i in (o_full, o_empty, o_done)}
-        assert first == second
+        second = {i: mongo.orders.find_one({"id": i}, {"_id": 0}) for i in ids}
+        assert first == second and mongo.orders.count_documents({"id": {"$in": list(ids)}}) == before_count
         assert mongo.products.find_one({"id": p_new})["game_id"] == GAME
         assert mongo.products.find_one({"id": p_done})["game_id"] == "kept-game"
         full, empty, done = second[o_full], second[o_empty], second[o_done]
@@ -159,6 +162,9 @@ def test_startup_migration_is_idempotent_and_additive(monkeypatch):
         assert full["identity_snapshot"] == {"legacy": True, "fields": {"player_id": "5222222222"}, "player_name": "Legacy"}
         assert empty["game_id"] == GAME and empty["identity_snapshot"] == {"legacy": True, "fields": {}}
         assert done["game_id"] == "kept-game" and done["identity_snapshot"] == kept_snap
+        nosnap = second[o_nosnap]
+        assert nosnap["game_id"] == "kept-game" and nosnap["pubg_id"] == "5444444444"
+        assert nosnap["identity_snapshot"] == {"legacy": True, "fields": {"player_id": "5444444444"}, "player_name": "NoSnap"}
     finally:
         mongo.products.delete_many({"id": {"$in": [p_new, p_done]}})
-        mongo.orders.delete_many({"id": {"$in": [o_full, o_empty, o_done]}})
+        mongo.orders.delete_many({"id": {"$in": list(ids)}})

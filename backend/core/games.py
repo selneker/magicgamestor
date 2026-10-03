@@ -31,8 +31,8 @@ def legacy_snapshot(order: dict) -> dict:
 
 def with_game_defaults(order: dict | None) -> dict | None:
     """Read-time compatibility for orders not yet touched by the startup migration."""
-    if order and "game_id" not in order:
-        order["game_id"] = DEFAULT_GAME_ID
+    if order:
+        order.setdefault("game_id", DEFAULT_GAME_ID)
         order.setdefault("identity_snapshot", legacy_snapshot(order))
     return order
 
@@ -40,8 +40,11 @@ def with_game_defaults(order: dict | None) -> dict | None:
 async def migrate_multigame():
     """Additive + idempotent: only documents lacking game_id are enriched ($set only, nothing removed)."""
     await db.products.update_many({"game_id": {"$exists": False}}, {"$set": {"game_id": DEFAULT_GAME_ID}})
-    async for order in db.orders.find({"game_id": {"$exists": False}}, {"_id": 0, "id": 1, "pubg_id": 1, "pseudo": 1, "identity_snapshot": 1}):
-        updates = {"game_id": DEFAULT_GAME_ID}
+    missing = {"$or": [{"game_id": {"$exists": False}}, {"identity_snapshot": {"$exists": False}}]}
+    async for order in db.orders.find(missing, {"_id": 0, "id": 1, "pubg_id": 1, "pseudo": 1, "game_id": 1, "identity_snapshot": 1}):
+        updates = {}
+        if "game_id" not in order:
+            updates["game_id"] = DEFAULT_GAME_ID
         if "identity_snapshot" not in order:
             updates["identity_snapshot"] = legacy_snapshot(order)
-        await db.orders.update_one({"id": order["id"], "game_id": {"$exists": False}}, {"$set": updates})
+        await db.orders.update_one({"id": order["id"], **{k: {"$exists": False} for k in updates}}, {"$set": updates})
