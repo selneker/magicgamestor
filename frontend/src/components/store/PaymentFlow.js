@@ -64,18 +64,17 @@ export function PaymentFlow({ method, setMethod, phone, setPhone, reference, set
                 {selected && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
               </span>
               {PAYMENT_LOGOS[c.key] ? (
-                <img src={PAYMENT_LOGOS[c.key]} alt="" aria-hidden="true" className="h-6 w-14 shrink-0 object-contain object-left" />
+                <img src={PAYMENT_LOGOS[c.key]} alt="" aria-hidden="true" className="h-8 w-24 shrink-0 object-contain object-left" />
               ) : (
-                <span className="flex h-6 w-14 shrink-0 items-center text-muted-foreground" aria-hidden="true">
-                  <Banknote className="h-5 w-5" />
+                <span className="flex h-8 w-24 shrink-0 items-center text-muted-foreground" aria-hidden="true">
+                  <Banknote className="h-6 w-6" />
                 </span>
               )}
               <span className="min-w-0 flex-1">
                 <span className="block font-display text-[15px] font-bold leading-tight text-foreground">{c.title}</span>
                 <span className="mt-0.5 block text-[12px] text-muted-foreground">{c.sub}</span>
               </span>
-              <span className="flex shrink-0 items-center gap-2 pl-1" aria-hidden="true">
-                {fee > 0 && <span className="num text-[11px] font-semibold text-muted-foreground">+{formatAr(fee)}</span>}
+              <span className="flex shrink-0 items-center pl-1" aria-hidden="true">
                 <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${selected ? "rotate-180" : ""}`} />
               </span>
             </button>
@@ -129,7 +128,7 @@ function AutoPanel({ c, phone, setPhone, config }) {
   return (
     <div>
       <label className="text-sm font-semibold" htmlFor="payment-phone">{t("checkout.phone")}</label>
-      <Input id="payment-phone" data-testid="payment-phone" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={c.key === "mvola" ? "034 XX XXX XX" : "037 XX XXX XX"} className="mt-1 h-12 rounded-[12px]" />
+      <Input id="payment-phone" data-testid="payment-phone" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={c.key === "mvola" ? "034 XX XXX XX" : "037 XX XXX XX"} className="mt-1 h-12 rounded-[12px] text-base" />
       <p className="mt-1 text-xs text-muted-foreground">{t("checkout.phoneHint")}</p>
       {config?.mode === "simulation" && <p className="mt-2 rounded-[10px] bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700" data-testid="simulation-mode-notice">{t("checkout.simulated")}</p>}
       {config?.live && <p className="mt-2 rounded-[10px] bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground" data-testid="live-gateway-notice">{t("checkout.redirect")}</p>}

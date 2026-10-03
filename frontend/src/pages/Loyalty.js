@@ -15,8 +15,8 @@ function Ledger({ entries }) {
     <ul className="divide-y text-sm" data-testid="loyalty-ledger">
       {entries.map((e) => (
         <li key={e.id} className="flex items-center justify-between gap-3 py-2" data-testid={`ledger-${e.type}`}>
-          <div className="min-w-0"><p className="truncate">{e.reason}</p><p className="text-xs text-muted-foreground">{new Date(e.created_at).toLocaleString(lang === "en" ? "en-GB" : "fr-FR")} · {e.bucket === "promo" ? t("loyalty.promo") : t("loyalty.earned")}</p></div>
-          <span className={`num text-base ${e.amount >= 0 ? "text-foreground" : "text-destructive"}`}>{e.amount > 0 ? "+" : ""}{e.amount}</span>
+          <div className="min-w-0"><p className="truncate font-semibold">{e.reason}</p><p className="text-xs text-muted-foreground">{new Date(e.created_at).toLocaleString(lang === "en" ? "en-GB" : "fr-FR")} · {e.bucket === "promo" ? t("loyalty.promo") : t("loyalty.earned")}</p></div>
+          <span className={`num shrink-0 text-right text-base font-semibold ${e.amount >= 0 ? "text-foreground" : "text-destructive"}`}>{e.amount > 0 ? "+" : ""}{e.amount} pts</span>
         </li>
       ))}
     </ul>
@@ -38,7 +38,7 @@ function Rewards({ rewards, onRedeem }) {
       {rewards.length === 0
         ? <p className="text-sm text-muted-foreground" data-testid="rewards-empty">{t("loyalty.rewardsEmpty")}</p>
         : rewards.map((r) => (
-        <div key={r.id} className="flex items-center justify-between gap-3 rounded-xl border p-3" data-testid={`reward-${r.id}`}>
+        <div key={r.id} className="flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors hover:border-[color:var(--rule-strong)]" data-testid={`reward-${r.id}`}>
           <div><p className="font-semibold">{r.name}</p>{r.description && <p className="text-xs text-muted-foreground">{r.description}</p>}</div>
           <Button size="sm" onClick={() => onRedeem(r, pubg)} className="rounded-full font-semibold" data-testid={`redeem-${r.id}`}>{r.cost_points} pts</Button>
         </div>
@@ -108,11 +108,11 @@ export default function Loyalty() {
       <p className="eyebrow">{t("account.title")}</p>
       <h1 className="font-display text-3xl font-bold sm:text-4xl">{t("loyalty.title")}</h1>
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <div className="panel-points p-5"><p className="eyebrow-invert">{t("loyalty.balance")}</p><p className="num mt-1 text-4xl text-[#C5FE02]" data-testid="loyalty-total">{data.balance.total}</p></div>
+        <div className="panel-points p-5"><p className="eyebrow-invert">{t("loyalty.balance")}</p><p className="num mt-1 flex items-center gap-2 text-4xl text-[#C5FE02]" data-testid="loyalty-total"><Coins className="h-6 w-6" aria-hidden="true" />{data.balance.total}<span className="text-base font-semibold text-[#C5FE02]/80">pts</span></p></div>
         <div className="panel p-5"><p className="eyebrow">{t("loyalty.earned")}</p><p className="num mt-1 text-3xl text-foreground" data-testid="loyalty-earned">{data.balance.earned}</p></div>
         <div className="panel p-5"><p className="eyebrow">{t("loyalty.promo")}</p><p className="num mt-1 text-3xl text-foreground" data-testid="loyalty-promo">{data.balance.promo}</p></div>
       </div>
-      <p className="mt-3 text-sm text-muted-foreground">{t("loyalty.howto", { pts: data.config.points_per_1000_ar })}</p>
+      <p className="mt-3 rounded-[14px] border-2 border-[color:var(--rule)] bg-muted/40 p-4 text-sm text-muted-foreground">{t("loyalty.howto", { pts: data.config.points_per_1000_ar })}</p>
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <section className="panel p-6"><h2 className="flex items-center gap-2 font-display text-lg font-bold"><Gift className="h-5 w-5" />{t("loyalty.rewards")}</h2><div className="mt-4"><Rewards rewards={rewards} onRedeem={redeem} /></div></section>
         <section className="panel p-6"><h2 className="flex items-center gap-2 font-display text-lg font-bold"><Coins className="h-5 w-5" />{t("loyalty.history")}</h2><div className="mt-4"><Ledger entries={data.ledger} /></div></section>
