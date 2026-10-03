@@ -20,6 +20,11 @@ async def ensure_indexes():
     await db.orders.create_index("order_number", unique=True)
     await db.orders.create_index([("user_id", 1), ("created_at", -1)])
     await db.orders.create_index("pubg_id")
+    await db.orders.create_index("game_id")
+    await db.products.create_index("game_id")
+    await db.games.create_index("id", unique=True)
+    await db.game_identities.create_index("id", unique=True)
+    await db.game_identities.create_index([("user_id", 1), ("game_id", 1)])
     # Per-type rule (1 Prime + 1 Prime+ per PUBG ID) replaces the former single-subscription index.
     await _drop_if_exists(db.orders, "one_subscription_order_per_pubg")
     await db.subscription_locks.create_index([("pubg_id", 1), ("type", 1)], unique=True)

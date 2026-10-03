@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
 from core.db import db
+from core.games import DEFAULT_GAME_ID
 from core.security import require_permission
 from services.fzr_mapping import mapping_ok
 
@@ -17,6 +18,7 @@ def _public(p: dict) -> dict:
     """Vue publique : coût fournisseur jamais exposé + drapeau achetable."""
     mapping = p.pop("fazercards_mapping", None)
     p["purchasable"] = not p.get("requires_mapping") or mapping_ok(mapping)
+    p.setdefault("game_id", DEFAULT_GAME_ID)  # products created before Phase 1
     return p
 
 
@@ -38,6 +40,7 @@ class ProductIn(BaseModel):
     active: bool = True
     sort_order: int = 0
     requires_mapping: bool | None = None
+    game_id: str = Field(default=DEFAULT_GAME_ID, min_length=1, max_length=60)
 
     @field_validator("image_url")
     @classmethod
@@ -50,13 +53,20 @@ class ProductIn(BaseModel):
         return value
 
 
+async def _require_game(game_id: str):
+    if not await db.games.find_one({"id": game_id}):
+        raise HTTPException(status_code=400, detail="Unknown game")
+
+
 @router.get("/products")
 async def list_products(
     type: str | None = None, q: str | None = None, min_price: int | None = None, max_price: int | None = None,
     popular: bool | None = None, sort: str = Query("default", pattern=r"^(default|price_asc|price_desc|uc_desc)$"),
-    include_inactive: bool = False,
+    include_inactive: bool = False, game: str | None = None,
 ):
     query = {} if include_inactive else {"active": True}
+    if game:
+        query["game_id"] = {"$in": [game, None]} if game == DEFAULT_GAME_ID else game
     if type:
         query["type"] = {"$in": type.split(",")}
     if popular is not None:
@@ -79,7 +89,7 @@ async def get_product(slug: str):
     product = await db.products.find_one({"slug": slug, "active": True}, PUBLIC)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    related = await db.products.find({"type": product["type"], "slug": {"$ne": slug}, "active": True}, PUBLIC) \
+    related = await db.products.find({"type": product["type"], "game_id": product.get("game_id", DEFAULT_GAME_ID), "slug": {"$ne": slug}, "active": True}, PUBLIC) \
         .sort([("price", 1)]).to_list(50)
     related.sort(key=lambda p: abs(p["price"] - product["price"]))
     return {**_public(product), "related": [_public(r) for r in related[:4]]}
@@ -87,6 +97,7 @@ async def get_product(slug: str):
 
 @router.post("/admin/products", dependencies=[Depends(require_permission("catalog.manage"))])
 async def create_product(body: ProductIn):
+    await _require_game(body.game_id)
     if await db.products.find_one({"slug": body.slug}):
         raise HTTPException(status_code=409, detail="Slug already exists")
     data = body.model_dump()
@@ -104,6 +115,7 @@ async def update_product(product_id: str, body: ProductIn):
     existing = await db.products.find_one({"id": product_id}, PUBLIC)
     if not existing:
         raise HTTPException(status_code=404, detail="Product not found")
+    await _require_game(body.game_id)
     clash = await db.products.find_one({"slug": body.slug, "id": {"$ne": product_id}})
     if clash:
         raise HTTPException(status_code=409, detail="Slug already exists")

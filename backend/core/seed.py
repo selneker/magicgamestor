@@ -51,7 +51,7 @@ def build_products():
             "badge": "popular" if popular else None,
             "description_fr": f"Recharge de {uc:,} UC (Unknown Cash) créditée directement sur votre compte PUBG Mobile.".replace(",", " "),
             "description_en": f"{uc:,} UC (Unknown Cash) top-up credited directly to your PUBG Mobile account.".replace(",", " "),
-            "active": True, "sort_order": i, "created_at": _now(),
+            "active": True, "sort_order": i, "game_id": "pubg-mobile", "created_at": _now(),
         })
     for j, (kind, months, old, price) in enumerate(PRIME_PACKS):
         label = "Prime+" if kind == "prime_plus" else "Prime"
@@ -62,7 +62,7 @@ def build_products():
             "popular": kind == "prime_plus" and months == 1, "badge": "-2%" if old else None,
             "description_fr": f"Abonnement {label} PUBG Mobile pour {months} mois : UC quotidiens, réductions boutique et bonus exclusifs.",
             "description_en": f"PUBG Mobile {label} subscription for {months} month(s): daily UC, shop discounts and exclusive bonuses.",
-            "active": True, "sort_order": 100 + j, "created_at": _now(),
+            "active": True, "sort_order": 100 + j, "game_id": "pubg-mobile", "created_at": _now(),
         })
     return items
 
@@ -102,7 +102,7 @@ async def seed_all():
                 "id": str(uuid.uuid4()), "slug": slug, "type": "evo", "name": name, "name_en": name_en,
                 "uc_amount": None, "duration_months": None, "price": price, "old_price": None, "popular": False,
                 "badge": None, "evo_limit": limit, "description_fr": desc_fr, "description_en": desc_en,
-                "active": True, "sort_order": 200 + i, "created_at": _now(),
+                "active": True, "sort_order": 200 + i, "game_id": "pubg-mobile", "created_at": _now(),
             })
     for i, (slug, name, name_en, desc_fr, desc_en, price, limit) in enumerate(NEW_EVO_PACKS):
         if not await db.products.find_one({"slug": slug}):
@@ -110,7 +110,7 @@ async def seed_all():
                 "id": str(uuid.uuid4()), "slug": slug, "type": "evo", "name": name, "name_en": name_en,
                 "uc_amount": None, "duration_months": None, "price": price, "old_price": None, "popular": False,
                 "badge": None, "evo_limit": limit, "description_fr": desc_fr, "description_en": desc_en,
-                "active": False, "requires_mapping": True, "sort_order": 210 + i, "created_at": _now(),
+                "active": False, "requires_mapping": True, "sort_order": 210 + i, "game_id": "pubg-mobile", "created_at": _now(),
             })
     if await db.seasons.count_documents({}) == 0:
         await db.seasons.insert_one({"id": str(uuid.uuid4()), "name": "Saison A18", "active": True,

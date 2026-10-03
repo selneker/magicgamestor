@@ -6,6 +6,7 @@ import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { useGames } from "@/context/GameContext";
 import { BackButton } from "@/components/common/BackButton";
 import { PaymentFlow, methodLabel, paymentFee } from "@/components/store/PaymentFlow";
 import { CheckoutSteps } from "@/components/store/checkout/CheckoutSteps";
@@ -25,6 +26,7 @@ export default function Checkout() {
   const { t, lang } = useLang();
   const { items, total, clear } = useCart();
   const { user } = useAuth();
+  const gameId = useGames()?.selectedId || "pubg-mobile";
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -74,7 +76,7 @@ export default function Checkout() {
 
   const createOrder = async (m, extra = {}) => {
     const { data } = await api.post("/orders", {
-      pubg_id: pubgId.trim(), pseudo: verified?.name || pubgId.trim(), email: email || undefined,
+      game_id: gameId, pubg_id: pubgId.trim(), pseudo: verified?.name || pubgId.trim(), email: email || undefined,
       items: items.map((i) => ({ product_id: i.id, quantity: i.qty })), payment_method: m, ...extra,
     });
     clear();

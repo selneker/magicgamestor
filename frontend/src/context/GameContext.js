@@ -8,9 +8,9 @@ const GameContext = createContext(null);
 // GameSelector + admin screens will consume once the endpoint ships.
 const DEFAULT_GAMES = [
   {
-    id: "pubg",
+    id: "pubg-mobile",
     name: "PUBG Mobile",
-    slug: "pubg",
+    slug: "pubg-mobile",
     icon_url: "https://customer-assets-0z36b82j.emergentagent.net/job_games-nav-polish/artifacts/ih6044zb_pubgm_app-icon_512x512%281%29.e9f7efc0.png",
     active: true,
     sort_order: 0,

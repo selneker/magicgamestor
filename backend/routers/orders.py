@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 from core import ratelimit
 from core.audit import audit
 from core.db import db
+from core.games import DEFAULT_GAME_ID, with_game_defaults
 from core.security import (ADMIN_ROLES, get_current_user, get_optional_user, require_admin,
                            require_permission, require_super_admin)
 from routers.evo import EVO_TYPE, release_evo_locks, reserve_evo
@@ -48,6 +49,8 @@ class OrderIn(BaseModel):
     payment_phone: str | None = None
     manual_reference: str | None = Field(default=None, max_length=60)
     email: str | None = None
+    game_id: str = Field(default=DEFAULT_GAME_ID, min_length=1, max_length=60)
+    identity_id: str | None = Field(default=None, max_length=60)
 
     @field_validator("pubg_id")
     @classmethod
@@ -150,6 +153,24 @@ async def backfill_subscription_locks():
                 pass
 
 
+async def _identity_snapshot(body: OrderIn, user: dict | None) -> dict:
+    """Immutable copy of the identity used for this purchase (never a reference to game_identities)."""
+    if not body.identity_id:
+        return {"source": "checkout", "game_id": body.game_id, "fields": {"player_id": body.pubg_id},
+                "player_name": body.pseudo.strip(), "validated": False, "captured_at": _now()}
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required to use a saved game identity")
+    ident = await db.game_identities.find_one({"id": body.identity_id, "user_id": user["user_id"]}, PUBLIC)
+    if not ident or ident["game_id"] != body.game_id:
+        raise HTTPException(status_code=400, detail="Game identity not found for this game")
+    if ident["fields"].get("player_id") not in (None, body.pubg_id):
+        raise HTTPException(status_code=400, detail="Game identity does not match the player ID")
+    return {"source": "identity", "identity_id": ident["id"], "game_id": ident["game_id"], "label": ident.get("label"),
+            "fields": dict(ident["fields"]), "player_name": ident.get("player_name") or body.pseudo.strip(),
+            "region": ident.get("region"), "validated": bool(ident.get("validated")),
+            "validated_at": ident.get("validated_at"), "captured_at": _now()}
+
+
 @router.post("/orders", status_code=201)
 async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request: Request, user=Depends(get_optional_user)):
     ip = ratelimit.client_ip(request)
@@ -171,10 +192,16 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         payment_provider = "binance"
     if body.payment_method == "manual" and not body.manual_reference:
         raise HTTPException(status_code=400, detail="Transaction reference is required")
+    game = await db.games.find_one({"id": body.game_id, "active": True}, {"_id": 0, "id": 1})
+    if not game:
+        raise HTTPException(status_code=400, detail="Unknown or inactive game")
+    identity_snapshot = await _identity_snapshot(body, user)
     ids = [i.product_id for i in body.items]
     products = {p["id"]: p for p in await db.products.find({"id": {"$in": ids}, "active": True}, PUBLIC).to_list(100)}
     if len(products) != len(set(ids)):
         raise HTTPException(status_code=400, detail="One or more products are unavailable")
+    if any(p.get("game_id", DEFAULT_GAME_ID) != body.game_id for p in products.values()):
+        raise HTTPException(status_code=400, detail="Products do not belong to the selected game")
     for p in products.values():
         blocked = purchase_blocked(p)
         if blocked:
@@ -199,6 +226,7 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
     order = {
         "id": str(uuid.uuid4()), "order_number": _order_number(), "user_id": user["user_id"] if user else None,
         "email": (user or {}).get("email") or body.email, "pubg_id": body.pubg_id, "pseudo": body.pseudo.strip(),
+        "game_id": body.game_id, "identity_snapshot": identity_snapshot,
         "items": items, "subtotal": total, "payment_fee": payment_fee, "total": total + payment_fee, "currency": "Ar",
         "payment_method": body.payment_method, "payment_provider": payment_provider,
         "payment_phone": body.payment_phone, "manual_reference": body.manual_reference,
@@ -230,7 +258,7 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
 
 @router.get("/orders/me")
 async def my_orders(user=Depends(get_current_user)):
-    return await db.orders.find({"user_id": user["user_id"]}, PUBLIC).sort("created_at", -1).to_list(200)
+    return [with_game_defaults(o) for o in await db.orders.find({"user_id": user["user_id"]}, PUBLIC).sort("created_at", -1).to_list(200)]
 
 
 @router.get("/orders/subscriptions")
@@ -250,7 +278,7 @@ async def track_order(order_number: str = Query(min_length=6), pubg_id: str = Qu
         if attempt and attempt["status"] == "pending" and is_expired(attempt):
             await expire_attempt(attempt)
             order = await db.orders.find_one({"id": order["id"]}, PUBLIC)
-    return order
+    return with_game_defaults(order)
 
 
 @router.get("/orders/{order_id}")
@@ -260,7 +288,7 @@ async def get_order(order_id: str, user=Depends(get_optional_user)):
         raise HTTPException(status_code=404, detail="Order not found")
     if order.get("user_id") and (not user or (user["user_id"] != order["user_id"] and user.get("role") not in ADMIN_ROLES)):
         raise HTTPException(status_code=403, detail="Forbidden")
-    return order
+    return with_game_defaults(order)
 
 
 # ---------- Admin ----------
