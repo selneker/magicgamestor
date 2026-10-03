@@ -47,6 +47,7 @@ export default function Checkout() {
   const [cryptoPayment, setCryptoPayment] = useState(null);
   const [busy, setBusy] = useState(false);
   const [autoVerify, setAutoVerify] = useState(0);
+  const [identity, setIdentity] = useState(null);
   const setVerified = useCallback((v) => setVerifiedState(v), []);
 
   useEffect(() => {
@@ -76,7 +77,7 @@ export default function Checkout() {
 
   const createOrder = async (m, extra = {}) => {
     const { data } = await api.post("/orders", {
-      game_id: gameId, pubg_id: pubgId.trim(), pseudo: verified?.name || pubgId.trim(), email: email || undefined,
+      game_id: gameId, identity_id: user && identity?.fields?.player_id === pubgId.trim() ? identity.id : undefined, pubg_id: pubgId.trim(), pseudo: verified?.name || pubgId.trim(), email: email || undefined,
       items: items.map((i) => ({ product_id: i.id, quantity: i.qty })), payment_method: m, ...extra,
     });
     clear();
@@ -113,7 +114,7 @@ export default function Checkout() {
   });
 
   const screens = [
-    <StepVerify key="v" pubgId={pubgId} setPubgId={setPubgId} user={user} verified={verified} setVerified={setVerified} autoVerify={autoVerify} setAutoVerify={setAutoVerify} email={email} setEmail={setEmail} onContinue={() => go(1)} />,
+    <StepVerify key="v" pubgId={pubgId} setPubgId={setPubgId} user={user} verified={verified} setVerified={setVerified} autoVerify={autoVerify} setAutoVerify={setAutoVerify} gameId={gameId} identity={identity} setIdentity={setIdentity} email={email} setEmail={setEmail} onContinue={() => go(1)} />,
     <PaymentFlow key="m" method={method} setMethod={setMethod} phone={phone} setPhone={setPhone} reference={reference} setReference={setReference} network={network} setNetwork={setNetwork} accepted={accepted} setAccepted={setAccepted} subtotal={subtotal} config={config} crypto={crypto} busy={busy} onContinue={continueMethod} />,
     <StepPay key="p" method={method} order={order} config={config} summary={summary} reference={reference} busy={busy} onPayAuto={payAuto} onManualPaid={() => go(3)} cryptoPayment={cryptoPayment} onConfirmed={() => go(3)} trackUrl={trackUrl} />,
     <StepConfirm key="c" method={method} order={order} trackUrl={trackUrl} summary={summary} reference={reference} setReference={setReference} busy={busy} onConfirm={confirmManual} />,

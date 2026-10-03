@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BackButton } from "@/components/common/BackButton";
 import { PubgPlayerCard } from "@/components/PubgPlayerCard";
+import { GameIdentities } from "@/components/GameIdentities";
 
 function VerifyBanner({ user }) {
   const { t } = useLang();
@@ -204,6 +205,10 @@ export default function Account() {
 
         <Row icon={ReceiptText} label={t("profile.myOrders")} helper={t("order.history")} to="/suivi" testid="row-my-orders" />
         <Row icon={Coins} label={t("loyalty.title")} helper={points !== null ? `${points} pts` : undefined} to="/compte/points" testid="row-loyalty" accent />
+      </Section>
+
+      <Section title={t("account.identities.title")} testid="account-game-identities">
+        <GameIdentities />
       </Section>
 
       {/* PREFERENCES */}
