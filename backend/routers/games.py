@@ -75,6 +75,9 @@ async def my_identities(game_id: str | None = None, user=Depends(get_current_use
 async def create_identity(body: IdentityIn, user=Depends(get_current_user)):
     if not await db.games.find_one({"id": body.game_id, "active": True}):
         raise HTTPException(status_code=400, detail="Unknown or inactive game")
+    same = await db.game_identities.find_one({"user_id": user["user_id"], "game_id": body.game_id, "fields": body.fields}, PUBLIC)
+    if same:
+        return same  # idempotent: identical identity already saved
     if await db.game_identities.count_documents({"user_id": user["user_id"]}) >= 50:
         raise HTTPException(status_code=409, detail="Too many game identities")
     doc = {**body.model_dump(), "id": str(uuid.uuid4()), "user_id": user["user_id"],

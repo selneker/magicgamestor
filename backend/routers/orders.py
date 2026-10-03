@@ -252,6 +252,8 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         background_tasks.add_task(mailer.send_order_created, order)
     if user and body.pubg_id not in user.get("saved_pubg_ids", []):
         await db.users.update_one({"user_id": user["user_id"]}, {"$push": {"saved_pubg_ids": {"$each": [body.pubg_id], "$slice": -10}}})
+    if user and identity_snapshot["source"] == "identity":  # already a GameIdentity: startup migration must skip it
+        await db.users.update_one({"user_id": user["user_id"]}, {"$addToSet": {"pubg_ids_migrated": body.pubg_id}})
     order.pop("_id", None)
     return order
 
