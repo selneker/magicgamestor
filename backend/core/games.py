@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timezone
 
 from core.db import db
@@ -48,3 +49,22 @@ async def migrate_multigame():
         if "identity_snapshot" not in order:
             updates["identity_snapshot"] = legacy_snapshot(order)
         await db.orders.update_one({"id": order["id"], **{k: {"$exists": False} for k in updates}}, {"$set": updates})
+
+
+async def migrate_saved_pubg_ids():
+    """Additive + idempotent: each legacy saved PUBG ID becomes one GameIdentity, exactly once.
+    `pubg_ids_migrated` remembers handled IDs so a later deleted identity is never recreated."""
+    query = {"saved_pubg_ids.0": {"$exists": True}}
+    async for user in db.users.find(query, {"_id": 0, "user_id": 1, "saved_pubg_ids": 1, "pubg_ids_migrated": 1}):
+        done = set(user.get("pubg_ids_migrated") or [])
+        todo = [pid for pid in dict.fromkeys(user["saved_pubg_ids"]) if isinstance(pid, str) and pid and pid not in done]
+        if not todo:
+            continue
+        existing = {d["fields"].get("player_id") async for d in db.game_identities.find(
+            {"user_id": user["user_id"], "game_id": DEFAULT_GAME_ID}, {"_id": 0, "fields": 1})}
+        docs = [{"id": str(uuid.uuid4()), "user_id": user["user_id"], "game_id": DEFAULT_GAME_ID, "label": f"PUBG {pid}",
+                 "fields": {"player_id": pid}, "source": "saved_pubg_ids", "validated": False, "validated_at": None,
+                 "created_at": _now(), "updated_at": _now()} for pid in todo if pid not in existing]
+        if docs:
+            await db.game_identities.insert_many(docs)
+        await db.users.update_one({"user_id": user["user_id"]}, {"$addToSet": {"pubg_ids_migrated": {"$each": todo}}})

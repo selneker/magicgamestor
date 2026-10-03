@@ -1,11 +1,21 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLang } from "@/context/LanguageContext";
 import { PubgIdVerify } from "@/components/store/PubgIdVerify";
 
-export function StepVerify({ pubgId, setPubgId, user, verified, setVerified, autoVerify, setAutoVerify, email, setEmail, onContinue }) {
+export function StepVerify({ pubgId, setPubgId, user, verified, setVerified, autoVerify, setAutoVerify, gameId, identity, setIdentity, email, setEmail, onContinue }) {
   const { t } = useLang();
+  const [identities, setIdentities] = useState([]);
+  useEffect(() => {
+    if (!user) return;
+    api.get("/me/game-identities", { params: { game_id: gameId } }).then((r) => setIdentities(r.data)).catch(() => setIdentities([]));
+  }, [user, gameId]);
+  const known = new Set(identities.map((i) => i.fields?.player_id));
+  const legacyIds = (user?.saved_pubg_ids || []).filter((id) => !known.has(id));
+  const pickIdentity = (it) => { setIdentity(it); setPubgId(it.fields?.player_id || ""); setAutoVerify((n) => n + 1); };
   return (
     <section className="rounded-[22px] border-2 border-[color:var(--rule)] bg-card p-4 sm:p-6" data-testid="checkout-step-verify">
       <h2 className="font-display text-xl font-bold">{t("checkout.verifyTitle")}</h2>
@@ -20,8 +30,11 @@ export function StepVerify({ pubgId, setPubgId, user, verified, setVerified, aut
       <div className="mt-4">
         <label htmlFor="pubg-id" className="text-sm font-semibold">{t("checkout.playerId")}</label>
         <Input id="pubg-id" data-testid="pubg-id-input" inputMode="numeric" value={pubgId} onChange={(e) => setPubgId(e.target.value.replace(/\D/g, ""))} required className="mt-1 h-12 rounded-[12px] num" placeholder="5123456789" />
-        {user?.saved_pubg_ids?.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">{user.saved_pubg_ids.map((id) => <button type="button" key={id} data-testid={`saved-id-${id}`} onClick={() => { setPubgId(id); setAutoVerify((n) => n + 1); }} className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-primary hover:text-[#0A0A0A]">{id}</button>)}</div>
+        {identities.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1" data-testid="checkout-identities">{identities.map((it) => <button type="button" key={it.id} data-testid={`identity-pick-${it.id}`} onClick={() => pickIdentity(it)} className={`rounded-full px-2 py-0.5 text-xs font-semibold transition-colors hover:bg-primary hover:text-[#0A0A0A] ${identity?.id === it.id && identity?.fields?.player_id === pubgId ? "bg-primary text-[#0A0A0A]" : "bg-muted text-muted-foreground"}`}>{it.label}</button>)}</div>
+        )}
+        {legacyIds.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">{legacyIds.map((id) => <button type="button" key={id} data-testid={`saved-id-${id}`} onClick={() => { setPubgId(id); setAutoVerify((n) => n + 1); }} className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-primary hover:text-[#0A0A0A]">{id}</button>)}</div>
         )}
         <PubgIdVerify pubgId={pubgId} onVerified={setVerified} autoTrigger={autoVerify} checkout initial={verified} />
       </div>
