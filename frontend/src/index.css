@@ -1,0 +1,184 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* NOHEMI SLOT — drop properly licensed files in /public/fonts and uncomment.
+   The whole design already reads --font-display / --font-body, so nothing else changes.
+@font-face { font-family: 'Nohemi'; src: url('/fonts/Nohemi-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Nohemi'; src: url('/fonts/Nohemi-SemiBold.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Nohemi'; src: url('/fonts/Nohemi-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Nohemi'; src: url('/fonts/Nohemi-Black.woff2') format('woff2'); font-weight: 900; font-display: swap; }
+*/
+
+@layer base {
+    :root {
+        --font-display: 'Nohemi', 'Archivo', system-ui, sans-serif;
+        --font-body: 'Nohemi', 'Archivo', system-ui, sans-serif;
+        /* Neon Brutalism — light */
+        --background: 48 20% 94%;      /* #F4F3EE */
+        --foreground: 0 0% 4%;         /* #0A0A0A */
+        --card: 0 0% 100%;
+        --card-foreground: 0 0% 4%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 0 0% 4%;
+        --primary: 72 99% 50%;         /* #C5FE02 */
+        --primary-foreground: 0 0% 4%;
+        --secondary: 0 0% 4%;
+        --secondary-foreground: 48 20% 94%;
+        --muted: 48 14% 90%;
+        --muted-foreground: 60 3% 41%; /* #8A8A82 */
+        --accent: 72 99% 50%;
+        --accent-foreground: 0 0% 4%;
+        --destructive: 6 78% 45%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 0 0% 4%;
+        --input: 0 0% 4%;
+        --ring: 72 99% 42%;
+        --radius: 10px;
+        --rule: hsl(0 0% 4% / .15);
+        --rule-strong: hsl(0 0% 4% / .38);
+        --shadow-brut: 3px 3px 0 hsl(0 0% 4% / .18);
+        --mvola: #00A651;
+        --orange: #FF7900;
+        --pubg: #C5FE02;
+        --sab: env(safe-area-inset-bottom, 0px);
+    }
+    .dark {
+        --background: 0 0% 17%;        /* #2B2B2B */
+        --foreground: 48 20% 94%;
+        --card: 0 0% 20%;              /* #333333 */
+        --card-foreground: 48 20% 94%;
+        --popover: 0 0% 22%;
+        --popover-foreground: 48 20% 94%;
+        --primary: 72 99% 50%;
+        --primary-foreground: 0 0% 4%;
+        --secondary: 48 20% 94%;
+        --secondary-foreground: 0 0% 4%;
+        --muted: 0 0% 24%;
+        --muted-foreground: 60 4% 68%;
+        --accent: 72 99% 50%;
+        --accent-foreground: 0 0% 4%;
+        --destructive: 6 70% 50%;
+        --border: 48 12% 82%;
+        --input: 48 12% 82%;
+        --ring: 72 99% 50%;
+        --rule: hsl(48 20% 94% / .15);
+        --rule-strong: hsl(48 20% 94% / .4);
+        --shadow-brut: 3px 3px 0 hsl(0 0% 0% / .35);
+    }
+    * { border-color: var(--rule); }
+    html { scroll-behavior: smooth; }
+    body {
+        @apply bg-background text-foreground antialiased;
+        font-family: var(--font-body);
+        font-feature-settings: "tnum" 1;
+        font-weight: 400;
+    }
+    h1, h2, h3, h4, .font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
+    h1 { font-weight: 700; }
+    h2, h3 { font-weight: 600; }
+    p, li, td, span, label, input, textarea { letter-spacing: 0; }
+    ::selection { background: hsl(var(--primary)); color: #0A0A0A; }
+    :focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
+}
+
+@layer utilities {
+    /* Editorial building blocks */
+    .panel { border: 1px solid var(--rule); background: hsl(var(--card)); border-radius: var(--radius); }
+    .panel-soft { border: 1px solid var(--rule); background: hsl(var(--card)); border-radius: var(--radius); }
+    .panel-black { @apply bg-foreground text-background; border-radius: var(--radius); }
+    .panel-neon { background: hsl(var(--primary)); color: #0A0A0A; border: 1px solid var(--rule-strong); border-radius: var(--radius); }
+    .eyebrow { @apply text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground; }
+    /* Loyalty balance surface — stable dark card in both themes so the neon figure stays readable */
+    .panel-points { background: #1F1F1F; color: #F4F3EE; border: 1px solid var(--rule-strong); border-radius: var(--radius); }
+    .dark .panel-points { background: #232323; border-color: hsl(72 99% 50% / .55); box-shadow: inset 0 0 0 1px hsl(72 99% 50% / .1); }
+    .eyebrow-invert { @apply text-[11px] font-medium uppercase tracking-[0.2em]; color: hsl(48 20% 94% / .85); }
+    .rule-t { border-top: 1px solid var(--rule); }
+    .num { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+    .hover-slide { @apply transition-[transform,background-color,color,box-shadow] duration-200 ease-out; }
+    .hover-slide:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow-brut); }
+    .neon-shadow { box-shadow: 3px 3px 0 hsl(var(--primary) / .55); }
+    .card-lift { @apply transition-[transform,box-shadow,border-color] duration-200 ease-out; }
+    .card-lift:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 hsl(var(--foreground) / .22); border-color: var(--rule-strong); }
+    .dark .card-lift:hover { box-shadow: 4px 4px 0 hsl(var(--primary) / .5); }
+    .glass { @apply bg-background/85 backdrop-blur-xl; }
+    .pb-safe { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .grain::after {
+        content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .22; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+    }
+    .marquee { animation: marquee 44s linear infinite; }
+    /* Mobile nav — original liquid-glass over a brutalist black slab */
+    .liquid-nav {
+        background: hsl(0 0% 11% / .9);
+        -webkit-backdrop-filter: blur(20px) saturate(170%); backdrop-filter: blur(20px) saturate(170%);
+        border: 1px solid rgba(244,243,238,.14);
+        border-radius: 9999px;
+        box-shadow: 0 1px 0 rgba(244,243,238,.08) inset, 0 10px 28px rgba(0,0,0,.34);
+    }
+    .liquid-active { background: hsl(var(--primary)); color: #0A0A0A; border-radius: 9999px; box-shadow: 0 2px 10px hsl(var(--primary) / .28); }
+    .float-glass {
+        -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
+        border-radius: 16px;
+        box-shadow: 4px 4px 0 hsl(var(--foreground) / .22), 0 18px 40px hsl(0 0% 0% / .18);
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .marquee { animation: none; }
+        .card-lift:hover, .hover-slide:hover { transform: none; }
+        *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+    }
+}
+
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* ── Brutalist surface mapping ───────────────────────────────────────────
+   Existing pages use slate/white utilities. Remapping them here converts
+   the whole app (customer + admin, light + dark) without rewriting markup. */
+.rounded-2xl, .rounded-3xl, .rounded-\[2rem\], .rounded-\[1\.5rem\], .rounded-\[1\.75rem\], .rounded-\[1\.25rem\] { border-radius: 14px !important; }
+.rounded-xl, .rounded-lg { border-radius: 12px !important; }
+.rounded-md { border-radius: 8px !important; }
+.rounded-sm { border-radius: 6px !important; }
+.rounded-none { border-radius: 8px !important; }
+.rounded-full { border-radius: 10px !important; }
+.rounded-full[class*="h-1"], .rounded-full[class*="w-1"], .rounded-full[class*="h-2"], .rounded-full[class*="w-2"], .rounded-full[class*="h-3"], span.rounded-full { border-radius: 9999px !important; }
+.nav-pill, .nav-pill.rounded-full { border-radius: 9999px !important; }
+/* Mobile bottom navigation — larger, rounder reference geometry. */
+.nav-outer { height: 64px; border-radius: 32px !important; }
+.nav-item-pill, .nav-item-pill.rounded-full { height: 56px; border-radius: 28px !important; }
+.game-backdrop {
+    background: rgba(0, 0, 0, .28);
+    -webkit-backdrop-filter: blur(14px) saturate(130%); backdrop-filter: blur(14px) saturate(130%);
+}
+/* Ordinary borders stay understated (~15% opacity); strong states opt in explicitly. */
+.border-foreground, .border-slate-900, .border-black { border-color: var(--rule) !important; }
+.divide-foreground > * + * { border-color: var(--rule) !important; }
+.border-strong { border-color: var(--rule-strong) !important; }
+.bg-white, .bg-white\/90, .bg-white\/85 { background-color: hsl(var(--card)); }
+.bg-slate-50, .bg-slate-100 { background-color: hsl(var(--muted)); }
+.bg-slate-200 { background-color: hsl(var(--muted)); }
+.bg-slate-900, .bg-slate-950 { background-color: hsl(var(--foreground)); color: hsl(var(--background)); }
+.text-slate-900, .text-slate-800, .text-slate-700 { color: hsl(var(--foreground)); }
+.text-slate-600, .text-slate-500, .text-slate-400, .text-slate-300 { color: hsl(var(--muted-foreground)); }
+.border-slate-100, .border-slate-200, .border-slate-300, .border-slate-200\/70, .border-slate-900 { border-color: var(--rule); }
+.ring-slate-200 { --tw-ring-color: var(--rule); }
+.hover\:bg-slate-50:hover, .hover\:bg-slate-100:hover, .hover\:bg-slate-200:hover { background-color: hsl(var(--primary)); color: #0A0A0A; }
+.hover\:bg-slate-900:hover { background-color: hsl(var(--foreground)); color: hsl(var(--background)); }
+.hover\:text-slate-900:hover { color: hsl(var(--foreground)); }
+.hover\:border-slate-300:hover { border-color: hsl(var(--foreground)); }
+.text-primary { color: hsl(var(--foreground)); }
+.dark .text-primary { color: hsl(var(--primary)); }
+.bg-amber-50, .bg-orange-50, .bg-emerald-50, .bg-sky-50, .bg-blue-50, .bg-violet-50, .bg-rose-50 { background-color: hsl(var(--muted)); }
+.text-amber-600, .text-amber-700, .text-orange-600, .text-emerald-600, .text-emerald-700, .text-sky-700, .text-blue-600, .text-violet-600 { color: hsl(var(--foreground)); }
+.dark .text-amber-600, .dark .text-amber-700, .dark .text-orange-600, .dark .text-emerald-600, .dark .text-emerald-700, .dark .text-sky-700, .dark .text-blue-600, .dark .text-violet-600 { color: hsl(var(--foreground)); }
+.bg-emerald-600, .bg-emerald-500, .bg-orange-500 { background-color: hsl(var(--foreground)); color: hsl(var(--background)); }
+.hover\:bg-emerald-700:hover { background-color: hsl(var(--primary)); color: #0A0A0A; }
+[data-testid="product-visual"] { background-image: none !important; background-color: hsl(var(--muted)); }
+.text-slate-900\/10 { color: hsl(var(--foreground) / .08); }
+.dark .text-slate-900\/10 { color: hsl(var(--foreground) / .12); }
+.recharts-default-tooltip { background-color: hsl(var(--popover)) !important; border-color: hsl(var(--foreground)) !important; border-radius: 0 !important; color: hsl(var(--popover-foreground)); }
+.recharts-cartesian-axis-tick text { fill: hsl(var(--muted-foreground)); }
+
+[data-debug-wrapper="true"] { display: contents !important; }
