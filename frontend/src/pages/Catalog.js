@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import PackEvolutif from "@/pages/PackEvolutif";
 
 const TYPES = [["", "all"], ["uc", "uc"], ["prime", "prime"], ["prime_plus", "prime_plus"]];
 
@@ -60,6 +61,10 @@ export default function Catalog() {
             </button>
           ))}
           <button data-testid="filter-popular" onClick={() => update({ popular: popular ? "" : "1" })} className={`shrink-0 border border-foreground px-4 py-2 text-[11px] font-black uppercase tracking-[0.1em] transition-colors ${popular ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`}>{t("catalog.popular")}</button>
+          <Button variant="outline" role="tab" aria-selected={activeType === "evo"} data-testid="type-tab-evo" onClick={() => update({ type: "evo", popular: "" })}
+            className={`h-auto shrink-0 rounded-none border border-foreground px-4 py-2 text-[11px] font-black uppercase tracking-[0.1em] shadow-none transition-colors ${activeType === "evo" ? "bg-primary text-primary-foreground hover:bg-primary" : "bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`}>
+            {t("nav.evo")}
+          </Button>
         </div>
         <div className="ml-auto flex w-full items-center gap-2 sm:w-auto">
           <Button variant="outline" size="sm" className="rounded-full" onClick={() => setShowFilters((s) => !s)} data-testid="toggle-filters"><SlidersHorizontal className="mr-1 h-4 w-4" />{t("catalog.filters")}</Button>
@@ -83,11 +88,13 @@ export default function Catalog() {
       )}
 
       <p className="mt-8 eyebrow" data-testid="results-count">{products ? `${products.length} ${t("catalog.results")}` : t("common.loading")}</p>
+      {type === "evo" ? <PackEvolutif embedded products={products} /> : <>
       <div className="mt-3 grid grid-cols-2 items-stretch gap-4 md:grid-cols-3 lg:grid-cols-4" data-testid="catalog-grid">
         {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-64" />)}
         {products?.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
       </div>
       {products?.length === 0 && <p className="mt-10 text-center text-slate-500" data-testid="catalog-empty">{t("catalog.empty")}</p>}
+      </>}
     </div>
   );
 }

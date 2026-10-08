@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-export default function PackEvolutif() {
+export default function PackEvolutif({ embedded = false, products = null }) {
   const { t, lang } = useLang();
   const { add } = useCart();
   const navigate = useNavigate();
@@ -19,11 +19,12 @@ export default function PackEvolutif() {
   const [pubgId, setPubgId] = useState("");
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState(null);
+  const displayedOffers = embedded ? products : offers;
 
   useEffect(() => {
-    api.get("/products", { params: { type: "evo" } }).then((r) => setOffers(r.data)).catch(() => setOffers([]));
+    if (!embedded) api.get("/products", { params: { type: "evo" } }).then((r) => setOffers(r.data)).catch(() => setOffers([]));
     api.get("/evo/season").then((r) => setSeasonInfo(r.data)).catch(() => {});
-  }, []);
+  }, [embedded]);
 
   const openOffer = (p) => { setSelected(p); setPubgId(""); setResult(null); };
   const check = async (e) => {
@@ -45,7 +46,8 @@ export default function PackEvolutif() {
   };
 
   return (
-    <div className="pb-24 pt-6" data-testid="evo-page">
+    <div className={embedded ? "" : "pb-24 pt-6"} data-testid="evo-page">
+      {!embedded && <>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="eyebrow">PUBG Mobile</p>
@@ -64,9 +66,10 @@ export default function PackEvolutif() {
         <p className="eyebrow" data-testid="evo-specials-title">{t("evo.specials")}</p>
         <span className="h-px flex-1 bg-border" />
       </div>
+      </>}
       <div className="mt-4 grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2" data-testid="evo-grid">
-        {offers === null && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-52" />)}
-        {offers?.map((p) => (
+        {displayedOffers === null && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-52" />)}
+        {displayedOffers?.map((p) => (
           <article key={p.id} data-testid={`evo-offer-${p.slug}`} className="flex flex-col border border-foreground bg-card p-6">
             <div>
               <p className="eyebrow">{t(`evo.limit.${p.evo_limit || "season"}`)}</p>
@@ -87,7 +90,7 @@ export default function PackEvolutif() {
           </article>
         ))}
       </div>
-      {offers?.length === 0 && <p className="mt-10 text-center text-muted-foreground" data-testid="evo-empty">{t("evo.empty")}</p>}
+      {displayedOffers?.length === 0 && <p className="mt-10 text-center text-muted-foreground" data-testid="evo-empty">{t("evo.empty")}</p>}
       <p className="mt-8 border border-foreground bg-muted/40 p-4 text-xs text-muted-foreground" data-testid="evo-hint">{t("evo.hint")}</p>
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
