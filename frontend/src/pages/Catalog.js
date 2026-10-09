@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Gamepad2, Search, SlidersHorizontal, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
+import { useGames } from "@/context/GameContext";
 import { ProductCard } from "@/components/store/ProductCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,11 +13,56 @@ import PackEvolutif from "@/pages/PackEvolutif";
 
 const TYPES = [["", "all"], ["uc", "uc"], ["prime", "prime"], ["prime_plus", "prime_plus"]];
 
+// Phase 3 — explicit game selection. `/boutique` without `?game=` always shows this
+// picker: a game kept in localStorage never skips it. Only ACTIVE games are listed
+// (GameContext already filters `active !== false` and sorts by `sort_order`).
+function GamePicker({ games, onPick }) {
+  const { t } = useLang();
+  // Logo fallback: a missing OR broken `icon_url` falls back to the design-system icon.
+  const [broken, setBroken] = useState({});
+  return (
+    <div className="pb-24 pt-6" data-testid="game-picker">
+      <div className="border-b pb-4">
+        <p className="eyebrow">{t("games.eyebrow")}</p>
+        <h1 className="font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">{t("games.pickTitle")}</h1>
+        <p className="mt-3 max-w-xl text-sm text-muted-foreground">{t("games.pickSubtitle")}</p>
+      </div>
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2" data-testid="game-picker-grid">
+        {games.map((g) => (
+          <button
+            key={g.id}
+            type="button"
+            onClick={() => onPick(g)}
+            data-testid={`game-pick-${g.slug || g.id}`}
+            className="card-lift group flex items-center gap-4 rounded-[14px] border bg-card p-4 text-left sm:p-5"
+          >
+            <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-[#0A0A0A]">
+              {g.icon_url && !broken[g.id] ? (
+                <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy"
+                  onError={() => setBroken((b) => ({ ...b, [g.id]: true }))} />
+              ) : (
+                <Gamepad2 className="h-7 w-7" strokeWidth={2} aria-hidden="true" />
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-display text-lg font-bold uppercase leading-tight text-foreground">{g.name}</span>
+              {g.description && <span className="mt-1 block truncate text-[12px] text-muted-foreground">{g.description}</span>}
+            </span>
+          </button>
+        ))}
+      </div>
+      {games.length === 0 && <p className="mt-10 text-center text-muted-foreground" data-testid="game-picker-empty">{t("games.empty")}</p>}
+    </div>
+  );
+}
+
 export default function Catalog() {
   const { t } = useLang();
+  const { games, selectGame } = useGames();
   const [params, setParams] = useSearchParams();
   const [products, setProducts] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const game = params.get("game") || "";
   const type = params.get("type") || "";
   const q = params.get("q") || "";
   const sort = params.get("sort") || "default";
@@ -31,20 +77,27 @@ export default function Catalog() {
   };
 
   useEffect(() => {
+    if (!game) return;  // no game selected yet: the picker is shown, nothing to fetch
     const id = setTimeout(() => {
       setProducts(null);
-      api.get("/products", { params: { type: type || undefined, q: q || undefined, sort, popular: popular || undefined, min_price: minPrice || undefined, max_price: maxPrice || undefined } })
+      api.get("/products", { params: { game, type: type || undefined, q: q || undefined, sort, popular: popular || undefined, min_price: minPrice || undefined, max_price: maxPrice || undefined } })
         .then((r) => setProducts(r.data)).catch(() => setProducts([]));
     }, q ? 250 : 0);
     return () => clearTimeout(id);
-  }, [type, q, sort, popular, minPrice, maxPrice]);
+  }, [game, type, q, sort, popular, minPrice, maxPrice]);
 
   const activeType = useMemo(() => (type.includes(",") ? "prime" : type), [type]);
+  const currentGame = useMemo(() => games.find((g) => g.id === game) || null, [games, game]);
+
+  // No `?game=` → explicit selection page. An unknown/inactive game id falls back to it too.
+  if (!game || (games.length > 0 && !currentGame)) {
+    return <GamePicker games={games} onPick={(g) => { selectGame(g.id); setParams({ game: g.id }, { replace: true }); }} />;
+  }
 
   return (
     <div className="pb-24 pt-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div><p className="eyebrow">PUBG Mobile</p><h1 className="font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">{t("catalog.title")}</h1></div>
+        <div><p className="eyebrow">{currentGame?.name || t("games.title")}</p><h1 className="font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">{t("catalog.title")}</h1></div>
         <div className="relative w-full sm:w-72">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input data-testid="catalog-search" value={q} onChange={(e) => update({ q: e.target.value })} placeholder={t("catalog.search")} className="h-11 rounded-full pl-9" />

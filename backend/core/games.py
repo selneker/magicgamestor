@@ -4,10 +4,19 @@ from datetime import datetime, timezone
 from core.db import db
 
 DEFAULT_GAME_ID = "pubg-mobile"
+FREE_FIRE_GAME_ID = "free-fire"
 PUBG_GAME = {
     "id": DEFAULT_GAME_ID, "slug": DEFAULT_GAME_ID, "name": "PUBG Mobile", "active": True, "sort_order": 0,
     "icon_url": "https://customer-assets-0z36b82j.emergentagent.net/job_games-nav-polish/artifacts/ih6044zb_pubgm_app-icon_512x512%281%29.e9f7efc0.png",
     "description": "UC, Prime, Prime+ & Pack évolutif", "description_en": "UC, Prime, Prime+ & Evolving Pack",
+}
+# Phase 3 — second real game. `icon_url` is intentionally left empty: the logo is
+# admin-configurable (Admin → Jeux) and the storefront falls back to the design-system
+# placeholder until an administrator sets it. No commercial data is invented here.
+FREE_FIRE_GAME = {
+    "id": FREE_FIRE_GAME_ID, "slug": FREE_FIRE_GAME_ID, "name": "Free Fire", "active": True, "sort_order": 1,
+    "icon_url": None,
+    "description": "Diamants Free Fire", "description_en": "Free Fire Diamonds",
 }
 
 
@@ -16,8 +25,9 @@ def _now():
 
 
 async def seed_games():
-    """Idempotent: inserts PUBG Mobile once, never overwrites admin edits."""
-    await db.games.update_one({"id": DEFAULT_GAME_ID}, {"$setOnInsert": {**PUBG_GAME, "created_at": _now()}}, upsert=True)
+    """Idempotent: inserts the known games once, never overwrites admin edits."""
+    for game in (PUBG_GAME, FREE_FIRE_GAME):
+        await db.games.update_one({"id": game["id"]}, {"$setOnInsert": {**game, "created_at": _now()}}, upsert=True)
 
 
 def legacy_snapshot(order: dict) -> dict:

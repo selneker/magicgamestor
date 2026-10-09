@@ -26,6 +26,11 @@ export function GameProvider({ children }) {
     try { return localStorage.getItem(STORAGE_KEY) || DEFAULT_GAMES[0].id; }
     catch (_) { return DEFAULT_GAMES[0].id; }
   });
+  // Phase 3 — `explicit` is true only once the user really picked a game (or a
+  // `?game=` param was honoured). The stored value is a convenience for the
+  // checkout/GameButton, it must NEVER skip the storefront game-selection page:
+  // that decision is driven by the URL (`/boutique` without `?game=`).
+  const [explicit, setExplicit] = useState(false);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -53,6 +58,7 @@ export function GameProvider({ children }) {
 
   const selectGame = useCallback((id) => {
     setSelectedId(id);
+    setExplicit(true);
     setOpen(false);
   }, []);
 
@@ -65,10 +71,11 @@ export function GameProvider({ children }) {
     games,
     selected,
     selectedId: selected?.id,
+    explicit,
     selectGame,
     open,
     setOpen,
-  }), [games, selected, selectGame, open]);
+  }), [games, selected, explicit, selectGame, open]);
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 }

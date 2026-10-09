@@ -48,7 +48,9 @@ def _order(h, **kw):
 
 def test_games_endpoint_returns_pubg():
     games = requests.get(f"{API}/games").json()
-    assert [g["id"] for g in games] == [GAME] and games[0]["active"] is True
+    ids = [g["id"] for g in games]
+    # Phase 3: PUBG Mobile is no longer the only game (Free Fire ships as a second real game).
+    assert GAME in ids and all(g["active"] is True for g in games)
     assert mongo.games.count_documents({"id": GAME}) == 1  # seed upsert never duplicates
     assert requests.get(f"{API}/games/unknown-game").status_code == 404
 

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Gamepad2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useGames } from "@/context/GameContext";
 import { useLang, localized } from "@/context/LanguageContext";
 import { StatusBadge } from "@/components/layout/Header";
 import { ProductCard } from "@/components/store/ProductCard";
@@ -10,9 +11,11 @@ import { Button } from "@/components/ui/button";
 
 export default function Home() {
   const { t, lang } = useLang();
+  const { games, selectGame } = useGames();
   const [products, setProducts] = useState([]);
   const [events, setEvents] = useState([]);
   const [slide, setSlide] = useState(0);
+  const [broken, setBroken] = useState({});
   const rotating = t("hero.rotate");
   useEffect(() => {
     api.get("/products", { params: { popular: true } }).then((r) => setProducts(r.data)).catch(() => {});
@@ -47,8 +50,8 @@ export default function Home() {
             </div>
             <p className="mt-8 max-w-md text-sm font-normal leading-relaxed text-muted-foreground sm:text-base">{t("hero.subtitle")}</p>
             <div className="mt-10 flex flex-wrap gap-3">
-              <Button asChild size="lg" className="h-12 px-7 text-sm" data-testid="hero-cta-uc"><Link to="/boutique?type=uc">{t("hero.ctaUc")}<ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
-              <Button asChild size="lg" variant="outline" className="h-12 px-7 text-sm" data-testid="hero-cta-prime"><Link to="/boutique?type=prime,prime_plus">{t("hero.ctaPrime")}</Link></Button>
+              <Button asChild size="lg" className="h-12 px-7 text-sm" data-testid="hero-cta-uc"><Link to="/boutique?game=pubg-mobile&type=uc">{t("hero.ctaUc")}<ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
+              <Button asChild size="lg" variant="outline" className="h-12 px-7 text-sm" data-testid="hero-cta-prime"><Link to="/boutique?game=pubg-mobile&type=prime,prime_plus">{t("hero.ctaPrime")}</Link></Button>
             </div>
             <div className="mt-12 flex gap-1.5" role="tablist" aria-label="Messages">
               {rotating.map((_, i) => (
@@ -73,13 +76,41 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="mt-20" data-testid="home-game-selection">
+        <div className="flex items-end justify-between border-b pb-3">
+          <div>
+            <p className="eyebrow">{t("games.title")}</p>
+            <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{t("games.pickTitle")}</h2>
+          </div>
+        </div>
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {games.map((g) => (
+            <Link key={g.id} to={`/boutique?game=${g.id}`} onClick={() => selectGame(g.id)} data-testid={`home-game-${g.slug || g.id}`}
+              className="card-lift group flex items-center gap-4 rounded-[14px] border bg-card p-4 sm:p-5">
+              <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-[#0A0A0A]">
+                {g.icon_url && !broken[g.id] ? (
+                  <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy"
+                    onError={() => setBroken((b) => ({ ...b, [g.id]: true }))} />
+                ) : (
+                  <Gamepad2 className="h-7 w-7" strokeWidth={2} aria-hidden="true" />
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-display text-lg font-bold uppercase leading-tight text-foreground">{g.name}</span>
+                {g.description && <span className="mt-1 block truncate text-[12px] text-muted-foreground">{g.description}</span>}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section className="mt-20">
         <div className="flex items-end justify-between border-b pb-3">
           <div>
             <p className="eyebrow">{t("catalog.popular")}</p>
             <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{t("catalog.uc")} / Prime</h2>
           </div>
-          <Link to="/boutique" data-testid="see-all-link" className="inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground">{t("common.seeAll")}<ArrowRight className="h-3.5 w-3.5" /></Link>
+          <Link to="/boutique?game=pubg-mobile" data-testid="see-all-link" className="inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground">{t("common.seeAll")}<ArrowRight className="h-3.5 w-3.5" /></Link>
         </div>
         <div className="mt-6 grid grid-cols-2 items-stretch gap-4 md:grid-cols-3 lg:grid-cols-4" data-testid="popular-grid">
           {products.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}

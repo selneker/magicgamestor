@@ -1,12 +1,14 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, Gamepad2 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useGames } from "@/context/GameContext";
 import { useLang } from "@/context/LanguageContext";
 
 export function GameSelector() {
   const { games, selected, selectGame, open, setOpen } = useGames();
   const { t } = useLang();
+  // Logo fallback: a missing OR broken `icon_url` falls back to the design-system icon.
+  const [broken, setBroken] = useState({});
 
   // Lock body scroll while the overlay is open and allow ESC to close it.
   useEffect(() => {
@@ -66,8 +68,9 @@ export function GameSelector() {
                       }`}
                     >
                       <span className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-[#0A0A0A] ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-[hsl(var(--foreground))]" : ""}`}>
-                        {g.icon_url ? (
-                          <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                        {g.icon_url && !broken[g.id] ? (
+                          <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy"
+                            onError={() => setBroken((b) => ({ ...b, [g.id]: true }))} />
                         ) : (
                           <Gamepad2 className="h-6 w-6" strokeWidth={2} />
                         )}

@@ -78,8 +78,8 @@ export function Header() {
         </Link>
         <div className="hidden shrink-0 xl:block"><StatusBadge /></div>
         <nav className="ml-auto hidden shrink-0 items-center gap-5 md:flex lg:gap-6">
-          <NavLink to="/boutique?type=uc" className={link} data-testid="nav-uc">{t("nav.uc")}</NavLink>
-          <NavLink to="/boutique?type=prime,prime_plus" className={link} data-testid="nav-prime">{t("nav.prime")}</NavLink>
+          <NavLink to="/boutique?game=pubg-mobile&type=uc" className={link} data-testid="nav-uc">{t("nav.uc")}</NavLink>
+          <NavLink to="/boutique?game=pubg-mobile&type=prime,prime_plus" className={link} data-testid="nav-prime">{t("nav.prime")}</NavLink>
           <NavLink to="/pack-evolutif" className={link} data-testid="nav-evo">{t("nav.evo")}</NavLink>
           <NavLink to="/evenements" className={link} data-testid="nav-events">{t("nav.eventsFull")}</NavLink>
           <NavLink to="/suivi" className={link} data-testid="nav-track">{t("nav.orders")}</NavLink>
