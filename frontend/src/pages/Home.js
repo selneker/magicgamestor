@@ -38,7 +38,7 @@ export default function Home() {
               <AnimatePresence mode="wait">
                 <motion.h1 key={slide} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.5 }}
                   data-testid="hero-rotating-title"
-                  className="max-w-3xl whitespace-pre-line font-display text-4xl font-bold leading-[1.02] tracking-[-0.03em] text-foreground sm:text-6xl lg:text-7xl">
+                  className="max-w-3xl whitespace-pre-line font-display text-4xl font-bold leading-[1.02] tracking-[-0.015em] text-foreground sm:text-6xl lg:text-7xl">
                   {current.split("\n").map((line, i) => (
                     <span key={i} className="block">{i === 1 ? <span className="rounded-[6px] bg-primary px-1.5 text-[#0A0A0A]">{line}</span> : line}</span>
                   ))}
@@ -61,7 +61,7 @@ export default function Home() {
             {[[t("hero.trust1"), "01"], [t("hero.trust2"), "02"], [t("hero.trust3"), "03"]].map(([label, n]) => (
               <li key={n} className="flex items-baseline gap-4 px-4 py-6 sm:px-6">
                 <span className="num text-2xl text-muted-foreground">{n}</span>
-                <span className="text-sm font-normal text-foreground">{label}</span>
+                <span className="text-sm font-medium text-foreground">{label}</span>
               </li>
             ))}
             <li className="panel-black flex flex-wrap items-center gap-2 px-4 py-6 sm:px-6" style={{ borderRadius: 0 }}>
@@ -77,7 +77,7 @@ export default function Home() {
         <div className="flex items-end justify-between border-b pb-3">
           <div>
             <p className="eyebrow">{t("catalog.popular")}</p>
-            <h2 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">{t("catalog.uc")} / Prime</h2>
+            <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{t("catalog.uc")} / Prime</h2>
           </div>
           <Link to="/boutique" data-testid="see-all-link" className="inline-flex items-center gap-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground">{t("common.seeAll")}<ArrowRight className="h-3.5 w-3.5" /></Link>
         </div>
@@ -91,7 +91,7 @@ export default function Home() {
           <img src={ev.image_url} alt={localized(ev, "title", lang)} className="h-56 w-full border-b object-cover lg:h-full lg:border-b-0 lg:border-r" loading="lazy" />
           <div className="p-6 sm:p-10">
             <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#0A0A0A]">{t("common.promo")}</span>
-            <h2 className="mt-4 font-display text-2xl font-semibold leading-tight tracking-tight sm:text-4xl">{localized(ev, "title", lang)}</h2>
+            <h2 className="mt-4 font-display text-2xl font-bold leading-tight tracking-tight sm:text-4xl">{localized(ev, "title", lang)}</h2>
             <p className="mt-4 text-sm font-normal leading-relaxed text-muted-foreground">{localized(ev, "description", lang)}</p>
             <div className="mt-6 flex items-end gap-3"><span className="num text-3xl sm:text-4xl">{ev.price_label}</span>{ev.old_price_label && <span className="pb-1 text-sm text-muted-foreground line-through">{ev.old_price_label}</span>}</div>
             <Button asChild className="mt-8 h-12 px-7" data-testid="home-event-cta"><Link to={ev.product_slug ? `/produit/${ev.product_slug}` : "/evenements"}>{t("events.buy")}</Link></Button>

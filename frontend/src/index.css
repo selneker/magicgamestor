@@ -68,7 +68,10 @@
     }
     h1, h2, h3, h4, h5, h6, .font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
     h1 { font-weight: 700; }
-    h2, h3 { font-weight: 600; }
+    h2, h3 { font-weight: 700; }
+    /* Headings are always set in caps; personal names and dynamic labels opt out. */
+    h1, h2 { text-transform: uppercase; letter-spacing: -0.005em; }
+    .title-natural { text-transform: none; letter-spacing: -0.02em; }
     p, li, td, span, label, input, textarea { letter-spacing: 0; }
     ::selection { background: hsl(var(--primary)); color: #0A0A0A; }
     :focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }

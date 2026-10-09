@@ -60,7 +60,7 @@ export const ChatThread = ({ conversationId, admin, onChanged }) => {
   };
   return <section className="flex min-w-0 flex-col overflow-hidden rounded-[12px] border bg-card" data-testid="chat-thread">
     <header className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
-      <h2 className="font-display text-sm font-semibold tracking-tight" data-testid="chat-thread-title">{admin ? conversation?.user_name || "Client" : "Support"}</h2>
+      <h2 className="title-natural font-display text-sm font-semibold tracking-tight" data-testid="chat-thread-title">{admin ? conversation?.user_name || "Client" : "Support"}</h2>
       <Button size="sm" variant="ghost" className="h-7 px-2 text-[10px] font-medium uppercase tracking-[0.1em]" onClick={() => markRead(messages).catch((e) => setError(errorMessage(e)))} data-testid="chat-mark-read">Marquer lu</Button>
     </header>
     <div ref={scroller} onScroll={() => { const el = scroller.current; stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60; }} className="h-[45vh] min-h-[240px] space-y-3 overflow-y-auto p-4" role="log" aria-label="Messages" data-testid="chat-history">

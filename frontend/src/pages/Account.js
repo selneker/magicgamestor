@@ -175,7 +175,7 @@ export default function Account() {
             <LockKeyhole className="h-3 w-3" strokeWidth={2.5} />
           </span>
         </div>
-        <h1 className="mt-3 font-display text-xl font-bold leading-tight sm:text-2xl" data-testid="account-name">{user.name || user.email.split("@")[0]}</h1>
+        <h1 className="title-natural mt-3 font-display text-xl font-bold leading-tight sm:text-2xl" data-testid="account-name">{user.name || user.email.split("@")[0]}</h1>
         <p className="mt-0.5 text-sm font-normal text-muted-foreground" data-testid="account-email">{user.email}</p>
         <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{t("account.memberSince")} {new Date(user.created_at).toLocaleDateString(lang === "en" ? "en-GB" : "fr-FR")}</p>
       </section>
