@@ -65,10 +65,12 @@ def customer():
 def test_public_games_lists_active_games_only(admin):
     games = requests.get(f"{API}/games", timeout=15).json()
     ids = [g["id"] for g in games]
-    assert PUBG in ids and FREE_FIRE in ids, ids
+    assert PUBG in ids, ids
     assert all(g["active"] is True for g in games)
-    # sort_order is honoured (PUBG 0 before Free Fire 1)
-    assert ids.index(PUBG) < ids.index(FREE_FIRE)
+    # Free Fire must be public ONLY once an admin has activated it. It has no purchasable
+    # catalog yet, so it stays non-public: a game with no catalog is never advertised.
+    admin_games = {g["id"]: g for g in requests.get(f"{API}/admin/games", headers=admin, timeout=15).json()}
+    assert (FREE_FIRE in ids) == bool(admin_games[FREE_FIRE]["active"])
     # an inactive game must never be exposed publicly
     tag = uuid.uuid4().hex[:6]
     gid = f"qa-hidden-{tag}"
@@ -162,3 +164,56 @@ def test_free_fire_resolves_to_the_existing_provider():
     assert providers.GAME_PROVIDER.get(FREE_FIRE) == "fazercards"
     assert providers.get_provider(FREE_FIRE).name == "fazercards"
     assert providers.get_provider(PUBG).name == "fazercards"
+
+
+# --------------------------------------------------------------------------- #
+# Phase 3 — provider discovery layer: a game's catalog is CONFIGURABLE.
+# Categories are matched from the live provider list (never hardcoded), so Free Fire
+# becomes sellable as soon as real FazerCards categories exist for it — and stays
+# empty otherwise, which is exactly why it is not public yet.
+# --------------------------------------------------------------------------- #
+
+
+def _services():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from services import fazercards, fzr_mapping
+    return fazercards, fzr_mapping
+
+
+def test_game_catalog_is_discovered_from_provider_keywords(monkeypatch):
+    import asyncio
+    fazercards, _ = _services()
+
+    async def fake_all():
+        return [
+            {"category_id": "cat_pubgm_1", "name": "PUBG Mobile", "note": ""},
+            {"category_id": "cat_ff_1", "name": "Free Fire", "note": ""},
+            {"category_id": "gc_steam_1", "name": "Steam USD", "note": ""},
+        ]
+
+    monkeypatch.setattr(fazercards, "_topup_categories", fake_all)
+    assert [c["category_id"] for c in asyncio.run(fazercards.game_categories("free-fire"))] == ["cat_ff_1"]
+    assert [c["category_id"] for c in asyncio.run(fazercards.game_categories("pubg-mobile"))] == ["cat_pubgm_1"]
+
+    async def only_pubg():
+        return [{"category_id": "cat_pubgm_1", "name": "PUBG Mobile", "note": ""}]
+
+    monkeypatch.setattr(fazercards, "_topup_categories", only_pubg)
+    assert asyncio.run(fazercards.game_categories("free-fire")) == []
+
+
+def test_mapping_rejects_a_category_belonging_to_another_game(monkeypatch):
+    """A product can only be mapped to a category of ITS OWN game (no cross-game mapping)."""
+    import asyncio
+    from fastapi import HTTPException
+    fazercards, fzr_mapping = _services()
+
+    async def fake_cats(game_id):
+        return [{"category_id": "cat_ff_1", "name": "Free Fire", "note": ""}]
+
+    monkeypatch.setattr(fazercards, "game_categories", fake_cats)
+    with pytest.raises(HTTPException) as err:
+        asyncio.run(fzr_mapping.offers_for_game(FREE_FIRE, "cat_pubgm_1"))
+    assert err.value.status_code == 409

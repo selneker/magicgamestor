@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Gamepad2, Search, SlidersHorizontal, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
@@ -146,7 +146,17 @@ export default function Catalog() {
         {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-64" />)}
         {products?.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
       </div>
-      {products?.length === 0 && <p className="mt-10 text-center text-slate-500" data-testid="catalog-empty">{t("catalog.empty")}</p>}
+      {products?.length === 0 && (
+        <div className="mt-10 text-center" data-testid="catalog-empty">
+          <p className="text-slate-500">{t("catalog.emptyGame")}</p>
+          {currentGame?.description && <p className="mt-1 text-sm text-muted-foreground">{currentGame.description}</p>}
+          {currentGame && (
+            <Button asChild variant="outline" className="mt-4 rounded-full" data-testid="catalog-empty-back">
+              <Link to="/boutique">{t("games.select")}</Link>
+            </Button>
+          )}
+        </div>
+      )}
       </>}
     </div>
   );

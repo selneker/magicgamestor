@@ -12,7 +12,7 @@ export const translations = {
       ctaUc: "Acheter des UC", ctaPrime: "Voir les abonnements",
       trust1: "Livraison rapide", trust2: "Paiement sécurisé", trust3: "Support 7j/7",
     },
-    catalog: { title: "Catalogue", uc: "Packs UC", prime: "Prime", prime_plus: "Prime+", all: "Tout", popular: "Populaire", sort: "Trier", sortDefault: "Par défaut", priceAsc: "Prix croissant", priceDesc: "Prix décroissant", search: "Rechercher un pack…", results: "résultats", empty: "Aucun pack ne correspond.", price: "Prix", filters: "Filtres", reset: "Réinitialiser", min: "Min", max: "Max" },
+    catalog: { title: "Catalogue", uc: "Packs UC", prime: "Prime", prime_plus: "Prime+", all: "Tout", popular: "Populaire", sort: "Trier", sortDefault: "Par défaut", priceAsc: "Prix croissant", priceDesc: "Prix décroissant", search: "Rechercher un pack…", results: "résultats", empty: "Aucun pack ne correspond.", price: "Prix", filters: "Filtres", reset: "Réinitialiser", min: "Min", max: "Max", emptyGame: "Ce jeu n'a pas encore de catalogue disponible. Configurez-le dans l'administration avant l'ouverture à la vente." },
     product: { buy: "Acheter maintenant", add: "Ajouter au panier", added: "Ajouté au panier", duplicateSub: "Votre panier contient déjà un abonnement {label}. Un seul {label} par PUBG ID.", related: "Packs similaires", howTitle: "Comment ça marche ?", how1: "Entrez votre ID PUBG Mobile et votre pseudo.", how2: "Payez avec MVola ou Orange Money depuis votre téléphone.", how3: "Vos UC sont crédités dès la confirmation du paiement.", months: "mois", delivery: "Livraison sur votre compte PUBG", perUnit: "l'unité", save: "Économisez" },
     cart: { title: "Votre panier", empty: "Votre panier est vide.", browse: "Voir la boutique", total: "Total", checkout: "Commander", remove: "Retirer", qty: "Qté" },
     checkout: {
@@ -103,7 +103,7 @@ export const translations = {
       ctaUc: "Buy UC", ctaPrime: "See subscriptions",
       trust1: "Fast delivery", trust2: "Secure payment", trust3: "WhatsApp support 7/7",
     },
-    catalog: { title: "Catalog", uc: "UC packs", prime: "Prime", prime_plus: "Prime+", all: "All", popular: "Popular", sort: "Sort", sortDefault: "Default", priceAsc: "Price: low to high", priceDesc: "Price: high to low", search: "Search a pack…", results: "results", empty: "No pack matches.", price: "Price", filters: "Filters", reset: "Reset", min: "Min", max: "Max" },
+    catalog: { title: "Catalog", uc: "UC packs", prime: "Prime", prime_plus: "Prime+", all: "All", popular: "Popular", sort: "Sort", sortDefault: "Default", priceAsc: "Price: low to high", priceDesc: "Price: high to low", search: "Search a pack…", results: "results", empty: "No pack matches.", price: "Price", filters: "Filters", reset: "Reset", min: "Min", max: "Max", emptyGame: "This game has no catalog available yet. Configure it in the admin before opening it for sale." },
     product: { buy: "Buy now", add: "Add to cart", added: "Added to cart", duplicateSub: "Your cart already contains a {label} subscription. Only one {label} per PUBG ID.", related: "Similar packs", howTitle: "How does it work?", how1: "Enter your PUBG Mobile ID and in-game name.", how2: "Pay with MVola or Orange Money from your phone.", how3: "Your UC are credited as soon as payment is confirmed.", months: "months", delivery: "Delivered to your PUBG account", perUnit: "each", save: "Save" },
     cart: { title: "Your cart", empty: "Your cart is empty.", browse: "Browse the shop", total: "Total", checkout: "Checkout", remove: "Remove", qty: "Qty" },
     checkout: {

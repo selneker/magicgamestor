@@ -13,8 +13,11 @@ PUBG_GAME = {
 # Phase 3 — second real game. `icon_url` is intentionally left empty: the logo is
 # admin-configurable (Admin → Jeux) and the storefront falls back to the design-system
 # placeholder until an administrator sets it. No commercial data is invented here.
+# `active` stays False until Free Fire has a REAL, confirmed commercial configuration
+# (admin sets the logo, a purchasable catalog exists and supplier mappings are linked):
+# a game with no catalog must never be advertised to customers as ready to sell.
 FREE_FIRE_GAME = {
-    "id": FREE_FIRE_GAME_ID, "slug": FREE_FIRE_GAME_ID, "name": "Free Fire", "active": True, "sort_order": 1,
+    "id": FREE_FIRE_GAME_ID, "slug": FREE_FIRE_GAME_ID, "name": "Free Fire", "active": False, "sort_order": 1,
     "icon_url": None,
     "description": "Diamants Free Fire", "description_en": "Free Fire Diamonds",
 }
@@ -46,6 +49,20 @@ def with_game_defaults(order: dict | None) -> dict | None:
         order.setdefault("game_id", DEFAULT_GAME_ID)
         order.setdefault("identity_snapshot", legacy_snapshot(order))
     return order
+
+
+async def reconcile_sellable_games():
+    """Garantit l'invariant : un jeu PUBLIC a un catalogue. Idempotent, additif.
+
+    Un jeu actif sans aucun produit est invisible pour le client mais apparaîtrait dans
+    le sélecteur comme « prêt à vendre » puis ouvrirait une boutique vide. On le
+    désactive — l'administrateur le réactive dans Admin → Jeux une fois son catalogue
+    et ses mappings fournisseur en place. Ne touche jamais un jeu qui a des produits.
+    """
+    active_ids = [g["id"] async for g in db.games.find({"active": True}, {"_id": 0, "id": 1})]
+    for game_id in active_ids:
+        if await db.products.count_documents({"game_id": game_id}) == 0:
+            await db.games.update_one({"id": game_id}, {"$set": {"active": False, "updated_at": _now()}})
 
 
 async def migrate_multigame():
