@@ -6,6 +6,7 @@ from fastapi import HTTPException
 
 from core.audit import audit
 from core.db import db
+from core.games import DEFAULT_GAME_ID
 from services import fazercards
 
 MAX_COMPONENTS = 10
@@ -63,7 +64,8 @@ def mapping_status(mapping: dict | None) -> str:
     return mapping.get("mode", "direct")
 
 
-def supplier_cost_usd(mapping: dict | None):
+def supplier_cost_usd(mapping: dict | None, game_id: str | None = None):
+    """Coût fournisseur d'un mapping. `game_id` accepté pour cohérence d'API (le coût ne dépend pas du jeu)."""
     if not mapping:
         return None
     if mapping.get("mode", "direct") == "composite":
@@ -78,9 +80,20 @@ def purchase_blocked(product: dict) -> str | None:
     return None
 
 
+async def offers_for_game(game_id: str | None, category_id: str) -> dict:
+    """Offres live d'une catégorie, en s'assurant qu'elle appartient bien au jeu du produit
+    (aucun mélange entre catalogues de jeux). Sans jeu connu → comportement historique."""
+    if game_id:
+        allowed = {c["category_id"] for c in await fazercards.game_categories(game_id)}
+        if category_id not in allowed:
+            raise HTTPException(status_code=409,
+                                detail=f"Cette catégorie FazerCards n'appartient pas au jeu « {game_id} ».")
+    return await fazercards.pubg_offers_fresh(category_id)
+
+
 async def build_mapping(product: dict, body) -> dict:
     """Valide contre le catalogue FazerCards live puis construit le document de mapping. Rien n'est inventé."""
-    offers = await fazercards.pubg_offers_fresh(body.category_id)
+    offers = await offers_for_game(product.get("game_id"), body.category_id)
     by_id = {o["offer_id"]: o for o in offers["offers"]}
     base = {"category_id": offers["category_id"], "confirmed": bool(body.confirmed), "linked_at": _now()}
     if body.mode == "direct":
@@ -237,11 +250,27 @@ def mapping_doc_from_resolution(resolution: dict) -> dict:
             "total_price_usd_at_link": round(total_usd, 4)}
 
 
-async def audit_uc_products(catalog: list[dict]) -> list[dict]:
-    """Audit LECTURE SEULE de chaque produit UC MGS vs catalogue fournisseur live. N'écrit rien."""
+def game_product_query(game_id: str | None) -> dict:
+    """Filtre produits par jeu. PUBG inclut les produits historiques sans `game_id`
+    (compatibilité Phase 1) ; tout autre jeu ne voit QUE ses propres produits — jamais
+    ceux d'un autre jeu. Sans jeu explicite → aucun filtre (comportement historique)."""
+    if not game_id:
+        return {}
+    if game_id == DEFAULT_GAME_ID:
+        return {"$or": [{"game_id": game_id}, {"game_id": {"$exists": False}}]}
+    return {"game_id": game_id}
+
+
+async def audit_uc_products(catalog: list[dict], game_id: str | None = None) -> list[dict]:
+    """Audit LECTURE SEULE des produits UC MGS d'UN JEU vs catalogue fournisseur live. N'écrit rien.
+
+    `game_id` isole strictement l'audit : un audit Free Fire ne lit jamais les produits PUBG
+    (et inversement). Sans `game_id`, le comportement historique est conservé.
+    """
     catalog_by_offer = {(cat["category_id"], o["offer_id"]): o for cat in catalog for o in (cat.get("offers") or [])}
+    query = {"type": "uc", "uc_amount": {"$gt": 0}, **game_product_query(game_id)}
     rows = []
-    async for p in db.products.find({"type": "uc", "uc_amount": {"$gt": 0}},
+    async for p in db.products.find(query,
                                     {"_id": 0, "id": 1, "slug": 1, "name": 1, "uc_amount": 1,
                                      "fazercards_mapping": 1}).sort("uc_amount", 1):
         target = p.get("uc_amount")
@@ -270,9 +299,13 @@ async def audit_uc_products(catalog: list[dict]) -> list[dict]:
     return rows
 
 
-async def apply_uc_audit(catalog: list[dict], actor: str | None = None) -> dict:
-    """Corrige les mappings UC (direct/composition exacte, sinon manquant). Préserve les mappings déjà corrects."""
-    rows = await audit_uc_products(catalog)
+async def apply_uc_audit(catalog: list[dict], actor: str | None = None, game_id: str | None = None) -> dict:
+    """Corrige les mappings UC d'UN JEU (direct/composition exacte, sinon manquant).
+
+    `game_id` est transmis à l'audit : appliquer l'audit d'un jeu ne modifie JAMAIS les
+    produits d'un autre jeu. Préserve les mappings déjà corrects.
+    """
+    rows = await audit_uc_products(catalog, game_id)
     fixed, removed = [], []
     for row in rows:
         if row["action"] == "fix":

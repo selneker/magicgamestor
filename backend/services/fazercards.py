@@ -112,9 +112,16 @@ def _store(key: str, value):
     return value
 
 
-async def pubg_categories() -> list[dict]:
-    """PUBG Mobile purchasable categories via GET /topups (cursor pagination — ids never hardcoded)."""
-    cached = _cached("categories")
+# Jeu → mots-clés de reconnaissance des catégories fournisseur (ids jamais hardcodés).
+GAME_MATCHERS: dict[str, tuple[str, ...]] = {
+    "pubg-mobile": ("pubg_mobile", "pubg mobile"),
+    "free-fire": ("free_fire", "free fire", "freefire"),
+}
+
+
+async def _topup_categories() -> list[dict]:
+    """Toutes les catégories top-up du fournisseur (pagination par curseur — ids jamais hardcodés)."""
+    cached = _cached("all_categories")
     if cached is not None:
         return cached
     items, cursor = [], None
@@ -130,12 +137,34 @@ async def pubg_categories() -> list[dict]:
         cursor = meta.get("next_cursor")
         if not meta.get("has_more") or not cursor:
             break
-    pubg = [{"category_id": c.get("category_id"), "name": c.get("name"), "note": c.get("note")}
-            for c in items
-            if "pubg_mobile" in (c.get("category_id") or "").lower() or "pubg mobile" in (c.get("name") or "").lower()]
+    return _store("all_categories", items)
+
+
+async def game_categories(game_id: str | None) -> list[dict]:
+    """Catégories fournisseur d'un jeu, déduites des mots-clés (ids jamais hardcodés).
+    Sans correspondance de jeu → toutes les catégories (découverte, aucune donnée inventée)."""
+    matchers = GAME_MATCHERS.get(game_id or "")
+    if not matchers:
+        return await _topup_categories()
+    return [{"category_id": c.get("category_id"), "name": c.get("name"), "note": c.get("note")}
+            for c in await _topup_categories()
+            if any(m in (c.get("category_id") or "").lower() or m in (c.get("name") or "").lower() for m in matchers)]
+
+
+async def pubg_categories() -> list[dict]:
+    """Compat : catégories PUBG Mobile via GET /topups (ids jamais hardcodés)."""
+    cached = _cached("categories")
+    if cached is not None:
+        return cached
+    pubg = await game_categories("pubg-mobile")
     if not pubg:
         raise HTTPException(status_code=503, detail="Aucune catégorie PUBG Mobile disponible chez le fournisseur.")
     return _store("categories", pubg)
+
+
+async def catalog_for_game(game_id: str | None) -> list[dict]:
+    """Catalogue live (catégories + offres) d'un jeu. Vide si le jeu n'a aucune catégorie configurée."""
+    return [await pubg_offers(c["category_id"]) for c in await game_categories(game_id)]
 
 
 async def pubg_offers(category_id: str) -> dict:

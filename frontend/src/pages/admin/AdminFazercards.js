@@ -41,13 +41,18 @@ export default function AdminFazercards() {
   const [busy, setBusy] = useState("");
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(null);
+  // Phase 3 — the selected game is sent to the audit / apply / coverage routes so a
+  // Free Fire operation can never read or write PUBG mappings (and vice versa).
+  const [game, setGame] = useState("");
+  const [games, setGames] = useState([]);
 
-  const load = useCallback(() => {
+  const load = useCallback((g = "") => {
     api.get("/admin/fazercards/settings").then((r) => setSettings(r.data)).catch(() => {});
     api.get("/admin/fazercards/price-alerts").then((r) => setAlerts(r.data)).catch(() => {});
-    api.get("/admin/fazercards/mappings").then((r) => setProducts(r.data.products)).catch(() => {});
+    api.get("/admin/fazercards/mappings", { params: { game: g || undefined } }).then((r) => setProducts(r.data.products)).catch(() => {});
   }, []);
-  useEffect(load, [load]);
+  useEffect(() => { load(game); }, [load, game]);
+  useEffect(() => { api.get("/admin/games").then((r) => setGames(r.data)).catch(() => {}); }, []);
 
   const loadCatalog = useCallback(async () => {
     setBusy("catalog");
@@ -67,30 +72,30 @@ export default function AdminFazercards() {
     try {
       const { data } = await api.post("/admin/fazercards/catalog/refresh");
       toast.success(t("admin.fzr.refreshDone").replace("{n}", data.checked).replace("{c}", data.changes.length));
-      load();
+      load(game);
     } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(""); }
   };
   const ack = async (id) => {
-    try { await api.patch(`/admin/fazercards/price-alerts/${id}/ack`); toast.success(t("admin.fzr.ackDone")); load(); }
+    try { await api.patch(`/admin/fazercards/price-alerts/${id}/ack`); toast.success(t("admin.fzr.ackDone")); load(game); }
     catch (e) { toast.error(errorMessage(e)); }
   };
   const loadCoverage = async () => {
     setBusy("coverage");
-    try { const { data } = await api.get("/admin/fazercards/coverage"); setCoverage(data.offers); }
+    try { const { data } = await api.get("/admin/fazercards/coverage", { params: { game: game || undefined } }); setCoverage(data.offers); }
     catch (e) { toast.error(errorMessage(e)); } finally { setBusy(""); }
   };
 
   const runAudit = async () => {
     setBusy("audit");
-    try { const { data } = await api.get("/admin/fazercards/uc-audit"); setAudit(data.rows); }
+    try { const { data } = await api.get("/admin/fazercards/uc-audit", { params: { game: game || undefined } }); setAudit(data.rows); }
     catch (e) { toast.error(errorMessage(e)); } finally { setBusy(""); }
   };
   const applyAudit = async () => {
     setBusy("audit-apply");
     try {
-      const { data } = await api.post("/admin/fazercards/uc-audit/apply");
+      const { data } = await api.post("/admin/fazercards/uc-audit/apply", null, { params: { game: game || undefined } });
       toast.success(t("admin.fzr.ucAuditDone").replace("{f}", data.fixed_count).replace("{r}", data.removed_count));
-      setAudit(data.rows); load();
+      setAudit(data.rows); load(game);
     } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(""); }
   };
 
@@ -134,12 +139,12 @@ export default function AdminFazercards() {
     try {
       await api.patch(`/admin/fazercards/products/${editing.id}/mapping`, payload);
       toast.success(t("admin.fzr.mappingSaved"));
-      setEditing(null); setForm(null); load();
+      setEditing(null); setForm(null); load(game);
     } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(""); }
   };
   const unlink = async (p) => {
     setBusy(`unlink-${p.id}`);
-    try { await api.delete(`/admin/fazercards/products/${p.id}/mapping`); load(); }
+    try { await api.delete(`/admin/fazercards/products/${p.id}/mapping`); load(game); }
     catch (e) { toast.error(errorMessage(e)); } finally { setBusy(""); }
   };
 
@@ -198,11 +203,20 @@ export default function AdminFazercards() {
             <h2 className="font-display text-lg font-bold text-foreground">{t("admin.fzr.mappings")}</h2>
             <p className="text-xs text-muted-foreground">{t("admin.fzr.mappingHint")}</p>
           </div>
-          {can("catalog.manage") && !catalog && (
-            <Button size="sm" variant="outline" className="rounded-full" onClick={loadCatalog} disabled={busy === "catalog"} data-testid="fzr-load-catalog">
-              {busy === "catalog" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}{t("admin.fzr.loadCatalog")}
-            </Button>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={game || "all"} onValueChange={(v) => setGame(v === "all" ? "" : v)}>
+              <SelectTrigger className="h-9 w-48 rounded-full" data-testid="fzr-game-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("admin.fzr.allGames")}</SelectItem>
+                {games.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {can("catalog.manage") && !catalog && (
+              <Button size="sm" variant="outline" className="rounded-full" onClick={loadCatalog} disabled={busy === "catalog"} data-testid="fzr-load-catalog">
+                {busy === "catalog" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}{t("admin.fzr.loadCatalog")}
+              </Button>
+            )}
+          </div>
         </div>
         {can("catalog.manage") && (
           <div className="mt-4 flex flex-col gap-2 rounded-xl border border-border bg-muted/40 p-3 sm:flex-row sm:items-center" data-testid="fzr-uc-audit">

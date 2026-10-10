@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from core.audit import audit
 from core.db import db
+from core.games import DEFAULT_GAME_ID
 from core.security import require_admin, require_permission, require_super_admin
 from services import fazercards, fzr_fulfillment, fzr_mapping, providers
 
@@ -55,17 +56,19 @@ async def fzr_update_settings(body: FzrAutoIn, admin=Depends(require_super_admin
 
 # ---------- Mapping produit MGS ↔ offre(s) FazerCards (direct ou composé, tous types) ----------
 @router.get("/admin/fazercards/mappings", dependencies=[Depends(require_admin)])
-async def fzr_mappings():
-    products = await db.products.find({}, {"_id": 0, "id": 1, "slug": 1, "name": 1, "type": 1, "price": 1,
-                                           "uc_amount": 1, "duration_months": 1, "active": 1,
-                                           "requires_mapping": 1, "fazercards_mapping": 1}) \
+async def fzr_mappings(game: str | None = None):
+    """Mappings produits ↔ offres fournisseur. `?game=` restreint à un jeu (GAME_PROVIDER / game_id)."""
+    query = {"game_id": game} if game else {}
+    products = await db.products.find(query, {"_id": 0, "id": 1, "slug": 1, "name": 1, "type": 1, "price": 1,
+                                              "uc_amount": 1, "duration_months": 1, "active": 1, "game_id": 1,
+                                              "requires_mapping": 1, "fazercards_mapping": 1}) \
         .sort("sort_order", 1).to_list(500)
     for p in products:
         mapping = p.get("fazercards_mapping")
         p["mapping_status"] = fzr_mapping.mapping_status(mapping)
         p["fulfillable"] = fzr_mapping.fulfillable(mapping)
-        p["supplier_cost_usd"] = fzr_mapping.supplier_cost_usd(mapping)
-    return {"products": products}
+        p["supplier_cost_usd"] = fzr_mapping.supplier_cost_usd(mapping, p.get("game_id"))
+    return {"products": products, "game": game}
 
 
 @router.patch("/admin/fazercards/products/{product_id}/mapping")
@@ -95,11 +98,15 @@ async def fzr_unset_mapping(product_id: str, admin=Depends(require_permission("c
 
 
 @router.get("/admin/fazercards/coverage", dependencies=[Depends(require_admin)])
-async def fzr_coverage():
-    """Couverture live : chaque offre fournisseur avec son état — utilisée par MGS ou « disponible, non activée »."""
-    categories = await fazercards.pubg_catalog()
+async def fzr_coverage(game: str | None = None):
+    """Couverture live : chaque offre fournisseur avec son état — utilisée par MGS ou « disponible, non activée ».
+
+    `?game=` restreint le catalogue ET les références `used_by` à ce jeu : une offre utilisée
+    par un produit d'un autre jeu n'apparaît jamais comme « utilisée » ici (pas de référence croisée).
+    """
+    categories = await fazercards.catalog_for_game(game)
     used = {}
-    async for p in db.products.find({"fazercards_mapping": {"$exists": True}},
+    async for p in db.products.find({"fazercards_mapping": {"$exists": True}, **fzr_mapping.game_product_query(game)},
                                     {"_id": 0, "name": 1, "slug": 1, "fazercards_mapping": 1}):
         m = p["fazercards_mapping"]
         refs = [m["offer_id"]] if m.get("mode", "direct") == "direct" else [c["offer_id"] for c in m.get("components", [])]
@@ -116,19 +123,35 @@ async def fzr_coverage():
 
 # ---------- Audit générique des mappings UC (direct / composition exacte / manquant) ----------
 @router.get("/admin/fazercards/uc-audit", dependencies=[Depends(require_admin)])
-async def fzr_uc_audit():
-    """Audit LECTURE SEULE : chaque produit UC MGS confronté au catalogue FazerCards live."""
-    catalog = await fazercards.pubg_catalog()
-    return {"rows": await fzr_mapping.audit_uc_products(catalog)}
+async def fzr_uc_audit(game: str | None = None):
+    """Audit LECTURE SEULE : chaque produit UC MGS confronté au catalogue FazerCards live du jeu.
+
+    Sans `game`, l'appel historique reste limité à PUBG Mobile (jamais toutes les catégories
+    fournisseur) : un audit ne doit jamais mélanger les jeux.
+    """
+    game = game or DEFAULT_GAME_ID
+    catalog = await fazercards.catalog_for_game(game)
+    if not catalog:
+        # Jeu sans catégorie fournisseur : rien à auditer, on le signale explicitement.
+        return {"rows": [], "game": game, "catalog_unavailable": True}
+    return {"rows": await fzr_mapping.audit_uc_products(catalog, game), "game": game}
 
 
 @router.post("/admin/fazercards/uc-audit/apply")
-async def fzr_uc_audit_apply(admin=Depends(require_permission("catalog.manage"))):
-    """Applique la règle générale : SKU exact → direct, somme exacte → composition, sinon mapping manquant."""
-    catalog = await fazercards.pubg_catalog()
-    result = await fzr_mapping.apply_uc_audit(catalog, admin["user_id"])
+async def fzr_uc_audit_apply(game: str | None = None, admin=Depends(require_permission("catalog.manage"))):
+    """Applique la règle générale : SKU exact → direct, somme exacte → composition, sinon mapping manquant.
+
+    Sans `game`, l'appel historique reste limité à PUBG Mobile. Un jeu explicite ne modifie
+    jamais les produits d'un autre jeu.
+    """
+    game = game or DEFAULT_GAME_ID
+    catalog = await fazercards.catalog_for_game(game)
+    if not catalog:
+        raise HTTPException(status_code=409,
+                            detail="Catalogue fournisseur indisponible pour ce jeu : aucune donnée commerciale à appliquer.")
+    result = await fzr_mapping.apply_uc_audit(catalog, admin["user_id"], game)
     await audit("fzr.uc_audit_apply", admin["user_id"], None,
-                {"fixed": result["fixed_count"], "removed": result["removed_count"]})
+                {"fixed": result["fixed_count"], "removed": result["removed_count"], "game": game})
     return result
 
 

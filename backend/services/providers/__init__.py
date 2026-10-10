@@ -14,7 +14,7 @@ from services.providers.errors import (ProviderError, ProviderInsufficientBalanc
                                         ProviderUnknownError, ProviderValidationError)
 
 # Mapping Game -> Provider (configuration, pas de logique métier dans le core).
-GAME_PROVIDER: dict[str, str] = {"pubg-mobile": "fazercards"}
+GAME_PROVIDER: dict[str, str] = {"pubg-mobile": "fazercards", "free-fire": "fazercards"}
 DEFAULT_PROVIDER = "fazercards"
 
 _INSTANCES: dict[str, Provider] = {}

@@ -5,12 +5,18 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
+from core.audit import audit
 from core.db import db
-from core.security import get_current_user
+from core.games import game_has_sellable_catalog
+from core.security import get_current_user, require_permission
 
 router = APIRouter(tags=["games"])
 PUBLIC = {"_id": 0}
 FIELD_KEY = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
+# Public activation is refused while the game has no sellable catalog (see core.games).
+NO_CATALOG_DETAIL = ("Activation refusee : ce jeu n'a aucun produit actif et correctement configure "
+                     "pour la livraison. Creez son catalogue, configurez les mappings fournisseur "
+                     "(Admin -> Fournisseur) puis activez-le.")
 
 
 def _now():
@@ -102,3 +108,74 @@ async def delete_identity(identity_id: str, user=Depends(get_current_user)):
     await _owned(identity_id, user)
     await db.game_identities.delete_one({"id": identity_id, "user_id": user["user_id"]})
     return {"ok": True}
+
+
+# --------------------------------------------------------------------------- #
+# Phase 3 — admin game management (create / edit / activate-deactivate).
+# Authorization reuses the existing central mechanism: `catalog.manage`.
+# `icon_url` is the single logo source (no second `logo_url` field, no upload).
+# --------------------------------------------------------------------------- #
+
+
+class GameIn(BaseModel):
+    id: str = Field(min_length=2, max_length=60, pattern=r"^[a-z0-9-]+$")
+    name: str = Field(min_length=1, max_length=60)
+    slug: str | None = Field(default=None, max_length=60, pattern=r"^[a-z0-9-]+$")
+    icon_url: str | None = Field(default=None, max_length=500)
+    description: str = ""
+    description_en: str | None = None
+    active: bool = True
+    sort_order: int = 0
+
+    @field_validator("icon_url")
+    @classmethod
+    def _http_url(cls, value):
+        value = (value or "").strip()
+        if not value:
+            return None
+        if not re.match(r"^https?://[^\s]+$", value):
+            raise ValueError("URL de logo invalide (https://\u2026)")
+        return value
+
+
+@router.get("/admin/games")
+async def admin_list_games(_=Depends(require_permission("catalog.manage"))):
+    """Every game, active or not (the public /games only exposes active ones)."""
+    return await db.games.find({}, PUBLIC).sort("sort_order", 1).to_list(200)
+
+
+@router.post("/admin/games", status_code=201)
+async def create_game(body: GameIn, user=Depends(require_permission("catalog.manage"))):
+    if await db.games.find_one({"id": body.id}):
+        raise HTTPException(status_code=409, detail="Ce jeu existe d\u00e9j\u00e0.")
+    if body.active:
+        # A brand-new game has no product yet: it can never be sellable at creation time.
+        raise HTTPException(status_code=409, detail=NO_CATALOG_DETAIL)
+    data = body.model_dump()
+    data["slug"] = data.get("slug") or data["id"]
+    doc = {**data, "created_at": _now(), "updated_at": _now()}
+    await db.games.insert_one(doc)
+    await audit("game.create", user["user_id"], body.id, {"name": body.name, "active": body.active})
+    doc.pop("_id", None)
+    return doc
+
+
+@router.put("/admin/games/{game_id}")
+async def update_game(game_id: str, body: GameIn, user=Depends(require_permission("catalog.manage"))):
+    """Edit a game. The `id` is immutable: products, orders and identities reference it.
+
+    Public activation is gated: a game with no ACTIVE, correctly configured (deliverable)
+    product must never be advertised to customers. The mere existence of a product document
+    is not proof that the game is sellable.
+    """
+    if not await db.games.find_one({"id": game_id}):
+        raise HTTPException(status_code=404, detail="Jeu introuvable.")
+    if body.active and not await game_has_sellable_catalog(game_id):
+        raise HTTPException(status_code=409, detail=NO_CATALOG_DETAIL)
+    data = body.model_dump()
+    data.pop("id", None)  # never re-key an existing game
+    data["slug"] = data.get("slug") or game_id
+    await db.games.update_one({"id": game_id}, {"$set": {**data, "updated_at": _now()}})
+    await audit("game.update", user["user_id"], game_id,
+                {"name": body.name, "active": body.active, "icon_url": body.icon_url})
+    return await db.games.find_one({"id": game_id}, PUBLIC)

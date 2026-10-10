@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { CalendarRange, Coins, Download, LayoutDashboard, Package, PlugZap, ReceiptText, MessageCircle, Users, Wallet } from "lucide-react";
+import { CalendarRange, Coins, Download, Gamepad2, LayoutDashboard, Package, PlugZap, ReceiptText, MessageCircle, Users, Wallet } from "lucide-react";
 import { AdminPush } from "@/components/admin/AdminPush";
 import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/context/AuthContext";
@@ -22,6 +22,7 @@ export default function AdminLayout() {
     ["/admin", LayoutDashboard, t("admin.dashboard"), "admin-tab-dashboard", true],
     ["/admin/commandes", ReceiptText, t("admin.orders"), "admin-tab-orders"],
     ["/admin/catalogue", Package, t("admin.products"), "admin-tab-products"],
+    ["/admin/jeux", Gamepad2, t("admin.games"), "admin-tab-games"],
     ["/admin/fournisseur", PlugZap, `${t("admin.fzr.tab")}${fzrAlerts ? ` (${fzrAlerts})` : ""}`, "admin-tab-fzr"],
     ["/admin/paiements/binance", Wallet, "Paiements · Binance", "admin-tab-binance"],
     ["/admin/evenements", CalendarRange, t("admin.events"), "admin-tab-events"],

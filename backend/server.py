@@ -13,7 +13,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from core.db import client, ensure_indexes
 from core.security import PERMISSIONS as DEFAULT_ADMIN_PERMISSIONS
-from core.games import migrate_multigame, migrate_saved_pubg_ids, seed_games
+from core.games import migrate_multigame, migrate_saved_pubg_ids, reconcile_sellable_games, seed_games
 from core.seed import seed_all
 from routers import admin_users, auth, crypto, evo, fazercards, games, fiveone, fzr_orders, products, orders, payments, events, chat, push, loyalty
 from services import binance_watcher
@@ -30,6 +30,7 @@ async def lifespan(_: FastAPI):
     await migrate_users()
     await seed_games()
     await migrate_multigame()
+    await reconcile_sellable_games()
     await migrate_saved_pubg_ids()
     watcher = asyncio.create_task(binance_watcher.run_forever())
     logger.info("Magic Game Store API ready (payment mode=%s)", os.environ.get("PAYMENT_MODE"))

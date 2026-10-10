@@ -29,6 +29,7 @@ import AdminLayout from "@/pages/admin/AdminLayout";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminProducts from "@/pages/admin/AdminProducts";
+import AdminGames from "@/pages/admin/AdminGames";
 import AdminFazercards from "@/pages/admin/AdminFazercards";
 import AdminEvents from "@/pages/admin/AdminEvents";
 import AdminLoyalty from "@/pages/admin/AdminLoyalty";
@@ -65,6 +66,7 @@ function AppRouter() {
             <Route index element={<AdminDashboard />} />
             <Route path="commandes" element={<AdminOrders />} />
             <Route path="catalogue" element={<AdminProducts />} />
+            <Route path="jeux" element={<AdminGames />} />
             <Route path="fournisseur" element={<AdminFazercards />} />
             <Route path="evenements" element={<AdminEvents />} />
             <Route path="messages" element={<AdminChat />} />
