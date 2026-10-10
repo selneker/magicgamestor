@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Gamepad2 } from "lucide-react";
@@ -16,6 +17,7 @@ const quantity = (p) => (p.type === "uc"
 export function ProductCard({ product, index = 0 }) {
   const { add, setOpen } = useCart();
   const { t, lang } = useLang();
+  const [logoFailed, setLogoFailed] = useState(false);
   const isUc = product.type === "uc";
   const { value, unit } = quantity(product);
   const discount = product.old_price ? Math.round((1 - product.price / product.old_price) * 100) : 0;
@@ -34,18 +36,18 @@ export function ProductCard({ product, index = 0 }) {
 
       <Link to={`/produit/${product.slug}`} className="flex flex-1 flex-col p-4 pt-10 sm:p-5 sm:pt-11">
         <div className="flex items-start justify-between gap-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{category}</p>
+          <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">{category}</p>
           <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-[#0A0A0A]">
-            {product.image_url ? (
+            {product.image_url && !logoFailed ? (
               <img src={product.image_url} alt="" className="h-full w-full object-cover" loading="lazy"
-                onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.parentElement?.setAttribute("data-fallback", "true"); }} />
+                onError={() => setLogoFailed(true)} />
             ) : null}
-            {(!product.image_url) && <Gamepad2 className="h-4 w-4" strokeWidth={2} aria-hidden="true" />}
+            {(!product.image_url || logoFailed) && <Gamepad2 className="h-4 w-4" strokeWidth={2} aria-hidden="true" />}
           </span>
         </div>
         <h3 className="mt-3 flex min-w-0 flex-wrap items-baseline gap-x-2 font-display leading-none text-foreground">
           <span className="num text-[clamp(1.75rem,8.5vw,2.75rem)] font-bold leading-none sm:text-[2.75rem]">{value}</span>
-          <span className="shrink-0 text-sm font-semibold uppercase leading-none tracking-[0.06em] text-muted-foreground sm:text-base">{unit}</span>
+          <span className="shrink-0 text-sm font-medium uppercase leading-none tracking-[0.06em] text-muted-foreground sm:text-base">{unit}</span>
         </h3>
 
         <div className="mt-auto pt-6">
@@ -53,7 +55,7 @@ export function ProductCard({ product, index = 0 }) {
             <p data-testid={`price-${product.slug}`} className="num text-[1.3rem] font-bold leading-none text-foreground">{formatAr(product.price)}</p>
             {(product.old_price || discount > 0) && (
               <p className="mt-2 flex flex-wrap items-center gap-2 leading-none">
-                {product.old_price && <span className="text-[11px] font-medium text-muted-foreground line-through">{formatAr(product.old_price)}</span>}
+                {product.old_price && <span className="text-[11px] font-normal text-muted-foreground line-through">{formatAr(product.old_price)}</span>}
                 {discount > 0 && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-[#0A0A0A]">-{discount}%</span>}
               </p>
             )}
