@@ -51,17 +51,45 @@ def with_game_defaults(order: dict | None) -> dict | None:
     return order
 
 
-async def reconcile_sellable_games():
-    """Garantit l'invariant : un jeu PUBLIC a un catalogue. Idempotent, additif.
+def _mapping_ok(mapping: dict | None) -> bool:
+    """Mapping fournisseur utilisable (direct ou composé) : structure complète et confirmée.
 
-    Un jeu actif sans aucun produit est invisible pour le client mais apparaîtrait dans
-    le sélecteur comme « prêt à vendre » puis ouvrirait une boutique vide. On le
-    désactive — l'administrateur le réactive dans Admin → Jeux une fois son catalogue
-    et ses mappings fournisseur en place. Ne touche jamais un jeu qui a des produits.
+    Copie locale volontaire de `services.fzr_mapping.mapping_ok` : `core` ne peut pas importer
+    `services` (cycle d'import). La règle reste identique.
+    """
+    if not mapping or mapping.get("confirmed") is False:
+        return False
+    if mapping.get("mode", "direct") == "direct":
+        return bool(mapping.get("category_id") and mapping.get("offer_id"))
+    return bool(mapping.get("category_id") and mapping.get("components"))
+
+
+async def game_has_sellable_catalog(game_id: str) -> bool:
+    """Un jeu est VENDABLE s'il a au moins un produit ACTIF réellement livrable.
+
+    L'existence d'un document produit ne suffit pas : un produit inactif, ou actif mais
+    exigeant un mapping fournisseur absent/non confirmé, n'est pas vendable. C'est la
+    condition d'activation publique d'un jeu — un jeu sans catalogue vendable ne doit
+    jamais être annoncé au client.
+    """
+    async for p in db.products.find({"game_id": game_id, "active": True},
+                                    {"_id": 0, "requires_mapping": 1, "fazercards_mapping": 1}):
+        if not p.get("requires_mapping") or _mapping_ok(p.get("fazercards_mapping")):
+            return True
+    return False
+
+
+async def reconcile_sellable_games():
+    """Garantit l'invariant : un jeu PUBLIC a un catalogue VENDABLE. Idempotent, additif.
+
+    Un jeu actif sans produit vendable est invisible pour le client mais apparaîtrait dans
+    le sélecteur comme « prêt à vendre » puis ouvrirait une boutique vide. On le désactive —
+    l'administrateur le réactive dans Admin → Jeux une fois son catalogue et ses mappings
+    fournisseur en place. Ne touche jamais un jeu qui a un catalogue vendable.
     """
     active_ids = [g["id"] async for g in db.games.find({"active": True}, {"_id": 0, "id": 1})]
     for game_id in active_ids:
-        if await db.products.count_documents({"game_id": game_id}) == 0:
+        if not await game_has_sellable_catalog(game_id):
             await db.games.update_one({"id": game_id}, {"$set": {"active": False, "updated_at": _now()}})
 
 

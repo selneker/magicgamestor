@@ -17,6 +17,8 @@ import uuid
 import pytest
 import requests
 
+from test_fzr_phase3 import db, run  # noqa: F401 — réutilise loop + helpers Phase 3
+
 BASE_URL = os.environ.get("BACKEND_TEST_URL", "http://localhost:8001").rstrip("/")
 API = f"{BASE_URL}/api"
 SUPER_ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@magicgame.store")
@@ -100,19 +102,25 @@ def test_admin_game_routes_require_catalog_permission(admin, customer):
 def test_admin_can_create_edit_and_toggle_a_game(admin):
     tag = uuid.uuid4().hex[:6]
     gid = f"qa-game-{tag}"
+    pid = f"qa-game-prod-{tag}"
     logo = "https://example.com/qa-logo.png"
+    # A game is created INACTIVE: public activation requires a sellable catalog (Phase 3 gate).
     created = requests.post(f"{API}/admin/games", headers=admin, timeout=15, json={
         "id": gid, "name": "QA Game", "icon_url": logo, "description": "desc fr",
-        "description_en": "desc en", "active": True, "sort_order": 5})
+        "description_en": "desc en", "active": False, "sort_order": 5})
     assert created.status_code == 201, created.text
     body = created.json()
-    assert body["icon_url"] == logo and body["slug"] == gid and body["active"] is True
+    assert body["icon_url"] == logo and body["slug"] == gid and body["active"] is False
+
+    # creating a game already active is refused (no catalog yet)
+    assert requests.post(f"{API}/admin/games", headers=admin, timeout=15,
+                         json={"id": f"qa-active-{tag}", "name": "Active", "active": True}).status_code == 409
 
     # duplicate id is refused
     assert requests.post(f"{API}/admin/games", headers=admin, timeout=15,
                          json={"id": gid, "name": "Dup"}).status_code == 409
 
-    # edit: rename + change the logo URL + deactivate
+    # edit: rename + change the logo URL (still inactive)
     updated = requests.put(f"{API}/admin/games/{gid}", headers=admin, timeout=15, json={
         "id": gid, "name": "QA Game v2", "icon_url": "https://example.com/qa-logo-2.png",
         "active": False, "sort_order": 6})
@@ -123,12 +131,26 @@ def test_admin_can_create_edit_and_toggle_a_game(admin):
     # deactivated -> gone from the public list
     assert gid not in [g["id"] for g in requests.get(f"{API}/games", timeout=15).json()]
 
-    # reactivate
-    back = requests.put(f"{API}/admin/games/{gid}", headers=admin, timeout=15, json={
+    # activation without a sellable catalog is refused
+    assert requests.put(f"{API}/admin/games/{gid}", headers=admin, timeout=15, json={
         "id": gid, "name": "QA Game v2", "icon_url": "https://example.com/qa-logo-2.png",
-        "active": True, "sort_order": 6})
-    assert back.status_code == 200 and back.json()["active"] is True
-    assert gid in [g["id"] for g in requests.get(f"{API}/games", timeout=15).json()]
+        "active": True, "sort_order": 6}).status_code == 409
+
+    # give the game a sellable product (active, no mapping required), then activate
+    run(db.products.insert_one({
+        "id": pid, "slug": f"qa-game-{tag}", "type": "uc", "uc_amount": 60, "name": "QA Game 60 UC",
+        "price": 5000, "active": True, "game_id": gid, "requires_mapping": False,
+        "created_at": "2026-01-01T00:00:00+00:00"}))
+    try:
+        back = requests.put(f"{API}/admin/games/{gid}", headers=admin, timeout=15, json={
+            "id": gid, "name": "QA Game v2", "icon_url": "https://example.com/qa-logo-2.png",
+            "active": True, "sort_order": 6})
+        assert back.status_code == 200 and back.json()["active"] is True
+        assert gid in [g["id"] for g in requests.get(f"{API}/games", timeout=15).json()]
+    finally:
+        run(db.products.delete_many({"id": pid}))
+        requests.put(f"{API}/admin/games/{gid}", headers=admin, timeout=15, json={
+            "id": gid, "name": "QA Game v2", "active": False, "sort_order": 6})
 
     # unknown game -> 404
     assert requests.put(f"{API}/admin/games/qa-unknown-xyz", headers=admin, timeout=15,
@@ -138,11 +160,11 @@ def test_admin_can_create_edit_and_toggle_a_game(admin):
 def test_icon_url_is_validated(admin):
     tag = uuid.uuid4().hex[:6]
     bad = requests.post(f"{API}/admin/games", headers=admin, timeout=15, json={
-        "id": f"qa-bad-{tag}", "name": "Bad Logo", "icon_url": "not-a-url"})
+        "id": f"qa-bad-{tag}", "name": "Bad Logo", "icon_url": "not-a-url", "active": False})
     assert bad.status_code == 422, bad.text
     # empty logo is allowed (the storefront falls back to the design-system icon)
     ok = requests.post(f"{API}/admin/games", headers=admin, timeout=15, json={
-        "id": f"qa-nologo-{tag}", "name": "No Logo", "icon_url": ""})
+        "id": f"qa-nologo-{tag}", "name": "No Logo", "icon_url": "", "active": False})
     assert ok.status_code == 201 and ok.json()["icon_url"] is None
 
 

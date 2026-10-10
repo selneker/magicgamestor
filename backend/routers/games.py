@@ -7,11 +7,16 @@ from pydantic import BaseModel, Field, field_validator
 
 from core.audit import audit
 from core.db import db
+from core.games import game_has_sellable_catalog
 from core.security import get_current_user, require_permission
 
 router = APIRouter(tags=["games"])
 PUBLIC = {"_id": 0}
 FIELD_KEY = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
+# Public activation is refused while the game has no sellable catalog (see core.games).
+NO_CATALOG_DETAIL = ("Activation refusee : ce jeu n'a aucun produit actif et correctement configure "
+                     "pour la livraison. Creez son catalogue, configurez les mappings fournisseur "
+                     "(Admin -> Fournisseur) puis activez-le.")
 
 
 def _now():
@@ -143,6 +148,9 @@ async def admin_list_games(_=Depends(require_permission("catalog.manage"))):
 async def create_game(body: GameIn, user=Depends(require_permission("catalog.manage"))):
     if await db.games.find_one({"id": body.id}):
         raise HTTPException(status_code=409, detail="Ce jeu existe d\u00e9j\u00e0.")
+    if body.active:
+        # A brand-new game has no product yet: it can never be sellable at creation time.
+        raise HTTPException(status_code=409, detail=NO_CATALOG_DETAIL)
     data = body.model_dump()
     data["slug"] = data.get("slug") or data["id"]
     doc = {**data, "created_at": _now(), "updated_at": _now()}
@@ -154,9 +162,16 @@ async def create_game(body: GameIn, user=Depends(require_permission("catalog.man
 
 @router.put("/admin/games/{game_id}")
 async def update_game(game_id: str, body: GameIn, user=Depends(require_permission("catalog.manage"))):
-    """Edit a game. The `id` is immutable: products, orders and identities reference it."""
+    """Edit a game. The `id` is immutable: products, orders and identities reference it.
+
+    Public activation is gated: a game with no ACTIVE, correctly configured (deliverable)
+    product must never be advertised to customers. The mere existence of a product document
+    is not proof that the game is sellable.
+    """
     if not await db.games.find_one({"id": game_id}):
         raise HTTPException(status_code=404, detail="Jeu introuvable.")
+    if body.active and not await game_has_sellable_catalog(game_id):
+        raise HTTPException(status_code=409, detail=NO_CATALOG_DETAIL)
     data = body.model_dump()
     data.pop("id", None)  # never re-key an existing game
     data["slug"] = data.get("slug") or game_id
