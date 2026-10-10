@@ -346,7 +346,7 @@ async def auto_fulfill(order: dict):
     try:
         if not await auto_enabled() or not await eligible_lines(order):
             return
-        await fulfil_order(order["id"], "auto")
+        await fulfill_order(order["id"], "auto")
         logger.info("fzr auto fulfillment submitted for %s", order["order_number"])
     except HTTPException as exc:
         logger.warning("fzr auto fulfillment refused for %s: %s", order.get("order_number"), exc.detail)
