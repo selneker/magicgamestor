@@ -31,6 +31,13 @@ dist/
 dist
 
 # Environment files (comprehensive coverage)
+# Real secrets must never be tracked. `.env.example` stays tracked as the template.
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
 
 *token.json*
 *credentials.json*
@@ -55,7 +62,7 @@ venv/
 # Development tools
 chainlit.md
 .chainlit
-.ipynb_checkpoints/
+.ipynb_checkpoints
 .ac
 
 # Deployment

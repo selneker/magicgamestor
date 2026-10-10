@@ -42,7 +42,7 @@ class FazerCardsProvider(Provider):
         return _STATUS_MAP.get((raw_status or "").strip().lower(), OrderStatus.PROCESSING)
 
     async def validate_identity(self, game_id: str | None, fields: dict) -> IdentityValidation:
-        data = await fazercards.validate_identity(fields)
+        data = await fazercards.validate_identity(fields, game_id)
         return IdentityValidation(valid=bool(data.get("valid")), player_name=data.get("player_name"),
                                   region=data.get("region"), raw=data)
 
