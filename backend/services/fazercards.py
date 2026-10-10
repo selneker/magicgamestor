@@ -78,10 +78,45 @@ async def pubg_validation_target() -> tuple[str, str]:
     raise HTTPException(status_code=503, detail="La validation PUBG Mobile n'est pas disponible chez le fournisseur.")
 
 
-async def validate_identity(fields: dict) -> dict:
+_game_discovery_cache: dict = {}  # game_id -> (category_id, field_key, at)
+
+
+async def validation_target(game_id: str | None) -> tuple[str, str]:
+    """(category_id, field_key) de validation pour un jeu, découvert dynamiquement.
+
+    PUBG Mobile (et les commandes legacy sans game_id) conserve EXACTEMENT le comportement
+    historique (cache legacy). Un autre jeu n'est résolu que si une correspondance explicite et
+    fiable existe (GAME_MATCHERS) ET qu'une cible de validation est réellement configurée chez le
+    fournisseur. Sinon, échec explicite et sûr (503) : jamais de repli silencieux sur la cible
+    PUBG, aucune catégorie fournisseur inventée.
+    """
+    if not game_id or game_id == "pubg-mobile":
+        return await pubg_validation_target()
+    now = time.time()
+    hit = _game_discovery_cache.get(game_id)
+    if hit and now - hit[2] < DISCOVERY_TTL_S:
+        return hit[0], hit[1]
+    matchers = GAME_MATCHERS.get(game_id)
+    if matchers:
+        data = await _request("GET", "/topups/validate-id")
+        for item in data.get("items", []):
+            haystack = f"{item.get('category_id') or ''} {item.get('name') or ''}".lower()
+            if any(m in haystack for m in matchers):
+                keys = [f.get("key") for f in (item.get("fields") or []) if f.get("key")]
+                field_key = "player_id" if "player_id" in keys else (keys[0] if keys else None)
+                if field_key:
+                    _game_discovery_cache[game_id] = (item["category_id"], field_key, now)
+                    return item["category_id"], field_key
+    raise HTTPException(
+        status_code=503,
+        detail="La validation d'identité n'est pas disponible pour ce jeu chez le fournisseur.")
+
+
+async def validate_identity(fields: dict, game_id: str | None = None) -> dict:
     """Validation générique à partir de `fields` dynamiques (ex: {player_id}, {player_id, zone_id}).
-    La clé provider est découverte dynamiquement ; le domaine ne suppose jamais player_id universel."""
-    category_id, field_key = await pubg_validation_target()
+    La clé provider est découverte dynamiquement POUR LE JEU demandé ; le domaine ne suppose jamais
+    player_id universel. Sans `game_id`, comportement historique (PUBG Mobile)."""
+    category_id, field_key = await validation_target(game_id)
     send = dict(fields) if field_key in (fields or {}) else (
         {field_key: next(iter(fields.values()))} if fields else {})
     data = await _request("POST", "/topups/validate-id",
@@ -94,8 +129,8 @@ async def validate_identity(fields: dict) -> dict:
 
 
 async def validate_pubg_id(player_id: str) -> dict:
-    """Compat legacy : délègue à la validation générique."""
-    return await validate_identity({"player_id": player_id})
+    """Compat legacy : délègue à la validation générique (PUBG Mobile)."""
+    return await validate_identity({"player_id": player_id}, "pubg-mobile")
 
 
 CATALOG_TTL_S = 600
