@@ -18,6 +18,7 @@ from fastapi import HTTPException
 
 from core.audit import audit
 from core.db import db
+from core.games import DEFAULT_GAME_ID
 from services import fazercards, fzr_mapping, providers
 from services.providers.base import OrderStatus
 
@@ -164,12 +165,20 @@ async def preflight(order_id: str) -> dict:
     validation = await providers.get_provider(order.get("game_id")).validate_identity(
         order.get("game_id"), _identity_fields(order))  # 502/504 si service indisponible
     if not validation.valid:
-        raise HTTPException(status_code=409, detail="ID PUBG Mobile invalide chez le fournisseur — commande non envoyée.")
+        # Message neutre par jeu : PUBG Mobile conserve son libellé historique, tout autre jeu
+        # reçoit un message générique (aucune hypothèse PUBG pour un jeu dynamique).
+        if (order.get("game_id") or DEFAULT_GAME_ID) == DEFAULT_GAME_ID:
+            detail = "ID PUBG Mobile invalide chez le fournisseur — commande non envoyée."
+        else:
+            detail = "Identité joueur invalide chez le fournisseur — commande non envoyée."
+        raise HTTPException(status_code=409, detail=detail)
     offers_by_cat, lines = {}, []
     for u in pending:
         cat = u["category_id"]
         if cat not in offers_by_cat:
-            offers_by_cat[cat] = await fazercards.pubg_offers_fresh(cat)
+            # Offres live de la catégorie, en vérifiant qu'elle appartient bien au jeu de la commande
+            # (aucun mélange entre catalogues de jeux). Sans jeu connu → comportement historique.
+            offers_by_cat[cat] = await fzr_mapping.offers_for_game(order.get("game_id"), cat)
         offers = offers_by_cat[cat]
         offer = next((o for o in offers["offers"] if o["offer_id"] == u["offer_id"]), None)
         if not offer:
