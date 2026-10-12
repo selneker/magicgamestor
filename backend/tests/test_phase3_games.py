@@ -136,7 +136,7 @@ def test_admin_can_create_edit_and_toggle_a_game(admin):
         "id": gid, "name": "QA Game v2", "icon_url": "https://example.com/qa-logo-2.png",
         "active": True, "sort_order": 6}).status_code == 409
 
-    # give the game a sellable product (active, no mapping required), then activate
+    # A sellable product is not enough: non-PUBG checkout still needs game-specific identity verification.
     run(db.products.insert_one({
         "id": pid, "slug": f"qa-game-{tag}", "type": "uc", "uc_amount": 60, "name": "QA Game 60 UC",
         "price": 5000, "active": True, "game_id": gid, "requires_mapping": False,
@@ -145,8 +145,9 @@ def test_admin_can_create_edit_and_toggle_a_game(admin):
         back = requests.put(f"{API}/admin/games/{gid}", headers=admin, timeout=15, json={
             "id": gid, "name": "QA Game v2", "icon_url": "https://example.com/qa-logo-2.png",
             "active": True, "sort_order": 6})
-        assert back.status_code == 200 and back.json()["active"] is True
-        assert gid in [g["id"] for g in requests.get(f"{API}/games", timeout=15).json()]
+        assert back.status_code == 409, back.text
+        assert "checkout" in back.json()["detail"].lower()
+        assert gid not in [g["id"] for g in requests.get(f"{API}/games", timeout=15).json()]
     finally:
         run(db.products.delete_many({"id": pid}))
         requests.put(f"{API}/admin/games/{gid}", headers=admin, timeout=15, json={
