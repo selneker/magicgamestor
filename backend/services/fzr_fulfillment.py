@@ -177,7 +177,9 @@ async def preflight(order_id: str) -> dict:
         cat = u["category_id"]
         if cat not in offers_by_cat:
             # Offres live de la catégorie, en vérifiant qu'elle appartient bien au jeu de la commande
-            # (aucun mélange entre catalogues de jeux). Sans jeu connu → comportement historique.
+            # (aucun mélange entre catalogues de jeux). FAIL-CLOSED : un jeu inconnu échoue
+            # explicitement (409) — jamais d'accès au catalogue fournisseur complet. Seul le chemin
+            # de compatibilité PUBG historique (game_id absent) conserve le comportement d'origine.
             offers_by_cat[cat] = await fzr_mapping.offers_for_game(order.get("game_id"), cat)
         offers = offers_by_cat[cat]
         offer = next((o for o in offers["offers"] if o["offer_id"] == u["offer_id"]), None)

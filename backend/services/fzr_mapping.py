@@ -82,8 +82,14 @@ def purchase_blocked(product: dict) -> str | None:
 
 async def offers_for_game(game_id: str | None, category_id: str) -> dict:
     """Offres live d'une catégorie, en s'assurant qu'elle appartient bien au jeu du produit
-    (aucun mélange entre catalogues de jeux). Sans jeu connu → comportement historique."""
-    if game_id:
+    (aucun mélange entre catalogues de jeux).
+
+    FAIL-CLOSED : un jeu reconnu ne peut accéder qu'à ses propres catégories ; un jeu inconnu
+    échoue explicitement (409) via `game_categories` — jamais d'accès au catalogue fournisseur
+    complet. Seul le chemin de compatibilité PUBG historique (game_id absent) conserve le
+    comportement d'origine, sans contrôle de catégorie.
+    """
+    if game_id is not None:
         allowed = {c["category_id"] for c in await fazercards.game_categories(game_id)}
         if category_id not in allowed:
             raise HTTPException(status_code=409,
