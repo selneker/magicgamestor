@@ -78,7 +78,7 @@ export default function AdminProducts() {
           <div key={p.id} data-testid={`admin-product-${p.slug}`} className={`flex min-w-0 items-center gap-2 rounded-2xl border bg-white p-3 sm:gap-3 sm:p-4 ${p.active ? "border-slate-100" : "border-dashed border-slate-300 opacity-60"}`}>
             <div className="min-w-0 flex-1"><p className="break-words font-display text-sm font-bold leading-snug text-slate-900 sm:text-base">{p.name}</p><p className="mt-0.5 break-words text-xs text-slate-500">{p.type} · {formatAr(p.price)}{p.old_price ? ` (${formatAr(p.old_price)})` : ""}{p.popular ? " · ★" : ""}</p></div>
             <div className="flex shrink-0 items-center">
-              <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full" onClick={() => setEditing({ ...EMPTY, ...p })} data-testid={`admin-edit-product-${p.slug}`}><Pencil className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full" onClick={() => setEditing({ ...EMPTY, ...p, game_id: p.game_id || "pubg-mobile", requires_mapping: p.requires_mapping ?? false })} data-testid={`admin-edit-product-${p.slug}`}><Pencil className="h-4 w-4" /></Button>
               <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-slate-400 hover:text-rose-600" onClick={() => remove(p)} data-testid={`admin-delete-product-${p.slug}`}><Trash2 className="h-4 w-4" /></Button>
             </div>
           </div>
@@ -105,7 +105,7 @@ export default function AdminProducts() {
                 </label>
               )}
               {field("price", `${t("catalog.price")} (Ar)`, "number")}{field("old_price", "Ancien prix (Ar)", "number")}
-              {field("uc_amount", "UC", "number")}{field("duration_months", "Mois", "number")}{field("badge", "Badge")}{field("sort_order", "Ordre", "number")}
+              {field("uc_amount", `${games.find((g) => g.id === (editing.game_id || "pubg-mobile"))?.currency_label || ((editing.game_id || "pubg-mobile") === "pubg-mobile" ? "UC" : "Quantité de monnaie")}`, "number")}{field("duration_months", "Mois", "number")}{field("badge", "Badge")}{field("sort_order", "Ordre", "number")}
               <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Logo URL<Input data-testid="product-field-image_url" type="url" inputMode="url" placeholder="https://example.com/60uc.png" value={editing.image_url ?? ""} onChange={(e) => setEditing({ ...editing, image_url: e.target.value })} className="mt-1 h-10 rounded-xl" /></label>
               <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Description FR<Textarea value={editing.description_fr} onChange={(e) => setEditing({ ...editing, description_fr: e.target.value })} className="mt-1 rounded-xl" data-testid="product-field-description_fr" /></label>
               <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Description EN<Textarea value={editing.description_en} onChange={(e) => setEditing({ ...editing, description_en: e.target.value })} className="mt-1 rounded-xl" data-testid="product-field-description_en" /></label>
