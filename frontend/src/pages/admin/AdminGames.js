@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 // Phase 3 — game management. `icon_url` is the single logo source: the visible label
 // is "Logo URL" and the administrator can set/change it. No upload, no media manager.
-const EMPTY = { id: "", name: "", slug: "", icon_url: "", description: "", description_en: "", active: true, sort_order: 0 };
+const EMPTY = { id: "", name: "", slug: "", icon_url: "", currency_label: "", description: "", description_en: "", active: true, sort_order: 0 };
 
 export default function AdminGames() {
   const { t } = useLang();
@@ -25,6 +25,7 @@ export default function AdminGames() {
     const body = {
       id: editing.id, name: editing.name, slug: editing.slug || editing.id,
       icon_url: (editing.icon_url || "").trim() || null,
+      currency_label: (editing.currency_label || "").trim() || null,
       description: editing.description || "", description_en: editing.description_en || null,
       active: !!editing.active, sort_order: Number(editing.sort_order || 0),
     };
@@ -39,6 +40,7 @@ export default function AdminGames() {
     try {
       await api.put(`/admin/games/${g.id}`, {
         id: g.id, name: g.name, slug: g.slug || g.id, icon_url: g.icon_url || null,
+        currency_label: g.currency_label || null,
         description: g.description || "", description_en: g.description_en || null,
         active: !g.active, sort_order: Number(g.sort_order || 0),
       });
@@ -98,7 +100,12 @@ export default function AdminGames() {
               {field("name", t("admin.gameName"))}
               {field("slug", "Slug")}
               {field("sort_order", t("admin.sortOrder"), "number")}
-              <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Logo URL
+              <label className="text-sm font-semibold text-slate-700">Unité de monnaie
+                <Input data-testid="game-field-currency_label" maxLength={24} placeholder="UC, Diamants, Coins…"
+                  value={editing.currency_label ?? ""} onChange={(e) => setEditing({ ...editing, currency_label: e.target.value })} className="mt-1 h-10 rounded-xl" />
+                <span className="mt-1 block text-xs font-normal text-slate-500">Utilisée pour nommer la monnaie des packs dans la boutique (ex. UC, Diamants).</span>
+              </label>
+              <label className="text-sm font-semibold text-slate-700">Logo URL
                 <Input data-testid="game-field-icon_url" type="url" inputMode="url" placeholder="https://example.com/logo.png"
                   value={editing.icon_url ?? ""} onChange={(e) => setEditing({ ...editing, icon_url: e.target.value })} className="mt-1 h-10 rounded-xl" />
               </label>
