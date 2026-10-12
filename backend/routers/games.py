@@ -7,11 +7,12 @@ from pydantic import BaseModel, Field, field_validator
 
 from core.audit import audit
 from core.db import db
-from core.games import game_has_sellable_catalog
+from core.games import DEFAULT_GAME_ID, game_has_sellable_catalog
 from core.security import get_current_user, require_permission
 
 router = APIRouter(tags=["games"])
 PUBLIC = {"_id": 0}
+PUBLIC_GAME = {"_id": 0, "fazercards_categories": 0, "fazercards_categories_configured": 0}
 FIELD_KEY = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 # Public activation is refused while the game has no sellable catalog (see core.games).
 NO_CATALOG_DETAIL = ("Activation refusee : ce jeu n'a aucun produit actif et correctement configure "
@@ -25,12 +26,12 @@ def _now():
 
 @router.get("/games")
 async def list_games():
-    return await db.games.find({"active": True}, PUBLIC).sort("sort_order", 1).to_list(100)
+    return await db.games.find({"active": True}, PUBLIC_GAME).sort("sort_order", 1).to_list(100)
 
 
 @router.get("/games/{game_id}")
 async def get_game(game_id: str):
-    game = await db.games.find_one({"id": game_id, "active": True}, PUBLIC)
+    game = await db.games.find_one({"id": game_id, "active": True}, PUBLIC_GAME)
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
     return game
@@ -122,6 +123,7 @@ class GameIn(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     slug: str | None = Field(default=None, max_length=60, pattern=r"^[a-z0-9-]+$")
     icon_url: str | None = Field(default=None, max_length=500)
+    currency_label: str | None = Field(default=None, max_length=24)
     description: str = ""
     description_en: str | None = None
     active: bool = True
@@ -172,6 +174,13 @@ async def update_game(game_id: str, body: GameIn, user=Depends(require_permissio
         raise HTTPException(status_code=404, detail="Jeu introuvable.")
     if body.active and not await game_has_sellable_catalog(game_id):
         raise HTTPException(status_code=409, detail=NO_CATALOG_DETAIL)
+    if body.active and game_id != DEFAULT_GAME_ID:
+        raise HTTPException(
+            status_code=409,
+            detail=("Activation refusee : le checkout de verification d'identite est encore configure "
+                    "uniquement pour PUBG Mobile. Configurez le parcours d'identite de ce jeu avant "
+                    "son ouverture publique."),
+        )
     data = body.model_dump()
     data.pop("id", None)  # never re-key an existing game
     data["slug"] = data.get("slug") or game_id

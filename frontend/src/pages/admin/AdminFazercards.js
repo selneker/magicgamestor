@@ -36,6 +36,10 @@ export default function AdminFazercards() {
   const [alerts, setAlerts] = useState({ alerts: [], unacknowledged: 0 });
   const [products, setProducts] = useState([]);
   const [catalog, setCatalog] = useState(null);
+  const [providerCategories, setProviderCategories] = useState([]);
+  const [assignedCategoryIds, setAssignedCategoryIds] = useState([]);
+  const [categoriesConfigured, setCategoriesConfigured] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
   const [coverage, setCoverage] = useState(null);
   const [audit, setAudit] = useState(null);
   const [busy, setBusy] = useState("");
@@ -43,22 +47,69 @@ export default function AdminFazercards() {
   const [form, setForm] = useState(null);
   // Phase 3 — the selected game is sent to the audit / apply / coverage routes so a
   // Free Fire operation can never read or write PUBG mappings (and vice versa).
-  const [game, setGame] = useState("");
+  const [game, setGame] = useState("pubg-mobile");
   const [games, setGames] = useState([]);
+  const [gamesReady, setGamesReady] = useState(false);
 
   const load = useCallback((g = "") => {
     api.get("/admin/fazercards/settings").then((r) => setSettings(r.data)).catch(() => {});
     api.get("/admin/fazercards/price-alerts").then((r) => setAlerts(r.data)).catch(() => {});
     api.get("/admin/fazercards/mappings", { params: { game: g || undefined } }).then((r) => setProducts(r.data.products)).catch(() => {});
   }, []);
-  useEffect(() => { load(game); }, [load, game]);
-  useEffect(() => { api.get("/admin/games").then((r) => setGames(r.data)).catch(() => {}); }, []);
-
+  useEffect(() => { load(game); setCatalog(null); setCoverage(null); setAudit(null); }, [load, game]);
+  useEffect(() => {
+    api.get("/admin/games").then((r) => {
+      setGames(r.data);
+      setGamesReady(true);
+      const selected = r.data.find((g) => g.id === game);
+      setAssignedCategoryIds(selected?.fazercards_categories || []);
+      setCategoriesConfigured(selected?.fazercards_categories_configured === true);
+    }).catch(() => {});
+  }, [game]);
   const loadCatalog = useCallback(async () => {
+    if (!game) { toast.error("Choisissez un jeu avant de charger son catalogue."); return null; }
     setBusy("catalog");
-    try { const { data } = await api.get("/fazercards/pubg/catalog"); setCatalog(data.categories); return data.categories; }
-    catch (e) { toast.error(errorMessage(e)); return null; } finally { setBusy(""); }
+    try {
+      const { data } = await api.get("/admin/fazercards/catalog", { params: { game } });
+      setCatalog(data.categories || []);
+      return data.categories || [];
+    } catch (e) { setCatalog([]); toast.error(errorMessage(e)); return null; }
+    finally { setBusy(""); }
+  }, [game]);
+
+  const loadProviderCategories = useCallback(async (refresh = false) => {
+    setBusy("provider-categories");
+    try {
+      const { data } = await api.get("/admin/fazercards/provider-categories", { params: { refresh } });
+      setProviderCategories(data.categories || []);
+      return data.categories || [];
+    } catch (e) { toast.error(errorMessage(e)); return null; }
+    finally { setBusy(""); }
   }, []);
+
+  useEffect(() => { loadProviderCategories(false); }, [loadProviderCategories]);
+  useEffect(() => {
+    if (!gamesReady || !game || categoriesConfigured || providerCategories.length === 0) return;
+    // When a legacy game has never saved an explicit selection, preselect its existing
+    // keyword-matched categories so the first save preserves today's behavior.
+    setAssignedCategoryIds(providerCategories.filter((cat) => cat.assigned_to?.game_id === game).map((cat) => cat.category_id));
+  }, [providerCategories, game, categoriesConfigured, gamesReady]);
+
+  const saveGameCategories = async () => {
+    if (!game) { toast.error("Choisissez un jeu."); return; }
+    setBusy("save-categories");
+    try {
+      const { data } = await api.put(`/admin/fazercards/games/${game}/categories`, { category_ids: assignedCategoryIds });
+      setCategoriesConfigured(true);
+      toast.success(`${data.count} catégorie(s) FazerCards affectée(s) à ${games.find((g) => g.id === game)?.name || game}.`);
+      const updated = await api.get("/admin/games");
+      setGames(updated.data);
+      await loadProviderCategories(false);
+      await loadCatalog();
+      load(game);
+    } catch (e) { toast.error(errorMessage(e)); }
+    finally { setBusy(""); }
+  };
 
   const toggleAuto = async (v) => {
     try {
@@ -70,7 +121,7 @@ export default function AdminFazercards() {
   const refreshCatalog = async () => {
     setBusy("refresh");
     try {
-      const { data } = await api.post("/admin/fazercards/catalog/refresh");
+      const { data } = await api.post("/admin/fazercards/catalog/refresh", null, { params: { game } });
       toast.success(t("admin.fzr.refreshDone").replace("{n}", data.checked).replace("{c}", data.changes.length));
       load(game);
     } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(""); }
@@ -152,8 +203,12 @@ export default function AdminFazercards() {
   const canSave = form && form.category_id && form.confirmed !== undefined &&
     (form.mode === "direct" ? !!form.offer_id : compTotals?.exact);
 
-  const specialUnused = (coverage || []).filter((o) => o.kind === "special" && o.used_by.length === 0);
-  const specialUsed = (coverage || []).filter((o) => o.kind === "special" && o.used_by.length > 0);
+  const unusedOffers = (coverage || []).filter((o) => o.used_by.length === 0);
+  const usedOffers = (coverage || []).filter((o) => o.used_by.length > 0);
+  const visibleProviderCategories = providerCategories.filter((c) => {
+    const haystack = `${c.name || ""} ${c.category_id || ""} ${c.note || ""}`.toLowerCase();
+    return haystack.includes(categorySearch.toLowerCase());
+  });
 
   return (
     <div className="space-y-6" data-testid="admin-fzr">
@@ -170,6 +225,51 @@ export default function AdminFazercards() {
           <Switch checked={!!settings?.fzr_auto} disabled={settings === null || !isSuperAdmin} onCheckedChange={toggleAuto} data-testid="fzr-auto-toggle" />
         </div>
       </div>
+
+      <section className="rounded-2xl border border-border bg-card p-5" data-testid="fzr-game-categories">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-lg font-bold text-foreground">Catégories FazerCards par jeu</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Choisissez les catégories réelles du fournisseur qui appartiennent au jeu sélectionné. Les offres choisies seront proposées dans le mapping. Une catégorie ne peut appartenir qu'à un seul jeu configuré.</p>
+            <p className="mt-1 text-xs font-semibold text-foreground">Jeu courant : {games.find((g) => g.id === game)?.name || game || "Aucun jeu sélectionné"}{categoriesConfigured ? " · Affectation enregistrée" : " · Affectation à configurer"}</p>
+          </div>
+          <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
+            <Select value={game || "pubg-mobile"} onValueChange={(v) => setGame(v)}>
+              <SelectTrigger className="h-9 w-full rounded-full sm:w-56" data-testid="fzr-category-game-select"><SelectValue placeholder="Choisir un jeu" /></SelectTrigger>
+              <SelectContent>{games.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}{g.active ? "" : " · Inactif"}</SelectItem>)}</SelectContent>
+            </Select>
+            <Button size="sm" variant="outline" className="rounded-full" onClick={() => loadProviderCategories(true)} disabled={busy === "provider-categories"} data-testid="fzr-provider-categories-refresh">
+              {busy === "provider-categories" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />}Actualiser FazerCards
+            </Button>
+            <Button size="sm" className="rounded-full" onClick={saveGameCategories} disabled={!game || busy === "save-categories" || busy === "provider-categories"} data-testid="fzr-save-game-categories">
+              {busy === "save-categories" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}Enregistrer les catégories
+            </Button>
+          </div>
+        </div>
+        <div className="mt-4">
+          <Input value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} placeholder="Rechercher une catégorie ou un ID FazerCards…" className="h-10 rounded-xl" data-testid="fzr-category-search" />
+        </div>
+        <div className="mt-3 max-h-[24rem] space-y-1.5 overflow-y-auto rounded-xl border border-border p-2" data-testid="fzr-provider-category-list">
+          {visibleProviderCategories.map((cat) => {
+            const selected = assignedCategoryIds.includes(cat.category_id);
+            const assignedElsewhere = cat.assigned_to && cat.assigned_to.game_id !== game;
+            return (
+              <label key={cat.category_id} className={`flex items-start gap-3 rounded-xl border p-3 text-sm ${selected ? "border-primary bg-primary/10" : "border-border"} ${assignedElsewhere ? "opacity-60" : ""}`} data-testid={`fzr-provider-category-${cat.category_id}`}>
+                <Checkbox checked={selected} disabled={!game || !!assignedElsewhere} onCheckedChange={(checked) => setAssignedCategoryIds((old) => checked ? [...old.filter((id) => id !== cat.category_id), cat.category_id] : old.filter((id) => id !== cat.category_id))} className="mt-0.5" />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-foreground">{cat.name || cat.category_id}</span>
+                  <span className="mt-0.5 block break-all font-mono text-[11px] text-muted-foreground">{cat.category_id}</span>
+                  {cat.note && <span className="mt-1 block text-xs text-muted-foreground">{cat.note}</span>}
+                </span>
+                {assignedElsewhere && <span className="shrink-0 text-right text-[11px] font-semibold text-amber-700">Affectée à {cat.assigned_to.game_name}</span>}
+                {selected && <span className="shrink-0 text-[11px] font-bold text-emerald-700">Sélectionnée</span>}
+              </label>
+            );
+          })}
+          {visibleProviderCategories.length === 0 && <p className="p-3 text-sm text-muted-foreground">{providerCategories.length === 0 ? "Aucune catégorie chargée. Vérifiez la clé API FazerCards puis cliquez sur Actualiser FazerCards." : "Aucune catégorie ne correspond à la recherche."}</p>}
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">{assignedCategoryIds.length} catégorie(s) sélectionnée(s). Les offres du catalogue seront disponibles ci-dessous après enregistrement.</p>
+      </section>
 
       <section className="rounded-2xl border border-border bg-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -204,10 +304,9 @@ export default function AdminFazercards() {
             <p className="text-xs text-muted-foreground">{t("admin.fzr.mappingHint")}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={game || "all"} onValueChange={(v) => setGame(v === "all" ? "" : v)}>
+            <Select value={game || "pubg-mobile"} onValueChange={(v) => setGame(v)}>
               <SelectTrigger className="h-9 w-48 rounded-full" data-testid="fzr-game-filter"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t("admin.fzr.allGames")}</SelectItem>
                 {games.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -218,7 +317,7 @@ export default function AdminFazercards() {
             )}
           </div>
         </div>
-        {can("catalog.manage") && (
+        {can("catalog.manage") && game === "pubg-mobile" && (
           <div className="mt-4 flex flex-col gap-2 rounded-xl border border-border bg-muted/40 p-3 sm:flex-row sm:items-center" data-testid="fzr-uc-audit">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-foreground">{t("admin.fzr.ucAudit")}</p>
@@ -247,12 +346,17 @@ export default function AdminFazercards() {
             ))}
           </div>
         )}
+        {products.length === 0 && (
+          <div className="mt-5 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground" data-testid="fzr-no-game-products">
+            Aucun produit MagicGameStore pour ce jeu. Créez d'abord un pack inactif dans Admin → Catalogue, sélectionnez ce jeu, puis revenez ici pour lui associer une offre FazerCards.
+          </div>
+        )}
         {GROUPS.map(([type, labelKey]) => {
           const group = products.filter((p) => p.type === type);
           if (!group.length) return null;
           return (
             <div key={type} className="mt-5" data-testid={`fzr-group-${type}`}>
-              <p className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">{t(`admin.fzr.${labelKey}`)}</p>
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">{type === "uc" && games.find((g) => g.id === game)?.currency_label ? `Packs ${games.find((g) => g.id === game).currency_label}` : t(`admin.fzr.${labelKey}`)}</p>
               <div className="space-y-1.5">
                 {group.map((p) => {
                   const m = p.fazercards_mapping;
@@ -306,23 +410,27 @@ export default function AdminFazercards() {
         </div>
         {coverage && (
           <div className="mt-4 space-y-1.5" data-testid="fzr-coverage-list">
-            {specialUnused.map((o) => (
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span>{coverage.length} offre(s) du catalogue affecté à {games.find((g) => g.id === game)?.name || game || "PUBG Mobile"}</span>
+              <span>·</span><span>{unusedOffers.length} non affectée(s)</span><span>·</span><span>{usedOffers.length} déjà utilisées</span>
+            </div>
+            {unusedOffers.map((o) => (
               <div key={`${o.category_id}:${o.offer_id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm dark:border-amber-500/30 dark:bg-amber-500/10" data-testid={`fzr-coverage-${o.offer_id}`}>
                 <span className="min-w-0 break-words font-semibold text-foreground">{o.name}</span>
                 <span className="break-all font-mono text-xs text-muted-foreground">{o.offer_id} · {o.category_id}</span>
                 <span className="text-xs font-semibold text-foreground">${o.price_usd}</span>
-                <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 dark:bg-amber-500/20 dark:text-amber-200">{t("admin.fzr.availableNotActive")}</span>
+                <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 dark:bg-amber-500/20 dark:text-amber-200">{o.kind} · {t("admin.fzr.availableNotActive")}</span>
               </div>
             ))}
-            {specialUsed.map((o) => (
-              <div key={`${o.category_id}:${o.offer_id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border px-3 py-2 text-sm opacity-80" data-testid={`fzr-coverage-${o.offer_id}`}>
+            {usedOffers.map((o) => (
+              <div key={`${o.category_id}:${o.offer_id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border px-3 py-2 text-sm opacity-90" data-testid={`fzr-coverage-${o.offer_id}`}>
                 <span className="min-w-0 break-words font-semibold text-foreground">{o.name}</span>
-                <span className="break-all font-mono text-xs text-muted-foreground">{o.offer_id}</span>
+                <span className="break-all font-mono text-xs text-muted-foreground">{o.offer_id} · {o.category_id}</span>
                 <span className="text-xs font-semibold text-foreground">${o.price_usd}</span>
-                <span className="ml-auto max-w-full break-words rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200">{t("admin.fzr.usedBy")} {o.used_by.map((u) => u.name).join(", ")}</span>
+                <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200">{o.kind} · {t("admin.fzr.usedBy")} {o.used_by.map((u) => u.name).join(", ")}</span>
               </div>
             ))}
-            {specialUnused.length === 0 && specialUsed.length === 0 && <p className="text-sm text-muted-foreground">—</p>}
+            {coverage.length === 0 && <p className="text-sm text-muted-foreground">Aucune offre : affectez d'abord les catégories de ce jeu.</p>}
           </div>
         )}
       </section>

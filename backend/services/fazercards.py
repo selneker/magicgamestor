@@ -5,6 +5,7 @@ import time
 import httpx
 from fastapi import HTTPException
 
+from core.db import db
 from services.providers.errors import (ProviderInsufficientBalanceError, ProviderOrderError,
                                         ProviderTimeout)
 
@@ -188,26 +189,42 @@ async def _topup_categories() -> list[dict]:
 
 
 async def game_categories(game_id: str | None) -> list[dict]:
-    """Catégories fournisseur d'un jeu, déduites des mots-clés (ids jamais hardcodés).
+    """Catégories fournisseur explicitement affectées par l'admin, avec compatibilité historique.
 
-    FAIL-CLOSED : un jeu reconnu (GAME_MATCHERS) ne voit QUE ses propres catégories ; un jeu
-    inconnu/non supporté échoue explicitement (409) — il n'obtient JAMAIS le catalogue fournisseur
-    complet. Seul le chemin de compatibilité PUBG historique (game_id absent ou « pubg-mobile »)
-    conserve le comportement d'origine, et il reste lui aussi limité aux catégories PUBG.
+    Une configuration admin explicite (y compris une liste vide) est prioritaire pour TOUT jeu.
+    Pour les jeux historiques non encore configurés, les mots-clés connus restent un fallback
+    rétrocompatible. Un jeu sans configuration ni matcher échoue fermé : aucun catalogue arbitraire.
     """
+    game = None
+    if game_id:
+        game = await db.games.find_one(
+            {"id": game_id},
+            {"_id": 0, "fazercards_categories_configured": 1, "fazercards_categories": 1},
+        )
+    all_categories = await _topup_categories()
+    if game and game.get("fazercards_categories_configured") is True:
+        selected = set(game.get("fazercards_categories") or [])
+        return [
+            {"category_id": c.get("category_id"), "name": c.get("name"), "note": c.get("note")}
+            for c in all_categories if c.get("category_id") in selected
+        ]
+
+    # Compatibilité Phase 1/Phase 3: PUBG et Free Fire conservent la découverte automatique
+    # tant qu'un admin n'a pas enregistré leur sélection explicite dans l'interface.
     if is_legacy_pubg(game_id):
-        # Chemin de compatibilité EXPLICITE et intentionnel : PUBG Mobile (et les appels
-        # historiques sans game_id) gardent la découverte PUBG d'origine — jamais tout le catalogue.
         matchers = GAME_MATCHERS["pubg-mobile"]
     else:
-        matchers = GAME_MATCHERS.get(game_id)
+        matchers = GAME_MATCHERS.get(game_id or "")
         if not matchers:
             raise HTTPException(
                 status_code=409,
-                detail=f"Jeu « {game_id} » non supporté : aucune correspondance fournisseur configurée.")
-    return [{"category_id": c.get("category_id"), "name": c.get("name"), "note": c.get("note")}
-            for c in await _topup_categories()
-            if any(m in (c.get("category_id") or "").lower() or m in (c.get("name") or "").lower() for m in matchers)]
+                detail=f"Jeu « {game_id} » non configuré : affectez ses catégories FazerCards dans Admin → Fournisseur.",
+            )
+    return [
+        {"category_id": c.get("category_id"), "name": c.get("name"), "note": c.get("note")}
+        for c in all_categories
+        if any(m in (c.get("category_id") or "").lower() or m in (c.get("name") or "").lower() for m in matchers)
+    ]
 
 
 async def pubg_categories() -> list[dict]:

@@ -110,7 +110,7 @@ export default function Catalog() {
           {TYPES.map(([value, key]) => (
             <button key={key} role="tab" data-testid={`type-tab-${key}`} onClick={() => update({ type: value })}
               className={`shrink-0 border border-foreground px-4 py-2 text-[11px] font-black uppercase tracking-[0.1em] transition-colors ${activeType === value || (value === "prime" && type.startsWith("prime,")) ? "bg-primary text-[#0A0A0A]" : "bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`}>
-              {t(`catalog.${key}`)}
+              {key === "uc" && currentGame?.currency_label ? `Packs ${currentGame.currency_label}` : t(`catalog.${key}`)}
             </button>
           ))}
           <button data-testid="filter-popular" onClick={() => update({ popular: popular ? "" : "1" })} className={`shrink-0 border border-foreground px-4 py-2 text-[11px] font-black uppercase tracking-[0.1em] transition-colors ${popular ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`}>{t("catalog.popular")}</button>
