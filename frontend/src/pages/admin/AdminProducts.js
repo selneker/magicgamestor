@@ -58,7 +58,7 @@ export default function AdminProducts() {
   const save = async (e) => {
     e.preventDefault();
     const num = (v) => (v === "" || v === null ? null : Number(v));
-    const body = { ...editing, game_id: editing.game_id || "pubg-mobile", requires_mapping: editing.requires_mapping !== false, uc_amount: num(editing.uc_amount), duration_months: num(editing.duration_months), price: Number(editing.price), old_price: num(editing.old_price), badge: editing.badge || null, name_en: editing.name_en || null, evo_limit: editing.type === "evo" ? (editing.evo_limit || "season") : null, image_url: (editing.image_url || "").trim() || null, sort_order: Number(editing.sort_order || 0) };
+    const body = { ...editing, game_id: editing.game_id || "pubg-mobile", requires_mapping: ((editing.game_id || "pubg-mobile") !== "pubg-mobile" || !editing.id) ? true : editing.requires_mapping !== false, uc_amount: num(editing.uc_amount), duration_months: num(editing.duration_months), price: Number(editing.price), old_price: num(editing.old_price), badge: editing.badge || null, name_en: editing.name_en || null, evo_limit: editing.type === "evo" ? (editing.evo_limit || "season") : null, image_url: (editing.image_url || "").trim() || null, sort_order: Number(editing.sort_order || 0) };
     try {
       if (editing.id) await api.put(`/admin/products/${editing.id}`, body); else await api.post("/admin/products", body);
       toast.success(t("admin.save")); setEditing(null); load();
@@ -110,7 +110,7 @@ export default function AdminProducts() {
               <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Description FR<Textarea value={editing.description_fr} onChange={(e) => setEditing({ ...editing, description_fr: e.target.value })} className="mt-1 rounded-xl" data-testid="product-field-description_fr" /></label>
               <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Description EN<Textarea value={editing.description_en} onChange={(e) => setEditing({ ...editing, description_en: e.target.value })} className="mt-1 rounded-xl" data-testid="product-field-description_en" /></label>
               <label className="flex items-center gap-2 text-sm font-semibold"><Switch checked={editing.popular} onCheckedChange={(v) => setEditing({ ...editing, popular: v })} data-testid="product-field-popular" />{t("admin.popular")}</label>
-              <label className="flex items-center gap-2 text-sm font-semibold"><Switch checked={editing.requires_mapping !== false} onCheckedChange={(v) => setEditing({ ...editing, requires_mapping: v })} data-testid="product-field-requires_mapping" />Exiger un mapping fournisseur</label>
+              <p className="text-xs font-semibold text-slate-700 sm:col-span-2">Mapping fournisseur obligatoire pour tout nouveau pack. Un pack reste inactif jusqu'à ce que tu confirmes son offre dans Admin → Fournisseur.</p>
               <label className="flex items-center gap-2 text-sm font-semibold"><Switch checked={editing.active} onCheckedChange={(v) => setEditing({ ...editing, active: v })} data-testid="product-field-active" />{t("admin.active")}</label>
               <p className="text-xs text-slate-500 sm:col-span-2">Pour un nouveau jeu, créez d'abord le produit inactif, configurez son mapping dans Fournisseur, puis activez-le. Un jeu ne devient public qu'avec un catalogue livrable.</p>
               <Button type="submit" className="rounded-full font-bold sm:col-span-2" data-testid="product-save">{t("admin.save")}</Button>
