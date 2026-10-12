@@ -1,6 +1,33 @@
-# Getting Started with Create React App
+# MagicGameStore — Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app) and is driven by [CRACO](https://craco.js.org/).
+
+## Install & build (authoritative)
+
+**Yarn is the single authoritative package manager for this app.** `frontend/yarn.lock` is the
+only lockfile that must be committed; do not add a `package-lock.json`.
+
+```bash
+cd frontend
+yarn install --frozen-lockfile   # reproducible install — required
+yarn build                       # production build
+yarn test:ci                     # run the test suite once (CI mode)
+```
+
+Why yarn and not npm:
+
+- The dependency graph relies on yarn's `resolutions` field to pin transitive versions
+  (e.g. `webpack-dev-server`, `postcss`, `serialize-javascript`). npm ignores `resolutions`,
+  so `npm install` resolves a different, broken tree.
+- `npm install` also fails outright with `ERESOLVE` (peer conflict `react-day-picker@8` vs
+  `date-fns@4`). Even with `--legacy-peer-deps` it hoists `ajv-keywords@5` next to `ajv@6`,
+  which breaks the build with `Cannot find module 'ajv/dist/compile/codegen'`. This cannot be
+  repaired with npm `overrides`, because `ajv-keywords`'s `ajv` is a **peerDependency** and
+  npm overrides do not rewrite peer ranges — so npm is not a supported install path here.
+
+> Build memory: the production build needs a bounded Node heap in constrained containers.
+> If the build is killed with "the process exited too early", run
+> `NODE_OPTIONS=--max-old-space-size=1536 yarn build`.
 
 ## Available Scripts
 
