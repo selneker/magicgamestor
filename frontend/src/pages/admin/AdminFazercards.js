@@ -56,7 +56,7 @@ export default function AdminFazercards() {
     api.get("/admin/fazercards/price-alerts").then((r) => setAlerts(r.data)).catch(() => {});
     api.get("/admin/fazercards/mappings", { params: { game: g || undefined } }).then((r) => setProducts(r.data.products)).catch(() => {});
   }, []);
-  useEffect(() => { load(game); setCatalog(null); }, [load, game]);
+  useEffect(() => { load(game); setCatalog(null); setCoverage(null); setAudit(null); }, [load, game]);
   useEffect(() => {
     api.get("/admin/games").then((r) => {
       setGames(r.data);
@@ -317,7 +317,7 @@ export default function AdminFazercards() {
             )}
           </div>
         </div>
-        {can("catalog.manage") && (
+        {can("catalog.manage") && game === "pubg-mobile" && (
           <div className="mt-4 flex flex-col gap-2 rounded-xl border border-border bg-muted/40 p-3 sm:flex-row sm:items-center" data-testid="fzr-uc-audit">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-foreground">{t("admin.fzr.ucAudit")}</p>
@@ -356,7 +356,7 @@ export default function AdminFazercards() {
           if (!group.length) return null;
           return (
             <div key={type} className="mt-5" data-testid={`fzr-group-${type}`}>
-              <p className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">{t(`admin.fzr.${labelKey}`)}</p>
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">{type === "uc" && games.find((g) => g.id === game)?.currency_label ? `Packs ${games.find((g) => g.id === game).currency_label}` : t(`admin.fzr.${labelKey}`)}</p>
               <div className="space-y-1.5">
                 {group.map((p) => {
                   const m = p.fazercards_mapping;
