@@ -97,12 +97,17 @@ async def validation_target(game_id: str | None) -> tuple[str, str]:
     hit = _game_discovery_cache.get(game_id)
     if hit and now - hit[2] < DISCOVERY_TTL_S:
         return hit[0], hit[1]
+    game = await db.games.find_one({"id": game_id}, {"_id": 0, "fazercards_categories_configured": 1,
+                                                     "fazercards_categories": 1})
+    # Admin-assigned categories are authoritative; keyword matchers are only the legacy fallback.
+    selected = set((game or {}).get("fazercards_categories") or []) \
+        if (game or {}).get("fazercards_categories_configured") is True else None
     matchers = GAME_MATCHERS.get(game_id)
-    if matchers:
+    if selected or (selected is None and matchers):
         data = await _request("GET", "/topups/validate-id")
         for item in data.get("items", []):
             haystack = f"{item.get('category_id') or ''} {item.get('name') or ''}".lower()
-            if any(m in haystack for m in matchers):
+            if (item.get("category_id") in selected) if selected else any(m in haystack for m in matchers):
                 keys = [f.get("key") for f in (item.get("fields") or []) if f.get("key")]
                 field_key = "player_id" if "player_id" in keys else (keys[0] if keys else None)
                 if field_key:
@@ -116,10 +121,19 @@ async def validation_target(game_id: str | None) -> tuple[str, str]:
 async def validate_identity(fields: dict, game_id: str | None = None) -> dict:
     """Validation générique à partir de `fields` dynamiques (ex: {player_id}, {player_id, zone_id}).
     La clé provider est découverte dynamiquement POUR LE JEU demandé ; le domaine ne suppose jamais
-    player_id universel. Sans `game_id`, comportement historique (PUBG Mobile)."""
+    player_id universel. Sans `game_id`, comportement historique (PUBG Mobile).
+
+    FAIL-CLOSED : si le champ attendu par le fournisseur n'est pas fourni, on échoue explicitement
+    au lieu de substituer une valeur d'un autre champ (jamais d'identité devinée)."""
     category_id, field_key = await validation_target(game_id)
-    send = dict(fields) if field_key in (fields or {}) else (
-        {field_key: next(iter(fields.values()))} if fields else {})
+    send = {k: v for k, v in (fields or {}).items() if v}
+    if not send:
+        raise HTTPException(status_code=400, detail="Aucun champ d'identité fourni.")
+    if field_key not in send:
+        raise HTTPException(
+            status_code=503,
+            detail=("Les champs d'identité déclarés pour ce jeu ne correspondent pas à ceux attendus "
+                    "par le fournisseur : corrigez-les dans Admin -> Jeux."))
     data = await _request("POST", "/topups/validate-id",
                           json={"category_id": category_id, "fields": send})
     if "valid" not in data:

@@ -59,11 +59,14 @@ def test_multiple_identities_same_and_other_game_and_ownership():
     h, uid = _user()
     a = _identity(h)
     b = _identity(h, label="Compte secondaire", fields={"player_id": "5999999999"})
-    c = _identity(h, label="Zone account", fields={"player_id": "123456", "zone_id": "2214"})  # dynamic fields
+    # Saved identities follow the game's identity contract (B1): PUBG = one 9-13 digit player_id only.
+    bad = requests.post(f"{API}/me/game-identities", headers=h, json={
+        "game_id": GAME, "label": "Zone account", "fields": {"player_id": "123456", "zone_id": "2214"}})
+    assert bad.status_code == 400
     mine = requests.get(f"{API}/me/game-identities", headers=h).json()
-    assert {i["id"] for i in mine} == {a["id"], b["id"], c["id"]}
+    assert {i["id"] for i in mine} == {a["id"], b["id"]}
     assert all(i["user_id"] == uid and i["game_id"] == GAME for i in mine)
-    assert c["fields"] == {"player_id": "123456", "zone_id": "2214"} and a["validated"] is False
+    assert a["validated"] is False
     other, _ = _user()
     assert requests.get(f"{API}/me/game-identities", headers=other).json() == []
     assert requests.patch(f"{API}/me/game-identities/{a['id']}", json={"label": "x"}, headers=other).status_code == 404

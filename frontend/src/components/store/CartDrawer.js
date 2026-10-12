@@ -5,15 +5,18 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
 import { useLang } from "@/context/LanguageContext";
 import { formatAr } from "@/lib/api";
+import { useGames } from "@/context/GameContext";
 
 export function CartDrawer() {
-  const { items, open, setOpen, setQty, remove, total } = useCart();
+  const { items, open, setOpen, setQty, remove, total, gameId } = useCart();
+  const { games } = useGames();
+  const cartGame = games.find((g) => g.id === gameId);
   const { t, lang } = useLang();
   const navigate = useNavigate();
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent aria-describedby={undefined} className="flex w-full flex-col sm:max-w-md" data-testid="cart-drawer">
-        <SheetHeader><SheetTitle className="font-display text-xl">{t("cart.title")}</SheetTitle></SheetHeader>
+        <SheetHeader><SheetTitle className="font-display text-xl">{t("cart.title")}</SheetTitle>{cartGame && <p className="eyebrow" data-testid="cart-game">{t("store.gameLabel")} · {cartGame.name}</p>}</SheetHeader>
         {items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center" data-testid="cart-empty">
             <p className="text-slate-500">{t("cart.empty")}</p>
@@ -24,7 +27,7 @@ export function CartDrawer() {
             <ul className="flex-1 space-y-3 overflow-y-auto py-4">
               {items.map((i) => (
                 <li key={i.id} data-testid={`cart-item-${i.slug}`} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-foreground bg-primary font-display text-xs font-black text-[#0A0A0A]">{i.type === "uc" ? "UC" : i.type === "prime_plus" ? "P+" : "P"}</div>
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-foreground bg-primary font-display text-xs font-black text-[#0A0A0A]">{(games.find((g) => g.id === (i.game_id || "pubg-mobile"))?.product_types || []).find((pt) => pt.key === i.type)?.label?.slice(0, 3) || i.type.slice(0, 3).toUpperCase()}</div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-slate-900">{lang === "en" && i.name_en ? i.name_en : i.name}</p>
                     <p className="text-sm text-slate-500">{formatAr(i.price)}</p>

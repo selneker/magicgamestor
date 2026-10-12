@@ -46,7 +46,7 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
   return (
     <div className="mt-2">
       {!(checkout && state.status === "valid") && (
-        <button type="button" data-testid="pubg-verify-btn" onClick={verify} disabled={state.status === "loading" || !pubgId} className={btn}>
+        <button type="button" data-testid="pubg-verify-btn" onClick={verify} disabled={state.status === "loading" || !/^[0-9]{9,13}$/.test((pubgId || "").trim())} className={btn}>
           {state.status === "loading" ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" data-testid="pubg-verify-loading" />{t("checkout.verifying")}</>) : t("checkout.verify")}
         </button>
       )}

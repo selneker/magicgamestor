@@ -7,17 +7,25 @@ from pydantic import BaseModel, Field, field_validator
 
 from core.audit import audit
 from core.db import db
-from core.games import DEFAULT_GAME_ID, game_has_sellable_catalog
+from core.games import (DEFAULT_GAME_ID, NO_CATALOG_DETAIL, check_identity_payload, game_readiness,
+                        identity_spec, normalize_identity_fields, normalize_product_types, product_types_for,
+                        public_game_ids)
 from core.security import get_current_user, require_permission
 
 router = APIRouter(tags=["games"])
 PUBLIC = {"_id": 0}
+# Les identifiants de catégories fournisseur sont une configuration ADMIN : ils ne sont jamais
+# recopiés sur les réponses publiques (une boutique n'expose pas la nomenclature du fournisseur).
+# En revanche `identity_fields` EST public : c'est le contrat de saisie que le checkout doit
+# rendre (libellés/formats), et il ne contient aucune donnée commerciale ni identifiant fournisseur.
 PUBLIC_GAME = {"_id": 0, "fazercards_categories": 0, "fazercards_categories_configured": 0}
-FIELD_KEY = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
-# Public activation is refused while the game has no sellable catalog (see core.games).
-NO_CATALOG_DETAIL = ("Activation refusee : ce jeu n'a aucun produit actif et correctement configure "
-                     "pour la livraison. Creez son catalogue, configurez les mappings fournisseur "
-                     "(Admin -> Fournisseur) puis activez-le.")
+FIELD_KEY = re.compile(r"[a-z][a-z0-9_]{0,31}", re.ASCII)
+
+
+def _effective(game: dict) -> dict:
+    game["identity_fields"] = identity_spec(game)
+    game["product_types"] = product_types_for(game)
+    return game
 
 
 def _now():
@@ -26,15 +34,17 @@ def _now():
 
 @router.get("/games")
 async def list_games():
-    return await db.games.find({"active": True}, PUBLIC_GAME).sort("sort_order", 1).to_list(100)
+    ids = await public_game_ids()
+    games = await db.games.find({"id": {"$in": list(ids)}}, PUBLIC_GAME).sort("sort_order", 1).to_list(100)
+    return [_effective(g) for g in games]
 
 
 @router.get("/games/{game_id}")
 async def get_game(game_id: str):
     game = await db.games.find_one({"id": game_id, "active": True}, PUBLIC_GAME)
-    if not game:
+    if not game or game_id not in await public_game_ids():
         raise HTTPException(status_code=404, detail="Game not found")
-    return game
+    return _effective(game)
 
 
 class IdentityUpdate(BaseModel):
@@ -53,7 +63,7 @@ class IdentityUpdate(BaseModel):
         clean = {}
         for k, val in v.items():
             val = (val or "").strip()
-            if not FIELD_KEY.match(k) or not 1 <= len(val) <= 64:
+            if not FIELD_KEY.fullmatch(k) or not 1 <= len(val) <= 64:
                 raise ValueError(f"Invalid identity field: {k}")
             clean[k] = val
         return clean
@@ -80,8 +90,16 @@ async def my_identities(game_id: str | None = None, user=Depends(get_current_use
 
 @router.post("/me/game-identities", status_code=201)
 async def create_identity(body: IdentityIn, user=Depends(get_current_user)):
-    if not await db.games.find_one({"id": body.game_id, "active": True}):
+    game = await db.games.find_one({"id": body.game_id, "active": True}, PUBLIC)
+    if not game:
         raise HTTPException(status_code=400, detail="Unknown or inactive game")
+    # Jeux à champs DYNAMIQUES : dès qu'un jeu a déclaré ses champs d'identité, une identité
+    # sauvegardée doit s'y conformer (mêmes règles que le checkout, aucune clé inventée).
+    # PUBG Mobile, tant qu'aucune déclaration explicite n'existe, garde le contrat historique.
+    checked = check_identity_payload(identity_spec(game), body.fields)
+    if not checked:
+        raise HTTPException(status_code=400, detail="Identité non conforme aux champs de ce jeu.")
+    body = body.model_copy(update={"fields": checked[0]})
     same = await db.game_identities.find_one({"user_id": user["user_id"], "game_id": body.game_id, "fields": body.fields}, PUBLIC)
     if same:
         return same  # idempotent: identical identity already saved
@@ -98,6 +116,12 @@ async def create_identity(body: IdentityIn, user=Depends(get_current_user)):
 async def update_identity(identity_id: str, body: IdentityUpdate, user=Depends(get_current_user)):
     current = await _owned(identity_id, user)
     updates = body.model_dump(exclude_unset=True)
+    if updates.get("fields") is not None:
+        game = await db.games.find_one({"id": current["game_id"]}, PUBLIC) or {"id": current["game_id"]}
+        checked = check_identity_payload(identity_spec(game), updates["fields"])
+        if not checked:
+            raise HTTPException(status_code=400, detail="Identité non conforme aux champs de ce jeu.")
+        updates["fields"] = checked[0]
     if "fields" in updates and updates["fields"] != current["fields"]:
         updates.update({"validated": False, "validated_at": None})  # changed identity = must be re-validated
     await db.game_identities.update_one({"id": identity_id, "user_id": user["user_id"]}, {"$set": {**updates, "updated_at": _now()}})
@@ -115,6 +139,7 @@ async def delete_identity(identity_id: str, user=Depends(get_current_user)):
 # Phase 3 — admin game management (create / edit / activate-deactivate).
 # Authorization reuses the existing central mechanism: `catalog.manage`.
 # `icon_url` is the single logo source (no second `logo_url` field, no upload).
+# Multi-game completion: `currency_label` (affichage) + `identity_fields` (contrat de saisie).
 # --------------------------------------------------------------------------- #
 
 
@@ -123,7 +148,13 @@ class GameIn(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     slug: str | None = Field(default=None, max_length=60, pattern=r"^[a-z0-9-]+$")
     icon_url: str | None = Field(default=None, max_length=500)
+    # Libellé de la devise/crédit AFFICHÉ (ex. « UC », « Diamants »). Purement présentationnel.
     currency_label: str | None = Field(default=None, max_length=24)
+    # Champs DYNAMIQUES d'identité joueur : [{"key","label","pattern","min_length","max_length"}].
+    # Aucune clé n'est imposée : `player_id` n'est PAS une hypothèse globale.
+    identity_fields: list[dict] | None = None
+    # Per-game MGS product types [{"key","label","label_en"}] (None = keep current configuration).
+    product_types: list[dict] | None = None
     description: str = ""
     description_en: str | None = None
     active: bool = True
@@ -143,7 +174,16 @@ class GameIn(BaseModel):
 @router.get("/admin/games")
 async def admin_list_games(_=Depends(require_permission("catalog.manage"))):
     """Every game, active or not (the public /games only exposes active ones)."""
-    return await db.games.find({}, PUBLIC).sort("sort_order", 1).to_list(200)
+    games = await db.games.find({}, PUBLIC).sort("sort_order", 1).to_list(200)
+    return [{**_effective(g), "readiness": await game_readiness(g)} for g in games]
+
+
+@router.get("/admin/games/{game_id}/readiness")
+async def admin_game_readiness(game_id: str, _=Depends(require_permission("catalog.manage"))):
+    game = await db.games.find_one({"id": game_id}, PUBLIC)
+    if not game:
+        raise HTTPException(status_code=404, detail="Jeu introuvable.")
+    return await game_readiness(game)
 
 
 @router.post("/admin/games", status_code=201)
@@ -155,6 +195,8 @@ async def create_game(body: GameIn, user=Depends(require_permission("catalog.man
         raise HTTPException(status_code=409, detail=NO_CATALOG_DETAIL)
     data = body.model_dump()
     data["slug"] = data.get("slug") or data["id"]
+    data["identity_fields"] = normalize_identity_fields(data.get("identity_fields"))
+    data["product_types"] = normalize_product_types(data.get("product_types"), body.id)
     doc = {**data, "created_at": _now(), "updated_at": _now()}
     await db.games.insert_one(doc)
     await audit("game.create", user["user_id"], body.id, {"name": body.name, "active": body.active})
@@ -170,21 +212,35 @@ async def update_game(game_id: str, body: GameIn, user=Depends(require_permissio
     product must never be advertised to customers. The mere existence of a product document
     is not proof that the game is sellable.
     """
-    if not await db.games.find_one({"id": game_id}):
+    current = await db.games.find_one({"id": game_id}, PUBLIC)
+    if not current:
         raise HTTPException(status_code=404, detail="Jeu introuvable.")
-    if body.active and not await game_has_sellable_catalog(game_id):
-        raise HTTPException(status_code=409, detail=NO_CATALOG_DETAIL)
-    if body.active and game_id != DEFAULT_GAME_ID:
-        raise HTTPException(
-            status_code=409,
-            detail=("Activation refusee : le checkout de verification d'identite est encore configure "
-                    "uniquement pour PUBG Mobile. Configurez le parcours d'identite de ce jeu avant "
-                    "son ouverture publique."),
-        )
     data = body.model_dump()
     data.pop("id", None)  # never re-key an existing game
     data["slug"] = data.get("slug") or game_id
+    if body.identity_fields is None:
+        # Aucune définition envoyée : on CONSERVE la configuration existante — un simple
+        # changement de nom, de logo ou d'activation ne doit jamais effacer le contrat d'identité.
+        data["identity_fields"] = current.get("identity_fields") or []
+    else:
+        data["identity_fields"] = normalize_identity_fields(body.identity_fields)
+    if body.product_types is None:
+        data["product_types"] = current.get("product_types") or []
+    else:
+        data["product_types"] = normalize_product_types(body.product_types, game_id)
+    if body.active and game_id == DEFAULT_GAME_ID and not current.get("active"):
+        from core.games import game_has_sellable_catalog
+        if not await game_has_sellable_catalog(game_id):
+            raise HTTPException(status_code=409, detail=NO_CATALOG_DETAIL)
+    if body.active and game_id != DEFAULT_GAME_ID:
+        # Public opening = every readiness check passes on the configuration being saved.
+        readiness = await game_readiness({**current, **data, "id": game_id})
+        if not readiness["ready"]:
+            failed = [c["detail"] for c in readiness["checks"] if not c["ok"]]
+            raise HTTPException(status_code=409, detail="Activation refusee : " + " | ".join(failed))
     await db.games.update_one({"id": game_id}, {"$set": {**data, "updated_at": _now()}})
     await audit("game.update", user["user_id"], game_id,
-                {"name": body.name, "active": body.active, "icon_url": body.icon_url})
+                {"name": body.name, "active": body.active, "icon_url": body.icon_url,
+                 "identity_field_keys": [f["key"] for f in data["identity_fields"]],
+                 "product_type_keys": [t["key"] for t in data["product_types"]]})
     return await db.games.find_one({"id": game_id}, PUBLIC)

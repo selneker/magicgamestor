@@ -8,17 +8,21 @@ jest.mock("react-router-dom", () => {
   const React = require("react");
   return {
     Link: ({ children }) => <span>{children}</span>,
-    useSearchParams: () => React.useState(new URLSearchParams("game=pubg-mobile&type=uc&popular=1")),
+    useSearchParams: () => React.useState(new URLSearchParams(global.mockQuery || "game=pubg-mobile&type=uc&popular=1")),
   };
 });
 jest.mock("@/lib/api", () => ({ api: { get: jest.fn() } }));
-jest.mock("@/context/LanguageContext", () => ({ useLang: () => ({ t: (key) => key }) }));
-jest.mock("@/context/GameContext", () => ({
-  useGames: () => ({
-    games: [{ id: "pubg-mobile", name: "PUBG Mobile", slug: "pubg-mobile", currency_label: "UC" }],
-    selectGame: jest.fn(),
-  }),
-}));
+jest.mock("@/context/LanguageContext", () => ({ useLang: () => ({ t: (key) => key, lang: "fr" }) }));
+const PUBG_TYPES = [{ key: "uc", label: "UC" }, { key: "prime", label: "Prime" }, { key: "prime_plus", label: "Prime+" }, { key: "evo", label: "Pack évolutif" }];
+let mockGames = [];
+jest.mock("@/context/GameContext", () => ({ useGames: () => ({ games: mockGames, selectGame: jest.fn() }) }));
+jest.mock("@/pages/Home", () => ({ GameLogo: () => null }));
+beforeEach(() => {
+  mockGames = [
+    { id: "pubg-mobile", name: "PUBG Mobile", slug: "pubg-mobile", currency_label: "UC", product_types: PUBG_TYPES },
+    { id: "codm", name: "Call of Duty Mobile", slug: "codm", currency_label: "CP", product_types: [{ key: "cp", label: "CP" }, { key: "battle_pass", label: "Battle Pass" }] },
+  ];
+});
 jest.mock("@/components/store/ProductCard", () => ({ ProductCard: () => null }));
 jest.mock("@/pages/PackEvolutif", () => ({ __esModule: true, default: ({ products }) => <div data-offers={JSON.stringify(products)} /> }));
 jest.mock("@/components/ui/select", () => {
@@ -46,6 +50,23 @@ test("the evolutionary tab requests only evo packs and clears the popular-only f
     expect(JSON.parse(container.querySelector("[data-offers]").getAttribute("data-offers"))).toEqual(evo);
   } finally {
     await act(async () => root.unmount());
+    delete global.IS_REACT_ACT_ENVIRONMENT;
+  }
+});
+test("type tabs follow the selected game's configuration (no PUBG list for another game)", async () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  global.mockQuery = "game=codm";
+  api.get.mockImplementation(() => Promise.resolve({ data: [] }));
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  try {
+    await act(async () => { root.render(<Catalog />); });
+    const tabs = [...container.querySelectorAll('[data-testid^="type-tab-"]')].map((n) => n.dataset.testid);
+    expect(tabs).toEqual(["type-tab-all", "type-tab-cp", "type-tab-battle_pass"]);
+    expect(container.querySelector('[data-testid="type-tab-evo"]')).toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+    delete global.mockQuery;
     delete global.IS_REACT_ACT_ENVIRONMENT;
   }
 });

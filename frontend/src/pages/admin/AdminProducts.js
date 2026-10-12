@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const EMPTY = { slug: "", type: "uc", game_id: "pubg-mobile", name: "", name_en: "", uc_amount: "", duration_months: "", price: "", old_price: "", popular: false, badge: "", evo_limit: "", image_url: "", description_fr: "", description_en: "", active: false, requires_mapping: true, sort_order: 0 };
+const EMPTY = { slug: "", type: "", game_id: "pubg-mobile", name: "", name_en: "", uc_amount: "", duration_months: "", price: "", old_price: "", popular: false, badge: "", evo_limit: "", image_url: "", description_fr: "", description_en: "", active: false, requires_mapping: true, sort_order: 0 };
 
 function SeasonsPanel({ t }) {
   const [seasons, setSeasons] = useState(null);
@@ -55,8 +55,12 @@ export default function AdminProducts() {
   const load = () => api.get("/products", { params: { include_inactive: true } }).then((r) => setProducts(r.data)).catch(() => {});
   useEffect(() => { load(); api.get("/admin/games").then((r) => setGames(r.data)).catch(() => {}); }, []);
 
+  // Type options are the selected game's own configuration (validated again by the backend).
+  const typesOf = (gid) => games.find((g) => g.id === (gid || "pubg-mobile"))?.product_types || [];
+  const typeName = (p) => typesOf(p.game_id).find((pt) => pt.key === p.type)?.label || p.type;
   const save = async (e) => {
     e.preventDefault();
+    if (!typesOf(editing.game_id).some((pt) => pt.key === editing.type)) return toast.error("Choisissez un type de produit valide pour ce jeu.");
     const num = (v) => (v === "" || v === null ? null : Number(v));
     const body = { ...editing, game_id: editing.game_id || "pubg-mobile", requires_mapping: ((editing.game_id || "pubg-mobile") !== "pubg-mobile" || !editing.id) ? true : editing.requires_mapping !== false, uc_amount: num(editing.uc_amount), duration_months: num(editing.duration_months), price: Number(editing.price), old_price: num(editing.old_price), badge: editing.badge || null, name_en: editing.name_en || null, evo_limit: editing.type === "evo" ? (editing.evo_limit || "season") : null, image_url: (editing.image_url || "").trim() || null, sort_order: Number(editing.sort_order || 0) };
     try {
@@ -76,7 +80,7 @@ export default function AdminProducts() {
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {products.map((p) => (
           <div key={p.id} data-testid={`admin-product-${p.slug}`} className={`flex min-w-0 items-center gap-2 rounded-2xl border bg-white p-3 sm:gap-3 sm:p-4 ${p.active ? "border-slate-100" : "border-dashed border-slate-300 opacity-60"}`}>
-            <div className="min-w-0 flex-1"><p className="break-words font-display text-sm font-bold leading-snug text-slate-900 sm:text-base">{p.name}</p><p className="mt-0.5 break-words text-xs text-slate-500">{games.find((g) => g.id === (p.game_id || "pubg-mobile"))?.name || p.game_id || "PUBG Mobile"} · {p.type} · {formatAr(p.price)}{p.old_price ? ` (${formatAr(p.old_price)})` : ""}{p.popular ? " · ★" : ""}</p></div>
+            <div className="min-w-0 flex-1"><p className="break-words font-display text-sm font-bold leading-snug text-slate-900 sm:text-base">{p.name}</p><p className="mt-0.5 break-words text-xs text-slate-500">{games.find((g) => g.id === (p.game_id || "pubg-mobile"))?.name || p.game_id || "PUBG Mobile"} · {typeName(p)} · {formatAr(p.price)}{p.old_price ? ` (${formatAr(p.old_price)})` : ""}{p.popular ? " · ★" : ""}</p></div>
             <div className="flex shrink-0 items-center">
               <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full" onClick={() => setEditing({ ...EMPTY, ...p, game_id: p.game_id || "pubg-mobile", requires_mapping: p.requires_mapping ?? false })} data-testid={`admin-edit-product-${p.slug}`}><Pencil className="h-4 w-4" /></Button>
               <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-slate-400 hover:text-rose-600" onClick={() => remove(p)} data-testid={`admin-delete-product-${p.slug}`}><Trash2 className="h-4 w-4" /></Button>
@@ -91,15 +95,16 @@ export default function AdminProducts() {
             <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
               {field("name", "Nom (FR)")}{field("name_en", "Name (EN)")}{field("slug", "Slug")}
               <label className="text-sm font-semibold text-slate-700">Jeu associé
-                <Select value={editing.game_id || "pubg-mobile"} onValueChange={(v) => setEditing({ ...editing, game_id: v })}>
+                <Select value={editing.game_id || "pubg-mobile"} onValueChange={(v) => setEditing({ ...editing, game_id: v, type: typesOf(v).some((pt) => pt.key === editing.type) ? editing.type : "" })}>
                   <SelectTrigger className="mt-1 h-10 rounded-xl" data-testid="product-field-game_id"><SelectValue placeholder="Choisir un jeu" /></SelectTrigger>
                   <SelectContent>{games.map((g) => <SelectItem key={g.id} value={g.id}>{g.name} {g.active ? "" : "· Inactif"}</SelectItem>)}</SelectContent>
                 </Select>
               </label>
               <label className="text-sm font-semibold text-slate-700">Type
-                <Select value={editing.type} onValueChange={(v) => setEditing({ ...editing, type: v })}><SelectTrigger className="mt-1 h-10 rounded-xl" data-testid="product-field-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="uc">UC</SelectItem><SelectItem value="prime">Prime</SelectItem><SelectItem value="prime_plus">Prime+</SelectItem><SelectItem value="evo">Pack évolutif</SelectItem></SelectContent></Select>
+                <Select value={editing.type || ""} onValueChange={(v) => setEditing({ ...editing, type: v })}><SelectTrigger className="mt-1 h-10 rounded-xl" data-testid="product-field-type"><SelectValue placeholder={typesOf(editing.game_id).length ? "Choisir un type" : "Aucun type configuré"} /></SelectTrigger><SelectContent>{typesOf(editing.game_id).map((pt) => <SelectItem key={pt.key} value={pt.key} data-testid={`product-type-option-${pt.key}`}>{pt.label}</SelectItem>)}</SelectContent></Select>
+                {typesOf(editing.game_id).length === 0 && <span className="mt-1 block text-xs font-normal text-amber-700" data-testid="product-type-missing">Configurez les types de produit de ce jeu dans Admin → Jeux.</span>}
               </label>
-              {editing.type === "evo" && (
+              {editing.type === "evo" && (editing.game_id || "pubg-mobile") === "pubg-mobile" && (
                 <label className="text-sm font-semibold text-slate-700">{t("admin.evoLimit")}
                   <Select value={editing.evo_limit || "season"} onValueChange={(v) => setEditing({ ...editing, evo_limit: v })}><SelectTrigger className="mt-1 h-10 rounded-xl" data-testid="product-field-evo_limit"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="season">{t("evo.limit.season")}</SelectItem><SelectItem value="lifetime">{t("evo.limit.lifetime")}</SelectItem><SelectItem value="week">{t("evo.limit.week")}</SelectItem></SelectContent></Select>
                 </label>

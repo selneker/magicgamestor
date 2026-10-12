@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
 from core.db import db
-from core.games import DEFAULT_GAME_ID
+from core.games import DEFAULT_GAME_ID, check_product_type, public_game_ids
 from core.security import ADMIN_ROLES, get_optional_user, require_permission
 from services.fzr_mapping import mapping_ok
 
@@ -24,7 +24,8 @@ def _public(p: dict) -> dict:
 
 class ProductIn(BaseModel):
     slug: str = Field(min_length=2, max_length=60, pattern=r"^[a-z0-9-]+$")
-    type: str = Field(pattern=r"^(uc|prime|prime_plus|evo)$")
+    # Per-game type key, validated against the game's configured product types (core.games).
+    type: str = Field(pattern=r"^[a-z][a-z0-9_]{0,31}$")
     evo_limit: str | None = Field(default=None, pattern=r"^(season|lifetime|week)$")
     name: str = Field(min_length=1, max_length=60)
     name_en: str | None = None
@@ -53,11 +54,6 @@ class ProductIn(BaseModel):
         return value
 
 
-async def _require_game(game_id: str):
-    if not await db.games.find_one({"id": game_id}):
-        raise HTTPException(status_code=400, detail="Unknown game")
-
-
 @router.get("/products")
 async def list_products(
     type: str | None = None, q: str | None = None, min_price: int | None = None, max_price: int | None = None,
@@ -70,7 +66,16 @@ async def list_products(
     if include_inactive and (not user or user.get("role") not in ADMIN_ROLES):
         include_inactive = False
     query = {} if include_inactive else {"active": True}
-    if game:
+    if not include_inactive:
+        # S1: the public catalogue only ever exposes eligible games, even with an explicit `game`.
+        public_ids = await public_game_ids()
+        if game and game not in public_ids:
+            return []
+        allowed = [game] if game else list(public_ids)
+        legacy = [None] if DEFAULT_GAME_ID in allowed else []
+        query["$and"] = [{"$or": [{"game_id": {"$in": allowed + legacy}}] +
+                          ([{"game_id": {"$exists": False}}] if legacy else [])}]
+    elif game:
         query["game_id"] = {"$in": [game, None]} if game == DEFAULT_GAME_ID else game
     if type:
         query["type"] = {"$in": type.split(",")}
@@ -84,7 +89,7 @@ async def list_products(
     if price:
         query["price"] = price
     if q:
-        query["$or"] = [{"name": {"$regex": q, "$options": "i"}}, {"slug": {"$regex": q, "$options": "i"}}]
+        query["$or"] = [{"name": {"$regex": re.escape(q), "$options": "i"}}, {"slug": {"$regex": re.escape(q), "$options": "i"}}]
     sort_map = {"default": [("sort_order", 1)], "price_asc": [("price", 1)], "price_desc": [("price", -1)], "uc_desc": [("uc_amount", -1)]}
     return [_public(p) for p in await db.products.find(query, PUBLIC).sort(sort_map[sort]).to_list(500)]
 
@@ -92,7 +97,7 @@ async def list_products(
 @router.get("/products/{slug}")
 async def get_product(slug: str):
     product = await db.products.find_one({"slug": slug, "active": True}, PUBLIC)
-    if not product:
+    if not product or product.get("game_id", DEFAULT_GAME_ID) not in await public_game_ids():
         raise HTTPException(status_code=404, detail="Product not found")
     related = await db.products.find({"type": product["type"], "game_id": product.get("game_id", DEFAULT_GAME_ID), "slug": {"$ne": slug}, "active": True}, PUBLIC) \
         .sort([("price", 1)]).to_list(50)
@@ -102,7 +107,7 @@ async def get_product(slug: str):
 
 @router.post("/admin/products", dependencies=[Depends(require_permission("catalog.manage"))])
 async def create_product(body: ProductIn):
-    await _require_game(body.game_id)
+    await check_product_type(body.game_id, body.type)
     if await db.products.find_one({"slug": body.slug}):
         raise HTTPException(status_code=409, detail="Slug already exists")
     data = body.model_dump()
@@ -120,7 +125,6 @@ async def update_product(product_id: str, body: ProductIn):
     existing = await db.products.find_one({"id": product_id}, PUBLIC)
     if not existing:
         raise HTTPException(status_code=404, detail="Product not found")
-    await _require_game(body.game_id)
     clash = await db.products.find_one({"slug": body.slug, "id": {"$ne": product_id}})
     if clash:
         raise HTTPException(status_code=409, detail="Slug already exists")
@@ -129,17 +133,41 @@ async def update_product(product_id: str, body: ProductIn):
     # erreur. On refuse tant que le mapping n'a pas été retiré explicitement.
     if body.game_id != existing.get("game_id", DEFAULT_GAME_ID) and existing.get("fazercards_mapping"):
         raise HTTPException(status_code=409, detail="⚠ Ce produit porte un mapping fournisseur : retirez-le (Admin → Fournisseur) avant de changer son jeu.")
+    await check_product_type(body.game_id, body.type)
     data = body.model_dump()
     if body.requires_mapping is None:
         data["requires_mapping"] = existing.get("requires_mapping", False)
     if data["active"] and data["requires_mapping"] and not mapping_ok(existing.get("fazercards_mapping")):
         raise HTTPException(status_code=409, detail="⚠ Mapping fournisseur manquant ou non confirmé : impossible d'activer ce produit.")
+    if existing.get("active") and not data["active"]:
+        # Désactiver le DERNIER produit livrable rendrait le jeu vendable vide : on refuse pour
+        # que l'invariant « jeu actif ⇒ catalogue livrable » reste vrai (le jeu se désactive
+        # explicitement dans Admin → Jeux).
+        game_id = existing.get("game_id", DEFAULT_GAME_ID)
+        remaining = await db.products.count_documents({"id": {"$ne": product_id}, "game_id": game_id, "active": True})
+        if remaining == 0 and await db.games.find_one({"id": game_id, "active": True}):
+            raise HTTPException(status_code=409, detail="⚠ Dernier produit actif de ce jeu : désactivez le jeu (Admin → Jeux) avant, sinon sa boutique deviendrait vide.")
     await db.products.update_one({"id": product_id}, {"$set": data})
     return await db.products.find_one({"id": product_id}, PUBLIC)
 
 
 @router.delete("/admin/products/{product_id}", dependencies=[Depends(require_permission("catalog.manage"))])
 async def delete_product(product_id: str):
+    existing = await db.products.find_one({"id": product_id}, PUBLIC)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Product not found")
+    if existing.get("active"):
+        game_id = existing.get("game_id", DEFAULT_GAME_ID)
+        # La suppression du DERNIER produit réellement livrable viderait la boutique d'un jeu
+        # encore public : refusé (le jeu se désactive explicitement dans Admin → Jeux).
+        deliverable_left = False
+        async for other in db.products.find({"id": {"$ne": product_id}, "game_id": game_id, "active": True},
+                                            {"_id": 0, "requires_mapping": 1, "fazercards_mapping": 1}):
+            if not other.get("requires_mapping") or mapping_ok(other.get("fazercards_mapping")):
+                deliverable_left = True
+                break
+        if not deliverable_left and await db.games.find_one({"id": game_id, "active": True}):
+            raise HTTPException(status_code=409, detail="⚠ Supprimer ce produit rendrait la boutique de ce jeu vide : désactivez le jeu avant.")
     res = await db.products.delete_one({"id": product_id})
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Product not found")

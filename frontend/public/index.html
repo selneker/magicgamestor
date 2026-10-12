@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="theme-color" content="#f8fafc" />
+        <meta name="theme-color" content="#F4F3EE" />
         <script>
             (function () {
                 var theme;
@@ -11,11 +11,18 @@
                 var dark = theme === 'dark' || (theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
                 document.documentElement.classList.toggle('dark', dark);
                 document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
-                document.querySelector('meta[name="theme-color"]').content = dark ? '#0b1120' : '#f8fafc';
+                document.querySelector('meta[name="theme-color"]').content = dark ? '#2B2B2B' : '#F4F3EE';
             })();
         </script>
-        <style>html,body{background:#f8fafc;color:#0f172a}html.dark,html.dark body{background:#0b1120;color:#f1f5f9}</style>
-        <meta name="description" content="Achetez UC PUBG Mobile et abonnements Prime à Madagascar. Paiement MVola et Orange Money, livraison rapide." />
+        <style>html,body{background:#F4F3EE;color:#0A0A0A}html.dark,html.dark body{background:#2B2B2B;color:#F4F3EE}</style>
+        <meta name="description" content="Recharges de jeux mobiles à Madagascar : UC PUBG Mobile, abonnements et packs. Paiement MVola, Orange Money ou USDT, compte joueur vérifié avant paiement." />
+        <meta name="robots" content="index,follow" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Magic Game Store" />
+        <meta property="og:title" content="Magic Game Store — Recharges de jeux à Madagascar" />
+        <meta property="og:description" content="Recharges de jeux mobiles, paiement MVola, Orange Money ou USDT. Compte joueur vérifié avant paiement." />
+        <meta property="og:image" content="%PUBLIC_URL%/icon-512.png" />
+        <meta name="twitter:card" content="summary" />
         <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
         <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon-192.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -34,7 +41,7 @@
         work correctly both with client-side routing and a non-root public URL.
         Learn how to configure a non-root public URL by running `npm run build`.
         -->
-        <title>Magic Game Store — UC PUBG Mobile Madagascar</title>
+        <title>Magic Game Store — Recharges de jeux à Madagascar</title>
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
         <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
     </head>
