@@ -12,6 +12,7 @@ from core.security import get_current_user, require_permission
 
 router = APIRouter(tags=["games"])
 PUBLIC = {"_id": 0}
+PUBLIC_GAME = {"_id": 0, "fazercards_categories": 0, "fazercards_categories_configured": 0}
 FIELD_KEY = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
 # Public activation is refused while the game has no sellable catalog (see core.games).
 NO_CATALOG_DETAIL = ("Activation refusee : ce jeu n'a aucun produit actif et correctement configure "
@@ -25,12 +26,12 @@ def _now():
 
 @router.get("/games")
 async def list_games():
-    return await db.games.find({"active": True}, PUBLIC).sort("sort_order", 1).to_list(100)
+    return await db.games.find({"active": True}, PUBLIC_GAME).sort("sort_order", 1).to_list(100)
 
 
 @router.get("/games/{game_id}")
 async def get_game(game_id: str):
-    game = await db.games.find_one({"id": game_id, "active": True}, PUBLIC)
+    game = await db.games.find_one({"id": game_id, "active": True}, PUBLIC_GAME)
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
     return game
