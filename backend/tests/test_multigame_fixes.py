@@ -284,7 +284,7 @@ def test_include_inactive_is_staff_only():
 # d'un autre jeu. Aucun appel réseau réel.
 MIXED_CATALOG = [
     {"category_id": "pubg_mobile_auto", "name": "PUBG Mobile (Auto)", "note": ""},
-    {"category_id": "pubgm_uc", "name": "PUBG Mobile UC", "note": ""},
+    {"category_id": "pubgm_uc", "name": "UC 60", "note": ""},
     {"category_id": "free_fire", "name": "Free Fire", "note": ""},
 ]
 
