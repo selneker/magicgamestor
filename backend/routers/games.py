@@ -122,6 +122,7 @@ class GameIn(BaseModel):
     name: str = Field(min_length=1, max_length=60)
     slug: str | None = Field(default=None, max_length=60, pattern=r"^[a-z0-9-]+$")
     icon_url: str | None = Field(default=None, max_length=500)
+    currency_label: str | None = Field(default=None, max_length=24)
     description: str = ""
     description_en: str | None = None
     active: bool = True
