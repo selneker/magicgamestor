@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
+from core.db import db
+from core.games import PUBG_ID_RE, check_identity_payload, identity_spec
 from core.ratelimit import check, client_ip, setting
 from core.security import require_permission
 from services import fazercards, providers
@@ -17,8 +19,8 @@ class PubgValidateIn(BaseModel):
         v = (v or "").strip()
         if not v:
             raise ValueError("ID PUBG Mobile requis.")
-        if not v.isdigit() or not (5 <= len(v) <= 20):
-            raise ValueError("ID PUBG Mobile mal formé (chiffres uniquement, 5 à 20 caractères).")
+        if not PUBG_ID_RE.fullmatch(v):
+            raise ValueError("ID PUBG Mobile mal formé (9 à 13 chiffres).")
         return v
 
 
@@ -51,7 +53,14 @@ async def validate_identity(body: IdentityValidateIn, request: Request):
     (voir services.fazercards.validation_target) — jamais un repli silencieux sur PUBG Mobile.
     """
     check(f"fzr_validate:ip:{client_ip(request)}", setting("FZR_VALIDATE_PER_10MIN_PER_IP", 30), 600)
-    result = await providers.get_provider(body.game_id).validate_identity(body.game_id, body.fields)
+    game = await db.games.find_one({"id": body.game_id}, {"_id": 0, "id": 1, "identity_fields": 1})
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+    checked = check_identity_payload(identity_spec(game), body.fields)
+    if not checked:
+        # Same server-side contract as the order endpoint: malformed input never reaches the provider.
+        return {"valid": False, "message": "Format d'identifiant invalide pour ce jeu."}
+    result = await providers.get_provider(body.game_id).validate_identity(body.game_id, checked[0])
     if not result.valid:
         # Message neutre par jeu : PUBG Mobile garde son libellé historique.
         if body.game_id == "pubg-mobile":

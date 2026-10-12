@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
+import { useGames } from "@/context/GameContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -24,6 +25,16 @@ export function StatusPill({ status }) {
   return <span data-testid={`status-${status}`} className={`inline-flex items-center gap-1.5 border px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${cls}`}><Icon className="h-3 w-3" strokeWidth={2.25} />{t(`order.status.${status}`)}</span>;
 }
 
+// Game + identity captured on the order (snapshot), never assumed to be a PUBG ID.
+export function OrderIdentity({ order }) {
+  const { games } = useGames();
+  const game = games.find((g) => g.id === (order.game_id || "pubg-mobile"));
+  const spec = game?.identity_fields || [];
+  const fields = order.identity_snapshot?.fields || { player_id: order.pubg_id };
+  const parts = Object.entries(fields).map(([k, v]) => `${spec.find((f) => f.key === k)?.label || k} ${v}`);
+  return <span data-testid={`order-identity-${order.order_number}`}><b className="text-foreground">{game?.name || order.game_id || "PUBG Mobile"}</b> · {parts.join(" · ")}</span>;
+}
+
 export function OrderCard({ order }) {
   const { t, lang } = useLang();
   return (
@@ -39,7 +50,7 @@ export function OrderCard({ order }) {
         {(order.payment_fee ?? order.verification_fee) > 0 && <li className="flex justify-between py-2 text-slate-500" data-testid="order-verification-fee"><span>{t("checkout.paymentFee")}</span><span className="font-semibold">{formatAr(order.payment_fee ?? order.verification_fee)}</span></li>}
       </ul>
       <div className="mt-3 flex flex-wrap justify-between gap-2 border-t pt-3 text-sm text-slate-500">
-        <span>PUBG ID <b className="text-slate-900">{order.pubg_id}</b> · {order.pseudo}</span>
+        <span><OrderIdentity order={order} /> · {order.pseudo}</span>
         <span className="capitalize">{order.payment_method === "orange" ? "Orange Money" : order.payment_method === "mvola" ? "MVola" : "USSD"}</span>
         <span>{new Date(order.created_at).toLocaleString(lang === "en" ? "en-GB" : "fr-FR")}</span>
         <span className="num text-xl text-foreground">{formatAr(order.total)}</span>
@@ -155,7 +166,7 @@ export default function OrderTrack() {
                         <StatusPill status={o.status} />
                       </p>
                       <p className="mt-2 truncate text-sm font-medium text-slate-700">{o.items.map((i) => `${i.quantity}× ${i.name}`).join(", ")}</p>
-                      <p className="mt-1.5 text-xs text-slate-500">{new Date(o.created_at).toLocaleString("fr-FR")} · PUBG ID {o.pubg_id}</p>
+                      <p className="mt-1.5 text-xs text-slate-500">{new Date(o.created_at).toLocaleString("fr-FR")} · <OrderIdentity order={o} /></p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-2.5">
                       <span className="num text-xl text-foreground">{formatAr(o.total)}</span>

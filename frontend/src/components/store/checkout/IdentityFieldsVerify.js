@@ -15,26 +15,31 @@ const localError = (field, value) => {
   if (!v) return field.required === false ? null : "requis";
   if (field.min_length && v.length < field.min_length) return `min ${field.min_length}`;
   if (field.max_length && v.length > field.max_length) return `max ${field.max_length}`;
-  if (field.pattern) {
-    try { return new RegExp(field.pattern).test(v) ? null : "format"; }
-    catch (_) { return null; }
-  }
-  return null;
+  return matchesPattern(field.pattern, v) ? null : "format";
 };
 
+// B1: whole-string match, same contract as the backend (`re.fullmatch`). An unusable pattern fails closed.
+export const matchesPattern = (pattern, value) => {
+  if (!pattern) return true;
+  try { return new RegExp(`^(?:${pattern})$`).test(value); } catch (_) { return false; }
+};
+
+export const fieldError = localError;
+
 export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onVerified, autoTrigger = 0, checkout = false, initial = null }) => {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [state, setState] = useState(initial ? { status: "valid", name: initial.name } : { status: "idle" });
   const first = useRef(!!initial);
   const valuesRef = useRef(values);
   valuesRef.current = values;
+  const valuesKey = JSON.stringify(values);
 
   // Un champ modifié invalide la vérification précédente : rien n'est mémorisé comme définitif.
   useEffect(() => {
     if (first.current) { first.current = false; return; }
     setState({ status: "idle" });
     onVerified(null);
-  }, [JSON.stringify(values), onVerified]);
+  }, [valuesKey, onVerified]);
 
   const errors = useMemo(
     () => Object.fromEntries(spec.map((f) => [f.key, localError(f, (values || {})[f.key])]).filter(([, e]) => e)),
@@ -74,15 +79,17 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
     <div className="mt-2 space-y-3">
       {spec.map((f) => (
         <div key={f.key}>
-          <label htmlFor={`identity-${f.key}`} className="text-sm font-semibold">{f.label || f.key}</label>
+          <label htmlFor={`identity-${f.key}`} className="text-sm font-semibold">{(lang === "en" && f.label_en) || f.label || f.key}{f.required === false ? "" : " *"}</label>
           <Input
             id={`identity-${f.key}`}
             data-testid={`identity-field-${f.key}`}
             value={(values || {})[f.key] || ""}
             onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+            aria-invalid={!!errors[f.key] && !!(values || {})[f.key]} aria-describedby={errors[f.key] ? `identity-err-${f.key}` : undefined}
+            minLength={f.min_length || undefined} maxLength={f.max_length || undefined} autoComplete="off"
             className="mt-1 h-12 rounded-[12px] num"
           />
-          {errors[f.key] && <p className="mt-1 text-xs font-semibold text-red-600" data-testid={`identity-field-error-${f.key}`}>{errors[f.key]}</p>}
+          {errors[f.key] && (values || {})[f.key] && <p id={`identity-err-${f.key}`} className="mt-1 text-xs font-semibold text-red-600" data-testid={`identity-field-error-${f.key}`}>{errors[f.key]}</p>}
         </div>
       ))}
       {!(checkout && state.status === "valid") && (

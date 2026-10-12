@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { ChatLink } from "@/components/chat/ChatLink";
+import { useGames } from "@/context/GameContext";
 
 export function useStoreStatus() {
   const [online, setOnline] = useState(false);
@@ -68,6 +69,7 @@ export function Header() {
   const { t } = useLang();
   const { user, isAdmin } = useAuth();
   const { count, setOpen } = useCart();
+  const { games } = useGames();
   const link = ({ isActive }) => `relative whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.08em] transition-colors ${isActive ? "text-foreground after:absolute after:-bottom-1.5 after:left-0 after:h-[3px] after:w-full after:rounded-full after:bg-primary" : "text-muted-foreground hover:text-foreground"}`;
 
   return (
@@ -78,9 +80,11 @@ export function Header() {
         </Link>
         <div className="hidden shrink-0 xl:block"><StatusBadge /></div>
         <nav className="ml-auto hidden shrink-0 items-center gap-5 md:flex lg:gap-6">
-          <NavLink to="/boutique?game=pubg-mobile&type=uc" className={link} data-testid="nav-uc">{t("nav.uc")}</NavLink>
-          <NavLink to="/boutique?game=pubg-mobile&type=prime,prime_plus" className={link} data-testid="nav-prime">{t("nav.prime")}</NavLink>
-          <NavLink to="/pack-evolutif" className={link} data-testid="nav-evo">{t("nav.evo")}</NavLink>
+          <NavLink to="/boutique" end className={link} data-testid="nav-shop">{t("nav.shop")}</NavLink>
+          {games.slice(0, 3).map((g) => (
+            <Link key={g.id} to={`/boutique?game=${g.id}`} className={link({ isActive: false })} data-testid={`nav-game-${g.id}`}>{g.name}</Link>
+          ))}
+          {games.some((g) => (g.product_types || []).some((pt) => pt.key === "evo")) && <NavLink to="/pack-evolutif" className={link} data-testid="nav-evo">{t("nav.evo")}</NavLink>}
           <NavLink to="/evenements" className={link} data-testid="nav-events">{t("nav.eventsFull")}</NavLink>
           <NavLink to="/suivi" className={link} data-testid="nav-track">{t("nav.orders")}</NavLink>
           {isAdmin && <NavLink to="/admin" className={link} data-testid="nav-admin">{t("nav.admin")}</NavLink>}
@@ -88,7 +92,7 @@ export function Header() {
         <div className="ml-auto flex shrink-0 flex-nowrap items-center gap-1 md:ml-0 md:gap-1.5">
           <LoyaltyChip />
           <ChatLink />
-          <Button variant="ghost" size="icon" onClick={() => setOpen(true)} data-testid="cart-button" className="relative rounded-none">
+          <Button variant="ghost" size="icon" onClick={() => setOpen(true)} data-testid="cart-button" aria-label={t("nav.cart")} className="relative rounded-none">
             <ShoppingBag className="h-5 w-5" strokeWidth={1.75} />
             {count > 0 && <span data-testid="cart-count" className="absolute right-0 top-0.5 flex h-4 min-w-4 items-center justify-center bg-primary px-1 text-[10px] font-black text-[#0A0A0A]">{count}</span>}
           </Button>

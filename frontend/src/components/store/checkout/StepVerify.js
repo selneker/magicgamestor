@@ -10,7 +10,7 @@ import { IdentityFieldsVerify } from "@/components/store/checkout/IdentityFields
 // Jeu historique : PUBG Mobile garde son écran de saisie EXACT (champ numérique + PubgIdVerify).
 const LEGACY_GAME = "pubg-mobile";
 
-export function StepVerify({ pubgId, setPubgId, user, verified, setVerified, autoVerify, setAutoVerify, gameId, identity, setIdentity, identitySpec, identityValues, setIdentityValues, email, setEmail, onContinue }) {
+export function StepVerify({ gameName, pubgId, setPubgId, user, verified, setVerified, autoVerify, setAutoVerify, gameId, identity, setIdentity, identitySpec, identityValues, setIdentityValues, email, setEmail, onContinue }) {
   const { t } = useLang();
   const [identities, setIdentities] = useState([]);
   // Contrat d'identité piloté par la CONFIG ADMIN du jeu (jamais une hypothèse `player_id`).
@@ -63,7 +63,7 @@ export function StepVerify({ pubgId, setPubgId, user, verified, setVerified, aut
 
   return (
     <section className="rounded-[22px] border-2 border-[color:var(--rule)] bg-card p-4 sm:p-6" data-testid="checkout-step-verify">
-      <h2 className="font-display text-xl font-bold">{t("checkout.verifyTitle")}</h2>
+      <h2 className="font-display text-xl font-bold" data-testid="checkout-verify-title">{dynamic ? t("checkout.verifyTitleGame", { game: gameName || "" }) : t("checkout.verifyTitle")}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{t("checkout.verifySub")}</p>
       {!user && (
         <div className="mt-4">

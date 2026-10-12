@@ -97,12 +97,17 @@ async def validation_target(game_id: str | None) -> tuple[str, str]:
     hit = _game_discovery_cache.get(game_id)
     if hit and now - hit[2] < DISCOVERY_TTL_S:
         return hit[0], hit[1]
+    game = await db.games.find_one({"id": game_id}, {"_id": 0, "fazercards_categories_configured": 1,
+                                                     "fazercards_categories": 1})
+    # Admin-assigned categories are authoritative; keyword matchers are only the legacy fallback.
+    selected = set((game or {}).get("fazercards_categories") or []) \
+        if (game or {}).get("fazercards_categories_configured") is True else None
     matchers = GAME_MATCHERS.get(game_id)
-    if matchers:
+    if selected or (selected is None and matchers):
         data = await _request("GET", "/topups/validate-id")
         for item in data.get("items", []):
             haystack = f"{item.get('category_id') or ''} {item.get('name') or ''}".lower()
-            if any(m in haystack for m in matchers):
+            if (item.get("category_id") in selected) if selected else any(m in haystack for m in matchers):
                 keys = [f.get("key") for f in (item.get("fields") or []) if f.get("key")]
                 field_key = "player_id" if "player_id" in keys else (keys[0] if keys else None)
                 if field_key:

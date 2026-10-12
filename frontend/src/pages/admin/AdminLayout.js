@@ -15,6 +15,11 @@ export default function AdminLayout() {
   const { can } = useAuth();
   const [online, setOnline] = useState(false);
   const [fzrAlerts, setFzrAlerts] = useState(0);
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="robots"]');
+    meta?.setAttribute("content", "noindex,nofollow");
+    return () => meta?.setAttribute("content", "index,follow");
+  }, []);
   useEffect(() => { api.get("/settings/status").then((r) => setOnline(r.data.online)).catch(() => {}); }, []);
   useEffect(() => { api.get("/admin/fazercards/price-alerts", { params: { limit: 1 } }).then((r) => setFzrAlerts(r.data.unacknowledged)).catch(() => {}); }, []);
   const toggle = async (v) => { setOnline(v); await api.post("/admin/status", { online: v }).catch(() => setOnline(!v)); };

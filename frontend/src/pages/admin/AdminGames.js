@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Gamepad2, Pencil, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Gamepad2, Pencil, Plus, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
@@ -13,7 +13,29 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 // is "Logo URL" and the administrator can set/change it. No upload, no media manager.
 // Multi-jeux : `identity_fields` définit le contrat de saisie du joueur POUR CE JEU
 // (clé, libellé, format). Aucune clé n'est imposée : `player_id` n'est pas une hypothèse globale.
-const EMPTY = { id: "", name: "", slug: "", icon_url: "", currency_label: "", description: "", description_en: "", active: false, sort_order: 0, identity_fields: [] };
+const EMPTY = { id: "", name: "", slug: "", icon_url: "", currency_label: "", description: "", description_en: "", active: false, sort_order: 0, identity_fields: [], product_types: [] };
+const TYPE_RE = /^[a-z][a-z0-9_]{0,31}$/;
+const CHECK_LABELS = { identity: "Identité joueur", product_types: "Types de produit", provider_categories: "Catégories FazerCards", catalog: "Catalogue livrable", type_compat: "Types des produits", mapping_scope: "Périmètre des mappings" };
+
+// Readiness checklist computed by the backend (GET /admin/games): explains why activation is refused.
+function Readiness({ readiness, compact = false }) {
+  if (!readiness) return null;
+  if (compact) {
+    const missing = readiness.checks.filter((c) => !c.ok).length;
+    return <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${readiness.ready ? "bg-primary text-[#0A0A0A]" : "border text-muted-foreground"}`}>{readiness.ready ? "Prêt à la vente" : `${missing} étape(s) manquante(s)`}</span>;
+  }
+  return (
+    <ul className="space-y-1.5 rounded-2xl border p-3 sm:col-span-2" data-testid="game-readiness">
+      <li className="text-sm font-bold">Préparation à la vente {readiness.ready ? "— complète" : "— incomplète"}</li>
+      {readiness.checks.map((c) => (
+        <li key={c.key} className="flex items-start gap-2 text-xs" data-testid={`readiness-${c.key}`}>
+          {c.ok ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" /> : <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600" />}
+          <span><b>{CHECK_LABELS[c.key] || c.key}</b> — {c.detail}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 const EMPTY_FIELD = { key: "", label: "", pattern: "", min_length: "", max_length: "", required: true };
 const KEY_RE = /^[a-z][a-z0-9_]{0,31}$/;
 
@@ -35,7 +57,11 @@ export default function AdminGames() {
     }));
     const bad = fields.find((f) => !KEY_RE.test(f.key) || !f.label);
     if (bad) return toast.error(`Champ d'identité invalide : clé (minuscules/chiffres/_) et libellé requis (${bad.key || "?"}).`);
+    const types = (editing.product_types || []).map((pt) => ({ key: (pt.key || "").trim(), label: (pt.label || "").trim(), label_en: (pt.label_en || "").trim() || null }));
+    const badType = types.find((pt) => !TYPE_RE.test(pt.key) || !pt.label);
+    if (badType) return toast.error(`Type de produit invalide : clé (minuscules/chiffres/_) et libellé requis (${badType.key || "?"}).`);
     const body = {
+      product_types: types,
       id: editing.id, name: editing.name, slug: editing.slug || editing.id,
       icon_url: (editing.icon_url || "").trim() || null,
       currency_label: (editing.currency_label || "").trim() || null,
@@ -55,6 +81,8 @@ export default function AdminGames() {
   const updField = (i, patch) => setFields((l) => l.map((f, idx) => (idx === i ? { ...f, ...patch } : f)));
   const delField = (i) => setFields((l) => l.filter((_, idx) => idx !== i));
   const makePrimary = (i) => setFields((l) => l.map((f, idx) => ({ ...f, primary: idx === i })));
+
+  const setTypes = (fn) => setEditing((s) => ({ ...s, product_types: fn(s.product_types || []) }));
 
   const toggleActive = async (g) => {
     try {
@@ -99,6 +127,7 @@ export default function AdminGames() {
             <div className="min-w-0 flex-1">
               <p className="break-words font-display text-sm font-bold leading-snug text-slate-900 sm:text-base">{g.name}</p>
               <p className="mt-0.5 break-words text-xs text-slate-500">{g.id} · {g.active ? t("admin.active") : t("admin.inactive")}</p>
+              <div className="mt-1.5" data-testid={`game-readiness-badge-${g.id}`}><Readiness readiness={g.readiness} compact /></div>
             </div>
             <div className="flex shrink-0 items-center gap-1">
               <Switch checked={!!g.active} onCheckedChange={() => toggleActive(g)} data-testid={`game-toggle-${g.slug || g.id}`} />
@@ -177,6 +206,33 @@ export default function AdminGames() {
                   ))}
                 </div>
               </div>
+              <div className="sm:col-span-2 rounded-2xl border-2 border-foreground/15 p-3" data-testid="game-product-types">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-bold">Types de produit (boutique MGS)</p>
+                  <Button type="button" size="sm" variant="outline" className="rounded-full font-bold" onClick={() => setTypes((l) => [...l, { key: "", label: "", label_en: "" }])} data-testid="game-type-add">
+                    <Plus className="mr-1 h-3.5 w-3.5" />Ajouter un type
+                  </Button>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Classement interne des packs de ce jeu (ex. <code>cp</code> « CP », <code>battle_pass</code> « Battle Pass », <code>diamonds</code> « Diamants »).
+                  Distinct des catégories FazerCards : chaque pack reste lié à une offre réelle dans Admin → Fournisseur.
+                  {editing.id !== "pubg-mobile" && " Les clés prime, prime_plus et evo sont réservées à PUBG Mobile."}
+                </p>
+                <div className="mt-3 space-y-2">
+                  {(editing.product_types || []).length === 0 && (
+                    <p className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 p-2 text-xs text-amber-800" data-testid="game-types-empty">Aucun type : aucun pack ne pourra être créé pour ce jeu.</p>
+                  )}
+                  {(editing.product_types || []).map((pt, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2" data-testid={`game-type-row-${i}`}>
+                      <Input aria-label="Clé" placeholder="cp" value={pt.key || ""} onChange={(e) => setTypes((l) => l.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)))} className="h-9 rounded-lg" data-testid={`game-type-key-${i}`} />
+                      <Input aria-label="Libellé" placeholder="CP" value={pt.label || ""} onChange={(e) => setTypes((l) => l.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} className="h-9 rounded-lg" data-testid={`game-type-label-${i}`} />
+                      <Input aria-label="Label EN" placeholder="CP" value={pt.label_en || ""} onChange={(e) => setTypes((l) => l.map((x, j) => (j === i ? { ...x, label_en: e.target.value } : x)))} className="h-9 rounded-lg" data-testid={`game-type-label-en-${i}`} />
+                      <Button type="button" size="icon" variant="ghost" className="h-9 w-9 rounded-full" onClick={() => setTypes((l) => l.filter((_, j) => j !== i))} data-testid={`game-type-del-${i}`} aria-label="Supprimer"><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {editing._existing && <Readiness readiness={editing.readiness} />}
               <Button type="submit" className="rounded-full font-bold sm:col-span-2" data-testid="game-save">{t("admin.save")}</Button>
             </form>
           )}

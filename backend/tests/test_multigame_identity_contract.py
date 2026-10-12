@@ -144,7 +144,7 @@ def test_non_pubg_order_is_refused_without_identity_contract(admin):
     assert created.status_code == 201, created.text
     # Catalogue vendable sans mapping obligatoire : la SEULE raison de refus doit être l'identité.
     run(db.products.insert_one({
-        "id": pid, "slug": gid, "type": "uc", "uc_amount": 60, "name": "QA NoId 60",
+        "id": pid, "slug": gid, "type": "diamonds", "uc_amount": 60, "name": "QA NoId 60",
         "price": 5000, "active": True, "game_id": gid, "requires_mapping": False,
         "created_at": "2026-01-01T00:00:00+00:00"}))
     try:
@@ -182,15 +182,18 @@ def test_configured_dynamic_game_can_be_sold_with_generic_identity(admin):
     pid = f"qa-dyn-prod-{tag}"
     created = requests.post(f"{API}/admin/games", headers=admin, timeout=15, json={
         "id": gid, "name": "QA Dynamic Game", "active": False, "sort_order": 94,
-        "currency_label": "Diamants", "identity_fields": DYNAMIC_FIELDS})
+        "currency_label": "Diamants", "identity_fields": DYNAMIC_FIELDS,
+        "product_types": [{"key": "diamonds", "label": "Diamants"}]})
     assert created.status_code == 201, created.text
     assert created.json()["currency_label"] == "Diamants"
     # La définition est bien persistée et renvoyée telle quelle (champs dynamiques).
     assert [f["key"] for f in created.json()["identity_fields"]] == ["player_id", "zone_id"]
     run(db.products.insert_one({
-        "id": pid, "slug": gid, "type": "uc", "uc_amount": 60, "name": f"QA Dyn 60 {tag}",
+        "id": pid, "slug": gid, "type": "diamonds", "uc_amount": 60, "name": f"QA Dyn 60 {tag}",
         "price": 5000, "active": True, "game_id": gid, "requires_mapping": False,
         "created_at": "2026-01-01T00:00:00+00:00"}))
+    run(db.games.update_one({"id": gid}, {"$set": {"fazercards_categories_configured": True,
+                                                    "fazercards_categories": ["qa_dyn_cat"]}}))
     try:
         # Activation désormais autorisée : identité déclarée + catalogue livrable.
         activated = requests.put(f"{API}/admin/games/{gid}", headers=admin, timeout=15, json={
@@ -243,7 +246,7 @@ def test_unready_game_products_never_leak_into_the_public_catalog(admin):
         "id": gid, "name": "QA Leak Game", "active": False, "sort_order": 93})
     assert created.status_code == 201, created.text
     run(db.products.insert_one({
-        "id": pid, "slug": gid, "type": "uc", "uc_amount": 60, "name": f"QA Leak 60 {tag}",
+        "id": pid, "slug": gid, "type": "diamonds", "uc_amount": 60, "name": f"QA Leak 60 {tag}",
         "price": 5000, "active": True, "game_id": gid, "requires_mapping": False,
         "created_at": "2026-01-01T00:00:00+00:00"}))
     try:

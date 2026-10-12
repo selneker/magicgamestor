@@ -88,7 +88,18 @@ async def game_has_sellable_catalog(game_id: str) -> bool:
 # Aucun jeu n'est présumé utiliser `player_id` : les règles PUBG Mobile ci-dessous ne
 # sont qu'un cas particulier (jeu legacy) du modèle générique, jamais une hypothèse globale.
 # --------------------------------------------------------------------------- #
-IDENTITY_FIELD_KEY = re.compile(r"^[a-z][a-z0-9_]{0,31}$")
+IDENTITY_FIELD_KEY = re.compile(r"[a-z][a-z0-9_]{0,31}", re.ASCII)
+PUBG_ID_RE = re.compile(r"[0-9]{9,13}", re.ASCII)
+
+
+def full_match(pattern: str | None, value: str) -> bool:
+    """Whole-string match (B1): no partial match, ASCII classes, same contract as the frontend."""
+    if not pattern:
+        return True
+    try:
+        return re.fullmatch(pattern, value, re.ASCII) is not None
+    except re.error:
+        return False
 MAX_IDENTITY_FIELDS = 6
 
 # Définition par défaut du seul jeu historique : PUBG Mobile conserve EXACTEMENT son contrat
@@ -100,6 +111,10 @@ DEFAULT_IDENTITY_FIELDS: dict[str, list[dict]] = {
          "required": True, "primary": True},
     ],
 }
+
+NO_CATALOG_DETAIL = ("Activation refusee : ce jeu n'a aucun produit actif et correctement configure "
+                     "pour la livraison. Creez son catalogue, configurez les mappings fournisseur "
+                     "(Admin -> Fournisseur) puis activez-le.")
 
 NO_IDENTITY_DETAIL = (
     "Activation refusee : ce jeu n'a pas encore declare ses champs d'identite joueur. "
@@ -127,7 +142,7 @@ def normalize_identity_fields(raw) -> list[dict]:
             raise HTTPException(status_code=400, detail="Champ d'identite invalide.")
         key = str(item.get("key") or "").strip()
         label = str(item.get("label") or "").strip()
-        if not IDENTITY_FIELD_KEY.match(key) or key in seen:
+        if not IDENTITY_FIELD_KEY.fullmatch(key) or key in seen:
             raise HTTPException(status_code=400, detail=f"Cle de champ invalide ou dupliquee : « {key} ».")
         if not 1 <= len(label) <= 40:
             raise HTTPException(status_code=400, detail=f"Libelle requis pour le champ « {key} ».")
@@ -185,8 +200,7 @@ def check_identity_payload(spec: list[dict], fields: dict | None) -> tuple[dict,
             continue
         if not f.get("min_length", 1) <= len(value) <= f.get("max_length", 64):
             return None
-        pattern = f.get("pattern")
-        if pattern and not re.match(pattern, value):
+        if not full_match(f.get("pattern"), value):
             return None
         clean[f["key"]] = value
     if not clean:
@@ -206,13 +220,12 @@ async def game_sale_path_ready(game_id: str) -> tuple[bool, str]:
     """
     if game_id == DEFAULT_GAME_ID:
         return True, ""
-    game = await db.games.find_one({"id": game_id}, {"_id": 0, "id": 1, "identity_fields": 1})
+    game = await db.games.find_one({"id": game_id}, {"_id": 0})
     if not game:
         return False, "Jeu inconnu."
-    if not identity_spec(game):
-        return False, NO_IDENTITY_DETAIL
-    if not await game_has_sellable_catalog(game_id):
-        return False, NO_CATALOG_DETAIL
+    readiness = await game_readiness(game)
+    if not readiness["ready"]:
+        return False, next(c["detail"] for c in readiness["checks"] if not c["ok"])
     return True, ""
 
 
@@ -260,3 +273,108 @@ async def migrate_saved_pubg_ids():
         if docs:
             await db.game_identities.insert_many(docs)
         await db.users.update_one({"user_id": user["user_id"]}, {"$addToSet": {"pubg_ids_migrated": {"$each": todo}}})
+
+
+# --------------------------------------------------------------------------- #
+# Per-game MGS product types (internal storefront taxonomy, distinct from provider categories).
+# `prime`, `prime_plus` and `evo` carry PUBG-specific subscription / evolving-pack rules (locks keyed
+# on the PUBG ID), so they stay reserved to PUBG Mobile; any other game declares its own keys.
+# --------------------------------------------------------------------------- #
+TYPE_KEY_RE = re.compile(r"[a-z][a-z0-9_]{0,31}", re.ASCII)
+RESERVED_TYPE_KEYS = {"prime", "prime_plus", "evo"}
+MAX_PRODUCT_TYPES = 12
+DEFAULT_PRODUCT_TYPES: dict[str, list[dict]] = {
+    DEFAULT_GAME_ID: [
+        {"key": "uc", "label": "UC", "label_en": "UC"},
+        {"key": "prime", "label": "Prime", "label_en": "Prime"},
+        {"key": "prime_plus", "label": "Prime+", "label_en": "Prime+"},
+        {"key": "evo", "label": "Pack évolutif", "label_en": "Evolving pack"},
+    ],
+}
+
+
+def normalize_product_types(raw, game_id: str) -> list[dict]:
+    if raw is None:
+        return []
+    if not isinstance(raw, list) or len(raw) > MAX_PRODUCT_TYPES:
+        raise HTTPException(status_code=400, detail=f"{MAX_PRODUCT_TYPES} types de produit maximum.")
+    seen: set[str] = set()
+    clean: list[dict] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            raise HTTPException(status_code=400, detail="Type de produit invalide.")
+        key = str(item.get("key") or "").strip()
+        label = str(item.get("label") or "").strip()
+        if not TYPE_KEY_RE.fullmatch(key) or key in seen:
+            raise HTTPException(status_code=400, detail=f"Cle de type invalide ou dupliquee : « {key} ».")
+        if key in RESERVED_TYPE_KEYS and game_id != DEFAULT_GAME_ID:
+            raise HTTPException(status_code=400,
+                                detail=f"Le type « {key} » porte des regles PUBG Mobile (abonnement / pack) : choisissez une autre cle.")
+        if not 1 <= len(label) <= 30:
+            raise HTTPException(status_code=400, detail=f"Libelle requis pour le type « {key} ».")
+        seen.add(key)
+        clean.append({"key": key, "label": label, "label_en": str(item.get("label_en") or "").strip() or None})
+    return clean
+
+
+def product_types_for(game: dict | None) -> list[dict]:
+    declared = (game or {}).get("product_types")
+    if declared:
+        return declared
+    return DEFAULT_PRODUCT_TYPES.get((game or {}).get("id") or "", [])
+
+
+async def check_product_type(game_id: str, type_key: str) -> dict:
+    """Backend source of truth for game/type compatibility (never trust the admin form alone)."""
+    game = await db.games.find_one({"id": game_id}, {"_id": 0})
+    if not game:
+        raise HTTPException(status_code=400, detail="Unknown game")
+    allowed = {t["key"] for t in product_types_for(game)}
+    if type_key not in allowed:
+        raise HTTPException(status_code=400, detail=(
+            f"Type « {type_key} » non configure pour {game.get('name') or game_id}. "
+            "Ajoutez-le dans Admin -> Jeux -> Types de produit."))
+    return game
+
+
+async def game_readiness(game: dict) -> dict:
+    """Explicit, data-driven checklist: a game becomes sellable only when every check is true."""
+    gid = game["id"]
+    configured = game.get("fazercards_categories_configured") is True
+    categories = set(game.get("fazercards_categories") or [])
+    types = {t["key"] for t in product_types_for(game)}
+    products = await db.products.find({"game_id": gid}, {"_id": 0, "name": 1, "type": 1, "active": 1,
+                                                          "requires_mapping": 1, "fazercards_mapping": 1}).to_list(500)
+    active = [p for p in products if p.get("active")]
+    deliverable = [p for p in active if not p.get("requires_mapping") or _mapping_ok(p.get("fazercards_mapping"))]
+    bad_types = sorted({p["name"] for p in products if p.get("type") not in types})
+    foreign = sorted({p["name"] for p in products if (p.get("fazercards_mapping") or {}).get("category_id")
+                      and configured and p["fazercards_mapping"]["category_id"] not in categories})
+    legacy = gid == DEFAULT_GAME_ID
+    checks = [
+        {"key": "identity", "ok": bool(identity_spec(game)),
+         "detail": "Champs d'identite joueur declares." if identity_spec(game) else NO_IDENTITY_DETAIL},
+        {"key": "product_types", "ok": bool(types),
+         "detail": "Types de produit configures." if types else "Aucun type de produit configure pour ce jeu."},
+        {"key": "provider_categories", "ok": legacy or (configured and bool(categories)),
+         "detail": "Categories fournisseur affectees." if legacy or (configured and categories)
+         else "Aucune categorie FazerCards affectee (Admin -> Fournisseur)."},
+        {"key": "catalog", "ok": bool(deliverable),
+         "detail": f"{len(deliverable)} produit(s) actif(s) livrable(s)." if deliverable else NO_CATALOG_DETAIL},
+        {"key": "type_compat", "ok": not bad_types,
+         "detail": "Tous les produits utilisent un type du jeu." if not bad_types
+         else "Type incompatible pour : " + ", ".join(bad_types[:5])},
+        {"key": "mapping_scope", "ok": not foreign,
+         "detail": "Mappings limites aux categories du jeu." if not foreign
+         else "Mapping hors categories du jeu : " + ", ".join(foreign[:5])},
+    ]
+    return {"ready": all(c["ok"] for c in checks), "checks": checks}
+
+
+async def public_game_ids() -> set[str]:
+    """S1: games whose catalogue may be exposed publicly (active + identity contract + deliverable catalog)."""
+    ids = set()
+    async for g in db.games.find({"active": True}, {"_id": 0, "id": 1, "identity_fields": 1}):
+        if identity_spec(g) and (g["id"] == DEFAULT_GAME_ID or await game_has_sellable_catalog(g["id"])):
+            ids.add(g["id"])
+    return ids

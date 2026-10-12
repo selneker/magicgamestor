@@ -12,7 +12,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const GROUPS = [["uc", "groupUc"], ["prime", "groupPrime"], ["prime_plus", "groupPrimePlus"], ["evo", "groupEvo"]];
+// Mapping groups follow the game's configured product types (+ any legacy type still in use).
+const typeGroups = (game, products) => {
+  const declared = (game?.product_types || []).map((pt) => [pt.key, pt.label]);
+  const extra = [...new Set(products.map((p) => p.type))].filter((k) => !declared.some(([d]) => d === k)).map((k) => [k, `${k} (type non configuré)`]);
+  return [...declared, ...extra];
+};
 const ucAmountOf = (o) => {
   const m = /^([\d\s]+)\s*UC$/i.exec((o?.name || "").trim());
   if (m) return parseInt(m[1].replace(/\s/g, ""), 10);
@@ -351,12 +356,12 @@ export default function AdminFazercards() {
             Aucun produit MagicGameStore pour ce jeu. Créez d'abord un pack inactif dans Admin → Catalogue, sélectionnez ce jeu, puis revenez ici pour lui associer une offre FazerCards.
           </div>
         )}
-        {GROUPS.map(([type, labelKey]) => {
+        {typeGroups(games.find((g) => g.id === game), products).map(([type, label]) => {
           const group = products.filter((p) => p.type === type);
           if (!group.length) return null;
           return (
             <div key={type} className="mt-5" data-testid={`fzr-group-${type}`}>
-              <p className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">{type === "uc" && games.find((g) => g.id === game)?.currency_label ? `Packs ${games.find((g) => g.id === game).currency_label}` : t(`admin.fzr.${labelKey}`)}</p>
+              <p className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
               <div className="space-y-1.5">
                 {group.map((p) => {
                   const m = p.fazercards_mapping;
