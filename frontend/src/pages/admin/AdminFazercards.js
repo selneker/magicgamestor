@@ -346,6 +346,11 @@ export default function AdminFazercards() {
             ))}
           </div>
         )}
+        {products.length === 0 && (
+          <div className="mt-5 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground" data-testid="fzr-no-game-products">
+            Aucun produit MagicGameStore pour ce jeu. Créez d'abord un pack inactif dans Admin → Catalogue, sélectionnez ce jeu, puis revenez ici pour lui associer une offre FazerCards.
+          </div>
+        )}
         {GROUPS.map(([type, labelKey]) => {
           const group = products.filter((p) => p.type === type);
           if (!group.length) return null;
