@@ -3,11 +3,22 @@ import { createRoot } from "react-dom/client";
 import Catalog from "./Catalog";
 import { api } from "@/lib/api";
 
-jest.mock("react-router-dom", () => ({
-  useSearchParams: () => require("react").useState(new URLSearchParams("type=uc&popular=1")),
-}));
+// The mock keeps URLSearchParams stateful so the category tabs rerender and preserve the selected game.
+jest.mock("react-router-dom", () => {
+  const React = require("react");
+  return {
+    Link: ({ children }) => <span>{children}</span>,
+    useSearchParams: () => React.useState(new URLSearchParams("game=pubg-mobile&type=uc&popular=1")),
+  };
+});
 jest.mock("@/lib/api", () => ({ api: { get: jest.fn() } }));
 jest.mock("@/context/LanguageContext", () => ({ useLang: () => ({ t: (key) => key }) }));
+jest.mock("@/context/GameContext", () => ({
+  useGames: () => ({
+    games: [{ id: "pubg-mobile", name: "PUBG Mobile", slug: "pubg-mobile", currency_label: "UC" }],
+    selectGame: jest.fn(),
+  }),
+}));
 jest.mock("@/components/store/ProductCard", () => ({ ProductCard: () => null }));
 jest.mock("@/pages/PackEvolutif", () => ({ __esModule: true, default: ({ products }) => <div data-offers={JSON.stringify(products)} /> }));
 jest.mock("@/components/ui/select", () => {
@@ -30,7 +41,7 @@ test("the evolutionary tab requests only evo packs and clears the popular-only f
     });
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 30)); });
     expect(api.get).toHaveBeenLastCalledWith("/products", { params: {
-      type: "evo", q: undefined, sort: "default", popular: undefined, min_price: undefined, max_price: undefined,
+      game: "pubg-mobile", type: "evo", q: undefined, sort: "default", popular: undefined, min_price: undefined, max_price: undefined,
     } });
     expect(JSON.parse(container.querySelector("[data-offers]").getAttribute("data-offers"))).toEqual(evo);
   } finally {
