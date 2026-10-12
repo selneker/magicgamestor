@@ -304,10 +304,9 @@ export default function AdminFazercards() {
             <p className="text-xs text-muted-foreground">{t("admin.fzr.mappingHint")}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={game || "all"} onValueChange={(v) => setGame(v === "all" ? "" : v)}>
+            <Select value={game || "pubg-mobile"} onValueChange={(v) => setGame(v)}>
               <SelectTrigger className="h-9 w-48 rounded-full" data-testid="fzr-game-filter"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{t("admin.fzr.allGames")}</SelectItem>
                 {games.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
               </SelectContent>
             </Select>
