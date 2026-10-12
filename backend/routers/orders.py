@@ -195,6 +195,12 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
     game = await db.games.find_one({"id": body.game_id, "active": True}, {"_id": 0, "id": 1})
     if not game:
         raise HTTPException(status_code=400, detail="Unknown or inactive game")
+    if body.game_id != DEFAULT_GAME_ID:
+        raise HTTPException(
+            status_code=409,
+            detail=("Checkout multi-jeux indisponible pour ce jeu : le parcours de verification "
+                    "d'identite doit etre configure avant toute commande."),
+        )
     identity_snapshot = await _identity_snapshot(body, user)
     ids = [i.product_id for i in body.items]
     products = {p["id"]: p for p in await db.products.find({"id": {"$in": ids}, "active": True}, PUBLIC).to_list(100)}
