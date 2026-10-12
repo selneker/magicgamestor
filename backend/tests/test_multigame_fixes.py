@@ -273,3 +273,126 @@ def test_include_inactive_is_staff_only():
         assert pid in staff
     finally:
         run(db.products.delete_one({"id": pid}))
+
+
+# --------------------------------------------------------------------------- #
+# D. Isolation inter-jeux FAIL-CLOSED + compatibilité PUBG historique (durcissement)
+# --------------------------------------------------------------------------- #
+
+# Catalogue fournisseur simulé : une catégorie PUBG standard, une catégorie PUBG LEGACY dont
+# l'id/le nom ne contient PAS « pubg_mobile »/« pubg mobile » (ex. `pubgm_uc`), et une catégorie
+# d'un autre jeu. Aucun appel réseau réel.
+MIXED_CATALOG = [
+    {"category_id": "pubg_mobile_auto", "name": "PUBG Mobile (Auto)", "note": ""},
+    {"category_id": "pubgm_uc", "name": "PUBG Mobile UC", "note": ""},
+    {"category_id": "free_fire", "name": "Free Fire", "note": ""},
+]
+
+
+def _patch_catalog(monkeypatch, catalog):
+    async def fake_all():
+        return [dict(c) for c in catalog]
+    monkeypatch.setattr(fazercards, "_topup_categories", fake_all)
+
+
+def test_unknown_game_categories_fail_closed(monkeypatch):
+    """Un jeu inconnu/non supporté échoue explicitement (409) — jamais le catalogue complet."""
+    _patch_catalog(monkeypatch, MIXED_CATALOG)
+    with pytest.raises(HTTPException) as e:
+        run(fazercards.game_categories("some-unknown-game"))
+    assert e.value.status_code == 409
+    # Le message ne divulgue aucune catégorie fournisseur (aucune fuite du catalogue complet).
+    assert "pubg_mobile_auto" not in e.value.detail and "free_fire" not in e.value.detail
+
+
+def test_unknown_game_offers_for_game_fail_closed(monkeypatch):
+    """`offers_for_game` d'un jeu inconnu échoue (409) au lieu de servir une catégorie arbitraire."""
+    _patch_catalog(monkeypatch, MIXED_CATALOG)
+    with pytest.raises(HTTPException) as e:
+        run(fzr_mapping.offers_for_game("some-unknown-game", "pubg_mobile_auto"))
+    assert e.value.status_code == 409
+
+
+def test_foreign_category_rejected_for_configured_game(monkeypatch):
+    """Une catégorie d'un autre jeu est refusée pour un jeu configuré (aucun mélange)."""
+    _patch_catalog(monkeypatch, MIXED_CATALOG)
+    with pytest.raises(HTTPException) as e:
+        run(fzr_mapping.offers_for_game(FREE_FIRE, "pubg_mobile_auto"))
+    assert e.value.status_code == 409
+    with pytest.raises(HTTPException) as e2:
+        run(fzr_mapping.offers_for_game(PUBG, "free_fire"))
+    assert e2.value.status_code == 409
+
+
+def test_legacy_pubg_category_without_pubg_mobile_token_is_kept(monkeypatch):
+    """Une catégorie PUBG LEGACY (`pubgm_uc`) reste reconnue pour PUBG Mobile (Fix B).
+
+    Son id/name ne contient ni « pubg_mobile » ni « pubg mobile » : elle ne doit PAS être rejetée.
+    """
+    _patch_catalog(monkeypatch, MIXED_CATALOG)
+    ids = {c["category_id"] for c in run(fazercards.game_categories(PUBG))}
+    assert "pubgm_uc" in ids
+    # Et elle reste utilisable pour lier un mapping PUBG (aucun rejet de catégorie légitime).
+    async def fake_offers(category_id):
+        return {"category_id": category_id, "offers": [], "fields": []}
+    monkeypatch.setattr(fazercards, "pubg_offers_fresh", fake_offers)
+    assert run(fzr_mapping.offers_for_game(PUBG, "pubgm_uc"))["category_id"] == "pubgm_uc"
+
+
+def test_standard_supported_pubg_category_is_kept(monkeypatch):
+    """Une catégorie PUBG standard (`pubg_mobile_auto`) reste reconnue pour PUBG Mobile."""
+    _patch_catalog(monkeypatch, MIXED_CATALOG)
+    ids = {c["category_id"] for c in run(fazercards.game_categories(PUBG))}
+    assert "pubg_mobile_auto" in ids
+    assert "free_fire" not in ids  # isolation : jamais la catégorie d'un autre jeu
+
+
+def test_game_without_configured_provider_target_returns_empty(monkeypatch):
+    """Un jeu configuré sans catégorie fournisseur correspondante → liste VIDE, jamais tout le catalogue."""
+    _patch_catalog(monkeypatch, [{"category_id": "pubg_mobile_auto", "name": "PUBG Mobile (Auto)", "note": ""}])
+    assert run(fazercards.game_categories(FREE_FIRE)) == []
+
+
+def test_legacy_no_game_id_stays_limited_to_pubg(monkeypatch):
+    """Le chemin de compatibilité historique (game_id absent) reste limité aux catégories PUBG."""
+    _patch_catalog(monkeypatch, MIXED_CATALOG)
+    ids = {c["category_id"] for c in run(fazercards.game_categories(None))}
+    assert ids == {"pubg_mobile_auto", "pubgm_uc"}
+    assert "free_fire" not in ids
+
+
+def test_validation_target_legacy_and_fail_closed(monkeypatch):
+    """`validation_target` : PUBG/legacy garde la découverte historique ; un jeu inconnu échoue (503)."""
+    mock_transport(monkeypatch, happy_handler())
+    assert run(fazercards.validation_target(PUBG)) == ("pubg_mobile", "player_id")
+    assert run(fazercards.validation_target(None)) == ("pubg_mobile", "player_id")
+    with pytest.raises(HTTPException) as e:
+        run(fazercards.validation_target("some-unknown-game"))
+    assert e.value.status_code == 503
+
+
+def test_build_mapping_rejects_foreign_category(monkeypatch):
+    """Protection du mapping produit : lier un produit à une catégorie d'un autre jeu est refusé."""
+    import types
+    _patch_catalog(monkeypatch, MIXED_CATALOG)
+
+    async def fake_offers(category_id):
+        return {"category_id": category_id, "offers": [], "fields": []}
+    monkeypatch.setattr(fazercards, "pubg_offers_fresh", fake_offers)
+
+    product = {"id": "qa-bm", "name": "QA", "type": "uc", "uc_amount": 60, "game_id": FREE_FIRE}
+    body = types.SimpleNamespace(category_id="pubg_mobile_auto", mode="direct", offer_id="uc_60", confirmed=True)
+    with pytest.raises(HTTPException) as e:
+        run(fzr_mapping.build_mapping(product, body))
+    assert e.value.status_code == 409
+
+
+def test_purchase_blocking_protections_unchanged():
+    """Les protections d'achat existantes restent intactes (mapping manquant/non confirmé bloquant)."""
+    assert fzr_mapping.mapping_ok(None) is False
+    assert fzr_mapping.mapping_ok({"confirmed": False, "mode": "direct", "category_id": "c", "offer_id": "o"}) is False
+    assert fzr_mapping.mapping_ok({"mode": "direct", "category_id": "c", "offer_id": "o"}) is True
+    assert fzr_mapping.purchase_blocked({"name": "X", "requires_mapping": True}) is not None
+    assert fzr_mapping.purchase_blocked(
+        {"name": "X", "requires_mapping": True,
+         "fazercards_mapping": {"mode": "direct", "category_id": "c", "offer_id": "o", "confirmed": True}}) is None
