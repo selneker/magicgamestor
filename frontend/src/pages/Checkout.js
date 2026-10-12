@@ -26,7 +26,10 @@ export default function Checkout() {
   const { t, lang } = useLang();
   const { items, total, clear } = useCart();
   const { user } = useAuth();
-  const gameId = useGames()?.selectedId || "pubg-mobile";
+  const gameSel = useGames();
+  const gameId = gameSel?.selectedId || "pubg-mobile";
+  // Contrat de saisie du jeu sélectionné, piloté par la config ADMIN (`/api/games`).
+  const identitySpec = gameSel?.selected?.identity_fields || [];
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -48,6 +51,7 @@ export default function Checkout() {
   const [busy, setBusy] = useState(false);
   const [autoVerify, setAutoVerify] = useState(0);
   const [identity, setIdentity] = useState(null);
+  const [identityValues, setIdentityValues] = useState({});
   const setVerified = useCallback((v) => setVerifiedState(v), []);
 
   useEffect(() => {
@@ -76,8 +80,21 @@ export default function Checkout() {
   };
 
   const createOrder = async (m, extra = {}) => {
+    // Identité GÉNÉRIQUE : les champs dynamiques du jeu sont transmis tels quels ; `pubg_id` reste
+    // la colonne historique et porte la valeur du champ primaire (PUBG Mobile inchangé).
+    const dynamic = gameId !== "pubg-mobile" && identitySpec.length > 0;
+    const primaryKey = identitySpec.find((f) => f.primary)?.key || identitySpec[0]?.key || "player_id";
+    const fields = dynamic
+      ? Object.fromEntries(identitySpec.map((f) => [f.key, (identityValues[f.key] || "").trim()]))
+      : undefined;
+    const pubgValue = dynamic ? (fields[primaryKey] || "") : pubgId.trim();
+    const matchesSaved = identity?.id && (dynamic
+      ? Object.entries(identity.fields || {}).every(([k, v]) => fields[k] === v)
+      : identity.fields?.player_id === pubgValue);
     const { data } = await api.post("/orders", {
-      game_id: gameId, identity_id: user && identity?.fields?.player_id === pubgId.trim() ? identity.id : undefined, pubg_id: pubgId.trim(), pseudo: verified?.name || pubgId.trim(), email: email || undefined,
+      game_id: gameId, identity_id: user && matchesSaved ? identity.id : undefined, pubg_id: pubgValue,
+      ...(fields ? { identity_fields: fields } : {}),
+      pseudo: verified?.name || pubgValue, email: email || undefined,
       items: items.map((i) => ({ product_id: i.id, quantity: i.qty })), payment_method: m, ...extra,
     });
     clear();
@@ -114,7 +131,7 @@ export default function Checkout() {
   });
 
   const screens = [
-    <StepVerify key="v" pubgId={pubgId} setPubgId={setPubgId} user={user} verified={verified} setVerified={setVerified} autoVerify={autoVerify} setAutoVerify={setAutoVerify} gameId={gameId} identity={identity} setIdentity={setIdentity} email={email} setEmail={setEmail} onContinue={() => go(1)} />,
+    <StepVerify key="v" pubgId={pubgId} setPubgId={setPubgId} user={user} verified={verified} setVerified={setVerified} autoVerify={autoVerify} setAutoVerify={setAutoVerify} gameId={gameId} identity={identity} setIdentity={setIdentity} identitySpec={identitySpec} identityValues={identityValues} setIdentityValues={setIdentityValues} email={email} setEmail={setEmail} onContinue={() => go(1)} />,
     <PaymentFlow key="m" method={method} setMethod={setMethod} phone={phone} setPhone={setPhone} reference={reference} setReference={setReference} network={network} setNetwork={setNetwork} accepted={accepted} setAccepted={setAccepted} subtotal={subtotal} config={config} crypto={crypto} busy={busy} onContinue={continueMethod} />,
     <StepPay key="p" method={method} order={order} config={config} summary={summary} reference={reference} busy={busy} onPayAuto={payAuto} onManualPaid={() => go(3)} cryptoPayment={cryptoPayment} onConfirmed={() => go(3)} trackUrl={trackUrl} />,
     <StepConfirm key="c" method={method} order={order} trackUrl={trackUrl} summary={summary} reference={reference} setReference={setReference} busy={busy} onConfirm={confirmManual} />,

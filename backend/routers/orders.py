@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field, field_validator
 from core import ratelimit
 from core.audit import audit
 from core.db import db
-from core.games import DEFAULT_GAME_ID, with_game_defaults
+from core.games import (DEFAULT_GAME_ID, check_identity_payload, game_sale_path_ready, identity_spec,
+                        with_game_defaults)
 from core.security import (ADMIN_ROLES, get_current_user, get_optional_user, require_admin,
                            require_permission, require_super_admin)
 from routers.evo import EVO_TYPE, release_evo_locks, reserve_evo
@@ -42,7 +43,12 @@ class OrderItemIn(BaseModel):
 
 
 class OrderIn(BaseModel):
+    # `pubg_id` reste la colonne HISTORIQUE de compatibilité (PUBG Mobile + toutes les commandes
+    # passées) : elle est toujours renseignée, y compris pour un jeu dynamique (valeur primaire).
     pubg_id: str
+    # Contrat GÉNÉRIQUE : pour un jeu à champs dynamiques, la saisie complète arrive ici
+    # (ex. {"zone_id": "…", "player_id": "…"}). `pubg_id` n'est JAMAIS supposé universel.
+    identity_fields: dict[str, str] | None = None
     pseudo: str = Field(min_length=2, max_length=40)
     items: list[OrderItemIn] = Field(min_length=1, max_length=20)
     payment_method: str = Field(pattern=r"^(mvola|orange|manual|binance)$")
@@ -55,10 +61,19 @@ class OrderIn(BaseModel):
     @field_validator("pubg_id")
     @classmethod
     def valid_pubg(cls, v: str) -> str:
-        v = v.strip()
-        if not v.isdigit() or not (9 <= len(v) <= 13):
-            raise ValueError("PUBG ID must be 9 to 13 digits")
+        v = (v or "").strip()
+        if not v:
+            raise ValueError("identifiant joueur requis")
         return v
+
+    @field_validator("identity_fields")
+    @classmethod
+    def valid_identity_fields(cls, v):
+        if v is None:
+            return v
+        if not 1 <= len(v) <= 10:
+            raise ValueError("1 to 10 identity fields required")
+        return {str(k): str(val or "").strip() for k, val in v.items()}
 
     @field_validator("payment_phone")
     @classmethod
@@ -153,18 +168,47 @@ async def backfill_subscription_locks():
                 pass
 
 
+def _identity_error() -> HTTPException:
+    # 422 = entité non traitable : identifiant joueur mal formé pour le jeu. PUBG Mobile conserve
+    # EXACTEMENT le code de statut historique (422) ; les jeux dynamiques ont le même contrat.
+    return HTTPException(status_code=422, detail="Identifiant joueur invalide pour ce jeu.")
+
+
 async def _identity_snapshot(body: OrderIn, user: dict | None) -> dict:
-    """Immutable copy of the identity used for this purchase (never a reference to game_identities)."""
+    """Copie immuable de l'identité utilisée pour cet achat (jamais une référence à game_identities).
+
+    Contrat GÉNÉRIQUE par jeu : les champs attendus sont ceux DÉCLARÉS par le jeu (« identity_fields »).
+    PUBG Mobile (jeu legacy sans déclaration explicite) conserve son contrat historique : un
+    `pubg_id` numérique de 9 à 13 chiffres — les commandes et produits Phase 1 restent identiques.
+    """
+    game = await db.games.find_one({"id": body.game_id}, {"_id": 0, "id": 1, "identity_fields": 1})
+    spec = identity_spec(game)
+    # La colonne legacy `pubg_id` est TOUJOURS renseignée : pour un jeu dynamique elle porte la
+    # valeur du champ primaire, ce qui garde les index, la recherche et le suivi existants valides.
+    supplied = dict(body.identity_fields or {})
+    if spec:
+        primary = next((f["key"] for f in spec if f.get("primary")), spec[0]["key"])
+    else:
+        primary = "player_id"
+    if not supplied:
+        supplied = {primary: body.pubg_id}
+    elif not supplied.get(primary):
+        supplied = {**supplied, primary: body.pubg_id}
+    checked = check_identity_payload(spec, supplied)
+    if not checked:
+        raise _identity_error()
+    clean_fields, primary_value = checked
     if not body.identity_id:
-        return {"source": "checkout", "game_id": body.game_id, "fields": {"player_id": body.pubg_id},
+        return {"source": "checkout", "game_id": body.game_id, "fields": clean_fields,
                 "player_name": body.pseudo.strip(), "validated": False, "captured_at": _now()}
     if not user:
         raise HTTPException(status_code=401, detail="Login required to use a saved game identity")
     ident = await db.game_identities.find_one({"id": body.identity_id, "user_id": user["user_id"]}, PUBLIC)
     if not ident or ident["game_id"] != body.game_id:
         raise HTTPException(status_code=400, detail="Game identity not found for this game")
-    if ident["fields"].get("player_id") not in (None, body.pubg_id):
-        raise HTTPException(status_code=400, detail="Game identity does not match the player ID")
+    for key, value in (ident.get("fields") or {}).items():
+        if clean_fields.get(key) != value:
+            raise HTTPException(status_code=400, detail="Game identity does not match the player ID")
     return {"source": "identity", "identity_id": ident["id"], "game_id": ident["game_id"], "label": ident.get("label"),
             "fields": dict(ident["fields"]), "player_name": ident.get("player_name") or body.pseudo.strip(),
             "region": ident.get("region"), "validated": bool(ident.get("validated")),
@@ -177,6 +221,22 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
     ratelimit.check(f"orders:ip:{ip}", ratelimit.setting("ORDERS_PER_HOUR_PER_IP", 30), 3600)
     if user:
         ratelimit.check(f"orders:user:{user['user_id']}", ratelimit.setting("ORDERS_PER_HOUR_PER_USER", 20), 3600)
+    # ------------------------------------------------------------------ #
+    # ENTITÉ D'ABORD, MOYEN DE PAIEMENT ENSUITE.
+    # L'identité joueur et la vendabilité du jeu sont validées AVANT toute dépendance de paiement :
+    # un identifiant mal formé renvoie donc toujours 422, indépendamment de la disponibilité du
+    # fournisseur de paiement (et non un 409 trompeur venu du canal de règlement).
+    # ------------------------------------------------------------------ #
+    game = await db.games.find_one({"id": body.game_id, "active": True}, {"_id": 0, "id": 1})
+    if not game:
+        raise HTTPException(status_code=400, detail="Unknown or inactive game")
+    ready, reason = await game_sale_path_ready(body.game_id)
+    if not ready:
+        # FAIL-CLOSED explicite : un jeu sans parcours de vente réellement fonctionnel (identité
+        # par jeu + catalogue livrable) ne peut PAS déclencher de commande. Jamais de repli PUBG.
+        if body.game_id != DEFAULT_GAME_ID:
+            raise HTTPException(status_code=409, detail=reason)
+    identity_snapshot = await _identity_snapshot(body, user)
     from services import fiveone
     payment_provider = None
     if body.payment_method in ("mvola", "orange"):
@@ -192,16 +252,6 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         payment_provider = "binance"
     if body.payment_method == "manual" and not body.manual_reference:
         raise HTTPException(status_code=400, detail="Transaction reference is required")
-    game = await db.games.find_one({"id": body.game_id, "active": True}, {"_id": 0, "id": 1})
-    if not game:
-        raise HTTPException(status_code=400, detail="Unknown or inactive game")
-    if body.game_id != DEFAULT_GAME_ID:
-        raise HTTPException(
-            status_code=409,
-            detail=("Checkout multi-jeux indisponible pour ce jeu : le parcours de verification "
-                    "d'identite doit etre configure avant toute commande."),
-        )
-    identity_snapshot = await _identity_snapshot(body, user)
     ids = [i.product_id for i in body.items]
     products = {p["id"]: p for p in await db.products.find({"id": {"$in": ids}, "active": True}, PUBLIC).to_list(100)}
     if len(products) != len(set(ids)):
@@ -256,10 +306,14 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
     background_tasks.add_task(notify_new_order, order)
     if order.get("email"):
         background_tasks.add_task(mailer.send_order_created, order)
-    if user and body.pubg_id not in user.get("saved_pubg_ids", []):
-        await db.users.update_one({"user_id": user["user_id"]}, {"$push": {"saved_pubg_ids": {"$each": [body.pubg_id], "$slice": -10}}})
-    if user and identity_snapshot["source"] == "identity":  # already a GameIdentity: startup migration must skip it
-        await db.users.update_one({"user_id": user["user_id"]}, {"$addToSet": {"pubg_ids_migrated": body.pubg_id}})
+    if user:
+        # Historique de saisie rapide PUBG Mobile uniquement : pour un jeu à champs dynamiques, le
+        # contrat vit dans `game_identities` — on n'entasse PAS d'identifiants bruts (et on ne
+        # migre jamais un identifiant non-PUBG comme s'il s'agissait d'un ID PUBG Mobile).
+        if body.game_id == DEFAULT_GAME_ID and body.pubg_id not in user.get("saved_pubg_ids", []):
+            await db.users.update_one({"user_id": user["user_id"]}, {"$push": {"saved_pubg_ids": {"$each": [body.pubg_id], "$slice": -10}}})
+        if identity_snapshot["source"] == "identity":  # already a GameIdentity: startup migration must skip it
+            await db.users.update_one({"user_id": user["user_id"]}, {"$addToSet": {"pubg_ids_migrated": body.pubg_id}})
     order.pop("_id", None)
     return order
 
