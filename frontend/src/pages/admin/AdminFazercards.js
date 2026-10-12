@@ -64,8 +64,6 @@ export default function AdminFazercards() {
       setCategoriesConfigured(selected?.fazercards_categories_configured === true);
     }).catch(() => {});
   }, [game]);
-  useEffect(() => { loadProviderCategories(false); }, [loadProviderCategories]);
-
   const loadCatalog = useCallback(async () => {
     if (!game) { toast.error("Choisissez un jeu avant de charger son catalogue."); return null; }
     setBusy("catalog");
@@ -86,6 +84,14 @@ export default function AdminFazercards() {
     } catch (e) { toast.error(errorMessage(e)); return null; }
     finally { setBusy(""); }
   }, []);
+
+  useEffect(() => { loadProviderCategories(false); }, [loadProviderCategories]);
+  useEffect(() => {
+    if (!game || categoriesConfigured || providerCategories.length === 0) return;
+    // When a legacy game has never saved an explicit selection, preselect its existing
+    // keyword-matched categories so the first save preserves today's behavior.
+    setAssignedCategoryIds(providerCategories.filter((cat) => cat.assigned_to?.game_id === game).map((cat) => cat.category_id));
+  }, [providerCategories, game, categoriesConfigured]);
 
   const saveGameCategories = async () => {
     if (!game) { toast.error("Choisissez un jeu."); return; }
