@@ -40,6 +40,12 @@ class MappingIn(BaseModel):
     confirmed: bool = True
 
 
+class CategoryAssignmentIn(BaseModel):
+    category_ids: list[str] = Field(default_factory=list, max_length=500)
+
+
+
+
 # ---------- Réglage global manuel / automatique (kill switch) ----------
 @router.get("/admin/fazercards/settings", dependencies=[Depends(require_admin)])
 async def fzr_settings():
@@ -55,6 +61,73 @@ async def fzr_update_settings(body: FzrAutoIn, admin=Depends(require_super_admin
 
 
 # ---------- Mapping produit MGS ↔ offre(s) FazerCards (direct ou composé, tous types) ----------
+@router.get("/admin/fazercards/provider-categories", dependencies=[Depends(require_permission("catalog.manage"))])
+async def fzr_provider_categories(refresh: bool = False):
+    """Toutes les catégories réelles FazerCards, utilisées pour les affectations administrateur."""
+    if refresh:
+        fazercards._catalog_cache.clear()
+    categories = await fazercards._topup_categories()
+    assignments = {}
+    async for g in db.games.find({"fazercards_categories_configured": True},
+                                 {"_id": 0, "id": 1, "name": 1, "fazercards_categories": 1}):
+        for category_id in g.get("fazercards_categories") or []:
+            assignments[category_id] = {"game_id": g["id"], "game_name": g.get("name") or g["id"]}
+    return {"categories": [
+        {"category_id": c.get("category_id"), "name": c.get("name"), "note": c.get("note"),
+         "assigned_to": assignments.get(c.get("category_id"))}
+        for c in categories if c.get("category_id")
+    ]}
+
+
+@router.put("/admin/fazercards/games/{game_id}/categories")
+async def fzr_assign_game_categories(
+    game_id: str, body: CategoryAssignmentIn, admin=Depends(require_permission("catalog.manage"))
+):
+    """Save the administrator's explicit FazerCards category selection for one game."""
+    game = await db.games.find_one({"id": game_id}, {"_id": 0, "id": 1, "name": 1})
+    if not game:
+        raise HTTPException(status_code=404, detail="Jeu introuvable.")
+
+    selected = list(dict.fromkeys(body.category_ids))
+    live_categories = await fazercards._topup_categories()
+    live_ids = {c.get("category_id") for c in live_categories if c.get("category_id")}
+    unknown = [category_id for category_id in selected if category_id not in live_ids]
+    if unknown:
+        raise HTTPException(status_code=409, detail="Certaines catégories ne sont plus disponibles chez FazerCards. Actualisez le catalogue fournisseur.")
+
+    conflicts = []
+    if selected:
+        async for other in db.games.find(
+            {"id": {"$ne": game_id}, "fazercards_categories_configured": True,
+             "fazercards_categories": {"$in": selected}},
+            {"_id": 0, "id": 1, "name": 1, "fazercards_categories": 1},
+        ):
+            for category_id in set(other.get("fazercards_categories") or []).intersection(selected):
+                conflicts.append({"category_id": category_id, "game_id": other["id"],
+                                  "game_name": other.get("name") or other["id"]})
+    if conflicts:
+        labels = ", ".join(f"{item['category_id']} ({item['game_name']})" for item in conflicts)
+        raise HTTPException(status_code=409, detail=f"Catégorie(s) déjà affectée(s) à un autre jeu : {labels}.")
+
+    await db.games.update_one(
+        {"id": game_id},
+        {"$set": {"fazercards_categories": selected, "fazercards_categories_configured": True,
+                  "updated_at": _now()}},
+    )
+    fazercards._catalog_cache.clear()
+    await audit("fzr.game_categories_set", admin["user_id"], game_id,
+                {"category_ids": selected, "count": len(selected)})
+    return {"game_id": game_id, "category_ids": selected, "count": len(selected)}
+
+
+@router.get("/admin/fazercards/catalog", dependencies=[Depends(require_permission("catalog.manage"))])
+async def fzr_game_catalog(game: str = DEFAULT_GAME_ID):
+    """Categories/offers available for mapping for the selected game, using admin assignments."""
+    if not await db.games.find_one({"id": game}, {"_id": 1}):
+        raise HTTPException(status_code=404, detail="Jeu introuvable.")
+    return {"game": game, "categories": await fazercards.catalog_for_game(game)}
+
+
 @router.get("/admin/fazercards/mappings", dependencies=[Depends(require_admin)])
 async def fzr_mappings(game: str | None = None):
     """Mappings produits ↔ offres fournisseur. `?game=` restreint à un jeu (GAME_PROVIDER / game_id).
@@ -177,11 +250,9 @@ async def fzr_refresh_status(order_id: str, admin=Depends(require_permission("or
 
 # ---------- Alerte prix fournisseur ----------
 @router.post("/admin/fazercards/catalog/refresh")
-async def fzr_catalog_refresh(admin=Depends(require_permission("catalog.manage"))):
+async def fzr_catalog_refresh(game: str = DEFAULT_GAME_ID, admin=Depends(require_permission("catalog.manage"))):
     fazercards._catalog_cache.clear()
-    # Catalogue du jeu PUBG Mobile (comportement historique) via la découverte générique par jeu :
-    # les ids de catégorie ne sont jamais hardcodés.
-    categories = await fazercards.catalog_for_game(DEFAULT_GAME_ID)
+    categories = await fazercards.catalog_for_game(game)
     checked, changes = 0, []
     for cat in categories:
         for offer in cat["offers"]:
