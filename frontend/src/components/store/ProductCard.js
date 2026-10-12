@@ -6,22 +6,27 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { subscriptionLabel, useCart } from "@/context/CartContext";
 import { useLang } from "@/context/LanguageContext";
+import { useGames } from "@/context/GameContext";
 import { formatAr } from "@/lib/api";
 
 export const productName = (p, lang) => (lang === "en" && p.name_en ? p.name_en : p.name);
 
-const quantity = (p) => (p.type === "uc"
-  ? { value: p.uc_amount || String(p.name).match(/\d+/)?.[0] || "", unit: "UC" }
+const quantity = (p, currencyLabel) => (p.type === "uc"
+  ? { value: p.uc_amount || String(p.name).match(/\d+/)?.[0] || "", unit: currencyLabel }
   : { value: p.duration_months || 1, unit: "mois" });
 
 export function ProductCard({ product, index = 0 }) {
   const { add, setOpen } = useCart();
   const { t, lang } = useLang();
+  const { games } = useGames();
   const [logoFailed, setLogoFailed] = useState(false);
+  const game = games.find((g) => g.id === (product.game_id || "pubg-mobile"));
+  const currencyLabel = game?.currency_label || ((product.game_id || "pubg-mobile") === "pubg-mobile" ? "UC" : "unités");
   const isUc = product.type === "uc";
-  const { value, unit } = quantity(product);
+  const { value, unit } = quantity(product, currencyLabel);
   const discount = product.old_price ? Math.round((1 - product.price / product.old_price) * 100) : 0;
-  const category = isUc ? "PUBG MOBILE UC" : `PUBG ${subscriptionLabel(product.type)}`;
+  const category = isUc ? `${(game?.name || "JEU").toUpperCase()} ${currencyLabel.toUpperCase()}`
+    : `${(game?.name || "JEU").toUpperCase()} ${subscriptionLabel(product.type)}`;
   return (
     <motion.article
       initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }}
