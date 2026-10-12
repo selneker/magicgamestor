@@ -226,12 +226,16 @@ export default function AdminFazercards() {
 
       <section className="rounded-2xl border border-border bg-card p-5" data-testid="fzr-game-categories">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="font-display text-lg font-bold text-foreground">Catégories FazerCards par jeu</h2>
             <p className="mt-1 text-xs text-muted-foreground">Choisissez les catégories réelles du fournisseur qui appartiennent au jeu sélectionné. Les offres choisies seront proposées dans le mapping. Une catégorie ne peut appartenir qu'à un seul jeu configuré.</p>
             <p className="mt-1 text-xs font-semibold text-foreground">Jeu courant : {games.find((g) => g.id === game)?.name || game || "Aucun jeu sélectionné"}{categoriesConfigured ? " · Affectation enregistrée" : " · Affectation à configurer"}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
+            <Select value={game || "pubg-mobile"} onValueChange={(v) => setGame(v)}>
+              <SelectTrigger className="h-9 w-full rounded-full sm:w-56" data-testid="fzr-category-game-select"><SelectValue placeholder="Choisir un jeu" /></SelectTrigger>
+              <SelectContent>{games.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}{g.active ? "" : " · Inactif"}</SelectItem>)}</SelectContent>
+            </Select>
             <Button size="sm" variant="outline" className="rounded-full" onClick={() => loadProviderCategories(true)} disabled={busy === "provider-categories"} data-testid="fzr-provider-categories-refresh">
               {busy === "provider-categories" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1 h-4 w-4" />}Actualiser FazerCards
             </Button>
