@@ -76,7 +76,7 @@ export default function AdminProducts() {
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {products.map((p) => (
           <div key={p.id} data-testid={`admin-product-${p.slug}`} className={`flex min-w-0 items-center gap-2 rounded-2xl border bg-white p-3 sm:gap-3 sm:p-4 ${p.active ? "border-slate-100" : "border-dashed border-slate-300 opacity-60"}`}>
-            <div className="min-w-0 flex-1"><p className="break-words font-display text-sm font-bold leading-snug text-slate-900 sm:text-base">{p.name}</p><p className="mt-0.5 break-words text-xs text-slate-500">{p.type} · {formatAr(p.price)}{p.old_price ? ` (${formatAr(p.old_price)})` : ""}{p.popular ? " · ★" : ""}</p></div>
+            <div className="min-w-0 flex-1"><p className="break-words font-display text-sm font-bold leading-snug text-slate-900 sm:text-base">{p.name}</p><p className="mt-0.5 break-words text-xs text-slate-500">{games.find((g) => g.id === (p.game_id || "pubg-mobile"))?.name || p.game_id || "PUBG Mobile"} · {p.type} · {formatAr(p.price)}{p.old_price ? ` (${formatAr(p.old_price)})` : ""}{p.popular ? " · ★" : ""}</p></div>
             <div className="flex shrink-0 items-center">
               <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full" onClick={() => setEditing({ ...EMPTY, ...p, game_id: p.game_id || "pubg-mobile", requires_mapping: p.requires_mapping ?? false })} data-testid={`admin-edit-product-${p.slug}`}><Pencil className="h-4 w-4" /></Button>
               <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-slate-400 hover:text-rose-600" onClick={() => remove(p)} data-testid={`admin-delete-product-${p.slug}`}><Trash2 className="h-4 w-4" /></Button>
