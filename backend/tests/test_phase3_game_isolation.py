@@ -275,3 +275,43 @@ def test_free_fire_stays_inactive_without_real_catalog(admin):
     assert FREE_FIRE in games
     if not games[FREE_FIRE]["active"]:
         assert FREE_FIRE not in [g["id"] for g in requests.get(f"{API}/games", timeout=15).json()]
+
+
+# --------------------------------------------------------------------------- #
+# 4. Admin-configured supplier categories (dynamic games, no heuristic leakage)
+# --------------------------------------------------------------------------- #
+
+@pytest.mark.parametrize(
+    "selected_ids, expected_ids",
+    [
+        (["custom_game_category"], {"custom_game_category"}),
+        ([], set()),  # Explicitly empty means "not configured for sale", not auto-detect everything.
+    ],
+)
+def test_explicit_game_categories_override_heuristics(monkeypatch, selected_ids, expected_ids):
+    """A configured game gets exactly its admin-selected live categories, including none."""
+    from types import SimpleNamespace
+    from services import fazercards
+
+    game_id = "qa-custom-game-categories"
+
+    async def fake_find_one(query, projection=None):
+        if query.get("id") == game_id:
+            return {
+                "fazercards_categories_configured": True,
+                "fazercards_categories": selected_ids,
+            }
+        return None
+
+    async def fake_categories():
+        return [
+            {"category_id": "custom_game_category", "name": "Unrelated game offer", "note": ""},
+            {"category_id": "pubg_mobile_auto", "name": "PUBG Mobile", "note": ""},
+            {"category_id": "free_fire", "name": "Free Fire", "note": ""},
+        ]
+
+    monkeypatch.setattr(fazercards, "db", SimpleNamespace(games=SimpleNamespace(find_one=fake_find_one)))
+    monkeypatch.setattr(fazercards, "_topup_categories", fake_categories)
+
+    ids = {c["category_id"] for c in run(fazercards.game_categories(game_id))}
+    assert ids == expected_ids
