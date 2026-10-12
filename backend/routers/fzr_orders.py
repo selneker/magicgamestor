@@ -68,10 +68,28 @@ async def fzr_provider_categories(refresh: bool = False):
         fazercards._catalog_cache.clear()
     categories = await fazercards._topup_categories()
     assignments = {}
-    async for g in db.games.find({"fazercards_categories_configured": True},
-                                 {"_id": 0, "id": 1, "name": 1, "fazercards_categories": 1}):
-        for category_id in g.get("fazercards_categories") or []:
-            assignments[category_id] = {"game_id": g["id"], "game_name": g.get("name") or g["id"]}
+    configured_games = set()
+    async for g in db.games.find({}, {"_id": 0, "id": 1, "name": 1, "fazercards_categories_configured": 1,
+                                      "fazercards_categories": 1}):
+        if g.get("fazercards_categories_configured") is True:
+            configured_games.add(g["id"])
+            for category_id in g.get("fazercards_categories") or []:
+                assignments[category_id] = {"game_id": g["id"], "game_name": g.get("name") or g["id"],
+                                            "explicit": True}
+    # Reserve categories already recognized by legacy game rules until an administrator saves
+    # an explicit selection for that game. This prevents a new game stealing PUBG/Free Fire offers.
+    for category in categories:
+        category_id = category.get("category_id") or ""
+        haystack = f"{category_id} {category.get('name') or ''}".lower()
+        if category_id in assignments:
+            continue
+        for legacy_game_id, matchers in fazercards.GAME_MATCHERS.items():
+            if legacy_game_id in configured_games:
+                continue
+            if any(token in haystack for token in matchers):
+                assignments[category_id] = {"game_id": legacy_game_id, "game_name": legacy_game_id,
+                                            "explicit": False}
+                break
     return {"categories": [
         {"category_id": c.get("category_id"), "name": c.get("name"), "note": c.get("note"),
          "assigned_to": assignments.get(c.get("category_id"))}
@@ -96,6 +114,24 @@ async def fzr_assign_game_categories(
         raise HTTPException(status_code=409, detail="Certaines catégories ne sont plus disponibles chez FazerCards. Actualisez le catalogue fournisseur.")
 
     conflicts = []
+    # Do not let an explicit custom-game assignment steal categories currently used by the
+    # implicit legacy matching rules for another game, unless that game has saved explicit rules.
+    for category in live_categories:
+        category_id = category.get("category_id")
+        if category_id not in selected:
+            continue
+        haystack = f"{category_id or ''} {category.get('name') or ''}".lower()
+        for legacy_game_id, matchers in fazercards.GAME_MATCHERS.items():
+            if legacy_game_id == game_id:
+                continue
+            legacy = await db.games.find_one({"id": legacy_game_id},
+                                             {"_id": 0, "fazercards_categories_configured": 1})
+            if legacy and legacy.get("fazercards_categories_configured") is True:
+                continue
+            if any(token in haystack for token in matchers):
+                conflicts.append({"category_id": category_id, "game_id": legacy_game_id,
+                                  "game_name": legacy_game_id})
+
     if selected:
         async for other in db.games.find(
             {"id": {"$ne": game_id}, "fazercards_categories_configured": True,
