@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from core.audit import audit
 from core.db import db
-from core.games import game_has_sellable_catalog
+from core.games import DEFAULT_GAME_ID, game_has_sellable_catalog
 from core.security import get_current_user, require_permission
 
 router = APIRouter(tags=["games"])
@@ -173,6 +173,13 @@ async def update_game(game_id: str, body: GameIn, user=Depends(require_permissio
         raise HTTPException(status_code=404, detail="Jeu introuvable.")
     if body.active and not await game_has_sellable_catalog(game_id):
         raise HTTPException(status_code=409, detail=NO_CATALOG_DETAIL)
+    if body.active and game_id != DEFAULT_GAME_ID:
+        raise HTTPException(
+            status_code=409,
+            detail=("Activation refusee : le checkout de verification d'identite est encore configure "
+                    "uniquement pour PUBG Mobile. Configurez le parcours d'identite de ce jeu avant "
+                    "son ouverture publique."),
+        )
     data = body.model_dump()
     data.pop("id", None)  # never re-key an existing game
     data["slug"] = data.get("slug") or game_id
