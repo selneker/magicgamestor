@@ -64,7 +64,8 @@
   "scripts": {
     "start": "craco start",
     "build": "craco build",
-    "test": "craco test"
+    "test": "craco test",
+    "test:ci": "craco test --watchAll=false"
   },
   "browserslist": {
     "production": [
@@ -139,6 +140,11 @@
     "**/jest-util/picomatch": "2.3.2",
     "**/tinyglobby/picomatch": "4.0.4",
     "http-proxy-middleware": "2.0.10"
+  },
+  "jest": {
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1"
+    }
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
