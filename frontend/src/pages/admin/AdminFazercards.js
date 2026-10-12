@@ -49,6 +49,7 @@ export default function AdminFazercards() {
   // Free Fire operation can never read or write PUBG mappings (and vice versa).
   const [game, setGame] = useState("pubg-mobile");
   const [games, setGames] = useState([]);
+  const [gamesReady, setGamesReady] = useState(false);
 
   const load = useCallback((g = "") => {
     api.get("/admin/fazercards/settings").then((r) => setSettings(r.data)).catch(() => {});
@@ -59,6 +60,7 @@ export default function AdminFazercards() {
   useEffect(() => {
     api.get("/admin/games").then((r) => {
       setGames(r.data);
+      setGamesReady(true);
       const selected = r.data.find((g) => g.id === game);
       setAssignedCategoryIds(selected?.fazercards_categories || []);
       setCategoriesConfigured(selected?.fazercards_categories_configured === true);
@@ -87,11 +89,11 @@ export default function AdminFazercards() {
 
   useEffect(() => { loadProviderCategories(false); }, [loadProviderCategories]);
   useEffect(() => {
-    if (!game || categoriesConfigured || providerCategories.length === 0) return;
+    if (!gamesReady || !game || categoriesConfigured || providerCategories.length === 0) return;
     // When a legacy game has never saved an explicit selection, preselect its existing
     // keyword-matched categories so the first save preserves today's behavior.
     setAssignedCategoryIds(providerCategories.filter((cat) => cat.assigned_to?.game_id === game).map((cat) => cat.category_id));
-  }, [providerCategories, game, categoriesConfigured]);
+  }, [providerCategories, game, categoriesConfigured, gamesReady]);
 
   const saveGameCategories = async () => {
     if (!game) { toast.error("Choisissez un jeu."); return; }
