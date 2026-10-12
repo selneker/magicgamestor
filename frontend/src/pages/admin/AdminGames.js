@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 // Phase 3 — game management. `icon_url` is the single logo source: the visible label
 // is "Logo URL" and the administrator can set/change it. No upload, no media manager.
-const EMPTY = { id: "", name: "", slug: "", icon_url: "", currency_label: "", description: "", description_en: "", active: true, sort_order: 0 };
+const EMPTY = { id: "", name: "", slug: "", icon_url: "", currency_label: "", description: "", description_en: "", active: false, sort_order: 0 };
 
 export default function AdminGames() {
   const { t } = useLang();
