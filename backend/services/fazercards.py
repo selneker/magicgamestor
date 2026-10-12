@@ -148,10 +148,22 @@ def _store(key: str, value):
 
 
 # Jeu → mots-clés de reconnaissance des catégories fournisseur (ids jamais hardcodés).
+# PUBG Mobile inclut le mot-clé historique « pubgm » : les catégories legacy (ex. `pubgm_uc`)
+# restent reconnues comme PUBG Mobile, sans élargir la reconnaissance des autres jeux.
 GAME_MATCHERS: dict[str, tuple[str, ...]] = {
-    "pubg-mobile": ("pubg_mobile", "pubg mobile"),
+    "pubg-mobile": ("pubg_mobile", "pubg mobile", "pubgm"),
     "free-fire": ("free_fire", "free fire", "freefire"),
 }
+
+# Chemin de compatibilité EXPLICITE et intentionnel : PUBG Mobile et les appels historiques
+# sans `game_id` (produits/commandes Phase 1) conservent le comportement d'origine. Aucun autre
+# jeu n'emprunte ce chemin — un jeu inconnu échoue explicitement (fail-closed).
+LEGACY_GAME_IDS: tuple[str | None, ...] = (None, "pubg-mobile")
+
+
+def is_legacy_pubg(game_id: str | None) -> bool:
+    """Vrai pour PUBG Mobile et les appels historiques sans `game_id` (compat Phase 1)."""
+    return game_id in LEGACY_GAME_IDS
 
 
 async def _topup_categories() -> list[dict]:
@@ -177,10 +189,22 @@ async def _topup_categories() -> list[dict]:
 
 async def game_categories(game_id: str | None) -> list[dict]:
     """Catégories fournisseur d'un jeu, déduites des mots-clés (ids jamais hardcodés).
-    Sans correspondance de jeu → toutes les catégories (découverte, aucune donnée inventée)."""
-    matchers = GAME_MATCHERS.get(game_id or "")
-    if not matchers:
-        return await _topup_categories()
+
+    FAIL-CLOSED : un jeu reconnu (GAME_MATCHERS) ne voit QUE ses propres catégories ; un jeu
+    inconnu/non supporté échoue explicitement (409) — il n'obtient JAMAIS le catalogue fournisseur
+    complet. Seul le chemin de compatibilité PUBG historique (game_id absent ou « pubg-mobile »)
+    conserve le comportement d'origine, et il reste lui aussi limité aux catégories PUBG.
+    """
+    if is_legacy_pubg(game_id):
+        # Chemin de compatibilité EXPLICITE et intentionnel : PUBG Mobile (et les appels
+        # historiques sans game_id) gardent la découverte PUBG d'origine — jamais tout le catalogue.
+        matchers = GAME_MATCHERS["pubg-mobile"]
+    else:
+        matchers = GAME_MATCHERS.get(game_id)
+        if not matchers:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Jeu « {game_id} » non supporté : aucune correspondance fournisseur configurée.")
     return [{"category_id": c.get("category_id"), "name": c.get("name"), "note": c.get("note")}
             for c in await _topup_categories()
             if any(m in (c.get("category_id") or "").lower() or m in (c.get("name") or "").lower() for m in matchers)]
