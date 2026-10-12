@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const EMPTY = { slug: "", type: "uc", name: "", name_en: "", uc_amount: "", duration_months: "", price: "", old_price: "", popular: false, badge: "", evo_limit: "", image_url: "", description_fr: "", description_en: "", active: true, sort_order: 0 };
+const EMPTY = { slug: "", type: "uc", game_id: "pubg-mobile", name: "", name_en: "", uc_amount: "", duration_months: "", price: "", old_price: "", popular: false, badge: "", evo_limit: "", image_url: "", description_fr: "", description_en: "", active: false, requires_mapping: true, sort_order: 0 };
 
 function SeasonsPanel({ t }) {
   const [seasons, setSeasons] = useState(null);
@@ -50,14 +50,15 @@ function SeasonsPanel({ t }) {
 export default function AdminProducts() {
   const { t } = useLang();
   const [products, setProducts] = useState([]);
+  const [games, setGames] = useState([]);
   const [editing, setEditing] = useState(null);
   const load = () => api.get("/products", { params: { include_inactive: true } }).then((r) => setProducts(r.data)).catch(() => {});
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); api.get("/admin/games").then((r) => setGames(r.data)).catch(() => {}); }, []);
 
   const save = async (e) => {
     e.preventDefault();
     const num = (v) => (v === "" || v === null ? null : Number(v));
-    const body = { ...editing, uc_amount: num(editing.uc_amount), duration_months: num(editing.duration_months), price: Number(editing.price), old_price: num(editing.old_price), badge: editing.badge || null, name_en: editing.name_en || null, evo_limit: editing.type === "evo" ? (editing.evo_limit || "season") : null, image_url: (editing.image_url || "").trim() || null, sort_order: Number(editing.sort_order || 0) };
+    const body = { ...editing, game_id: editing.game_id || "pubg-mobile", requires_mapping: editing.requires_mapping !== false, uc_amount: num(editing.uc_amount), duration_months: num(editing.duration_months), price: Number(editing.price), old_price: num(editing.old_price), badge: editing.badge || null, name_en: editing.name_en || null, evo_limit: editing.type === "evo" ? (editing.evo_limit || "season") : null, image_url: (editing.image_url || "").trim() || null, sort_order: Number(editing.sort_order || 0) };
     try {
       if (editing.id) await api.put(`/admin/products/${editing.id}`, body); else await api.post("/admin/products", body);
       toast.success(t("admin.save")); setEditing(null); load();
@@ -89,6 +90,12 @@ export default function AdminProducts() {
           {editing && (
             <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
               {field("name", "Nom (FR)")}{field("name_en", "Name (EN)")}{field("slug", "Slug")}
+              <label className="text-sm font-semibold text-slate-700">Jeu associé
+                <Select value={editing.game_id || "pubg-mobile"} onValueChange={(v) => setEditing({ ...editing, game_id: v })}>
+                  <SelectTrigger className="mt-1 h-10 rounded-xl" data-testid="product-field-game_id"><SelectValue placeholder="Choisir un jeu" /></SelectTrigger>
+                  <SelectContent>{games.map((g) => <SelectItem key={g.id} value={g.id}>{g.name} {g.active ? "" : "· Inactif"}</SelectItem>)}</SelectContent>
+                </Select>
+              </label>
               <label className="text-sm font-semibold text-slate-700">Type
                 <Select value={editing.type} onValueChange={(v) => setEditing({ ...editing, type: v })}><SelectTrigger className="mt-1 h-10 rounded-xl" data-testid="product-field-type"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="uc">UC</SelectItem><SelectItem value="prime">Prime</SelectItem><SelectItem value="prime_plus">Prime+</SelectItem><SelectItem value="evo">Pack évolutif</SelectItem></SelectContent></Select>
               </label>
@@ -103,7 +110,9 @@ export default function AdminProducts() {
               <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Description FR<Textarea value={editing.description_fr} onChange={(e) => setEditing({ ...editing, description_fr: e.target.value })} className="mt-1 rounded-xl" data-testid="product-field-description_fr" /></label>
               <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Description EN<Textarea value={editing.description_en} onChange={(e) => setEditing({ ...editing, description_en: e.target.value })} className="mt-1 rounded-xl" data-testid="product-field-description_en" /></label>
               <label className="flex items-center gap-2 text-sm font-semibold"><Switch checked={editing.popular} onCheckedChange={(v) => setEditing({ ...editing, popular: v })} data-testid="product-field-popular" />{t("admin.popular")}</label>
+              <label className="flex items-center gap-2 text-sm font-semibold"><Switch checked={editing.requires_mapping !== false} onCheckedChange={(v) => setEditing({ ...editing, requires_mapping: v })} data-testid="product-field-requires_mapping" />Exiger un mapping fournisseur</label>
               <label className="flex items-center gap-2 text-sm font-semibold"><Switch checked={editing.active} onCheckedChange={(v) => setEditing({ ...editing, active: v })} data-testid="product-field-active" />{t("admin.active")}</label>
+              <p className="text-xs text-slate-500 sm:col-span-2">Pour un nouveau jeu, créez d'abord le produit inactif, configurez son mapping dans Fournisseur, puis activez-le. Un jeu ne devient public qu'avec un catalogue livrable.</p>
               <Button type="submit" className="rounded-full font-bold sm:col-span-2" data-testid="product-save">{t("admin.save")}</Button>
             </form>
           )}
