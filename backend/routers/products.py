@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from core.db import db
 from core.games import DEFAULT_GAME_ID
-from core.security import require_permission
+from core.security import ADMIN_ROLES, get_optional_user, require_permission
 from services.fzr_mapping import mapping_ok
 
 router = APIRouter(tags=["products"])
@@ -62,8 +62,13 @@ async def _require_game(game_id: str):
 async def list_products(
     type: str | None = None, q: str | None = None, min_price: int | None = None, max_price: int | None = None,
     popular: bool | None = None, sort: str = Query("default", pattern=r"^(default|price_asc|price_desc|uc_desc)$"),
-    include_inactive: bool = False, game: str | None = None,
+    include_inactive: bool = False, game: str | None = None, user=Depends(get_optional_user),
 ):
+    # `include_inactive` (catalogue admin) n'est honoré que pour un compte staff : un visiteur
+    # anonyme ne peut jamais lister les produits inactifs (défense en profondeur, la route reste
+    # publique pour le catalogue actif).
+    if include_inactive and (not user or user.get("role") not in ADMIN_ROLES):
+        include_inactive = False
     query = {} if include_inactive else {"active": True}
     if game:
         query["game_id"] = {"$in": [game, None]} if game == DEFAULT_GAME_ID else game
@@ -119,6 +124,11 @@ async def update_product(product_id: str, body: ProductIn):
     clash = await db.products.find_one({"slug": body.slug, "id": {"$ne": product_id}})
     if clash:
         raise HTTPException(status_code=409, detail="Slug already exists")
+    # Isolation des mappings : un mapping fournisseur appartient à UN jeu. Changer le jeu d'un
+    # produit qui porte déjà un mapping laisserait ce mapping (d'un autre jeu) utilisable par
+    # erreur. On refuse tant que le mapping n'a pas été retiré explicitement.
+    if body.game_id != existing.get("game_id", DEFAULT_GAME_ID) and existing.get("fazercards_mapping"):
+        raise HTTPException(status_code=409, detail="⚠ Ce produit porte un mapping fournisseur : retirez-le (Admin → Fournisseur) avant de changer son jeu.")
     data = body.model_dump()
     if body.requires_mapping is None:
         data["requires_mapping"] = existing.get("requires_mapping", False)

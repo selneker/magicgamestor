@@ -57,8 +57,12 @@ async def fzr_update_settings(body: FzrAutoIn, admin=Depends(require_super_admin
 # ---------- Mapping produit MGS ↔ offre(s) FazerCards (direct ou composé, tous types) ----------
 @router.get("/admin/fazercards/mappings", dependencies=[Depends(require_admin)])
 async def fzr_mappings(game: str | None = None):
-    """Mappings produits ↔ offres fournisseur. `?game=` restreint à un jeu (GAME_PROVIDER / game_id)."""
-    query = {"game_id": game} if game else {}
+    """Mappings produits ↔ offres fournisseur. `?game=` restreint à un jeu (GAME_PROVIDER / game_id).
+
+    Le filtre passe par `game_product_query` : PUBG inclut les produits historiques sans `game_id`
+    (compatibilité Phase 1), tout autre jeu ne voit QUE ses propres produits — jamais ceux d'un autre jeu.
+    """
+    query = fzr_mapping.game_product_query(game)
     products = await db.products.find(query, {"_id": 0, "id": 1, "slug": 1, "name": 1, "type": 1, "price": 1,
                                               "uc_amount": 1, "duration_months": 1, "active": 1, "game_id": 1,
                                               "requires_mapping": 1, "fazercards_mapping": 1}) \
@@ -175,7 +179,9 @@ async def fzr_refresh_status(order_id: str, admin=Depends(require_permission("or
 @router.post("/admin/fazercards/catalog/refresh")
 async def fzr_catalog_refresh(admin=Depends(require_permission("catalog.manage"))):
     fazercards._catalog_cache.clear()
-    categories = await fazercards.pubg_catalog()
+    # Catalogue du jeu PUBG Mobile (comportement historique) via la découverte générique par jeu :
+    # les ids de catégorie ne sont jamais hardcodés.
+    categories = await fazercards.catalog_for_game(DEFAULT_GAME_ID)
     checked, changes = 0, []
     for cat in categories:
         for offer in cat["offers"]:
