@@ -94,6 +94,9 @@ export default function AdminGames() {
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent aria-describedby={undefined} className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-2xl" data-testid="game-dialog">
           <DialogHeader><DialogTitle className="font-display">{editing?._existing ? t("admin.edit") : t("admin.newGame")}</DialogTitle></DialogHeader>
+          <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+            Pour préparer un nouveau jeu, configurez son unité de monnaie, affectez ses catégories FazerCards et liez chaque pack dans Admin → Fournisseur. L'ouverture publique restera bloquée tant que la vérification d'identité au checkout n'aura pas été adaptée à ce jeu.
+          </p>
           {editing && (
             <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
               {field("id", t("admin.gameId"), "text", !!editing._existing)}
