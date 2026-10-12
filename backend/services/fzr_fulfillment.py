@@ -190,11 +190,7 @@ async def preflight(order_id: str) -> dict:
             skipped.append({"index": u["line_index"], "product": u["product"], "reason": reason})
             continue
         field_keys = [f["key"] for f in offers["fields"] if f.get("key")]
-        declared = list((_identity_fields(order) or {}).keys())
-        # Clé de champ effectivement envoyée : on utilise le champ DÉCLARÉ par le jeu s'il correspond
-        # à ce qu'attend le fournisseur. Aucune hypothèse `player_id` universelle.
-        matched = [k for k in declared if k in field_keys]
-        field_key = matched[0] if matched else (field_keys[0] if field_keys else (declared[0] if declared else "player_id"))
+        field_key = "player_id" if "player_id" in field_keys else (field_keys[0] if field_keys else "player_id")
         record = unit_record(order, u)
         lines.append({
             "index": u["line_index"], "component_index": u["component_index"], "quantity_index": u["quantity_index"], "path": u["path"],
@@ -206,7 +202,6 @@ async def preflight(order_id: str) -> dict:
         raise HTTPException(status_code=409, detail=skipped[-1]["reason"] if skipped else "Aucune ligne éligible.")
     report = {
         "order_number": order["order_number"], "provider": "fazercards", "player_id": order["pubg_id"],
-        "identity_fields": _identity_fields(order),
         "player_name": validation.player_name, "mgs_total": order["total"],
         "lines": lines, "skipped": skipped, "ready_count": len(lines),
     }
@@ -235,8 +230,7 @@ async def _fulfill_unit(order: dict, line: dict, actor: str) -> dict:
         "line_index": idx, "component_index": cidx, "quantity_index": q, "product_name": line["product"],
         "component_name": line.get("component_name"),
         "category_id": line["category_id"], "offer_id": line["offer_id"], "offer_name": line["offer_name"],
-        "player_id": order["pubg_id"], "identity_snapshot": _identity_fields(order),
-        "player_name_at_validation": line.get("player_name") or None,
+        "player_id": order["pubg_id"], "player_name_at_validation": line.get("player_name") or None,
         "supplier_price_usd_at_order": line["price_usd"], "idempotency_key": line["idempotency_key"],
         "requested_by": actor, "last_error": None,
         "created_at": (existing or {}).get("created_at") or _now(), "updated_at": _now(),
