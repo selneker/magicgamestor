@@ -1,0 +1,116 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { api, errorMessage } from "@/lib/api";
+import { useLang } from "@/context/LanguageContext";
+import { Input } from "@/components/ui/input";
+
+// Vérification d'identité GÉNÉRIQUE (multi-jeux).
+//
+// Les champs affichés viennent de la configuration ADMIN du jeu (`identity_fields`), exposée
+// publiquement par `/api/games` : libellé, longueurs et motif de saisie. Rien n'est supposé :
+// un jeu peut demander `player_id` seul, `zone_id` + `player_id`, `server`… PUBG Mobile garde
+// son écran historique (voir StepVerify) ; ce composant sert les jeux à champs dynamiques.
+const localError = (field, value) => {
+  const v = (value || "").trim();
+  if (!v) return field.required === false ? null : "requis";
+  if (field.min_length && v.length < field.min_length) return `min ${field.min_length}`;
+  if (field.max_length && v.length > field.max_length) return `max ${field.max_length}`;
+  if (field.pattern) {
+    try { return new RegExp(field.pattern).test(v) ? null : "format"; }
+    catch (_) { return null; }
+  }
+  return null;
+};
+
+export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onVerified, autoTrigger = 0, checkout = false, initial = null }) => {
+  const { t } = useLang();
+  const [state, setState] = useState(initial ? { status: "valid", name: initial.name } : { status: "idle" });
+  const first = useRef(!!initial);
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
+
+  // Un champ modifié invalide la vérification précédente : rien n'est mémorisé comme définitif.
+  useEffect(() => {
+    if (first.current) { first.current = false; return; }
+    setState({ status: "idle" });
+    onVerified(null);
+  }, [JSON.stringify(values), onVerified]);
+
+  const errors = useMemo(
+    () => Object.fromEntries(spec.map((f) => [f.key, localError(f, (values || {})[f.key])]).filter(([, e]) => e)),
+    [spec, values]
+  );
+  const complete = spec.length > 0 && Object.keys(errors).length === 0;
+
+  const verify = async () => {
+    if (!complete) return setState({ status: "invalid" });
+    setState({ status: "loading" });
+    try {
+      const fields = Object.fromEntries(spec.map((f) => [f.key, (valuesRef.current[f.key] || "").trim()]));
+      const { data } = await api.post("/fazercards/validate-id", { game_id: gameId, fields });
+      if (data.valid) {
+        setState({ status: "valid", name: data.player_name });
+        onVerified({ name: data.player_name || null, fields });
+      } else {
+        setState({ status: "invalid" });
+      }
+    } catch (e) {
+      const code = e?.response?.status;
+      const kind = !e?.response || code === 504 || code === 429 ? "temporary" : "provider";
+      setState({ status: "error", kind, message: errorMessage(e, t("checkout.verifyError")) });
+    }
+  };
+
+  useEffect(() => {
+    if (autoTrigger > 0) verify();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTrigger]);
+
+  const btn = checkout
+    ? "mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-4 text-sm font-bold text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+    : "inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-700 disabled:opacity-50";
+
+  return (
+    <div className="mt-2 space-y-3">
+      {spec.map((f) => (
+        <div key={f.key}>
+          <label htmlFor={`identity-${f.key}`} className="text-sm font-semibold">{f.label || f.key}</label>
+          <Input
+            id={`identity-${f.key}`}
+            data-testid={`identity-field-${f.key}`}
+            value={(values || {})[f.key] || ""}
+            onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+            className="mt-1 h-12 rounded-[12px] num"
+          />
+          {errors[f.key] && <p className="mt-1 text-xs font-semibold text-red-600" data-testid={`identity-field-error-${f.key}`}>{errors[f.key]}</p>}
+        </div>
+      ))}
+      {!(checkout && state.status === "valid") && (
+        <button type="button" data-testid="identity-verify-btn" onClick={verify} disabled={state.status === "loading" || !complete} className={btn}>
+          {state.status === "loading" ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" data-testid="identity-verify-loading" />{t("checkout.verifying")}</>) : t("checkout.verify")}
+        </button>
+      )}
+      {state.status === "valid" && checkout && (
+        <div className="rounded-[18px] border-2 border-foreground bg-primary/15 p-4" data-testid="identity-verify-valid">
+          <p className="flex items-center gap-2 font-display text-lg font-bold"><CheckCircle2 className="h-5 w-5 text-emerald-600" />{t("checkout.verified")}</p>
+          <p className="mt-1.5 pl-7 text-base font-bold" data-testid="identity-verify-player-name">Pseudo: {state.name || "—"}</p>
+          <p className="mt-2 text-xs text-muted-foreground" data-testid="identity-verify-confirm">{t("checkout.verifyConfirm")}</p>
+        </div>
+      )}
+      {state.status === "invalid" && (
+        <p className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-600" data-testid="identity-verify-invalid">
+          <XCircle className="h-4 w-4" />{t("checkout.verifyInvalid")}
+        </p>
+      )}
+      {state.status === "error" && (
+        <div className="flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700" data-testid="identity-verify-error">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            {checkout && <p className="font-bold" data-testid={`identity-verify-error-${state.kind}`}>{state.kind === "temporary" ? t("checkout.errTemporary") : t("checkout.errProvider")}</p>}
+            <p>{state.message}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

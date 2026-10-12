@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
 from core.db import db
-from core.games import DEFAULT_GAME_ID
+from core.games import DEFAULT_GAME_ID, game_has_sellable_catalog, identity_spec
 from core.security import ADMIN_ROLES, get_optional_user, require_permission
 from services.fzr_mapping import mapping_ok
 
@@ -72,6 +72,13 @@ async def list_products(
     query = {} if include_inactive else {"active": True}
     if game:
         query["game_id"] = {"$in": [game, None]} if game == DEFAULT_GAME_ID else game
+    elif not include_inactive:
+        # Catalogue PUBLIC sans jeu précisé : un jeu qui n'est pas réellement prêt à la vente
+        # (pas de champs d'identité joueur déclarés) ne doit JAMAIS exposer ses produits —
+        # sinon un pack préparé pour un jeu non fini fuiterait dans la boutique.
+        public_ids = [g["id"] async for g in db.games.find({"active": True}, {"_id": 0, "id": 1, "identity_fields": 1})
+                      if identity_spec(g)]
+        query["$and"] = [{"$or": [{"game_id": {"$in": public_ids}}, {"game_id": None}, {"game_id": {"$exists": False}}]}]
     if type:
         query["type"] = {"$in": type.split(",")}
     if popular is not None:
@@ -134,12 +141,35 @@ async def update_product(product_id: str, body: ProductIn):
         data["requires_mapping"] = existing.get("requires_mapping", False)
     if data["active"] and data["requires_mapping"] and not mapping_ok(existing.get("fazercards_mapping")):
         raise HTTPException(status_code=409, detail="⚠ Mapping fournisseur manquant ou non confirmé : impossible d'activer ce produit.")
+    if existing.get("active") and not data["active"]:
+        # Désactiver le DERNIER produit livrable rendrait le jeu vendable vide : on refuse pour
+        # que l'invariant « jeu actif ⇒ catalogue livrable » reste vrai (le jeu se désactive
+        # explicitement dans Admin → Jeux).
+        game_id = existing.get("game_id", DEFAULT_GAME_ID)
+        remaining = await db.products.count_documents({"id": {"$ne": product_id}, "game_id": game_id, "active": True})
+        if remaining == 0 and await db.games.find_one({"id": game_id, "active": True}):
+            raise HTTPException(status_code=409, detail="⚠ Dernier produit actif de ce jeu : désactivez le jeu (Admin → Jeux) avant, sinon sa boutique deviendrait vide.")
     await db.products.update_one({"id": product_id}, {"$set": data})
     return await db.products.find_one({"id": product_id}, PUBLIC)
 
 
 @router.delete("/admin/products/{product_id}", dependencies=[Depends(require_permission("catalog.manage"))])
 async def delete_product(product_id: str):
+    existing = await db.products.find_one({"id": product_id}, PUBLIC)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Product not found")
+    if existing.get("active"):
+        game_id = existing.get("game_id", DEFAULT_GAME_ID)
+        # La suppression du DERNIER produit réellement livrable viderait la boutique d'un jeu
+        # encore public : refusé (le jeu se désactive explicitement dans Admin → Jeux).
+        deliverable_left = False
+        async for other in db.products.find({"id": {"$ne": product_id}, "game_id": game_id, "active": True},
+                                            {"_id": 0, "requires_mapping": 1, "fazercards_mapping": 1}):
+            if not other.get("requires_mapping") or mapping_ok(other.get("fazercards_mapping")):
+                deliverable_left = True
+                break
+        if not deliverable_left and await db.games.find_one({"id": game_id, "active": True}):
+            raise HTTPException(status_code=409, detail="⚠ Supprimer ce produit rendrait la boutique de ce jeu vide : désactivez le jeu avant.")
     res = await db.products.delete_one({"id": product_id})
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Product not found")

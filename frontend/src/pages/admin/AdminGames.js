@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Gamepad2, Pencil, Plus } from "lucide-react";
+import { Gamepad2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
@@ -11,7 +11,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 // Phase 3 — game management. `icon_url` is the single logo source: the visible label
 // is "Logo URL" and the administrator can set/change it. No upload, no media manager.
-const EMPTY = { id: "", name: "", slug: "", icon_url: "", currency_label: "", description: "", description_en: "", active: false, sort_order: 0 };
+// Multi-jeux : `identity_fields` définit le contrat de saisie du joueur POUR CE JEU
+// (clé, libellé, format). Aucune clé n'est imposée : `player_id` n'est pas une hypothèse globale.
+const EMPTY = { id: "", name: "", slug: "", icon_url: "", currency_label: "", description: "", description_en: "", active: false, sort_order: 0, identity_fields: [] };
+const EMPTY_FIELD = { key: "", label: "", pattern: "", min_length: "", max_length: "", required: true };
+const KEY_RE = /^[a-z][a-z0-9_]{0,31}$/;
 
 export default function AdminGames() {
   const { t } = useLang();
@@ -22,10 +26,20 @@ export default function AdminGames() {
 
   const save = async (e) => {
     e.preventDefault();
+    const fields = (editing.identity_fields || EMPTY.identity_fields).map((f) => ({
+      key: (f.key || "").trim(), label: (f.label || "").trim(),
+      ...(f.pattern ? { pattern: f.pattern } : {}),
+      ...(f.min_length !== "" && f.min_length != null ? { min_length: Number(f.min_length) } : {}),
+      ...(f.max_length !== "" && f.max_length != null ? { max_length: Number(f.max_length) } : {}),
+      required: f.required !== false, primary: !!f.primary,
+    }));
+    const bad = fields.find((f) => !KEY_RE.test(f.key) || !f.label);
+    if (bad) return toast.error(`Champ d'identité invalide : clé (minuscules/chiffres/_) et libellé requis (${bad.key || "?"}).`);
     const body = {
       id: editing.id, name: editing.name, slug: editing.slug || editing.id,
       icon_url: (editing.icon_url || "").trim() || null,
       currency_label: (editing.currency_label || "").trim() || null,
+      identity_fields: fields,
       description: editing.description || "", description_en: editing.description_en || null,
       active: !!editing.active, sort_order: Number(editing.sort_order || 0),
     };
@@ -35,6 +49,12 @@ export default function AdminGames() {
       toast.success(t("admin.save")); setEditing(null); load();
     } catch (err) { toast.error(errorMessage(err)); }
   };
+
+  const setFields = (fn) => setEditing((s) => ({ ...s, identity_fields: fn(s.identity_fields || []) }));
+  const addField = () => setFields((l) => [...l, { ...EMPTY_FIELD, primary: l.length === 0 }]);
+  const updField = (i, patch) => setFields((l) => l.map((f, idx) => (idx === i ? { ...f, ...patch } : f)));
+  const delField = (i) => setFields((l) => l.filter((_, idx) => idx !== i));
+  const makePrimary = (i) => setFields((l) => l.map((f, idx) => ({ ...f, primary: idx === i })));
 
   const toggleActive = async (g) => {
     try {
@@ -95,7 +115,9 @@ export default function AdminGames() {
         <DialogContent aria-describedby={undefined} className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-2xl" data-testid="game-dialog">
           <DialogHeader><DialogTitle className="font-display">{editing?._existing ? t("admin.edit") : t("admin.newGame")}</DialogTitle></DialogHeader>
           <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-            Pour préparer un nouveau jeu, configurez son unité de monnaie, affectez ses catégories FazerCards et liez chaque pack dans Admin → Fournisseur. L'ouverture publique restera bloquée tant que la vérification d'identité au checkout n'aura pas été adaptée à ce jeu.
+            Pour préparer un nouveau jeu : définissez ses champs d'identité joueur, son unité de monnaie,
+            associez ses catégories FazerCards et liez chaque pack dans Admin → Fournisseur.
+            Le jeu ne pourra être activé que lorsque sa configuration ET son catalogue livrable seront réels.
           </p>
           {editing && (
             <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
@@ -121,6 +143,40 @@ export default function AdminGames() {
               <label className="flex items-center gap-2 text-sm font-semibold">
                 <Switch checked={!!editing.active} onCheckedChange={(v) => setEditing({ ...editing, active: v })} data-testid="game-field-active" />{t("admin.active")}
               </label>
+              <div className="sm:col-span-2 rounded-2xl border-2 border-foreground/15 p-3" data-testid="game-identity-fields">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-bold">Champs d'identité joueur</p>
+                  <Button type="button" size="sm" variant="outline" className="rounded-full font-bold" onClick={addField} data-testid="game-identity-add">
+                    <Plus className="mr-1 h-3.5 w-3.5" />Ajouter un champ
+                  </Button>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Exigés par le fournisseur pour ce jeu (ex. <code>player_id</code>, <code>zone_id</code>, <code>server</code>).
+                  Le checkout affiche exactement ces champs. Aucune clé n'est imposée ; cochez « principale » pour la valeur de suivi.
+                </p>
+                <div className="mt-3 space-y-2">
+                  {(editing.identity_fields || []).length === 0 && (
+                    <p className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 p-2 text-xs text-amber-800" data-testid="game-identity-empty">
+                      Aucun champ défini : l'activation publique de ce jeu sera refusée.
+                    </p>
+                  )}
+                  {(editing.identity_fields || []).map((f, i) => (
+                    <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-12" data-testid={`game-identity-row-${i}`}>
+                      <Input aria-label="Clé" placeholder="player_id" value={f.key || ""} onChange={(e) => updField(i, { key: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-3" data-testid={`game-identity-key-${i}`} />
+                      <Input aria-label="Libellé" placeholder="ID joueur" value={f.label || ""} onChange={(e) => updField(i, { label: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-3" data-testid={`game-identity-label-${i}`} />
+                      <Input aria-label="Motif" placeholder="^[0-9]{6,12}$" value={f.pattern || ""} onChange={(e) => updField(i, { pattern: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-3" data-testid={`game-identity-pattern-${i}`} />
+                      <Input aria-label="Longueur min" type="number" placeholder="min" value={f.min_length ?? ""} onChange={(e) => updField(i, { min_length: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-1" data-testid={`game-identity-min-${i}`} />
+                      <Input aria-label="Longueur max" type="number" placeholder="max" value={f.max_length ?? ""} onChange={(e) => updField(i, { max_length: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-1" data-testid={`game-identity-max-${i}`} />
+                      <label className="col-span-1 flex items-center gap-1 text-xs font-semibold sm:col-span-1">
+                        <input type="radio" name="identity-primary" checked={!!f.primary} onChange={() => makePrimary(i)} data-testid={`game-identity-primary-${i}`} />principale
+                      </label>
+                      <Button type="button" size="icon" variant="ghost" className="col-span-1 h-9 w-9 rounded-full" onClick={() => delField(i)} data-testid={`game-identity-del-${i}`} aria-label="Supprimer">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
               <Button type="submit" className="rounded-full font-bold sm:col-span-2" data-testid="game-save">{t("admin.save")}</Button>
             </form>
           )}
