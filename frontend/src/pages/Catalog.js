@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useGames } from "@/context/GameContext";
 import { ProductCard } from "@/components/store/ProductCard";
-import { GameLogo } from "@/pages/Home";
+import { GameLogo, BackToTop } from "@/pages/Home";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -153,7 +153,7 @@ export default function Catalog() {
       <p className="mt-8 eyebrow" data-testid="results-count" aria-live="polite">{products ? `${products.length} ${t("catalog.results")}` : t("common.loading")}</p>
       {type === "evo" ? <PackEvolutif embedded products={products} /> : <>
         <div className="mt-3 grid grid-cols-2 items-stretch gap-3 md:grid-cols-3 lg:grid-cols-4" data-testid="catalog-grid">
-          {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-64 rounded-[14px]" />)}
+          {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="aspect-[4/5] rounded-[20px]" />)}
           {products?.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
         </div>
         {products?.length === 0 && (
@@ -166,6 +166,7 @@ export default function Catalog() {
           </div>
         )}
       </>}
+      <BackToTop />
     </div>
   );
 }

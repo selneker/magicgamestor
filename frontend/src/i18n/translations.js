@@ -1,7 +1,7 @@
 export const translations = {
   fr: {
     nav: { shop: "Boutique", uc: "Achat UC", prime: "Abonnement", evo: "Pack évolutif", events: "Event", eventsFull: "Événements", orders: "Commandes", account: "Compte", admin: "Admin", login: "Connexion", logout: "Déconnexion", track: "Suivi", cart: "Panier", support: "Support", messages: "Messages" },
-    games: { title: "Jeux", select: "Choisir un jeu", current: "Jeu sélectionné", eyebrow: "Boutique", pickTitle: "Choisissez votre jeu", pickSubtitle: "Sélectionnez un jeu pour afficher son catalogue.", empty: "Aucun jeu disponible pour le moment." },
+    games: { title: "Jeux", select: "Choisir un jeu", current: "Jeu sélectionné", eyebrow: "Boutique", pickTitle: "Choisissez votre jeu", pickSubtitle: "Sélectionnez un jeu pour afficher son catalogue.", comingSoon: "Bientôt", active: "Actif", empty: "Aucun jeu disponible pour le moment." },
     profile: { backToShop: "Boutique", loyalty: "Points fidélité", quickAccess: "Accès rapide", preferences: "Préférences", security: "Sécurité", helpLegal: "Aide & légal", editProfile: "Modifier mon profil", pubgCard: "Ma PUBG Player Card", myOrders: "Mes commandes", language: "Langue", theme: "Thème", themeLight: "Clair", themeDark: "Sombre", themeSystem: "Système", password: "Mot de passe", deleteAccount: "Supprimer mon compte", helpSupport: "Aide & support", privacy: "Confidentialité", terms: "Conditions d'utilisation", avatarLocked: "Avatar non modifiable" },
     store: {
       heroEyebrow: "Recharges de jeux · Madagascar", heroA: "Rechargez vos jeux.", heroB: "Sans détour.",
@@ -116,11 +116,11 @@ export const translations = {
         availableNotActive: "Disponible chez FazerCards — non activée sur MGS", usedBy: "Utilisée par :",
         groupUc: "Packs UC", groupPrime: "Prime", groupPrimePlus: "Prime+", groupEvo: "Pack évolutif",
         mappingMissingOrder: "⚠ Mapping fournisseur manquant" } },
-    common: { loading: "Chargement…", error: "Une erreur est survenue", back: "Retour", close: "Fermer", confirm: "Confirmer", yes: "Oui", no: "Non", seeAll: "Tout voir", popular: "Populaire", new: "Nouveau", promo: "Promo", copy: "Copier", copied: "Copié !" },
+    common: { loading: "Chargement…", error: "Une erreur est survenue", back: "Retour", close: "Fermer", confirm: "Confirmer", yes: "Oui", no: "Non", seeAll: "Tout voir", seeMore: "Voir plus", subsTitle: "Abonnements", subsSub: "Prime & Prime+ livrés sur votre compte", backToTop: "Retour en haut", popular: "Populaire", new: "Nouveau", promo: "Promo", copy: "Copier", copied: "Copié !" },
   },
   en: {
     nav: { shop: "Shop", uc: "Buy UC", prime: "Subscription", evo: "Evolving Pack", events: "Event", eventsFull: "Events", orders: "Orders", account: "Account", admin: "Admin", login: "Log in", logout: "Log out", track: "Track", cart: "Cart", support: "Support", messages: "Messages" },
-    games: { title: "Games", select: "Pick a game", current: "Selected game", eyebrow: "Shop", pickTitle: "Choose your game", pickSubtitle: "Pick a game to open its catalog.", empty: "No game available right now." },
+    games: { title: "Games", select: "Pick a game", current: "Selected game", eyebrow: "Shop", pickTitle: "Choose your game", pickSubtitle: "Pick a game to open its catalog.", comingSoon: "Coming soon", active: "Active", empty: "No game available right now." },
     profile: { backToShop: "Shop", loyalty: "Loyalty points", quickAccess: "Quick access", preferences: "Preferences", security: "Security", helpLegal: "Help & legal", editProfile: "Edit my profile", pubgCard: "My PUBG Player Card", myOrders: "My orders", language: "Language", theme: "Theme", themeLight: "Light", themeDark: "Dark", themeSystem: "System", password: "Password", deleteAccount: "Delete my account", helpSupport: "Help & support", privacy: "Privacy", terms: "Terms of use", avatarLocked: "Avatar locked" },
     store: {
       heroEyebrow: "Game top-ups · Madagascar", heroA: "Top up your games.", heroB: "No detours.",
@@ -235,6 +235,6 @@ export const translations = {
         availableNotActive: "Available at FazerCards — not activated on MGS", usedBy: "Used by:",
         groupUc: "UC packs", groupPrime: "Prime", groupPrimePlus: "Prime+", groupEvo: "Evolving Pack",
         mappingMissingOrder: "⚠ Supplier mapping missing" } },
-    common: { loading: "Loading…", error: "Something went wrong", back: "Back", close: "Close", confirm: "Confirm", yes: "Yes", no: "No", seeAll: "See all", popular: "Popular", new: "New", promo: "Promo", copy: "Copy", copied: "Copied!" },
+    common: { loading: "Loading…", error: "Something went wrong", back: "Back", close: "Close", confirm: "Confirm", yes: "Yes", no: "No", seeAll: "See all", seeMore: "See more", subsTitle: "Subscriptions", subsSub: "Prime & Prime+ delivered to your account", backToTop: "Back to top", popular: "Popular", new: "New", promo: "Promo", copy: "Copy", copied: "Copied!" },
   },
 };
