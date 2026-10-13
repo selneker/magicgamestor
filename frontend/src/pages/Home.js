@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { usePageMeta } from "@/lib/catalog";
+import ucBackground from "@/assets/carousel-uc.jpg";
+import primeBackground from "@/assets/carousel-prime.jpg";
+import manualBackground from "@/assets/carousel-manual.jpg";
 
 const rise = (i = 0) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.06 * i, duration: 0.45, ease: "easeOut" } });
 
@@ -68,10 +71,10 @@ function Hero({ event }) {
   const [active, setActive] = useState(0);
 
   const slides = [
-    { id: "uc", title: t("hero.ucTitle"), sub: t("hero.ucSub"), cta: t("hero.ucCta"), to: "/boutique?type=uc", testid: "hero-cta-uc" },
-    { id: "prime", title: t("hero.primeTitle"), sub: t("hero.primeSub"), cta: t("hero.primeCta"), to: "/boutique?type=prime,prime_plus", testid: "hero-cta-prime" },
-    ...(event ? [{ id: "event", title: localized(event, "title", lang), sub: localized(event, "description", lang) || t("hero.eventSub"), cta: t("hero.eventCta"), to: "/evenements", testid: "hero-cta-event", image: event.image_url, badge: event.badge || t("common.promo") }] : []),
-    { id: "manual", title: t("hero.manualTitle"), sub: t("hero.manualSub"), cta: t("hero.manualCta"), to: "/boutique", testid: "hero-cta-manual" },
+    { id: "uc", title: t("hero.ucTitle"), sub: t("hero.ucSub"), cta: t("hero.ucCta"), to: "/boutique?type=uc", testid: "hero-cta-uc", image: ucBackground },
+    { id: "prime", title: t("hero.primeTitle"), sub: t("hero.primeSub"), cta: t("hero.primeCta"), to: "/boutique?type=prime,prime_plus", testid: "hero-cta-prime", image: primeBackground },
+    ...(event ? [{ id: "event", title: localized(event, "title", lang), sub: localized(event, "description", lang) || t("hero.eventSub"), cta: t("hero.eventCta"), to: "/evenements", testid: "hero-cta-event", image: event.image_url || ucBackground, badge: event.badge || t("common.promo") }] : []),
+    { id: "manual", title: t("hero.manualTitle"), sub: t("hero.manualSub"), cta: t("hero.manualCta"), to: "/boutique", testid: "hero-cta-manual", image: manualBackground },
   ];
   const n = slides.length;
 
