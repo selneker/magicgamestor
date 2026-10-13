@@ -26,7 +26,7 @@ export function AdminBottomNav() {
 
   const secondary = [
     { to: "/admin/fournisseur", icon: PlugZap, label: t("admin.fzr.tab"), id: "admin-bnav-fzr" },
-    { to: "/admin/paiements/binance", icon: Wallet, label: "Binance", id: "admin-bnav-binance" },
+    { to: "/admin/paiements", icon: Wallet, label: "Paiements", id: "admin-bnav-payments" },
     { to: "/admin/evenements", icon: CalendarRange, label: t("admin.events"), id: "admin-bnav-events" },
     { to: "/admin/fidelite", icon: Coins, label: "Fidélité", id: "admin-bnav-loyalty" },
     ...(can("users.manage") ? [{ to: "/admin/utilisateurs", icon: Users, label: "Utilisateurs", id: "admin-bnav-users" }] : []),
