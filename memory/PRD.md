@@ -1,49 +1,36 @@
-# Magic Game Store — PRD
+# MagicGameStore — PRD
 
 ## Original problem statement
-Phase 2 — Provider / FazerCards Abstraction. Make MGS domain provider-agnostic while keeping
-FazerCards as the current provider. Target architecture:
-MGS Core -> Provider abstraction -> FazerCards adapter -> FazerCards.
-Prepare for Phase 3 (second game) with no PUBG code duplication. Do not start Phase 3 work.
+Frontend UX/UI redesign (Neo-Brutalism, dark + lime green) of the existing MagicGameStore
+(GitHub: selneker/magicgamestor, main branch). FRONTEND-ONLY. Do not touch backend logic,
+payments processing, order delivery, API contracts, FazerCards mappings, game activation rules.
 
-## Repo / environment
-- GitHub: https://github.com/selneker/magicgamestor.git — base branch: `phase-1-multigame`.
-- Working branch for this phase: `phase-2-provider` (committed locally; push requires user credentials).
-- Stack: FastAPI + MongoDB (motor) + React (CRA/craco, Neo-Brutalism). Backend routes under /api.
-- Secrets (FazerCards API key / webhook secret) live only in deployment env; never in repo.
-  Env var names used by code: FAZERCARDS_API_BASE, FAZERCARDS_API_KEY, FAZERCARDS_WEBHOOK_SECRET.
+## Architecture
+- React (CRACO) + FastAPI + MongoDB. Backend runs PAYMENT_MODE=simulation in preview.
+- Multi-game: generic catalog reused per selected game (GameContext). PUBG Mobile is the only
+  active/sellable game; Free Fire NOT enabled (left as-is).
+- i18n FR/EN via src/i18n/translations.js.
 
-## Architecture — Provider boundary (Phase 2, implemented 2026-06)
-- `backend/services/providers/` (NEW):
-  - `base.py`: `Provider` ABC; normalized `OrderStatus` {created,processing,completed,failed,refund};
-    dataclasses `IdentityValidation`, `ProviderOrder`, `ProviderWebhookEvent`.
-  - `errors.py`: normalized `ProviderError` hierarchy (ProviderTimeout, ProviderOrderError,
-    ProviderInsufficientBalanceError, ProviderUnavailableError, ProviderValidationError, ProviderUnknownError).
-  - `fazercards_adapter.py`: `FazerCardsProvider` — wraps `services.fazercards`; holds all FazerCards
-    specifics (endpoints, raw status strings, HMAC-SHA256 webhook signature over raw body, event parse).
-  - `__init__.py`: `get_provider(game_id)` via config table `GAME_PROVIDER` ({"pubg-mobile":"fazercards"}).
-- `services/fazercards.py`: low-level HTTP client (kept). Added generic `validate_identity(fields)`;
-  `validate_pubg_id` delegates. Provider errors centralized in providers.errors (re-exported for compat).
-- `services/fzr_fulfillment.py`: routes validate/create/get-order through `get_provider`; forwards
-  `identity_snapshot.fields` dynamically (legacy fallback {player_id: pubg_id}); stable idempotency keys
-  preserved; delivered/alert decisions use normalized status (raw status still stored).
-- `routers/fazercards.py`: validate endpoint uses provider. `routers/fzr_orders.py`: `verify_fzr_signature`
-  delegates to adapter; webhook event_id dedup preserved.
+## Work done (2026-06, this session)
+- Header nav stabilized: Boutique / Événements / Commandes / Messages (+ Admin for admins).
+  Removed per-game nav entries (no more nav-game-*). Kept cart + account icons.
+- Home redesigned as a vitrine: kept hero/games/popular/steps; added "Pourquoi choisir
+  MagicGameStore ?" (4 justifiable advantages) and a FAQ accordion. No invented claims.
+- ProductCard: removed per-product game icon/thumbnail; fixed "Pack évolutif" title breaking
+  (overflow-wrap, no break-all); hides subtitle that merely repeats the figure; consistent
+  card heights; kept name/quantity/price/discount/badges/add-to-cart + filters/sort/search.
+- Login redirect: successful login now goes to '/' (was /compte).
+- Admin: unified "Paiements" page (/admin/paiements) grouping PAPI + FiveOne Pay (moved from
+  dashboard) + Binance (reused AdminBinance). Old /admin/paiements/binance redirects there.
+  Secrets never shown (only server-side "configured" booleans).
+- Admin catalog (/admin/catalogue): reorganized per selected game (game tabs + search + empty
+  state), form keeps the selected game. Catalog rules/mappings unchanged.
 
-## Preserved (Phase 1 / 1.1)
-Game, GameIdentity, Product.game_id, Order.game_id, Order.identity_snapshot, pubg_id, saved_pubg_ids.
-No destructive migration, no frontend redesign.
+## Verified
+- Production build: Compiled successfully.
+- testing_agent iteration_4: 11/11 frontend flows pass, 0 bugs. Auth + /payments/admin/settings OK.
 
-## Tests
-- NEW `backend/tests/test_phase2_provider.py` (8 tests): interface, status normalization, dynamic
-  fields validation, create_order + idempotency passthrough, webhook signature + parse, error
-  normalization, PUBG legacy fallback. All pass.
-- Regression (localhost): Phase 1 `test_multigame_core` 8/8, Phase 1.1 `test_saved_identities` 5/5,
-  fzr phase3/composite/catalog/validate/uc_audit/multiline — all green EXCEPT pre-existing failures
-  (confirmed identical on original branch): quantity>1 assertions in test_fzr_phase3
-  `test_multi_item_order_not_eligible` and test_fzr_multiline `test_qty_gt1_line_skipped_others_sent`
-  (superseded by phase-4 composite quantity repetition). `TestLive*` require production FazerCards key.
-
-## Phase 3 backlog (NOT implemented)
-Game Admin, Provider Admin, Provider Mapping UI, catalog import UI, second game (Free Fire / Mobile
-Legends) as user feature, enabling/disabling games via admin.
+## Backlog / notes
+- No evo (Pack évolutif) product in preview DB, so evo title wrapping verified by style only.
+- Delivery as a GitHub PR requires the platform "Save to GitHub" (no push token available here).
+  Local branch prepared: feat/frontend-neobrutalism-refonte.
