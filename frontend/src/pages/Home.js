@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowUpRight, Gamepad2, MessageCircle, ShieldCheck, Wallet } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Gamepad2, HelpCircle, MessageCircle, Receipt, ShieldCheck, Wallet } from "lucide-react";
 import { api } from "@/lib/api";
 import { useGames } from "@/context/GameContext";
 import { useLang, localized } from "@/context/LanguageContext";
@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/layout/Header";
 import { ProductCard } from "@/components/store/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { usePageMeta } from "@/lib/catalog";
 
 const rise = (i = 0) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.06 * i, duration: 0.45, ease: "easeOut" } });
@@ -125,6 +126,56 @@ function GamesBento({ games, selectGame }) {
   );
 }
 
+function WhyChoose() {
+  const { t } = useLang();
+  const items = [
+    [ShieldCheck, t("store.why1t"), t("store.why1d")],
+    [Wallet, t("store.why2t"), t("store.why2d")],
+    [Receipt, t("store.why3t"), t("store.why3d")],
+    [MessageCircle, t("store.why4t"), t("store.why4d")],
+  ];
+  return (
+    <section className="mt-20" data-testid="home-why">
+      <SectionHead eyebrow={t("store.whyEyebrow")} title={t("store.whyTitle")} sub={t("store.whySub")} />
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {items.map(([Icon, title, desc], i) => (
+          <motion.div key={title} {...rise(i)} className="card-lift flex flex-col gap-4 rounded-[16px] border bg-card p-6" data-testid={`home-why-${i}`}>
+            <span className="flex h-12 w-12 items-center justify-center rounded-[12px] border border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]"><Icon className="h-5 w-5" strokeWidth={2} /></span>
+            <div>
+              <h3 className="font-display text-lg font-bold leading-tight">{title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{desc}</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Faq() {
+  const { t } = useLang();
+  const qa = [
+    [t("store.faq1q"), t("store.faq1a")],
+    [t("store.faq2q"), t("store.faq2a")],
+    [t("store.faq3q"), t("store.faq3a")],
+    [t("store.faq4q"), t("store.faq4a")],
+  ];
+  return (
+    <section className="mt-20" data-testid="home-faq">
+      <SectionHead eyebrow={t("store.faqEyebrow")} title={t("store.faqTitle")}
+        action={<span className="hidden h-12 w-12 items-center justify-center rounded-[12px] border border-[color:var(--rule-strong)] bg-foreground text-background sm:flex"><HelpCircle className="h-5 w-5" /></span>} />
+      <Accordion type="single" collapsible className="mt-6 overflow-hidden rounded-[16px] border bg-card">
+        {qa.map(([q, a], i) => (
+          <AccordionItem key={i} value={`faq-${i}`} className="border-b px-5 last:border-b-0" data-testid={`home-faq-item-${i}`}>
+            <AccordionTrigger className="py-5 text-left font-display text-base font-bold hover:no-underline">{q}</AccordionTrigger>
+            <AccordionContent className="pb-5 text-sm leading-relaxed text-muted-foreground">{a}</AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    </section>
+  );
+}
+
 export default function Home() {
   const { t, lang } = useLang();
   const { games, selectGame } = useGames();
@@ -154,6 +205,8 @@ export default function Home() {
 
       <Steps />
 
+      <WhyChoose />
+
       {events.map((ev) => (
         <section key={ev.id} className="mt-20 overflow-hidden rounded-[18px] border bg-card lg:grid lg:grid-cols-2" data-testid="home-event">
           <img src={ev.image_url} alt={localized(ev, "title", lang)} className="h-56 w-full border-b object-cover lg:h-full lg:border-b-0 lg:border-r" loading="lazy" />
@@ -178,6 +231,8 @@ export default function Home() {
           <Button asChild className="h-12 w-fit px-6" data-testid="home-support-cta"><Link to="/chat"><MessageCircle className="mr-2 h-4 w-4" />{t("store.supportCta")}</Link></Button>
         </div>
       </section>
+
+      <Faq />
     </div>
   );
 }

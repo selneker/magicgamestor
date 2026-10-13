@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowUpRight, Gamepad2, Plus } from "lucide-react";
+import { ArrowUpRight, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { addFeedback, useCart } from "@/context/CartContext";
 import { useLang } from "@/context/LanguageContext";
@@ -15,9 +14,15 @@ export function ProductCard({ product, index = 0 }) {
   const { add, setOpen } = useCart();
   const { t, lang } = useLang();
   const { games } = useGames();
-  const [imgFailed, setImgFailed] = useState(false);
   const game = games.find((g) => g.id === gameOf(product));
+  const name = productName(product, lang);
+  // A numeric headline (currency amount / months) stays the hero figure. Text-only
+  // labels (e.g. "Pack évolutif") must NOT be rendered as a giant broken word.
+  const hasFigure = !!(product.uc_amount || product.duration_months);
   const { value, unit } = productFigure(product, game, lang);
+  // Avoid repeating the headline figure as a subtitle (e.g. a "30 UC" pack named "30 UC").
+  const figureStr = hasFigure ? `${value} ${unit || ""}`.trim().toLowerCase() : "";
+  const showName = !hasFigure || name.trim().toLowerCase() !== figureStr;
   const discount = product.old_price ? Math.round((1 - product.price / product.old_price) * 100) : 0;
   const available = product.purchasable !== false;
   return (
@@ -27,7 +32,7 @@ export function ProductCard({ product, index = 0 }) {
       data-testid={`product-card-${product.slug}`}
       className={`card-lift group relative flex h-full min-w-0 flex-col overflow-hidden rounded-[14px] border bg-card ${available ? "" : "opacity-70"}`}
     >
-      <Link to={`/produit/${product.slug}`} className="flex flex-1 flex-col p-4 sm:p-5" aria-label={productName(product, lang)}>
+      <Link to={`/produit/${product.slug}`} className="flex flex-1 flex-col p-4 sm:p-5" aria-label={name}>
         <div className="flex items-center justify-between gap-2">
           <span className="truncate rounded-full border border-[color:var(--rule-strong)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground" data-testid={`product-type-${product.slug}`}>
             {typeLabel(game, product.type, lang)}
@@ -38,18 +43,21 @@ export function ProductCard({ product, index = 0 }) {
             <span className="shrink-0 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-background">{product.badge}</span>
           ) : null}
         </div>
-        <div className="mt-5 flex items-end justify-between gap-3">
-          <h3 className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 font-display leading-none text-foreground">
-            <span className="num break-all text-[clamp(1.6rem,7.5vw,2.6rem)] font-bold leading-none sm:text-[2.6rem]">{value}</span>
+
+        {hasFigure && (
+          <div className="mt-5 flex items-baseline gap-1.5" data-testid={`product-figure-${product.slug}`}>
+            <span className="num text-[2.4rem] font-bold leading-none tabular-nums">{value}</span>
             {unit && <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-sm">{unit}</span>}
-          </h3>
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]">
-            {(product.image_url && !imgFailed) || (game?.icon_url && !imgFailed) ? (
-              <img src={product.image_url || game.icon_url} alt="" width="44" height="44" className="h-full w-full object-cover" loading="lazy" onError={() => setImgFailed(true)} />
-            ) : <Gamepad2 className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
-          </span>
-        </div>
-        <p className="mt-2 truncate text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{game?.name || ""}</p>
+          </div>
+        )}
+
+        <h3
+          data-testid={`product-name-${product.slug}`}
+          className={`mt-3 font-display font-bold leading-tight text-foreground [overflow-wrap:anywhere] line-clamp-2 ${hasFigure ? "min-h-[2.5rem] text-sm text-muted-foreground" : "min-h-[3.25rem] text-xl"}`}
+        >
+          {showName ? name : ""}
+        </h3>
+
         <div className="mt-auto pt-5">
           <div className="flex items-end justify-between gap-2 border-t pt-3">
             <div className="min-w-0">

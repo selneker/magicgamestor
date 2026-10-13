@@ -29,7 +29,7 @@ export default function AdminLayout() {
     ["/admin/catalogue", Package, t("admin.products"), "admin-tab-products"],
     ["/admin/jeux", Gamepad2, t("admin.games"), "admin-tab-games"],
     ["/admin/fournisseur", PlugZap, `${t("admin.fzr.tab")}${fzrAlerts ? ` (${fzrAlerts})` : ""}`, "admin-tab-fzr"],
-    ["/admin/paiements/binance", Wallet, "Paiements · Binance", "admin-tab-binance"],
+    ["/admin/paiements", Wallet, t("admin.paymentsTitle"), "admin-tab-payments"],
     ["/admin/evenements", CalendarRange, t("admin.events"), "admin-tab-events"],
     ["/admin/messages", MessageCircle, `Chat${count ? ` (${count})` : ""}`, "admin-tab-chat"],
     ["/admin/fidelite", Coins, "Fidélité", "admin-tab-loyalty"],

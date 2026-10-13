@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
@@ -27,9 +27,9 @@ function SeasonsPanel({ t }) {
   };
   if (seasons === null) return null;
   return (
-    <section className="mb-6 rounded-2xl border border-slate-100 bg-white p-4" data-testid="admin-seasons">
-      <h2 className="font-display text-lg font-bold text-slate-900">{t("admin.seasons")}</h2>
-      <p className="mt-1 text-xs text-slate-500">{t("admin.seasonsHint")}</p>
+    <section className="mb-6 border-2 border-foreground bg-card p-4" data-testid="admin-seasons">
+      <h2 className="font-display text-lg font-bold">{t("admin.seasons")}</h2>
+      <p className="mt-1 text-xs text-muted-foreground">{t("admin.seasonsHint")}</p>
       <form onSubmit={create} className="mt-3 flex flex-wrap gap-2">
         <Input data-testid="season-name-input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("admin.seasonName")} required className="h-10 w-full rounded-xl sm:w-56" />
         <Button type="submit" className="rounded-full font-bold" data-testid="season-create-button">{t("admin.newSeason")}</Button>
@@ -51,13 +51,23 @@ export default function AdminProducts() {
   const { t } = useLang();
   const [products, setProducts] = useState([]);
   const [games, setGames] = useState([]);
+  const [gameId, setGameId] = useState("pubg-mobile");
+  const [q, setQ] = useState("");
   const [editing, setEditing] = useState(null);
   const load = () => api.get("/products", { params: { include_inactive: true } }).then((r) => setProducts(r.data)).catch(() => {});
   useEffect(() => { load(); api.get("/admin/games").then((r) => setGames(r.data)).catch(() => {}); }, []);
 
-  // Type options are the selected game's own configuration (validated again by the backend).
+  // Catalogue management is centred on ONE selected game: never mix catalogues.
   const typesOf = (gid) => games.find((g) => g.id === (gid || "pubg-mobile"))?.product_types || [];
   const typeName = (p) => typesOf(p.game_id).find((pt) => pt.key === p.type)?.label || p.type;
+  const currentGame = useMemo(() => games.find((g) => g.id === gameId), [games, gameId]);
+  const visible = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    return products
+      .filter((p) => (p.game_id || "pubg-mobile") === gameId)
+      .filter((p) => !term || [p.name, p.name_en, p.slug].some((v) => (v || "").toLowerCase().includes(term)));
+  }, [products, gameId, q]);
+
   const save = async (e) => {
     e.preventDefault();
     if (!typesOf(editing.game_id).some((pt) => pt.key === editing.type)) return toast.error("Choisissez un type de produit valide pour ce jeu.");
@@ -75,12 +85,50 @@ export default function AdminProducts() {
 
   return (
     <div data-testid="admin-products">
-      <SeasonsPanel t={t} />
-      <Button className="rounded-full font-bold" onClick={() => setEditing({ ...EMPTY })} data-testid="admin-new-product"><Plus className="mr-1 h-4 w-4" />{t("admin.newProduct")}</Button>
+      {/* Game selector — the whole catalogue screen is scoped to this game. */}
+      <section className="border-2 border-foreground bg-card p-4 sm:p-5" data-testid="admin-catalog-gamebar">
+        <p className="eyebrow">{t("admin.catalogPickGame")}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{t("admin.catalogGameHint")}</p>
+        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto" role="tablist" data-testid="admin-game-tabs">
+          {games.map((g) => {
+            const active = g.id === gameId;
+            return (
+              <button key={g.id} type="button" role="tab" aria-selected={active} data-testid={`admin-game-tab-${g.id}`} onClick={() => setGameId(g.id)}
+                className={`inline-flex shrink-0 items-center gap-2 border px-4 py-2 text-[11px] font-black uppercase tracking-[0.1em] transition-colors ${active ? "border-foreground bg-primary text-[#0A0A0A]" : "border-foreground bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`}>
+                {g.name}{g.active ? "" : ` · ${t("admin.inactive")}`}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Button className="rounded-full font-bold" onClick={() => setEditing({ ...EMPTY, game_id: gameId })} data-testid="admin-new-product"><Plus className="mr-1 h-4 w-4" />{t("admin.newProduct")}</Button>
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground" data-testid="admin-catalog-count">{visible.length} {t("admin.catalogCount")}</span>
+        </div>
+        <div className="relative w-full sm:w-72">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input data-testid="admin-catalog-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("admin.catalogSearch")} className="h-10 rounded-full pl-9" />
+          {q && <button type="button" data-testid="admin-catalog-search-clear" aria-label="clear" onClick={() => setQ("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><X className="h-4 w-4" /></button>}
+        </div>
+      </div>
+
+      {gameId === "pubg-mobile" && <div className="mt-6"><SeasonsPanel t={t} /></div>}
+
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((p) => (
-          <div key={p.id} data-testid={`admin-product-${p.slug}`} className={`flex min-w-0 items-center gap-2 rounded-2xl border bg-white p-3 sm:gap-3 sm:p-4 ${p.active ? "border-slate-100" : "border-dashed border-slate-300 opacity-60"}`}>
-            <div className="min-w-0 flex-1"><p className="break-words font-display text-sm font-bold leading-snug text-slate-900 sm:text-base">{p.name}</p><p className="mt-0.5 break-words text-xs text-slate-500">{games.find((g) => g.id === (p.game_id || "pubg-mobile"))?.name || p.game_id || "PUBG Mobile"} · {typeName(p)} · {formatAr(p.price)}{p.old_price ? ` (${formatAr(p.old_price)})` : ""}{p.popular ? " · ★" : ""}</p></div>
+        {visible.map((p) => (
+          <div key={p.id} data-testid={`admin-product-${p.slug}`} className={`flex min-w-0 items-center gap-2 border-2 bg-card p-3 sm:gap-3 sm:p-4 ${p.active ? "border-foreground" : "border-dashed border-[color:var(--rule-strong)] opacity-60"}`}>
+            <div className="min-w-0 flex-1">
+              <p className="break-words font-display text-sm font-bold leading-snug sm:text-base">{p.name}</p>
+              <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="rounded-full border border-[color:var(--rule-strong)] px-2 py-0.5 font-semibold uppercase tracking-[0.08em]">{typeName(p)}</span>
+                <span className="font-semibold text-foreground">{formatAr(p.price)}</span>
+                {p.old_price ? <span className="line-through">{formatAr(p.old_price)}</span> : null}
+                {p.popular ? <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-[#0A0A0A]">★</span> : null}
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase ${p.active ? "bg-foreground text-background" : "border border-[color:var(--rule-strong)]"}`}>{p.active ? t("admin.active") : t("admin.inactive")}</span>
+              </p>
+            </div>
             <div className="flex shrink-0 items-center">
               <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full" onClick={() => setEditing({ ...EMPTY, ...p, game_id: p.game_id || "pubg-mobile", requires_mapping: p.requires_mapping ?? false })} data-testid={`admin-edit-product-${p.slug}`}><Pencil className="h-4 w-4" /></Button>
               <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-slate-400 hover:text-rose-600" onClick={() => remove(p)} data-testid={`admin-delete-product-${p.slug}`}><Trash2 className="h-4 w-4" /></Button>
@@ -88,6 +136,14 @@ export default function AdminProducts() {
           </div>
         ))}
       </div>
+      {visible.length === 0 && (
+        <div className="mt-4 border-2 border-dashed border-[color:var(--rule-strong)] bg-card p-10 text-center" data-testid="admin-catalog-empty">
+          <p className="font-display text-base font-bold">{currentGame?.name || ""}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{t("admin.catalogEmptyGame")}</p>
+          <Button className="mt-4 rounded-full font-bold" onClick={() => setEditing({ ...EMPTY, game_id: gameId })} data-testid="admin-catalog-empty-new"><Plus className="mr-1 h-4 w-4" />{t("admin.newProduct")}</Button>
+        </div>
+      )}
+
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent aria-describedby={undefined} className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-2xl" data-testid="product-dialog">
           <DialogHeader><DialogTitle className="font-display">{editing?.id ? t("admin.edit") : t("admin.newProduct")}</DialogTitle></DialogHeader>

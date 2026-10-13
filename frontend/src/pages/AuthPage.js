@@ -18,7 +18,7 @@ export default function AuthPage({ mode = "login" }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const from = location.state?.from || "/compte";
+  const from = location.state?.from || "/";
 
   if (user) return <Navigate to={from} replace />;
 
