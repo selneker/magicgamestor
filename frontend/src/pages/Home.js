@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowUpRight, Gamepad2, HelpCircle, MessageCircle, Receipt, ShieldCheck, Wallet } from "lucide-react";
+import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, Gamepad2, HelpCircle, Lock, MessageCircle, Receipt, ShieldCheck, Wallet, Zap } from "lucide-react";
 import { api } from "@/lib/api";
 import { useGames } from "@/context/GameContext";
 import { useLang, localized } from "@/context/LanguageContext";
-import { StatusBadge } from "@/components/layout/Header";
 import { ProductCard } from "@/components/store/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,43 +37,120 @@ function SectionHead({ eyebrow, title, sub, action }) {
   );
 }
 
-function Hero({ games, shopUrl }) {
-  const { t } = useLang();
+const SLIDE_GRADIENTS = {
+  uc: "linear-gradient(135deg,#0a1636 0%,#1b1152 55%,#3a1060 100%)",
+  prime: "linear-gradient(135deg,#0b1030 0%,#241049 60%,#3d0f5c 100%)",
+  manual: "linear-gradient(140deg,#0c1838 0%,#1a1046 60%,#2e0f52 100%)",
+};
+
+// Thin luminous "viewfinder" lines over the slide — decorative, pointer-none.
+function HudFrame() {
   return (
-    <section className="mt-6 grid gap-3 lg:grid-cols-12 lg:grid-rows-[auto_auto]" data-testid="hero">
-      <motion.div {...rise(0)} className="grain relative overflow-hidden rounded-[18px] border bg-card p-6 sm:p-10 lg:col-span-8 lg:row-span-2 lg:p-14">
-        <div className="flex flex-wrap items-center gap-3"><p className="eyebrow">{t("store.heroEyebrow")}</p><StatusBadge /></div>
-        <h1 className="mt-8 max-w-3xl font-display text-4xl font-bold leading-[0.98] tracking-[-0.035em] sm:text-6xl lg:text-7xl" data-testid="hero-title">
-          <span className="block">{t("store.heroA")}</span>
-          <span className="mt-2 inline-block rounded-[8px] bg-primary px-2 text-[#0A0A0A]">{t("store.heroB")}</span>
-        </h1>
-        <p className="mt-8 max-w-lg text-sm leading-relaxed text-muted-foreground sm:text-base">{t("store.heroSub")}</p>
-        <div className="mt-10 flex flex-wrap gap-3">
-          <Button asChild size="lg" className="h-12 px-7 text-sm hover-slide" data-testid="hero-cta-shop"><Link to={shopUrl}>{t("store.ctaShop")}<ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
-          <Button asChild size="lg" variant="outline" className="h-12 px-7 text-sm" data-testid="hero-cta-track"><Link to="/suivi">{t("store.ctaTrack")}</Link></Button>
-        </div>
-      </motion.div>
-      <motion.div {...rise(1)} className="panel-black flex flex-col justify-between gap-6 p-6 sm:p-8 lg:col-span-4" data-testid="hero-games-card">
-        <div className="flex items-start justify-between gap-3">
-          <p className="eyebrow-invert">{t("store.gamesTitle")}</p>
-          <span className="num text-5xl leading-none text-primary" data-testid="hero-games-count">{games.length}</span>
-        </div>
-        <p className="max-w-xs text-sm text-background/70">{t("store.gamesSub")}</p>
-        <div className="flex flex-wrap gap-2">
-          {games.map((g) => (
-            <Link key={g.id} to={`/boutique?game=${g.id}`} className="group flex items-center gap-2 rounded-full border border-background/25 py-1 pl-1 pr-3 transition-colors hover:bg-primary hover:text-[#0A0A0A]" data-testid={`hero-game-${g.id}`}>
-              <GameLogo game={g} className="h-8 w-8 rounded-full" /><span className="text-xs font-semibold">{g.name}</span>
-            </Link>
+    <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <g fill="none" stroke="#ffffff" strokeOpacity="0.16" strokeWidth="0.12">
+        <line x1="0" y1="20" x2="100" y2="20" />
+        <line x1="0" y1="80" x2="100" y2="80" />
+        <rect x="26" y="26" width="48" height="48" />
+      </g>
+      <g fill="none" stroke="hsl(72 99% 50%)" strokeOpacity="0.55" strokeWidth="0.22">
+        <path d="M26 31 V26 H31" /><path d="M69 26 H74 V31" />
+        <path d="M74 69 V74 H69" /><path d="M31 74 H26 V69" />
+      </g>
+    </svg>
+  );
+}
+
+function Hero({ event }) {
+  const { t, lang } = useLang();
+  const trackRef = useRef(null);
+  const pausedRef = useRef(false);
+  const reduceRef = useRef(false);
+  const [active, setActive] = useState(0);
+
+  const slides = [
+    { id: "uc", title: t("hero.ucTitle"), sub: t("hero.ucSub"), cta: t("hero.ucCta"), to: "/boutique?type=uc", testid: "hero-cta-uc" },
+    { id: "prime", title: t("hero.primeTitle"), sub: t("hero.primeSub"), cta: t("hero.primeCta"), to: "/boutique?type=prime,prime_plus", testid: "hero-cta-prime" },
+    ...(event ? [{ id: "event", title: localized(event, "title", lang), sub: localized(event, "description", lang) || t("hero.eventSub"), cta: t("hero.eventCta"), to: "/evenements", testid: "hero-cta-event", image: event.image_url, badge: event.badge || t("common.promo") }] : []),
+    { id: "manual", title: t("hero.manualTitle"), sub: t("hero.manualSub"), cta: t("hero.manualCta"), to: "/boutique", testid: "hero-cta-manual" },
+  ];
+  const n = slides.length;
+
+  useEffect(() => { reduceRef.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches; }, []);
+
+  const goTo = (i) => {
+    const el = trackRef.current; if (!el) return;
+    el.scrollTo({ left: (((i % n) + n) % n) * el.clientWidth, behavior: reduceRef.current ? "auto" : "smooth" });
+  };
+
+  useEffect(() => {
+    if (reduceRef.current || n < 2) return;
+    const id = setInterval(() => { if (!pausedRef.current) goTo(active + 1); }, 5500);
+    return () => clearInterval(id);
+  }, [active, n]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onScroll = () => { const el = trackRef.current; if (el) setActive(Math.round(el.scrollLeft / el.clientWidth)); };
+  const onKeyDown = (e) => { if (e.key === "ArrowLeft") { e.preventDefault(); goTo(active - 1); } else if (e.key === "ArrowRight") { e.preventDefault(); goTo(active + 1); } };
+  const pause = () => { pausedRef.current = true; };
+  const resume = () => { pausedRef.current = false; };
+
+  return (
+    <section className="mt-6" data-testid="hero">
+      <div role="region" aria-roledescription="carousel" aria-label={t("hero.carouselLabel")} tabIndex={0} onKeyDown={onKeyDown}
+        className="relative overflow-hidden rounded-[18px] border focus-visible:outline-2 focus-visible:outline-[hsl(var(--primary))]">
+        <div ref={trackRef} onScroll={onScroll} onPointerDown={pause} onPointerUp={resume} onPointerCancel={resume} onMouseEnter={pause} onMouseLeave={resume} onFocusCapture={pause} onBlurCapture={resume}
+          className="no-scrollbar flex h-[80svh] min-h-[460px] w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden sm:h-[70svh] sm:max-h-[720px]">
+          {slides.map((s, i) => (
+            <div key={s.id} role="group" aria-roledescription="slide" aria-label={`${i + 1} / ${n}`} aria-hidden={active !== i}
+              className="relative h-full w-full shrink-0 snap-center snap-always overflow-hidden">
+              {s.image
+                ? <img src={s.image} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full scale-110 object-cover" style={{ filter: "blur(5px)" }} loading={i < 2 ? "eager" : "lazy"} />
+                : <div className="absolute inset-0" style={{ background: SLIDE_GRADIENTS[s.id] }} />}
+              <div className="grain absolute inset-0" aria-hidden="true" />
+              <HudFrame />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/45" aria-hidden="true" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white">
+                {s.badge && <span className="mb-5 rounded-full border border-white/30 bg-black/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]">{s.badge}</span>}
+                <h1 data-testid={active === i ? "hero-rotating-title" : undefined}
+                  className="max-w-3xl font-display text-4xl font-bold leading-[1.03] tracking-[-0.02em] drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] sm:text-5xl lg:text-6xl">{s.title}</h1>
+                <p className="mt-5 max-w-md text-sm leading-relaxed text-white/85 sm:text-base">{s.sub}</p>
+                <Button asChild size="lg" className="mt-8 h-12 rounded-full px-8 text-sm font-semibold hover-slide">
+                  <Link to={s.to} data-testid={s.testid}>{s.cta}<ArrowRight className="ml-1.5 h-4 w-4" /></Link>
+                </Button>
+              </div>
+            </div>
           ))}
         </div>
-      </motion.div>
-      <motion.div {...rise(2)} className="panel-neon flex flex-col justify-between gap-6 p-6 sm:p-8 lg:col-span-4" data-testid="hero-pay-card">
-        <div className="flex items-center gap-2"><Wallet className="h-5 w-5" /><p className="text-[11px] font-semibold uppercase tracking-[0.2em]">{t("store.payTitle")}</p></div>
-        <p className="max-w-xs text-sm text-[#0A0A0A]/75">{t("store.step3d")}</p>
-        <div className="flex flex-wrap gap-2">
-          {["MVola", "Orange Money", "Binance USDT"].map((m) => <span key={m} className="rounded-full border border-[#0A0A0A]/30 px-3 py-1 text-xs font-semibold">{m}</span>)}
+
+        <button type="button" aria-label={t("hero.prev")} onClick={() => goTo(active - 1)} data-testid="hero-prev"
+          className="absolute left-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/70 sm:flex">
+          <ChevronLeft className="h-5 w-5" /></button>
+        <button type="button" aria-label={t("hero.next")} onClick={() => goTo(active + 1)} data-testid="hero-next"
+          className="absolute right-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/70 sm:flex">
+          <ChevronRight className="h-5 w-5" /></button>
+
+        <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-2" role="tablist" aria-label={t("hero.carouselLabel")}>
+          {slides.map((s, i) => (
+            <button key={s.id} type="button" role="tab" aria-selected={active === i} aria-label={`${t("hero.goTo")} ${i + 1}`} onClick={() => goTo(i)} data-testid={`hero-dot-${i}`}
+              className={`h-2 rounded-full transition-all duration-300 ${active === i ? "w-8 bg-primary" : "w-2 bg-white/50 hover:bg-white/80"}`} />
+          ))}
         </div>
-      </motion.div>
+      </div>
+
+      {/* Trust band + payment methods (kept from the old hero) */}
+      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_1fr_auto]" data-testid="hero-trust">
+        {[[Zap, t("hero.trust1t"), t("hero.trust1d")], [Lock, t("hero.trust2t"), t("hero.trust2d")], [MessageCircle, t("hero.trust3t"), t("hero.trust3d")]].map(([Icon, title, desc]) => (
+          <div key={title} className="flex items-center gap-3 rounded-[16px] border bg-card p-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]"><Icon className="h-5 w-5" strokeWidth={2} /></span>
+            <div className="min-w-0"><p className="font-display text-sm font-bold leading-tight">{title}</p><p className="mt-0.5 text-xs text-muted-foreground">{desc}</p></div>
+          </div>
+        ))}
+        <div className="panel-neon flex flex-col justify-center gap-2 p-4" data-testid="hero-pay-card">
+          <div className="flex items-center gap-2"><Wallet className="h-4 w-4" /><p className="text-[10px] font-semibold uppercase tracking-[0.18em]">{t("store.payTitle")}</p></div>
+          <div className="flex flex-wrap gap-1.5">
+            {["MVola", "Orange Money", "Binance USDT"].map((m) => <span key={m} className="rounded-full border border-[#0A0A0A]/30 px-2.5 py-0.5 text-[11px] font-semibold">{m}</span>)}
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
@@ -190,7 +266,7 @@ export default function Home() {
 
   return (
     <div className="pb-28">
-      <Hero games={games} shopUrl={shopUrl} />
+      <Hero event={events[0]} />
       <GamesBento games={games} selectGame={selectGame} />
 
       <section className="mt-20">
