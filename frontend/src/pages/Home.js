@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowUpRight, ChevronLeft, ChevronRight, Gamepad2, HelpCircle, Lock, MessageCircle, Receipt, ShieldCheck, Wallet, Zap } from "lucide-react";
+import { ArrowRight, ArrowUp, ArrowUpRight, ChevronLeft, ChevronRight, Gamepad2, HelpCircle, Lock, MessageCircle, Receipt, ShieldCheck, Wallet, Zap } from "lucide-react";
 import { api } from "@/lib/api";
 import { useGames } from "@/context/GameContext";
 import { useLang, localized } from "@/context/LanguageContext";
@@ -252,14 +252,71 @@ function Faq() {
   );
 }
 
+// Horizontal, card-by-card (scroll-snap) product row with a left header and a
+// "See more" link on the right. Cards keep peeking so touch scroll is discoverable.
+function ProductRow({ eyebrow, title, sub, products, seeMoreTo, gridTestid, moreTestid }) {
+  const { t } = useLang();
+  return (
+    <section className="mt-16" data-testid={`${gridTestid}-section`}>
+      <div className="flex items-end justify-between gap-3 border-b pb-4">
+        <div className="min-w-0">
+          <p className="eyebrow">{eyebrow}</p>
+          <h2 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
+          {sub && <p className="mt-1.5 text-sm text-muted-foreground">{sub}</p>}
+        </div>
+        <Link to={seeMoreTo} data-testid={moreTestid} className="group inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground">
+          {t("common.seeMore")}<ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+        </Link>
+      </div>
+      <div className="no-scrollbar -mx-4 mt-6 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0" data-testid={gridTestid}>
+        {products === null && Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="w-[42vw] max-w-[12rem] shrink-0 snap-start sm:w-48">
+            <Skeleton className="aspect-[4/5] w-full rounded-[20px]" />
+            <Skeleton className="mt-2 h-4 w-3/4 rounded" />
+            <Skeleton className="mt-2 h-4 w-1/2 rounded" />
+          </div>
+        ))}
+        {products?.map((p, i) => (
+          <div key={p.id} className="w-[42vw] max-w-[12rem] shrink-0 snap-start sm:w-48">
+            <ProductCard product={p} index={i} />
+          </div>
+        ))}
+      </div>
+      {products?.length === 0 && <p className="mt-2 text-sm text-muted-foreground" data-testid={`${gridTestid}-empty`}>{t("store.noOffers")}</p>}
+    </section>
+  );
+}
+
+export function BackToTop() {
+  const { t } = useLang();
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShow(window.scrollY > 600);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return (
+    <button
+      type="button" data-testid="back-to-top" aria-label={t("common.backToTop")}
+      onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}
+      className={`fixed right-4 z-40 flex items-center gap-2 rounded-full border border-[color:var(--rule-strong)] bg-foreground px-4 py-3 text-xs font-semibold text-background shadow-[4px_4px_0_hsl(var(--primary)/.5)] transition-all duration-300 bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] md:bottom-6 ${show ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-6 opacity-0"}`}
+    >
+      <ArrowUp className="h-4 w-4" aria-hidden="true" /><span className="hidden sm:inline">{t("common.backToTop")}</span>
+    </button>
+  );
+}
+
 export default function Home() {
   const { t, lang } = useLang();
   const { games, selectGame } = useGames();
   const [products, setProducts] = useState(null);
+  const [subs, setSubs] = useState(null);
   const [events, setEvents] = useState([]);
   usePageMeta(null, t("store.heroSub"));
   useEffect(() => {
-    api.get("/products", { params: { popular: true } }).then((r) => setProducts(r.data.slice(0, 8))).catch(() => setProducts([]));
+    api.get("/products", { params: { popular: true } }).then((r) => setProducts(r.data.slice(0, 10))).catch(() => setProducts([]));
+    api.get("/products", { params: { type: "prime,prime_plus" } }).then((r) => setSubs(r.data.slice(0, 10))).catch(() => setSubs([]));
     api.get("/events").then((r) => setEvents(r.data.slice(0, 1))).catch(() => {});
   }, []);
   const shopUrl = games.length === 1 ? `/boutique?game=${games[0].id}` : "/boutique";
@@ -269,15 +326,9 @@ export default function Home() {
       <Hero event={events[0]} />
       <GamesBento games={games} selectGame={selectGame} />
 
-      <section className="mt-20">
-        <SectionHead eyebrow={t("catalog.popular")} title={t("store.offersTitle")} sub={t("store.offersSub")}
-          action={<Link to={shopUrl} data-testid="see-all-link" className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground">{t("common.seeAll")}<ArrowRight className="h-3.5 w-3.5" /></Link>} />
-        <div className="mt-6 grid grid-cols-2 items-stretch gap-3 md:grid-cols-3 lg:grid-cols-4" data-testid="popular-grid">
-          {products === null && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-60 rounded-[14px]" />)}
-          {products?.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
-        </div>
-        {products?.length === 0 && <p className="mt-6 text-sm text-muted-foreground" data-testid="popular-empty">{t("store.noOffers")}</p>}
-      </section>
+      <ProductRow eyebrow={t("catalog.popular")} title={t("store.offersTitle")} sub={t("store.offersSub")} products={products} seeMoreTo={shopUrl} gridTestid="popular-grid" moreTestid="see-all-link" />
+
+      <ProductRow eyebrow={t("catalog.prime")} title={t("common.subsTitle")} sub={t("common.subsSub")} products={subs} seeMoreTo={`${shopUrl}${shopUrl.includes("?") ? "&" : "?"}type=prime,prime_plus`} gridTestid="subs-grid" moreTestid="subs-more-link" />
 
       <Steps />
 
@@ -309,6 +360,7 @@ export default function Home() {
       </section>
 
       <Faq />
+      <BackToTop />
     </div>
   );
 }
