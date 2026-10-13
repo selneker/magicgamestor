@@ -190,7 +190,8 @@ def test_configured_dynamic_game_can_be_sold_with_generic_identity(admin):
     assert [f["key"] for f in created.json()["identity_fields"]] == ["player_id", "zone_id"]
     run(db.products.insert_one({
         "id": pid, "slug": gid, "type": "diamonds", "uc_amount": 60, "name": f"QA Dyn 60 {tag}",
-        "price": 5000, "active": True, "game_id": gid, "requires_mapping": False,
+        "price": 5000, "active": True, "game_id": gid, "requires_mapping": True,
+        "fazercards_mapping": {"category_id": "qa_dyn_cat", "offer_id": "qa_offer", "confirmed": True},
         "created_at": "2026-01-01T00:00:00+00:00"}))
     run(db.games.update_one({"id": gid}, {"$set": {"fazercards_categories_configured": True,
                                                     "fazercards_categories": ["qa_dyn_cat"]}}))

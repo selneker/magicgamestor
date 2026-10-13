@@ -67,17 +67,30 @@ def _mapping_ok(mapping: dict | None) -> bool:
     return bool(mapping.get("category_id") and mapping.get("components"))
 
 
-async def game_has_sellable_catalog(game_id: str) -> bool:
-    """Un jeu est VENDABLE s'il a au moins un produit ACTIF réellement livrable.
+def product_deliverable(product: dict, game: dict | None) -> bool:
+    """Single fail-closed delivery rule shared by activation, public catalogue and order creation.
 
-    L'existence d'un document produit ne suffit pas : un produit inactif, ou actif mais
-    exigeant un mapping fournisseur absent/non confirmé, n'est pas vendable. C'est la
-    condition d'activation publique d'un jeu — un jeu sans catalogue vendable ne doit
-    jamais être annoncé au client.
+    - A confirmed FazerCards mapping is deliverable only if it targets one of the game's assigned
+      provider categories (when the game has an explicit category assignment).
+    - Without a mapping, the only supported alternative path is PUBG Mobile's historical manual
+      admin delivery (`requires_mapping=False`). No other game has such a path, so it fails closed.
     """
+    game = game or {}
+    mapping = product.get("fazercards_mapping")
+    if _mapping_ok(mapping):
+        if game.get("fazercards_categories_configured") is True:
+            return mapping.get("category_id") in set(game.get("fazercards_categories") or [])
+        return True
+    return game.get("id") == DEFAULT_GAME_ID and not product.get("requires_mapping")
+
+
+async def game_has_sellable_catalog(game_id: str) -> bool:
+    """A game is sellable only if at least one ACTIVE product is genuinely deliverable."""
+    game = await db.games.find_one({"id": game_id}, {"_id": 0, "id": 1, "fazercards_categories_configured": 1,
+                                                     "fazercards_categories": 1}) or {"id": game_id}
     async for p in db.products.find({"game_id": game_id, "active": True},
                                     {"_id": 0, "requires_mapping": 1, "fazercards_mapping": 1}):
-        if not p.get("requires_mapping") or _mapping_ok(p.get("fazercards_mapping")):
+        if product_deliverable(p, game):
             return True
     return False
 
@@ -346,7 +359,7 @@ async def game_readiness(game: dict) -> dict:
     products = await db.products.find({"game_id": gid}, {"_id": 0, "name": 1, "type": 1, "active": 1,
                                                           "requires_mapping": 1, "fazercards_mapping": 1}).to_list(500)
     active = [p for p in products if p.get("active")]
-    deliverable = [p for p in active if not p.get("requires_mapping") or _mapping_ok(p.get("fazercards_mapping"))]
+    deliverable = [p for p in active if product_deliverable(p, game)]
     bad_types = sorted({p["name"] for p in products if p.get("type") not in types})
     foreign = sorted({p["name"] for p in products if (p.get("fazercards_mapping") or {}).get("category_id")
                       and configured and p["fazercards_mapping"]["category_id"] not in categories})

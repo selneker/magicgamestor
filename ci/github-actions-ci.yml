@@ -1,0 +1,67 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports: ["27017:27017"]
+    env:
+      MONGO_URL: mongodb://localhost:27017
+      DB_NAME: mgs_ci
+      CORS_ORIGINS: http://localhost:3000
+      FRONTEND_URL: http://localhost:3000
+      BACKEND_PUBLIC_URL: http://localhost:8001
+      JWT_SECRET: ci-only-not-a-secret
+      ADMIN_EMAIL: admin@ci-example.com
+      ADMIN_PASSWORD: CiAdmin!2026
+      PAYMENT_MODE: simulation
+      FAZERCARDS_API_KEY: ""
+      FAZERCARDS_WEBHOOK_SECRET: ci-webhook
+      BACKEND_TEST_URL: http://localhost:8001
+      REACT_APP_BACKEND_URL: http://localhost:8001
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11", cache: pip, cache-dependency-path: backend/requirements.txt }
+      - run: pip install -r requirements.txt
+      - name: Start API (disposable Mongo, mocked provider in tests)
+        run: |
+          nohup uvicorn server:app --host 0.0.0.0 --port 8001 > /tmp/api.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf localhost:8001/api/games && break; sleep 1; done
+          # Production-like fixture: Free Fire exists but stays inactive.
+          python -c "from pymongo import MongoClient; MongoClient('$MONGO_URL')['$DB_NAME'].games.update_one({'id': 'free-fire'}, {'\$setOnInsert': {'id': 'free-fire', 'name': 'Free Fire', 'slug': 'free-fire', 'active': False, 'sort_order': 2}}, upsert=True)"
+      - name: Targeted regression suites
+        run: >
+          python -m pytest -q -n 0
+          tests/test_backend_hardening.py tests/test_phase3_finalization.py tests/test_phase3_review_e2e.py
+          tests/test_multigame_identity_contract.py tests/test_multigame_fixes.py
+          tests/test_phase3_game_isolation.py tests/test_phase2_provider.py
+          tests/test_fzr_composite_fulfillment.py tests/test_fzr_uc_audit.py
+          tests/test_fazercards_validate.py -k "not TestLive"
+      - if: failure()
+        run: tail -n 100 /tmp/api.log
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      REACT_APP_BACKEND_URL: http://localhost:8001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: yarn, cache-dependency-path: frontend/yarn.lock }
+      - run: yarn install --frozen-lockfile
+      - run: CI=true yarn test --watchAll=false
+      - run: CI=true yarn build

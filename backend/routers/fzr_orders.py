@@ -284,6 +284,24 @@ async def fzr_refresh_status(order_id: str, admin=Depends(require_permission("or
     return await fzr_fulfillment.refresh_status(order_id, f"admin:{admin['user_id']}")
 
 
+@router.get("/admin/fazercards/recoverable", dependencies=[Depends(require_permission("orders.manage"))])
+async def fzr_recoverable():
+    """Orders with a provider attempt whose outcome is unknown (stale `creating` or flagged)."""
+    out = []
+    async for o in db.orders.find({"status": "paid"}, PUBLIC):
+        units = fzr_fulfillment.recoverable_units(o)
+        if units:
+            out.append({"order_id": o["id"], "order_number": o["order_number"],
+                        "units": [{"path": p, "status": r["status"], "idempotency_key": r["idempotency_key"],
+                                   "updated_at": r.get("updated_at"), "last_error": r.get("last_error")} for p, r in units]})
+    return out
+
+
+@router.post("/admin/orders/{order_id}/fazercards/reconcile")
+async def fzr_reconcile(order_id: str, admin=Depends(require_permission("orders.manage"))):
+    return await fzr_fulfillment.reconcile_order(order_id, f"admin:{admin['user_id']}")
+
+
 # ---------- Alerte prix fournisseur ----------
 @router.post("/admin/fazercards/catalog/refresh")
 async def fzr_catalog_refresh(game: str = DEFAULT_GAME_ID, admin=Depends(require_permission("catalog.manage"))):

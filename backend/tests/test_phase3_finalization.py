@@ -141,8 +141,11 @@ def test_fully_configured_game_activates_and_inactive_game_is_isolated(admin):
     gid = _game(admin, identity_fields=[{"key": "uid", "label": "UID", "pattern": "[0-9]{6,12}"}])
     run(db.games.update_one({"id": gid}, {"$set": {"fazercards_categories_configured": True,
                                                     "fazercards_categories": ["test_cat"]}}))
-    r, slug = _product(admin, gid, type_="cp", active=True)
+    r, slug = _product(admin, gid, type_="cp")
     assert r.status_code == 200, r.text
+    # Fail-closed delivery rule: only a confirmed mapping scoped to the game's categories is deliverable.
+    run(db.products.update_one({"slug": slug}, {"$set": {"active": True, "requires_mapping": True,
+        "fazercards_mapping": {"category_id": "test_cat", "offer_id": "o1", "confirmed": True}}}))
     # S1: inactive game -> nothing public, even with explicit game query or product URL.
     assert requests.get(f"{API}/products?game={gid}", timeout=15).json() == []
     assert slug not in [p["slug"] for p in requests.get(f"{API}/products", timeout=15).json()]

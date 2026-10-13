@@ -394,3 +394,90 @@ async def apply_webhook_event(event: dict) -> dict:
                     {"provider_order_id": provider_order_id, "status": provider_status,
                      "previous_status": data.get("previous_status"), "line": target["line_index"], "component": target["component_index"]})
     return {"ok": True}
+
+
+# --------------------------------------------------------------------------- #
+# Recovery of attempts left in `creating` (process killed between claim and provider response).
+# FazerCards documents that replaying POST /topups/order with the SAME Idempotency-Key returns the
+# original order instead of fulfilling again: that replay is the only supported reconciliation
+# lookup, so recovery never generates a new key and never runs automatically.
+# --------------------------------------------------------------------------- #
+RECORD_ROOTS = ("fazercards", "fazercards_lines", "fazercards_components", "fazercards_reps")
+STALE_STATUSES = ("creating", "reconciling")
+NEEDS_RECONCILIATION = "needs_reconciliation"
+
+
+def stale_after_s() -> int:
+    import os
+    return int(os.environ.get("FZR_CREATING_STALE_SECONDS", "600"))
+
+
+def _records(order: dict):
+    def walk(node, path):
+        if isinstance(node, dict):
+            if "idempotency_key" in node and "status" in node:
+                yield path, node
+                return
+            for k, v in node.items():
+                yield from walk(v, f"{path}.{k}")
+    for root in RECORD_ROOTS:
+        yield from walk(order.get(root), root)
+
+
+def _age_s(rec: dict) -> float:
+    try:
+        return (datetime.now(timezone.utc) - datetime.fromisoformat(rec.get("updated_at"))).total_seconds()
+    except (TypeError, ValueError):
+        return float("inf")
+
+
+def recoverable_units(order: dict) -> list:
+    """Units whose provider outcome is unknown: stale in-flight claims or flagged for reconciliation."""
+    return [(p, r) for p, r in _records(order) if not r.get("provider_order_id") and (
+        r.get("status") == NEEDS_RECONCILIATION or (r.get("status") in STALE_STATUSES and _age_s(r) >= stale_after_s()))]
+
+
+async def reconcile_order(order_id: str, actor: str) -> dict:
+    order = await db.orders.find_one({"id": order_id}, PUBLIC)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    provider = providers.get_provider(order.get("game_id"))
+    results = []
+    for path, rec in recoverable_units(order):
+        key = rec["idempotency_key"]
+        # Atomic claim on the exact observed state: concurrent workers cannot both replay a unit.
+        claim = await db.orders.update_one(
+            {"id": order_id, f"{path}.provider_order_id": None, f"{path}.status": rec["status"],
+             f"{path}.updated_at": rec.get("updated_at")},
+            {"$set": {f"{path}.status": "reconciling", f"{path}.updated_at": _now(), "updated_at": _now()}})
+        if claim.modified_count != 1:
+            results.append({"path": path, "ok": False, "status": "busy"})
+            continue
+        await audit("fzr.reconcile_started", actor, order_id, {"idempotency_key": key, "path": path,
+                                                               "previous_status": rec["status"]})
+        fields = (rec.get("identity_snapshot") or _identity_fields(order))
+        try:
+            provider_order = await provider.create_order(rec["category_id"], rec["offer_id"], fields, key)
+        except providers.ProviderTimeout:
+            await _update_record(order_id, path, {"status": NEEDS_RECONCILIATION, "last_error": "reconciliation timeout"})
+            await audit("fzr.reconcile_unknown", actor, order_id, {"idempotency_key": key, "path": path, "reason": "timeout"})
+            results.append({"path": path, "ok": False, "status": NEEDS_RECONCILIATION})
+            continue
+        except providers.ProviderOrderError as exc:
+            # Outcome still undetermined (the provider refused the replay): keep it flagged, never resubmit.
+            await _update_record(order_id, path, {"status": NEEDS_RECONCILIATION, "last_error": exc.error})
+            await audit("fzr.reconcile_unknown", actor, order_id, {"idempotency_key": key, "path": path,
+                                                                   "reason": exc.error, "http": exc.status_code})
+            results.append({"path": path, "ok": False, "status": NEEDS_RECONCILIATION, "error": exc.error})
+            continue
+        await _update_record(order_id, path, {"status": "submitted", "provider_order_id": provider_order.id,
+                                              "provider_status": provider_order.status, "last_error": None,
+                                              "reconciled_at": _now()})
+        await db.orders.update_one({"id": order_id}, {"$addToSet": {"fazercards_provider_ids": provider_order.id}})
+        await audit("fzr.reconciled", actor, order_id, {"idempotency_key": key, "path": path,
+                                                        "provider_order_id": provider_order.id})
+        if provider.normalize_status(provider_order.status) in PROVIDER_ALERT_NORMALIZED:
+            await audit("fzr.provider_failed", actor, order_id, {"provider_status": provider_order.status, "path": path})
+        results.append({"path": path, "ok": True, "status": "submitted", "provider_order_id": provider_order.id})
+    await _sync_mgs_status(order_id, actor)
+    return {"order_number": order["order_number"], "results": results}

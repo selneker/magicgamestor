@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 from core import ratelimit
 from core.audit import audit
 from core.db import db
-from core.games import (DEFAULT_GAME_ID, check_identity_payload, game_sale_path_ready, identity_spec,
+from core.games import (DEFAULT_GAME_ID, check_identity_payload, game_sale_path_ready, identity_spec, product_deliverable,
                         with_game_defaults)
 from core.security import (ADMIN_ROLES, get_current_user, get_optional_user, require_admin,
                            require_permission, require_super_admin)
@@ -215,6 +215,25 @@ async def _identity_snapshot(body: OrderIn, user: dict | None) -> dict:
             "validated_at": ident.get("validated_at"), "captured_at": _now()}
 
 
+async def _provider_identity_check(game_id: str, fields: dict) -> dict:
+    """Server-side provider check BEFORE any payment step. A definitive provider rejection blocks the
+    order; an unavailable provider does not (fulfillment preflight re-validates server-side anyway).
+    The client never supplies the result: `validated` is derived only from this call."""
+    import asyncio
+    from services import fazercards, providers
+    if not fazercards.configured():
+        return {"validated": False, "provider_check": "not_configured", "provider_checked_at": None}
+    try:
+        result = await asyncio.wait_for(providers.get_provider(game_id).validate_identity(game_id, fields),
+                                        timeout=ratelimit.setting("ORDER_IDENTITY_CHECK_TIMEOUT_S", 8))
+    except (asyncio.TimeoutError, HTTPException, providers.ProviderError):
+        return {"validated": False, "provider_check": "unavailable", "provider_checked_at": _now()}
+    if not result.valid:
+        raise HTTPException(status_code=422, detail="Identifiant joueur refusé par le fournisseur pour ce jeu.")
+    return {"validated": True, "provider_check": "valid", "provider_checked_at": _now(),
+            **({"provider_player_name": result.player_name} if result.player_name else {})}
+
+
 @router.post("/orders", status_code=201)
 async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request: Request, user=Depends(get_optional_user)):
     ip = ratelimit.client_ip(request)
@@ -237,6 +256,7 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         if body.game_id != DEFAULT_GAME_ID:
             raise HTTPException(status_code=409, detail=reason)
     identity_snapshot = await _identity_snapshot(body, user)
+    identity_snapshot.update(await _provider_identity_check(body.game_id, identity_snapshot["fields"]))
     from services import fiveone
     payment_provider = None
     if body.payment_method in ("mvola", "orange"):
@@ -258,8 +278,10 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         raise HTTPException(status_code=400, detail="One or more products are unavailable")
     if any(p.get("game_id", DEFAULT_GAME_ID) != body.game_id for p in products.values()):
         raise HTTPException(status_code=400, detail="Products do not belong to the selected game")
+    game_doc = await db.games.find_one({"id": body.game_id}, {"_id": 0})
     for p in products.values():
-        blocked = purchase_blocked(p)
+        blocked = purchase_blocked(p) or (None if product_deliverable(p, game_doc) else
+                                          f"« {p.get('name')} » n'est pas disponible : livraison non configurée.")
         if blocked:
             raise HTTPException(status_code=409, detail=blocked)
     items, total = [], 0
