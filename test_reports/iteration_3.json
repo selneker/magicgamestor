@@ -1,0 +1,26 @@
+{
+  "summary": "Verified Binance 'configured()' fix. With BINANCE_API_KEY/BINANCE_API_SECRET empty in backend/.env: GET /api/crypto/admin/settings returns api_configured=false, PATCH {enabled:true} is blocked with 400, GET /api/crypto/config returns available=false, POST /api/orders with payment_method='binance' returns 409 ('indisponible'). Admin UI /admin/paiements/binance shows the red warning text in [data-testid='binance-api-status']. All 49 unit tests (test_binance_configured, test_binance_crypto, test_payment_fees) pass. Added preview-URL regression suite (5/5 pass). GET /api/payments/config still 200 (MVola/Orange/manual untouched).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_binance_configured.py",
+    "/app/backend/tests/test_binance_crypto.py",
+    "/app/backend/tests/test_payment_fees.py",
+    "/app/backend/tests/test_iter3_binance_admin.py",
+    "/app/test_reports/pytest/iter3_binance.xml",
+    "/app/test_reports/pytest/iter3_admin.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "services/binance.configured() now correctly validates HMAC format (64 alnum, >=16 distinct chars) and rejects placeholder markers — good defensive check.",
+    "Suggest also guarding the frontend to call GET /api/crypto/admin/settings for api_configured (already done) rather than reading env — current implementation matches this."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter3_binance_admin.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@magicgame.store / MgsAdmin2026!",
+  "seed_data_creation": "None (binance order attempt rejected before persistence).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Preview .env has BINANCE_API_KEY/BINANCE_API_SECRET empty — do not fill with placeholders ('dummy', 'preview', etc.) because configured() will correctly treat them as unconfigured. To simulate configured state in tests, monkeypatch services.binance.configured (see test_binance_crypto.py).",
+  "rca of the issue": "Original bug: committed backend/.env had placeholder BINANCE keys ('preview-dummy-not-a-real-key'), and configured() only checked non-empty, so admin UI falsely reported 'Clés API configurées côté serveur' on Render. Fix validates real HMAC format + rejects placeholder markers. Verified end-to-end on preview."
+}
