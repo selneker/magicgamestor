@@ -10,7 +10,8 @@ from pydantic import BaseModel, Field
 
 from core.audit import audit
 from core.db import db
-from core.games import DEFAULT_GAME_ID
+from core.games import (DEFAULT_GAME_ID, VALIDATION_POLICIES, VALIDATION_REQUIRED, game_readiness,
+                        validation_category_of, validation_policy_of)
 from core.security import require_admin, require_permission, require_super_admin
 from services import fazercards, fzr_fulfillment, fzr_mapping, providers
 
@@ -44,6 +45,13 @@ class CategoryAssignmentIn(BaseModel):
     category_ids: list[str] = Field(default_factory=list, max_length=500)
 
 
+class GameValidationIn(BaseModel):
+    """Configuration de VALIDATION d'un jeu — indépendante de ses catégories de vente."""
+
+    validation_category: str | None = Field(default=None, max_length=120)
+    validation_policy: str = Field(pattern=r"^(required|optional|not_required)$")
+
+
 
 
 # ---------- Réglage global manuel / automatique (kill switch) ----------
@@ -65,7 +73,7 @@ async def fzr_update_settings(body: FzrAutoIn, admin=Depends(require_super_admin
 async def fzr_provider_categories(refresh: bool = False):
     """Toutes les catégories réelles FazerCards, utilisées pour les affectations administrateur."""
     if refresh:
-        fazercards._catalog_cache.clear()
+        fazercards.clear_caches()
     categories = await fazercards._topup_categories()
     assignments = {}
     configured_games = set()
@@ -150,10 +158,67 @@ async def fzr_assign_game_categories(
         {"$set": {"fazercards_categories": selected, "fazercards_categories_configured": True,
                   "updated_at": _now()}},
     )
-    fazercards._catalog_cache.clear()
+    fazercards.clear_caches()
     await audit("fzr.game_categories_set", admin["user_id"], game_id,
                 {"category_ids": selected, "count": len(selected)})
     return {"game_id": game_id, "category_ids": selected, "count": len(selected)}
+
+
+# ---------- Validation d'identité : liste fournisseur SÉPARÉE + politique par jeu ----------
+@router.get("/admin/fazercards/validate-categories",
+            dependencies=[Depends(require_permission("catalog.manage"))])
+async def fzr_validate_categories(refresh: bool = False):
+    """Cibles de VALIDATION du fournisseur (`GET /topups/validate-id`) et configuration par jeu.
+
+    Liste VOLONTAIREMENT séparée des catégories de vente : les identifiants peuvent différer.
+    C'est ici qu'un administrateur associe explicitement la cible de validation d'un jeu — jamais
+    déduite du nom, du slug interne ou des catégories de vente.
+    """
+    if refresh:
+        fazercards.clear_caches()
+    targets = await fazercards._validate_id_categories()
+    games = {}
+    async for g in db.games.find({}, {"_id": 0, "id": 1, "name": 1, "fazercards_validation_category": 1,
+                                      "validation_policy": 1}):
+        games[g["id"]] = {"name": g.get("name") or g["id"],
+                          "validation_category": validation_category_of(g),
+                          "validation_policy": validation_policy_of(g)}
+    return {"targets": [{"category_id": t.get("category_id"), "name": t.get("name"),
+                         "fields": [f.get("key") for f in (t.get("fields") or []) if f.get("key")]}
+                        for t in targets if t.get("category_id")],
+            "games": games, "policies": list(VALIDATION_POLICIES)}
+
+
+@router.put("/admin/fazercards/games/{game_id}/validation")
+async def fzr_set_game_validation(game_id: str, body: GameValidationIn,
+                                  admin=Depends(require_permission("catalog.manage"))):
+    """Enregistre la politique de validation d'un jeu et sa cible chez le fournisseur.
+
+    Fail-closed : une politique « required » exige une cible réellement présente dans la liste de
+    validation ; aucune cible n'est inventée ni reprise des catégories de vente.
+    """
+    game = await db.games.find_one({"id": game_id}, {"_id": 0, "id": 1, "name": 1})
+    if not game:
+        raise HTTPException(status_code=404, detail="Jeu introuvable.")
+    category = (body.validation_category or "").strip() or None
+    if category:
+        live = {t.get("category_id") for t in await fazercards._validate_id_categories()}
+        if category not in live:
+            raise HTTPException(status_code=409,
+                                detail="Cette cible de validation est absente de la liste FazerCards : actualisez la liste puis réessayez.")
+    if body.validation_policy == VALIDATION_REQUIRED and not category and game_id != DEFAULT_GAME_ID:
+        raise HTTPException(status_code=409,
+                            detail="Politique « required » : associez d'abord une cible de validation à ce jeu.")
+    await db.games.update_one({"id": game_id}, {"$set": {
+        "fazercards_validation_category": category,
+        "validation_policy": body.validation_policy,
+        "updated_at": _now()}})
+    fazercards.clear_caches()
+    await audit("fzr.game_validation_set", admin["user_id"], game_id,
+                {"validation_category": category, "validation_policy": body.validation_policy})
+    return {"game_id": game_id, "validation_category": category,
+            "validation_policy": body.validation_policy,
+            "readiness": await game_readiness(await db.games.find_one({"id": game_id}, {"_id": 0}) or {"id": game_id})}
 
 
 @router.get("/admin/fazercards/catalog", dependencies=[Depends(require_permission("catalog.manage"))])
@@ -284,10 +349,33 @@ async def fzr_refresh_status(order_id: str, admin=Depends(require_permission("or
     return await fzr_fulfillment.refresh_status(order_id, f"admin:{admin['user_id']}")
 
 
+@router.get("/admin/fazercards/recoverable", dependencies=[Depends(require_permission("orders.manage"))])
+async def fzr_recoverable():
+    """Commandes payées dont une unité de livraison a un sort fournisseur INDÉTERMINÉ.
+
+    Aucune relance automatique : l'administrateur décide, et la réconciliation rejoue la MÊME
+    Idempotency-Key (jamais de nouvelle clé, donc pas de double livraison).
+    """
+    out = []
+    async for o in db.orders.find({"status": "paid"}, PUBLIC):
+        units = fzr_fulfillment.recoverable_units(o)
+        if units:
+            out.append({"order_id": o["id"], "order_number": o["order_number"], "game_id": o.get("game_id"),
+                        "units": [{"path": p, "status": r["status"], "idempotency_key": r["idempotency_key"],
+                                   "updated_at": r.get("updated_at"), "last_error": r.get("last_error")}
+                                  for p, r in units]})
+    return out
+
+
+@router.post("/admin/orders/{order_id}/fazercards/reconcile")
+async def fzr_reconcile(order_id: str, admin=Depends(require_permission("orders.manage"))):
+    return await fzr_fulfillment.reconcile_order(order_id, f"admin:{admin['user_id']}")
+
+
 # ---------- Alerte prix fournisseur ----------
 @router.post("/admin/fazercards/catalog/refresh")
 async def fzr_catalog_refresh(game: str = DEFAULT_GAME_ID, admin=Depends(require_permission("catalog.manage"))):
-    fazercards._catalog_cache.clear()
+    fazercards.clear_caches()
     categories = await fazercards.catalog_for_game(game)
     checked, changes = 0, []
     for cat in categories:

@@ -7,8 +7,8 @@
 L'import de l'adapter est différé dans `get_provider` pour éviter tout cycle d'import
 (services.fazercards importe services.providers.errors).
 """
-from services.providers.base import (IdentityValidation, OrderStatus, Provider, ProviderOrder,
-                                      ProviderWebhookEvent)
+from services.providers.base import (IdentityValidation, IdentityValidationStatus, OrderStatus,
+                                      Provider, ProviderOrder, ProviderWebhookEvent)
 from services.providers.errors import (ProviderError, ProviderInsufficientBalanceError,
                                         ProviderOrderError, ProviderTimeout, ProviderUnavailableError,
                                         ProviderUnknownError, ProviderValidationError)
@@ -35,7 +35,8 @@ def get_provider(game_id: str | None = None) -> Provider:
 
 
 __all__ = [
-    "IdentityValidation", "OrderStatus", "Provider", "ProviderOrder", "ProviderWebhookEvent",
+    "IdentityValidation", "IdentityValidationStatus", "OrderStatus", "Provider", "ProviderOrder",
+    "ProviderWebhookEvent",
     "ProviderError", "ProviderInsufficientBalanceError", "ProviderOrderError", "ProviderTimeout",
     "ProviderUnavailableError", "ProviderUnknownError", "ProviderValidationError",
     "GAME_PROVIDER", "DEFAULT_PROVIDER", "get_provider",

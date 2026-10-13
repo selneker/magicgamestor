@@ -9,9 +9,12 @@ import hashlib
 import hmac
 import os
 
+from fastapi import HTTPException
+
 from services import fazercards
-from services.providers.base import (IdentityValidation, OrderStatus, Provider, ProviderOrder,
-                                      ProviderWebhookEvent)
+from services.providers.base import (IdentityValidation, IdentityValidationStatus, OrderStatus,
+                                      Provider, ProviderOrder, ProviderWebhookEvent)
+from services.providers.errors import ProviderUnavailableError
 
 # Traduction statut brut FazerCards -> statut MGS normalisé.
 _STATUS_MAP = {
@@ -42,9 +45,25 @@ class FazerCardsProvider(Provider):
         return _STATUS_MAP.get((raw_status or "").strip().lower(), OrderStatus.PROCESSING)
 
     async def validate_identity(self, game_id: str | None, fields: dict) -> IdentityValidation:
-        data = await fazercards.validate_identity(fields, game_id)
-        return IdentityValidation(valid=bool(data.get("valid")), player_name=data.get("player_name"),
-                                  region=data.get("region"), raw=data)
+        """Validation d'identité.
+
+        Une erreur technique du client FazerCards (timeout, 401/403, 5xx, réponse inattendue,
+        configuration absente) devient une `ProviderUnavailableError` — jamais un résultat
+        `valid=False` ni un `UNSUPPORTED` : le domaine ne doit jamais confondre une panne avec une
+        absence normale de prise en charge.
+        """
+        try:
+            data = await fazercards.validate_identity(fields, game_id)
+        except HTTPException as exc:
+            raise ProviderUnavailableError(str(exc.detail),
+                                            status_code=int(exc.status_code or 502)) from exc
+        status = str(data.get("status") or
+                     (IdentityValidationStatus.VALID if data.get("valid") else IdentityValidationStatus.INVALID))
+        if status not in IdentityValidationStatus.ALL:
+            raise ProviderUnavailableError("Réponse de validation fournisseur inattendue.", status_code=502)
+        return IdentityValidation(valid=bool(data.get("valid")) and status == IdentityValidationStatus.VALID,
+                                  player_name=data.get("player_name"), region=data.get("region"),
+                                  raw=data, status=status, reason=data.get("reason"))
 
     async def get_categories(self) -> list[dict]:
         return await fazercards.pubg_categories()

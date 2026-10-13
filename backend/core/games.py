@@ -8,6 +8,39 @@ from core.db import db
 
 DEFAULT_GAME_ID = "pubg-mobile"
 FREE_FIRE_GAME_ID = "free-fire"
+
+# --------------------------------------------------------------------------- #
+# Politique de validation d'identité PAR JEU (multi-jeux, rétrocompatible).
+#   "required"     : vérification fournisseur OBLIGATOIRE. C'est le défaut SÛR de tout jeu —
+#                    y compris PUBG Mobile, qui est vérifié depuis toujours.
+#   "optional"     : vérification tentée quand le fournisseur la propose ; une absence NORMALE
+#                    de prise en charge (jeu absent de GET /topups/validate-id) n'empêche pas la
+#                    vente — mais une ERREUR TECHNIQUE ou un identifiant refusé la bloquent.
+#   "not_required" : autorisation EXPLICITE de l'administrateur de vendre sans vérification.
+# Invariant : un jeu n'est jamais vendable « parce qu'aucune cible de validation n'existe ». Il
+# faut soit une cible configurée et validée, soit une autorisation explicite ci-dessus.
+# --------------------------------------------------------------------------- #
+VALIDATION_REQUIRED = "required"
+VALIDATION_OPTIONAL = "optional"
+VALIDATION_NOT_REQUIRED = "not_required"
+VALIDATION_POLICIES = (VALIDATION_REQUIRED, VALIDATION_OPTIONAL, VALIDATION_NOT_REQUIRED)
+DEFAULT_VALIDATION_POLICY = VALIDATION_REQUIRED
+
+
+def validation_policy_of(game: dict | None) -> str:
+    """Politique de validation effective d'un jeu (défaut sûr : `required`)."""
+    policy = (game or {}).get("validation_policy")
+    return policy if policy in VALIDATION_POLICIES else DEFAULT_VALIDATION_POLICY
+
+
+def validation_category_of(game: dict | None) -> str | None:
+    """Correspondance de VALIDATION explicite d'un jeu (`category_id` de GET /topups/validate-id).
+
+    Jamais déduite du nom du jeu, de son slug interne ou de ses catégories de vente : c'est une
+    configuration administrateur distincte, ou rien.
+    """
+    value = (game or {}).get("fazercards_validation_category")
+    return value.strip() if isinstance(value, str) and value.strip() else None
 PUBG_GAME = {
     "id": DEFAULT_GAME_ID, "slug": DEFAULT_GAME_ID, "name": "PUBG Mobile", "active": True, "sort_order": 0,
     "icon_url": "https://customer-assets-0z36b82j.emergentagent.net/job_games-nav-polish/artifacts/ih6044zb_pubgm_app-icon_512x512%281%29.e9f7efc0.png",
@@ -67,17 +100,38 @@ def _mapping_ok(mapping: dict | None) -> bool:
     return bool(mapping.get("category_id") and mapping.get("components"))
 
 
+def product_deliverable(product: dict, game: dict | None) -> bool:
+    """Règle UNIQUE de livrabilité, partagée par le catalogue public, l'activation d'un jeu,
+    la pré-vérification de livraison et la création de commande (fail-closed).
+
+    - un mapping FazerCards confirmé n'est livrable que s'il vise une catégorie de VENTE
+      réellement affectée au jeu (quand le jeu a une affectation explicite) ;
+    - sans mapping, le seul chemin supporté est la livraison manuelle historique de PUBG Mobile
+      (`requires_mapping=False`) ; tout autre jeu échoue fermé — aucun jeu ne peut être vendu
+      sans chemin de livraison vérifié.
+    """
+    game = game or {}
+    mapping = product.get("fazercards_mapping")
+    if _mapping_ok(mapping):
+        if game.get("fazercards_categories_configured") is True:
+            return mapping.get("category_id") in set(game.get("fazercards_categories") or [])
+        return True
+    return game.get("id") == DEFAULT_GAME_ID and not product.get("requires_mapping")
+
+
 async def game_has_sellable_catalog(game_id: str) -> bool:
     """Un jeu est VENDABLE s'il a au moins un produit ACTIF réellement livrable.
 
-    L'existence d'un document produit ne suffit pas : un produit inactif, ou actif mais
-    exigeant un mapping fournisseur absent/non confirmé, n'est pas vendable. C'est la
-    condition d'activation publique d'un jeu — un jeu sans catalogue vendable ne doit
+    L'existence d'un document produit ne suffit pas : un produit inactif, ou actif mais dont le
+    chemin de livraison est absent/non confirmé/hors catégories du jeu, n'est pas vendable.
+    C'est la condition d'activation publique d'un jeu — un jeu sans catalogue vendable ne doit
     jamais être annoncé au client.
     """
+    game = await db.games.find_one({"id": game_id}, {"_id": 0, "id": 1, "fazercards_categories_configured": 1,
+                                                     "fazercards_categories": 1}) or {"id": game_id}
     async for p in db.products.find({"game_id": game_id, "active": True},
                                     {"_id": 0, "requires_mapping": 1, "fazercards_mapping": 1}):
-        if not p.get("requires_mapping") or _mapping_ok(p.get("fazercards_mapping")):
+        if product_deliverable(p, game):
             return True
     return False
 
@@ -115,6 +169,12 @@ DEFAULT_IDENTITY_FIELDS: dict[str, list[dict]] = {
 NO_CATALOG_DETAIL = ("Activation refusee : ce jeu n'a aucun produit actif et correctement configure "
                      "pour la livraison. Creez son catalogue, configurez les mappings fournisseur "
                      "(Admin -> Fournisseur) puis activez-le.")
+
+NO_VALIDATION_TARGET_DETAIL = (
+    "Activation refusee : aucune correspondance de validation FazerCards n'est configuree pour ce "
+    "jeu alors que la verification d'identite est requise. Associez la cible de validation du jeu "
+    "(Admin -> Fournisseur) ou choisissez explicitement une politique sans verification."
+)
 
 NO_IDENTITY_DETAIL = (
     "Activation refusee : ce jeu n'a pas encore declare ses champs d'identite joueur. "
@@ -346,7 +406,18 @@ async def game_readiness(game: dict) -> dict:
     products = await db.products.find({"game_id": gid}, {"_id": 0, "name": 1, "type": 1, "active": 1,
                                                           "requires_mapping": 1, "fazercards_mapping": 1}).to_list(500)
     active = [p for p in products if p.get("active")]
-    deliverable = [p for p in active if not p.get("requires_mapping") or _mapping_ok(p.get("fazercards_mapping"))]
+    deliverable = [p for p in active if product_deliverable(p, game)]
+    policy = validation_policy_of(game)
+    if policy == VALIDATION_NOT_REQUIRED:
+        validation_ok = True
+        validation_detail = "Vente sans verification d'identite autorisee explicitement."
+    elif gid == DEFAULT_GAME_ID or validation_category_of(game):
+        validation_ok = True
+        validation_detail = ("Verification d'identite obligatoire." if policy == VALIDATION_REQUIRED
+                             else "Verification d'identite tentee lorsqu'elle est disponible.")
+    else:
+        validation_ok = False
+        validation_detail = NO_VALIDATION_TARGET_DETAIL
     bad_types = sorted({p["name"] for p in products if p.get("type") not in types})
     foreign = sorted({p["name"] for p in products if (p.get("fazercards_mapping") or {}).get("category_id")
                       and configured and p["fazercards_mapping"]["category_id"] not in categories})
@@ -359,6 +430,7 @@ async def game_readiness(game: dict) -> dict:
         {"key": "provider_categories", "ok": legacy or (configured and bool(categories)),
          "detail": "Categories fournisseur affectees." if legacy or (configured and categories)
          else "Aucune categorie FazerCards affectee (Admin -> Fournisseur)."},
+        {"key": "validation", "ok": validation_ok, "detail": validation_detail},
         {"key": "catalog", "ok": bool(deliverable),
          "detail": f"{len(deliverable)} produit(s) actif(s) livrable(s)." if deliverable else NO_CATALOG_DETAIL},
         {"key": "type_compat", "ok": not bad_types,
@@ -372,9 +444,24 @@ async def game_readiness(game: dict) -> dict:
 
 
 async def public_game_ids() -> set[str]:
-    """S1: games whose catalogue may be exposed publicly (active + identity contract + deliverable catalog)."""
+    """Jeux dont le catalogue peut être exposé publiquement (S1).
+
+    PUBG Mobile conserve EXACTEMENT l'ancienne règle (jeu actif + contrat d'identité déclaré),
+    pour ne rien changer au parcours historique. Tout autre jeu doit passer le contrôle de
+    readiness COMPLET : types de produit, catégories fournisseur affectées, catalogue réellement
+    livrable (règle `product_deliverable`) et politique de validation configurée. Un jeu
+    nouvellement configuré reste donc invisible jusqu'à ce que son parcours de vente soit réel.
+    """
     ids = set()
-    async for g in db.games.find({"active": True}, {"_id": 0, "id": 1, "identity_fields": 1}):
-        if identity_spec(g) and (g["id"] == DEFAULT_GAME_ID or await game_has_sellable_catalog(g["id"])):
+    projection = {"_id": 0, "id": 1, "identity_fields": 1, "product_types": 1,
+                  "fazercards_categories": 1, "fazercards_categories_configured": 1,
+                  "validation_policy": 1, "fazercards_validation_category": 1}
+    async for g in db.games.find({"active": True}, projection):
+        if not identity_spec(g):
+            continue
+        if g["id"] == DEFAULT_GAME_ID:
+            ids.add(g["id"])  # compat historique stricte (PUBG Mobile)
+            continue
+        if (await game_readiness(g))["ready"]:
             ids.add(g["id"])
     return ids

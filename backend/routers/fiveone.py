@@ -11,6 +11,7 @@ from core.audit import audit
 from core.db import db
 from core.security import ADMIN_ROLES, get_optional_user
 from services import fiveone
+from services import identity_gate
 from services import payments as gw
 from routers.payments import (PAYABLE_ORDER_STATUSES, PUBLIC, _backend_url, _frontend_url, _public, _set_order_status,
                               apply_status, expire_attempt, latest_attempt, record_late_success)
@@ -40,6 +41,12 @@ async def initiate(body: InitiateIn, request: Request, background: BackgroundTas
         raise HTTPException(status_code=404, detail="Order not found")
     if order.get("user_id") and (not user or (user["user_id"] != order["user_id"] and user.get("role") not in ADMIN_ROLES)):
         raise HTTPException(status_code=403, detail="Forbidden")
+    # Garde-fou : aucun paiement ne démarre tant que la vérification d'identité REQUISE pour ce
+    # jeu n'est pas acquise. Les commandes legacy (snapshot sans `validation_status`) restent
+    # autorisées : leur parcours historique est inchangé.
+    blocked = identity_gate.payment_blocked_reason(order)
+    if blocked:
+        raise HTTPException(status_code=409, detail=blocked)
     if order["payment_method"] not in fiveone.OPERATORS:
         raise HTTPException(status_code=400, detail="Order does not use a mobile money payment method")
     if order.get("payment_provider") and order["payment_provider"] != "fiveone":

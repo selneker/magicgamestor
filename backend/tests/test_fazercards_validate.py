@@ -104,7 +104,9 @@ class TestServiceErrors:
                                              "player_name": "TestPlayer", "region": "EUROPE"})
         mock_transport(monkeypatch, handler)
         result = run(fazercards.validate_pubg_id(VALID_PUBG_ID))
-        assert result == {"valid": True, "player_name": "TestPlayer", "region": "EUROPE"}
+        # `status` fait désormais partie du contrat explicite (valid / invalid / unsupported).
+        assert result == {"valid": True, "player_name": "TestPlayer", "region": "EUROPE",
+                          "status": "valid"}
 
     def test_invalid_id_parsed(self, monkeypatch):
         monkeypatch.setenv("FAZERCARDS_API_KEY", "fc_dummy_for_tests")
@@ -113,7 +115,7 @@ class TestServiceErrors:
                 return httpx.Response(200, json=DISCOVERY_BODY)
             return httpx.Response(200, json={"ok": True, "category_id": "pubg_mobile", "valid": False, "player_name": None})
         mock_transport(monkeypatch, handler)
-        assert run(fazercards.validate_pubg_id("123456789")) == {"valid": False}
+        assert run(fazercards.validate_pubg_id("123456789")) == {"valid": False, "status": "invalid"}
 
     def test_pubg_not_in_discovery_maps_to_503(self, monkeypatch):
         monkeypatch.setenv("FAZERCARDS_API_KEY", "fc_dummy_for_tests")

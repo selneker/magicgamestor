@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
 from core.db import db
-from core.games import DEFAULT_GAME_ID, check_product_type, public_game_ids
+from core.games import DEFAULT_GAME_ID, check_product_type, product_deliverable, public_game_ids
 from core.security import ADMIN_ROLES, get_optional_user, require_permission
 from services.fzr_mapping import mapping_ok
 
@@ -14,11 +14,24 @@ router = APIRouter(tags=["products"])
 PUBLIC = {"_id": 0}
 
 
-def _public(p: dict) -> dict:
-    """Vue publique : coût fournisseur jamais exposé + drapeau achetable."""
-    mapping = p.pop("fazercards_mapping", None)
-    p["purchasable"] = not p.get("requires_mapping") or mapping_ok(mapping)
+async def _games_by_id(ids) -> dict:
+    """Jeux nécessaires à la règle de livrabilité (id + affectation de catégories fournisseur)."""
+    docs = await db.games.find({"id": {"$in": list(set(ids))}},
+                               {"_id": 0, "id": 1, "fazercards_categories": 1,
+                                "fazercards_categories_configured": 1}).to_list(500)
+    return {g["id"]: g for g in docs}
+
+
+def _public(p: dict, game: dict | None) -> dict:
+    """Vue publique : coût fournisseur jamais exposé + drapeau achetable.
+
+    `purchasable` suit DÉSORMAIS la règle de livrabilité unique (`core.games.product_deliverable`) :
+    un produit dont le chemin de livraison est absent, non confirmé ou lié à une catégorie d'un
+    autre jeu n'est jamais présenté comme achetable.
+    """
     p.setdefault("game_id", DEFAULT_GAME_ID)  # products created before Phase 1
+    p["purchasable"] = product_deliverable(p, game or {"id": p["game_id"]})
+    p.pop("fazercards_mapping", None)
     return p
 
 
@@ -91,7 +104,11 @@ async def list_products(
     if q:
         query["$or"] = [{"name": {"$regex": re.escape(q), "$options": "i"}}, {"slug": {"$regex": re.escape(q), "$options": "i"}}]
     sort_map = {"default": [("sort_order", 1)], "price_asc": [("price", 1)], "price_desc": [("price", -1)], "uc_desc": [("uc_amount", -1)]}
-    return [_public(p) for p in await db.products.find(query, PUBLIC).sort(sort_map[sort]).to_list(500)]
+    rows = await db.products.find(query, PUBLIC).sort(sort_map[sort]).to_list(500)
+    games = await _games_by_id(p.get("game_id", DEFAULT_GAME_ID) for p in rows)
+    out = [_public(p, games.get(p.get("game_id", DEFAULT_GAME_ID))) for p in rows]
+    # Le catalogue public n'annonce jamais un produit dont la livraison est inutilisable.
+    return out if include_inactive else [p for p in out if p["purchasable"]]
 
 
 @router.get("/products/{slug}")
@@ -102,7 +119,14 @@ async def get_product(slug: str):
     related = await db.products.find({"type": product["type"], "game_id": product.get("game_id", DEFAULT_GAME_ID), "slug": {"$ne": slug}, "active": True}, PUBLIC) \
         .sort([("price", 1)]).to_list(50)
     related.sort(key=lambda p: abs(p["price"] - product["price"]))
-    return {**_public(product), "related": [_public(r) for r in related[:4]]}
+    game = await db.games.find_one({"id": product.get("game_id", DEFAULT_GAME_ID)},
+                                   {"_id": 0, "id": 1, "fazercards_categories": 1,
+                                    "fazercards_categories_configured": 1})
+    view = _public(product, game)
+    if not view["purchasable"]:
+        # Un produit non livrable ne doit pas être achetable : la fiche disparaît du public.
+        raise HTTPException(status_code=404, detail="Product not found")
+    return {**view, "related": [r for r in (_public(x, game) for x in related) if r["purchasable"]][:4]}
 
 
 @router.post("/admin/products", dependencies=[Depends(require_permission("catalog.manage"))])
@@ -161,9 +185,10 @@ async def delete_product(product_id: str):
         # La suppression du DERNIER produit réellement livrable viderait la boutique d'un jeu
         # encore public : refusé (le jeu se désactive explicitement dans Admin → Jeux).
         deliverable_left = False
+        game_doc = await db.games.find_one({"id": game_id}, PUBLIC)
         async for other in db.products.find({"id": {"$ne": product_id}, "game_id": game_id, "active": True},
                                             {"_id": 0, "requires_mapping": 1, "fazercards_mapping": 1}):
-            if not other.get("requires_mapping") or mapping_ok(other.get("fazercards_mapping")):
+            if product_deliverable(other, game_doc):
                 deliverable_left = True
                 break
         if not deliverable_left and await db.games.find_one({"id": game_id, "active": True}):

@@ -10,12 +10,15 @@ import { IdentityFieldsVerify } from "@/components/store/checkout/IdentityFields
 // Jeu historique : PUBG Mobile garde son écran de saisie EXACT (champ numérique + PubgIdVerify).
 const LEGACY_GAME = "pubg-mobile";
 
-export function StepVerify({ gameName, pubgId, setPubgId, user, verified, setVerified, autoVerify, setAutoVerify, gameId, identity, setIdentity, identitySpec, identityValues, setIdentityValues, email, setEmail, onContinue }) {
+export function StepVerify({ gameName, pubgId, setPubgId, user, verified, setVerified, autoVerify, setAutoVerify, gameId, identity, setIdentity, identitySpec, identityValues, setIdentityValues, email, setEmail, onContinue, validationPolicy = "required" }) {
   const { t } = useLang();
   const [identities, setIdentities] = useState([]);
   // Contrat d'identité piloté par la CONFIG ADMIN du jeu (jamais une hypothèse `player_id`).
   const spec = useMemo(() => (Array.isArray(identitySpec) ? identitySpec : []), [identitySpec]);
   const dynamic = gameId !== LEGACY_GAME && spec.length > 0;
+  // Politique explicite du jeu : « not_required » = vente autorisée sans vérification (le serveur
+  // l'enregistre comme NON VÉRIFIÉE). Le parcours PUBG Mobile historique n'est jamais concerné.
+  const skipVerification = dynamic && validationPolicy === "not_required";
   const primaryKey = useMemo(() => spec.find((f) => f.primary)?.key || spec[0]?.key || "player_id", [spec]);
   const primaryValue = dynamic ? ((identityValues || {})[primaryKey] || "") : pubgId;
 
@@ -90,7 +93,12 @@ export function StepVerify({ gameName, pubgId, setPubgId, user, verified, setVer
           <div className="mt-2 flex flex-wrap gap-1">{legacyIds.map((id) => <button type="button" key={id} data-testid={`saved-id-${id}`} onClick={() => { setPubgId(id); setAutoVerify((n) => n + 1); }} className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-primary hover:text-[#0A0A0A]">{id}</button>)}</div>
         )}
       </div>
-      {verified && (
+      {skipVerification && !verified && (
+        <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200" data-testid="checkout-verify-not-required">
+          {t("checkout.verifyNotRequired")}
+        </p>
+      )}
+      {(verified || skipVerification) && (
         <Button type="button" onClick={onContinue} data-testid="checkout-verify-continue" className="mt-4 h-12 w-full rounded-full text-base font-bold">{t("checkout.continue")}</Button>
       )}
     </section>

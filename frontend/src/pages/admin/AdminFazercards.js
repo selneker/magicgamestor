@@ -55,6 +55,10 @@ export default function AdminFazercards() {
   const [game, setGame] = useState("pubg-mobile");
   const [games, setGames] = useState([]);
   const [gamesReady, setGamesReady] = useState(false);
+  // Validation d'identité : liste fournisseur SÉPARÉE des catégories de vente + politique par jeu.
+  const [validationTargets, setValidationTargets] = useState([]);
+  const [validateCategory, setValidateCategory] = useState("");
+  const [validationPolicy, setValidationPolicy] = useState("required");
 
   const load = useCallback((g = "") => {
     api.get("/admin/fazercards/settings").then((r) => setSettings(r.data)).catch(() => {});
@@ -112,6 +116,35 @@ export default function AdminFazercards() {
       await loadProviderCategories(false);
       await loadCatalog();
       load(game);
+    } catch (e) { toast.error(errorMessage(e)); }
+    finally { setBusy(""); }
+  };
+
+  const loadGameValidation = useCallback(async () => {
+    try {
+      const { data } = await api.get("/admin/fazercards/validate-categories");
+      setValidationTargets(data.targets || []);
+      const current = (data.games || {})[game] || {};
+      setValidateCategory(current.validation_category || "");
+      setValidationPolicy(current.validation_policy || "required");
+    } catch (_) {
+      // Liste de validation indisponible (fournisseur ou clé absente) : on n'invente rien.
+      setValidationTargets([]);
+    }
+  }, [game]);
+
+  useEffect(() => { loadGameValidation(); }, [loadGameValidation]);
+
+  const saveGameValidation = async () => {
+    if (!game) { toast.error("Choisissez un jeu."); return; }
+    setBusy("save-validation");
+    try {
+      await api.put(`/admin/fazercards/games/${game}/validation`, {
+        validation_category: validateCategory || null,
+        validation_policy: validationPolicy,
+      });
+      toast.success(t("admin.fzr.validationSaved"));
+      await loadGameValidation();
     } catch (e) { toast.error(errorMessage(e)); }
     finally { setBusy(""); }
   };
@@ -274,6 +307,50 @@ export default function AdminFazercards() {
           {visibleProviderCategories.length === 0 && <p className="p-3 text-sm text-muted-foreground">{providerCategories.length === 0 ? "Aucune catégorie chargée. Vérifiez la clé API FazerCards puis cliquez sur Actualiser FazerCards." : "Aucune catégorie ne correspond à la recherche."}</p>}
         </div>
         <p className="mt-2 text-xs text-muted-foreground">{assignedCategoryIds.length} catégorie(s) sélectionnée(s). Les offres du catalogue seront disponibles ci-dessous après enregistrement.</p>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-5" data-testid="fzr-game-validation">
+        <h2 className="font-display text-lg font-bold text-foreground">{t("admin.fzr.validationTitle")}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">{t("admin.fzr.validationHint")}</p>
+        <p className="mt-1 text-xs font-semibold text-foreground">{t("admin.fzr.validationGame")} : {games.find((g) => g.id === game)?.name || game || "—"}</p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label htmlFor="fzr-validation-policy" className="text-xs font-bold uppercase tracking-widest">{t("admin.fzr.validationPolicy")}</label>
+            <Select value={validationPolicy} onValueChange={(v) => setValidationPolicy(v)}>
+              <SelectTrigger id="fzr-validation-policy" className="mt-1 h-9 w-full rounded-xl" data-testid="fzr-validation-policy-select"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="required">{t("admin.fzr.policyRequired")}</SelectItem>
+                <SelectItem value="optional">{t("admin.fzr.policyOptional")}</SelectItem>
+                <SelectItem value="not_required">{t("admin.fzr.policyNotRequired")}</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[11px] text-muted-foreground" data-testid="fzr-validation-policy-hint">
+              {validationPolicy === "required" ? t("admin.fzr.policyRequiredHint") : validationPolicy === "optional" ? t("admin.fzr.policyOptionalHint") : t("admin.fzr.policyNotRequiredHint")}
+            </p>
+          </div>
+          <div>
+            <label htmlFor="fzr-validation-target" className="text-xs font-bold uppercase tracking-widest">{t("admin.fzr.validationTarget")}</label>
+            <Select value={validateCategory || "none"} onValueChange={(v) => setValidateCategory(v === "none" ? "" : v)}>
+              <SelectTrigger id="fzr-validation-target" className="mt-1 h-9 w-full rounded-xl" data-testid="fzr-validation-target-select"><SelectValue placeholder={t("admin.fzr.validationNone")} /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t("admin.fzr.validationNone")}</SelectItem>
+                {validationTargets.map((tg) => (
+                  <SelectItem key={tg.category_id} value={tg.category_id}>{tg.name || tg.category_id} · {tg.category_id}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[11px] text-muted-foreground">{t("admin.fzr.validationTargetHint")}</p>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button size="sm" className="rounded-full" onClick={saveGameValidation} disabled={!game || busy === "save-validation"} data-testid="fzr-save-game-validation">
+            {busy === "save-validation" ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}{t("admin.fzr.validationSave")}
+          </Button>
+          <Button size="sm" variant="outline" className="rounded-full" onClick={loadGameValidation} data-testid="fzr-validation-refresh">
+            <RefreshCw className="mr-1 h-4 w-4" />{t("admin.fzr.validationRefresh")}
+          </Button>
+          <span className="text-xs text-muted-foreground" data-testid="fzr-validation-count">{validationTargets.length} {t("admin.fzr.validationCount")}</span>
+        </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-5">

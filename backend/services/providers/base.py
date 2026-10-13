@@ -18,14 +18,37 @@ class OrderStatus:
     ALL = (CREATED, PROCESSING, COMPLETED, FAILED, REFUND)
 
 
+class IdentityValidationStatus:
+    """États EXPLICITES d'une validation d'identité (jamais un booléen ambigu).
+
+    VALID / INVALID : le fournisseur a répondu (confirmé / refusé).
+    UNSUPPORTED     : le fournisseur ne propose pas de validation pour ce jeu — état NORMAL.
+                      Une erreur technique ne doit JAMAIS être traduite en UNSUPPORTED : elle
+                      remonte sous forme de ProviderError.
+    """
+
+    VALID = "valid"
+    INVALID = "invalid"
+    UNSUPPORTED = "unsupported"
+    ALL = (VALID, INVALID, UNSUPPORTED)
+
+
 @dataclass
 class IdentityValidation:
-    """Résultat générique d'une validation d'identité (champs optionnels selon le jeu)."""
+    """Résultat générique d'une validation d'identité (champs optionnels selon le jeu).
+
+    `status` porte l'état explicite (voir `IdentityValidationStatus`) ; `valid` reste vrai
+    UNIQUEMENT quand le fournisseur a confirmé l'identité.
+    """
 
     valid: bool
     player_name: str | None = None
     region: str | None = None
     raw: dict = field(default_factory=dict)
+    status: str = IdentityValidationStatus.VALID
+    reason: str | None = None
+    category_id: str | None = None
+    field_key: str | None = None
 
 
 @dataclass

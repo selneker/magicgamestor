@@ -53,15 +53,26 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
     try {
       const fields = Object.fromEntries(spec.map((f) => [f.key, (valuesRef.current[f.key] || "").trim()]));
       const { data } = await api.post("/fazercards/validate-id", { game_id: gameId, fields });
-      if (data.valid) {
+      if (data.status === "valid" || (data.valid && !data.status)) {
         setState({ status: "valid", name: data.player_name });
-        onVerified({ name: data.player_name || null, fields });
-      } else {
-        setState({ status: "invalid" });
+        onVerified({ name: data.player_name || null, fields, verified: true });
+        return;
       }
+      if (data.status === "unsupported" || data.status === "not_required") {
+        // Le fournisseur ne propose PAS de vérification pour ce jeu (état normal) : on enregistre
+        // la vente comme NON VÉRIFIÉE quand l'administration l'a explicitement autorisée. On ne
+        // prétend jamais que l'identité a été vérifiée.
+        const allowed = !!data.can_sell_without_validation;
+        setState({ status: "unverified", allowed, message: data.message || t("checkout.verifyUnsupportedTitle") });
+        onVerified(allowed ? { name: null, fields, verified: false, validation_status: data.status } : null);
+        return;
+      }
+      setState({ status: "invalid" });
     } catch (e) {
       const code = e?.response?.status;
-      const kind = !e?.response || code === 504 || code === 429 ? "temporary" : "provider";
+      // Une panne fournisseur (5xx, timeout, réseau, limite) est TEMPORAIRE ; elle n'est jamais
+      // confondue avec une validation réussie ni avec une absence normale de prise en charge.
+      const kind = !e?.response || code === 429 || code >= 500 ? "temporary" : "provider";
       setState({ status: "error", kind, message: errorMessage(e, t("checkout.verifyError")) });
     }
   };
@@ -92,8 +103,8 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
           {errors[f.key] && (values || {})[f.key] && <p id={`identity-err-${f.key}`} className="mt-1 text-xs font-semibold text-red-600" data-testid={`identity-field-error-${f.key}`}>{errors[f.key]}</p>}
         </div>
       ))}
-      {!(checkout && state.status === "valid") && (
-        <button type="button" data-testid="identity-verify-btn" onClick={verify} disabled={state.status === "loading" || !complete} className={btn}>
+      {!(checkout && (state.status === "valid" || (state.status === "unverified" && state.allowed))) && (
+        <button type="button" data-testid="identity-verify-btn" onClick={verify} disabled={state.status === "loading" || !complete || (state.status === "unverified" && !state.allowed)} className={btn}>
           {state.status === "loading" ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" data-testid="identity-verify-loading" />{t("checkout.verifying")}</>) : t("checkout.verify")}
         </button>
       )}
@@ -108,6 +119,18 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         <p className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-600" data-testid="identity-verify-invalid">
           <XCircle className="h-4 w-4" />{t("checkout.verifyInvalid")}
         </p>
+      )}
+      {state.status === "unverified" && (
+        <div className="flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+          data-testid={state.allowed ? "identity-verify-unsupported-ok" : "identity-verify-unsupported-blocked"}>
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-bold">{t("checkout.verifyUnsupportedTitle")}</p>
+            <p data-testid="identity-verify-unsupported-message">
+              {state.allowed ? t("checkout.verifyUnsupportedAllowed") : t("checkout.verifyUnsupportedBlocked")}
+            </p>
+          </div>
+        </div>
       )}
       {state.status === "error" && (
         <div className="flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700" data-testid="identity-verify-error">

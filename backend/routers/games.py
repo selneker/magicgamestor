@@ -9,7 +9,7 @@ from core.audit import audit
 from core.db import db
 from core.games import (DEFAULT_GAME_ID, NO_CATALOG_DETAIL, check_identity_payload, game_readiness,
                         identity_spec, normalize_identity_fields, normalize_product_types, product_types_for,
-                        public_game_ids)
+                        public_game_ids, validation_policy_of)
 from core.security import get_current_user, require_permission
 
 router = APIRouter(tags=["games"])
@@ -18,13 +18,18 @@ PUBLIC = {"_id": 0}
 # recopiés sur les réponses publiques (une boutique n'expose pas la nomenclature du fournisseur).
 # En revanche `identity_fields` EST public : c'est le contrat de saisie que le checkout doit
 # rendre (libellés/formats), et il ne contient aucune donnée commerciale ni identifiant fournisseur.
-PUBLIC_GAME = {"_id": 0, "fazercards_categories": 0, "fazercards_categories_configured": 0}
+# `fazercards_validation_category` est une configuration fournisseur comme les catégories de vente :
+# elle n'est JAMAIS recopiée sur une réponse publique. `validation_policy` l'est : c'est le contrat
+# de parcours affiché au client (vérification obligatoire / non prise en charge autorisée).
+PUBLIC_GAME = {"_id": 0, "fazercards_categories": 0, "fazercards_categories_configured": 0,
+               "fazercards_validation_category": 0}
 FIELD_KEY = re.compile(r"[a-z][a-z0-9_]{0,31}", re.ASCII)
 
 
 def _effective(game: dict) -> dict:
     game["identity_fields"] = identity_spec(game)
     game["product_types"] = product_types_for(game)
+    game["validation_policy"] = validation_policy_of(game)
     return game
 
 

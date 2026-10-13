@@ -54,6 +54,8 @@ export default function Checkout() {
   const gameId = order?.game_id || cartGameId || gameSel?.selectedId || "pubg-mobile";
   const game = (gameSel?.games || []).find((g) => g.id === gameId);
   const identitySpec = game?.identity_fields || [];
+  // Politique de validation exposée par l'API publique du jeu (le serveur reste la seule autorité).
+  const validationPolicy = game?.validation_policy || "required";
   // Changing game invalidates any identity typed or verified for the previous game.
   useEffect(() => {
     setVerifiedState(null); setIdentity(null); setIdentityValues({});
@@ -139,7 +141,7 @@ export default function Checkout() {
   });
 
   const screens = [
-    <StepVerify key="v" gameName={game?.name} pubgId={pubgId} setPubgId={setPubgId} user={user} verified={verified} setVerified={setVerified} autoVerify={autoVerify} setAutoVerify={setAutoVerify} gameId={gameId} identity={identity} setIdentity={setIdentity} identitySpec={identitySpec} identityValues={identityValues} setIdentityValues={setIdentityValues} email={email} setEmail={setEmail} onContinue={() => go(1)} />,
+    <StepVerify key="v" gameName={game?.name} pubgId={pubgId} setPubgId={setPubgId} user={user} verified={verified} setVerified={setVerified} autoVerify={autoVerify} setAutoVerify={setAutoVerify} gameId={gameId} identity={identity} setIdentity={setIdentity} identitySpec={identitySpec} identityValues={identityValues} setIdentityValues={setIdentityValues} email={email} setEmail={setEmail} onContinue={() => go(1)} validationPolicy={validationPolicy} />,
     <PaymentFlow key="m" method={method} setMethod={setMethod} phone={phone} setPhone={setPhone} reference={reference} setReference={setReference} network={network} setNetwork={setNetwork} accepted={accepted} setAccepted={setAccepted} subtotal={subtotal} config={config} crypto={crypto} busy={busy} onContinue={continueMethod} />,
     <StepPay key="p" method={method} order={order} config={config} summary={summary} reference={reference} busy={busy} onPayAuto={payAuto} onManualPaid={() => go(3)} cryptoPayment={cryptoPayment} onConfirmed={() => go(3)} trackUrl={trackUrl} />,
     <StepConfirm key="c" method={method} order={order} trackUrl={trackUrl} summary={summary} reference={reference} setReference={setReference} busy={busy} onConfirm={confirmManual} />,

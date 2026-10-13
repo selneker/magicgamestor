@@ -56,12 +56,30 @@ def test_validation_target_pubg_uses_legacy_discovery(monkeypatch):
 
 
 def test_validation_target_other_game_uses_its_own_category(monkeypatch):
-    """Un autre jeu est résolu via GAME_MATCHERS : sa propre catégorie, jamais celle de PUBG."""
+    """Un jeu non-PUBG n'est résolu QUE par sa correspondance de VALIDATION explicite.
+
+    Correction du contrat FazerCards : les catégories de VENTE (et les mots-clés historiques) ne
+    servent jamais de cible de validation.
+    """
     def handler(req):
         if req.url.path.endswith("/topups/validate-id") and req.method == "GET":
             return httpx.Response(200, json=FF_VALIDATE_LIST)
         return httpx.Response(404, json={"ok": False})
     mock_transport(monkeypatch, handler)
+
+    # 1) Aucune correspondance de validation → NON PRIS EN CHARGE (jamais déduit du slug/mot-clé).
+    run(db.games.update_one({"id": FREE_FIRE},
+                            {"$set": {"fazercards_validation_category": None,
+                                      "validation_policy": "required"}}, upsert=True))
+    fazercards.clear_caches()
+    with pytest.raises(HTTPException) as e:
+        run(fazercards.validation_target(FREE_FIRE))
+    assert e.value.status_code == 503
+    assert e.value.detail == fazercards.NOT_SUPPORTED_DETAIL
+
+    # 2) Correspondance explicite → c'est bien un identifiant de la LISTE DE VALIDATION.
+    run(db.games.update_one({"id": FREE_FIRE}, {"$set": {"fazercards_validation_category": "free_fire"}}))
+    fazercards.clear_caches()
     assert run(fazercards.validation_target(FREE_FIRE)) == ("free_fire", "player_id")
 
 
@@ -88,16 +106,22 @@ def test_validation_target_configured_game_without_target_fails_safely(monkeypat
 
 
 def test_validate_identity_unknown_game_fails_safely(monkeypatch):
-    """`validate_identity` propage l'échec sûr (503) pour un jeu non reconnu."""
+    """`validate_identity` ne transforme jamais un jeu non reconnu en succès : état `unsupported`."""
     mock_transport(monkeypatch, happy_handler())
+    out = run(fazercards.validate_identity({"player_id": "1"}, "some-unknown-game"))
+    assert out["status"] == "unsupported" and out["valid"] is False
     with pytest.raises(HTTPException) as e:
-        run(fazercards.validate_identity({"player_id": "1"}, "some-unknown-game"))
+        run(fazercards.validation_target("some-unknown-game"))  # wrapper historique : 503
     assert e.value.status_code == 503
 
 
 def test_validate_identity_sends_the_game_category(monkeypatch):
-    """La validation d'un jeu dynamique envoie SA catégorie fournisseur (pas PUBG)."""
+    """La validation d'un jeu dynamique envoie SA cible de validation fournisseur (pas PUBG)."""
     seen = {}
+    run(db.games.update_one({"id": FREE_FIRE}, {"$set": {"fazercards_validation_category": "free_fire",
+                                                        "validation_policy": "required"}}, upsert=True))
+    fazercards.clear_caches()
+
 
     def handler(req):
         if req.url.path.endswith("/topups/validate-id") and req.method == "GET":
@@ -165,6 +189,9 @@ def test_preflight_invalid_identity_message_is_game_neutral(monkeypatch):
             return httpx.Response(200, json={"ok": True, "valid": False})
         return httpx.Response(404, json={"ok": False})
     mock_transport(monkeypatch, handler)
+    run(db.games.update_one({"id": FREE_FIRE}, {"$set": {"fazercards_validation_category": "free_fire",
+                                                        "validation_policy": "required"}}, upsert=True))
+    fazercards.clear_caches()
     pid = make_mapped_product()
     ff_order = make_order(status="paid", product_id=pid)
     run(db.orders.update_one({"id": ff_order["id"]}, {"$set": {"game_id": FREE_FIRE}}))

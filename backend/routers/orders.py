@@ -10,11 +10,11 @@ from core import ratelimit
 from core.audit import audit
 from core.db import db
 from core.games import (DEFAULT_GAME_ID, check_identity_payload, game_sale_path_ready, identity_spec,
-                        with_game_defaults)
+                        product_deliverable, with_game_defaults)
 from core.security import (ADMIN_ROLES, get_current_user, get_optional_user, require_admin,
                            require_permission, require_super_admin)
 from routers.evo import EVO_TYPE, release_evo_locks, reserve_evo
-from services import loyalty, mailer
+from services import identity_gate, loyalty, mailer
 from services import payments as gw
 from services.fulfillment import on_order_paid
 from services.fzr_mapping import purchase_blocked, supplier_cost_usd
@@ -227,7 +227,7 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
     # un identifiant mal formé renvoie donc toujours 422, indépendamment de la disponibilité du
     # fournisseur de paiement (et non un 409 trompeur venu du canal de règlement).
     # ------------------------------------------------------------------ #
-    game = await db.games.find_one({"id": body.game_id, "active": True}, {"_id": 0, "id": 1})
+    game = await db.games.find_one({"id": body.game_id, "active": True}, dict(identity_gate.GAME_PROJECTION))
     if not game:
         raise HTTPException(status_code=400, detail="Unknown or inactive game")
     ready, reason = await game_sale_path_ready(body.game_id)
@@ -237,6 +237,16 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         if body.game_id != DEFAULT_GAME_ID:
             raise HTTPException(status_code=409, detail=reason)
     identity_snapshot = await _identity_snapshot(body, user)
+    # ------------------------------------------------------------------ #
+    # PORTE D'IDENTITÉ CÔTÉ SERVEUR (jamais seulement dans le frontend).
+    # Politique par jeu : `required` (défaut, PUBG Mobile inclus) → la vérification fournisseur
+    # doit être acquise ; `optional` → refus explicite bloquant, absence NORMALE de prise en
+    # charge autorisée et tracée ; `not_required` → autorisation explicite, aucun appel.
+    # Une erreur technique lève ici : la commande n'est pas créée et le paiement reste impossible.
+    # ------------------------------------------------------------------ #
+    identity_check = await identity_gate.gate_identity(
+        body.game_id, identity_snapshot["fields"], stage=identity_gate.STAGE_ORDER, game=game)
+    identity_snapshot.update(identity_gate.snapshot_validation(identity_check))
     from services import fiveone
     payment_provider = None
     if body.payment_method in ("mvola", "orange"):
@@ -256,12 +266,19 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
     products = {p["id"]: p for p in await db.products.find({"id": {"$in": ids}, "active": True}, PUBLIC).to_list(100)}
     if len(products) != len(set(ids)):
         raise HTTPException(status_code=400, detail="One or more products are unavailable")
-    if any(p.get("game_id", DEFAULT_GAME_ID) != body.game_id for p in products.values()):
+    if not identity_gate.products_all_belong_to_game(products, body.game_id):
         raise HTTPException(status_code=400, detail="Products do not belong to the selected game")
     for p in products.values():
-        blocked = purchase_blocked(p)
+        # Règle de livrabilité UNIQUE (catalogue public, activation, commande) : un produit dont
+        # le chemin de livraison est absent/hors catégories du jeu n'est jamais vendable.
+        blocked = purchase_blocked(p) or (None if product_deliverable(p, game) else
+                                          f"« {p.get('name')} » n'est pas disponible : livraison non configurée.")
         if blocked:
             raise HTTPException(status_code=409, detail=blocked)
+        # Cohérence région du compte ↔ catégorie régionale (uniquement si les deux sont connues).
+        conflict = identity_gate.region_blocked(identity_snapshot.get("region"), p.get("fazercards_mapping"))
+        if conflict:
+            raise HTTPException(status_code=409, detail=identity_gate.region_mismatch_detail(conflict))
     items, total = [], 0
     for line in body.items:
         p = products[line.product_id]
