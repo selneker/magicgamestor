@@ -184,7 +184,7 @@ function GamesBento({ games, selectGame }) {
       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {games.map((g, i) => (
           <Link key={g.id} to={`/boutique?game=${g.id}`} onClick={() => selectGame(g.id)} data-testid={`home-game-${g.slug || g.id}`}
-            className={`brutal-card card-lift group relative flex min-h-[200px] flex-col justify-between overflow-hidden border-2 bg-card p-6 ${i === 0 && games.length > 1 ? "sm:col-span-2" : ""}`}>
+            className={`brutal-card card-lift group relative flex min-h-[200px] flex-col justify-between overflow-hidden border-2 bg-card p-6 ${i === 0 && games.length === 2 ? "sm:col-span-2" : ""}`}>
             <div className="flex items-start justify-between gap-3">
               <GameLogo game={g} className="h-16 w-16" />
               <ArrowUpRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
@@ -322,6 +322,8 @@ export default function Home() {
     api.get("/events").then((r) => setEvents(r.data.slice(0, 1))).catch(() => {});
   }, []);
   const shopUrl = games.length === 1 ? `/boutique?game=${games[0].id}` : "/boutique";
+  const popularIds = new Set((products || []).map((product) => product.id));
+  const visibleSubs = subs?.filter((product, index, list) => !popularIds.has(product.id) && list.findIndex((item) => item.id === product.id) === index);
 
   return (
     <div className="pb-28">
@@ -330,7 +332,7 @@ export default function Home() {
 
       <ProductRow eyebrow={t("catalog.popular")} title={t("store.offersTitle")} sub={t("store.offersSub")} products={products} seeMoreTo={shopUrl} gridTestid="popular-grid" moreTestid="see-all-link" />
 
-      <ProductRow eyebrow={t("catalog.prime")} title={t("common.subsTitle")} sub={t("common.subsSub")} products={subs} seeMoreTo={`${shopUrl}${shopUrl.includes("?") ? "&" : "?"}type=prime,prime_plus`} gridTestid="subs-grid" moreTestid="subs-more-link" />
+      <ProductRow eyebrow={t("catalog.prime")} title={t("common.subsTitle")} sub={t("common.subsSub")} products={visibleSubs} seeMoreTo={`${shopUrl}${shopUrl.includes("?") ? "&" : "?"}type=prime,prime_plus`} gridTestid="subs-grid" moreTestid="subs-more-link" />
 
       <Steps />
 
