@@ -65,6 +65,8 @@
         font-family: var(--font-body);
         font-feature-settings: "tnum" 1;
         font-weight: 400;
+        background-image: linear-gradient(to right, hsl(var(--foreground) / .035) 1px, transparent 1px), linear-gradient(to bottom, hsl(var(--foreground) / .035) 1px, transparent 1px);
+        background-size: 32px 32px;
     }
     h1, h2, h3, h4, h5, h6, .font-display { font-family: var(--font-display); letter-spacing: -0.02em; }
     h1 { font-weight: 700; }

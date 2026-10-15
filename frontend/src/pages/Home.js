@@ -53,6 +53,14 @@ function Hero({ games, shopUrl }) {
           <Button asChild size="lg" className="h-12 px-7 text-sm hover-slide" data-testid="hero-cta-shop"><Link to={shopUrl}>{t("store.ctaShop")}<ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
           <Button asChild size="lg" variant="outline" className="h-12 px-7 text-sm" data-testid="hero-cta-track"><Link to="/suivi">{t("store.ctaTrack")}</Link></Button>
         </div>
+        <div className="mt-10 grid max-w-xl grid-cols-3 border-t border-[color:var(--rule)] pt-4">
+          {[t("store.step1"), t("store.step2"), t("store.step3")].map((label, index) => (
+            <div key={label} className="pr-3 first:border-r last:border-l last:pl-3 sm:pr-5 sm:last:pl-5">
+              <span className="num text-lg text-primary">0{index + 1}</span>
+              <p className="mt-1 text-[10px] font-semibold uppercase leading-tight tracking-[0.08em] text-muted-foreground sm:text-[11px]">{label}</p>
+            </div>
+          ))}
+        </div>
       </motion.div>
       <motion.div {...rise(1)} className="panel-black flex flex-col justify-between gap-6 p-6 sm:p-8 lg:col-span-4" data-testid="hero-games-card">
         <div className="flex items-start justify-between gap-3">
