@@ -40,40 +40,34 @@ function SectionHead({ eyebrow, title, sub, action }) {
 
 function Hero({ games, shopUrl }) {
   const { t } = useLang();
+  const featuredGames = games.slice(0, 4);
   return (
-    <section className="mt-6 grid gap-3 lg:grid-cols-12 lg:grid-rows-[auto_auto]" data-testid="hero">
-      <motion.div {...rise(0)} className="grain relative overflow-hidden rounded-[18px] border bg-card p-6 sm:p-10 lg:col-span-8 lg:row-span-2 lg:p-14">
-        <div className="flex flex-wrap items-center gap-3"><p className="eyebrow">{t("store.heroEyebrow")}</p><StatusBadge /></div>
-        <h1 className="mt-8 max-w-3xl font-display text-4xl font-bold leading-[0.98] tracking-[-0.035em] sm:text-6xl lg:text-7xl" data-testid="hero-title">
+    <section className="mt-6 grid gap-3 lg:grid-cols-12 lg:grid-rows-[minmax(260px,1fr)_auto]" data-testid="hero">
+      <motion.div {...rise(0)} className="grain relative overflow-hidden rounded-[18px] border-2 border-foreground bg-card p-6 shadow-[6px_6px_0_hsl(var(--foreground)/.14)] sm:p-10 lg:col-span-8 lg:row-span-2 lg:p-14">
+        <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full border-2 border-foreground bg-primary/80 sm:h-52 sm:w-52" aria-hidden="true" />
+        <div className="relative z-10 flex flex-wrap items-center gap-3"><p className="eyebrow">{t("store.heroEyebrow")}</p><StatusBadge /></div>
+        <h1 className="relative z-10 mt-8 max-w-3xl font-display text-4xl font-bold leading-[0.94] tracking-[-0.05em] sm:text-6xl lg:text-7xl" data-testid="hero-title">
           <span className="block">{t("store.heroA")}</span>
-          <span className="mt-2 inline-block rounded-[8px] bg-primary px-2 text-[#0A0A0A]">{t("store.heroB")}</span>
+          <span className="mt-2 inline-block -rotate-1 rounded-[8px] border-2 border-foreground bg-primary px-2 text-[#0A0A0A] shadow-[4px_4px_0_hsl(var(--foreground)/.2)]">{t("store.heroB")}</span>
         </h1>
-        <p className="mt-8 max-w-lg text-sm leading-relaxed text-muted-foreground sm:text-base">{t("store.heroSub")}</p>
-        <div className="mt-10 flex flex-wrap gap-3">
-          <Button asChild size="lg" className="h-12 px-7 text-sm hover-slide" data-testid="hero-cta-shop"><Link to={shopUrl}>{t("store.ctaShop")}<ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
-          <Button asChild size="lg" variant="outline" className="h-12 px-7 text-sm" data-testid="hero-cta-track"><Link to="/suivi">{t("store.ctaTrack")}</Link></Button>
+        <p className="relative z-10 mt-8 max-w-lg text-sm leading-relaxed text-muted-foreground sm:text-base">{t("store.heroSub")}</p>
+        <div className="relative z-10 mt-10 flex flex-wrap gap-3">
+          <Button asChild size="lg" className="h-12 border-2 border-foreground px-7 text-sm shadow-[4px_4px_0_hsl(var(--foreground)/.2)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none" data-testid="hero-cta-shop"><Link to={shopUrl}>{t("store.ctaShop")}<ArrowRight className="ml-1 h-4 w-4" /></Link></Button>
+          <Button asChild size="lg" variant="outline" className="h-12 border-2 border-foreground bg-background px-7 text-sm" data-testid="hero-cta-track"><Link to="/suivi">{t("store.ctaTrack")}</Link></Button>
         </div>
       </motion.div>
-      <motion.div {...rise(1)} className="panel-black flex flex-col justify-between gap-6 p-6 sm:p-8 lg:col-span-4" data-testid="hero-games-card">
-        <div className="flex items-start justify-between gap-3">
-          <p className="eyebrow-invert">{t("store.gamesTitle")}</p>
-          <span className="num text-5xl leading-none text-primary" data-testid="hero-games-count">{games.length}</span>
-        </div>
-        <p className="max-w-xs text-sm text-background/70">{t("store.gamesSub")}</p>
-        <div className="flex flex-wrap gap-2">
-          {games.map((g) => (
-            <Link key={g.id} to={`/boutique?game=${g.id}`} className="group flex items-center gap-2 rounded-full border border-background/25 py-1 pl-1 pr-3 transition-colors hover:bg-primary hover:text-[#0A0A0A]" data-testid={`hero-game-${g.id}`}>
-              <GameLogo game={g} className="h-8 w-8 rounded-full" /><span className="text-xs font-semibold">{g.name}</span>
-            </Link>
-          ))}
+      <motion.div {...rise(1)} className="panel-black relative flex min-h-[220px] flex-col justify-between gap-6 overflow-hidden border-2 border-foreground p-6 sm:p-8 lg:col-span-4" data-testid="hero-games-card">
+        <div className="absolute -bottom-8 -right-6 h-28 w-28 rotate-12 border-2 border-primary bg-primary/20" aria-hidden="true" />
+        <div className="relative flex items-start justify-between gap-3"><p className="eyebrow-invert">{t("store.gamesTitle")}</p><span className="num text-5xl leading-none text-primary" data-testid="hero-games-count">{games.length}</span></div>
+        <p className="relative max-w-xs text-sm text-background/70">{t("store.gamesSub")}</p>
+        <div className="relative flex flex-wrap gap-2">
+          {featuredGames.map((g) => <Link key={g.id} to={`/boutique?game=${g.id}`} className="group flex items-center gap-2 rounded-full border border-background/25 py-1 pl-1 pr-3 transition-colors hover:bg-primary hover:text-[#0A0A0A]" data-testid={`hero-game-${g.id}`}><GameLogo game={g} className="h-8 w-8 rounded-full" /><span className="text-xs font-semibold">{g.name}</span></Link>)}
         </div>
       </motion.div>
-      <motion.div {...rise(2)} className="panel-neon flex flex-col justify-between gap-6 p-6 sm:p-8 lg:col-span-4" data-testid="hero-pay-card">
+      <motion.div {...rise(2)} className="panel-neon flex min-h-[180px] flex-col justify-between gap-6 border-2 border-foreground p-6 shadow-[5px_5px_0_hsl(var(--foreground)/.15)] sm:p-8 lg:col-span-4" data-testid="hero-pay-card">
         <div className="flex items-center gap-2"><Wallet className="h-5 w-5" /><p className="text-[11px] font-semibold uppercase tracking-[0.2em]">{t("store.payTitle")}</p></div>
         <p className="max-w-xs text-sm text-[#0A0A0A]/75">{t("store.step3d")}</p>
-        <div className="flex flex-wrap gap-2">
-          {["MVola", "Orange Money", "Binance USDT"].map((m) => <span key={m} className="rounded-full border border-[#0A0A0A]/30 px-3 py-1 text-xs font-semibold">{m}</span>)}
-        </div>
+        <div className="flex flex-wrap gap-2">{["MVola", "Orange Money", "Binance USDT"].map((m) => <span key={m} className="rounded-full border border-[#0A0A0A]/40 px-3 py-1 text-xs font-semibold">{m}</span>)}</div>
       </motion.div>
     </section>
   );
