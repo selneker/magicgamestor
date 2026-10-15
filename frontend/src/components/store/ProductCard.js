@@ -44,11 +44,11 @@ export function ProductCard({ product, index = 0 }) {
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-black/10" aria-hidden="true" />
           <div className="absolute left-2.5 top-2.5 flex max-w-[72%] flex-wrap gap-1.5">
-            <span data-testid={`product-type-${product.slug}`} className="truncate rounded-full border border-white/25 bg-black/35 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-white/90 backdrop-blur-sm">{typeLabel(game, product.type, lang)}</span>
+            <span data-testid={`product-type-${product.slug}`} className="truncate rounded-full border border-white/25 bg-black/35 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-white/90 backdrop-blur-sm">{typeLabel(game, product.type, lang)}</span>
           </div>
           <div className="absolute right-2.5 top-2.5 flex flex-col items-end gap-1.5">
             {product.popular && <span data-testid={`badge-popular-${product.slug}`} className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[#0A0A0A]">{t("common.popular")}</span>}
-            {discount > 0 && <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-[#0A0A0A]">-{discount}%</span>}
+            {discount > 0 && <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-bold leading-none text-[#0A0A0A]">-{discount}%</span>}
             {!product.popular && product.badge && <span className="rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-white backdrop-blur-sm">{product.badge}</span>}
           </div>
           <div className="absolute inset-x-3 bottom-3 text-white">
@@ -64,7 +64,7 @@ export function ProductCard({ product, index = 0 }) {
         </div>
       </Link>
 
-      <div className="flex flex-1 flex-col p-3">
+      <div className="flex flex-1 flex-col p-3.5">
         <Link to={`/produit/${product.slug}`} className="min-w-0">
           <h3 data-testid={`product-name-${product.slug}`} className="min-h-[2.5rem] font-display text-sm font-bold leading-tight text-foreground [overflow-wrap:anywhere] line-clamp-2">{name}</h3>
         </Link>
@@ -75,7 +75,7 @@ export function ProductCard({ product, index = 0 }) {
         </div>
         <button
           type="button" disabled={!available} data-testid={`add-to-cart-${product.slug}`}
-          className="mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-full border border-[color:var(--rule-strong)] bg-transparent text-[11px] font-semibold uppercase tracking-[0.06em] text-foreground transition-colors hover:bg-foreground hover:text-background active:bg-primary active:text-[#0A0A0A] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-foreground"
+          className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-[8px] border-2 border-[color:var(--rule-strong)] bg-transparent px-3 text-xs font-semibold uppercase tracking-[0.05em] text-foreground transition-[transform,background-color,color,box-shadow] hover:-translate-y-0.5 hover:bg-foreground hover:text-background active:translate-y-0.5 active:bg-primary active:text-[#0A0A0A] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:bg-transparent disabled:hover:text-foreground"
           onClick={() => addFeedback(add(product), t, toast, setOpen)}
         >
           {available ? <><Plus className="h-3.5 w-3.5" />{t("product.add")}</> : t("product.unavailable")}
