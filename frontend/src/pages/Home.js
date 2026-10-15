@@ -29,7 +29,7 @@ export function GameLogo({ game, className = "h-14 w-14" }) {
 
 function SectionHead({ eyebrow, title, sub, action }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3 border-b pb-4">
+    <div className="section-head flex flex-wrap items-end justify-between gap-3 border-b-2 pb-4">
       <div className="min-w-0">
         <p className="eyebrow">{eyebrow}</p>
         <h2 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-4xl">{title}</h2>
@@ -99,7 +99,7 @@ function Hero({ event }) {
   return (
     <section className="mt-6" data-testid="hero">
       <div role="region" aria-roledescription="carousel" aria-label={t("hero.carouselLabel")} tabIndex={0} onKeyDown={onKeyDown}
-        className="relative overflow-hidden rounded-[18px] border focus-visible:outline-2 focus-visible:outline-[hsl(var(--primary))]">
+        className="brutal-panel relative overflow-hidden rounded-[10px] border-2 focus-visible:outline-2 focus-visible:outline-[hsl(var(--primary))]">
         <div ref={trackRef} onScroll={onScroll} onPointerDown={pause} onPointerUp={resume} onPointerCancel={resume} onMouseEnter={pause} onMouseLeave={resume} onFocusCapture={pause} onBlurCapture={resume}
           className="no-scrollbar flex h-[80svh] min-h-[460px] w-full snap-x snap-mandatory overflow-x-auto overflow-y-hidden sm:h-[70svh] sm:max-h-[720px]">
           {slides.map((s, i) => (
@@ -116,7 +116,7 @@ function Hero({ event }) {
                 <h1 data-testid={active === i ? "hero-rotating-title" : undefined}
                   className="max-w-3xl font-display text-4xl font-bold leading-[1.03] tracking-[-0.02em] drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)] sm:text-5xl lg:text-6xl">{s.title}</h1>
                 <p className="mt-5 max-w-md text-sm leading-relaxed text-white/85 sm:text-base">{s.sub}</p>
-                <Button asChild size="lg" className="mt-8 h-12 rounded-full px-8 text-sm font-semibold hover-slide">
+                <Button asChild size="lg" className="brutal-button mt-8 h-12 rounded-[8px] px-8 text-sm font-semibold hover-slide">
                   <Link to={s.to} data-testid={s.testid}>{s.cta}<ArrowRight className="ml-1.5 h-4 w-4" /></Link>
                 </Button>
               </div>
@@ -142,7 +142,7 @@ function Hero({ event }) {
       {/* Trust band + payment methods (kept from the old hero) */}
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_1fr_auto]" data-testid="hero-trust">
         {[[Zap, t("hero.trust1t"), t("hero.trust1d")], [Lock, t("hero.trust2t"), t("hero.trust2d")], [MessageCircle, t("hero.trust3t"), t("hero.trust3d")]].map(([Icon, title, desc]) => (
-          <div key={title} className="flex items-center gap-3 rounded-[16px] border bg-card p-4">
+          <div key={title} className="brutal-card flex items-center gap-3 border-2 bg-card p-4">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]"><Icon className="h-5 w-5" strokeWidth={2} /></span>
             <div className="min-w-0"><p className="font-display text-sm font-bold leading-tight">{title}</p><p className="mt-0.5 text-xs text-muted-foreground">{desc}</p></div>
           </div>
@@ -185,7 +185,7 @@ function GamesBento({ games, selectGame }) {
       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {games.map((g, i) => (
           <Link key={g.id} to={`/boutique?game=${g.id}`} onClick={() => selectGame(g.id)} data-testid={`home-game-${g.slug || g.id}`}
-            className={`card-lift group relative flex min-h-[200px] flex-col justify-between overflow-hidden rounded-[16px] border bg-card p-6 ${i === 0 && games.length > 1 ? "sm:col-span-2" : ""}`}>
+            className={`brutal-card card-lift group relative flex min-h-[200px] flex-col justify-between overflow-hidden border-2 bg-card p-6 ${i === 0 && games.length > 1 ? "sm:col-span-2" : ""}`}>
             <div className="flex items-start justify-between gap-3">
               <GameLogo game={g} className="h-16 w-16" />
               <ArrowUpRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
