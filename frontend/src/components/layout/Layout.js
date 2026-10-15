@@ -11,7 +11,7 @@ export default function Layout() {
     <GameProvider>
       <div className="min-h-screen bg-background overflow-x-hidden">
         <Header />
-        <main className="mx-auto w-full max-w-7xl px-4 sm:px-6"><PageTransition /></main>
+        <main className="mx-auto w-full max-w-7xl px-4 pb-28 sm:px-6 md:pb-0"><PageTransition /></main>
         <Footer />
         <BottomNav />
         <AdminBottomNav />
