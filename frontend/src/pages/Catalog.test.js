@@ -16,7 +16,7 @@ jest.mock("@/context/LanguageContext", () => ({ useLang: () => ({ t: (key) => ke
 const PUBG_TYPES = [{ key: "uc", label: "UC" }, { key: "prime", label: "Prime" }, { key: "prime_plus", label: "Prime+" }, { key: "evo", label: "Pack évolutif" }];
 let mockGames = [];
 jest.mock("@/context/GameContext", () => ({ useGames: () => ({ games: mockGames, selectGame: jest.fn() }) }));
-jest.mock("@/pages/Home", () => ({ GameLogo: () => null }));
+jest.mock("@/pages/Home", () => ({ GameLogo: () => null, BackToTop: () => null }));
 beforeEach(() => {
   mockGames = [
     { id: "pubg-mobile", name: "PUBG Mobile", slug: "pubg-mobile", currency_label: "UC", product_types: PUBG_TYPES },
