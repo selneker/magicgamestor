@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, ArrowUp, ArrowUpRight, ChevronLeft, ChevronRight, Gamepad2, HelpCircle, Lock, MessageCircle, Receipt, ShieldCheck, Wallet, Zap } from "lucide-react";
+import { ArrowRight, ArrowUp, ArrowUpRight, ChevronLeft, ChevronRight, Gamepad2, HelpCircle, MessageCircle, Receipt, ShieldCheck, Wallet } from "lucide-react";
 import { api } from "@/lib/api";
 import { useGames } from "@/context/GameContext";
 import { useLang, localized } from "@/context/LanguageContext";
@@ -138,20 +138,28 @@ function Hero({ event }) {
         </div>
       </div>
 
-      {/* Trust band + payment methods (kept from the old hero) */}
-      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_1fr_auto]" data-testid="hero-trust">
-        {[[Zap, t("hero.trust1t"), t("hero.trust1d")], [Lock, t("hero.trust2t"), t("hero.trust2d")], [MessageCircle, t("hero.trust3t"), t("hero.trust3d")]].map(([Icon, title, desc]) => (
-          <div key={title} className="brutal-card flex items-center gap-3 border-2 bg-card p-4">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] border border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]"><Icon className="h-5 w-5" strokeWidth={2} /></span>
-            <div className="min-w-0"><p className="font-display text-sm font-bold leading-tight">{title}</p><p className="mt-0.5 text-xs text-muted-foreground">{desc}</p></div>
-          </div>
-        ))}
-        <div className="panel-neon flex flex-col justify-center gap-2 p-4" data-testid="hero-pay-card">
-          <div className="flex items-center gap-2"><Wallet className="h-4 w-4" /><p className="text-[10px] font-semibold uppercase tracking-[0.18em]">{t("store.payTitle")}</p></div>
-          <div className="flex flex-wrap gap-1.5">
-            {["MVola", "Orange Money", "Binance USDT"].map((m) => <span key={m} className="rounded-full border border-[#0A0A0A]/30 px-2.5 py-0.5 text-[11px] font-semibold">{m}</span>)}
+      <div className="panel-black mt-3 grid gap-4 p-4 sm:p-5 lg:grid-cols-[1.25fr_1fr_auto] lg:items-center" data-testid="hero-trust">
+        <div>
+          <p className="eyebrow-invert">{t("store.stepsTitle")}</p>
+          <ol className="mt-3 grid gap-2 sm:grid-cols-3 lg:gap-4">
+            {[[t("store.step1"), Gamepad2], [t("store.step2"), ShieldCheck], [t("store.step3"), Receipt]].map(([label, Icon], i) => (
+              <li key={label} className="flex items-center gap-2 text-xs text-background/85">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center border border-primary bg-primary font-display text-sm font-bold text-[#0A0A0A]">{i + 1}</span>
+                <span>{label}</span>
+                <Icon className="hidden h-3.5 w-3.5 text-primary sm:block" aria-hidden="true" />
+              </li>
+            ))}
+          </ol>
+        </div>
+        <div className="border-t border-background/20 pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0" data-testid="hero-pay-card">
+          <div className="flex items-center gap-2 text-primary"><Wallet className="h-4 w-4" aria-hidden="true" /><p className="text-[10px] font-semibold uppercase tracking-[0.18em]">{t("store.payTitle")}</p></div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {["MVola", "Orange Money", "Binance USDT"].map((m) => <span key={m} className="border border-background/30 px-2.5 py-0.5 text-[11px] font-semibold text-background">{m}</span>)}
           </div>
         </div>
+        <Link to="/chat" className="inline-flex min-h-11 items-center justify-center gap-2 border-2 border-primary bg-primary px-4 text-xs font-bold text-[#0A0A0A] transition-transform hover:-translate-y-0.5" data-testid="hero-support-link">
+          <MessageCircle className="h-4 w-4" aria-hidden="true" />{t("store.supportCta")}
+        </Link>
       </div>
     </section>
   );
