@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, Check, Gamepad2 } from "lucide-react";
+import { ArrowUpRight, Gamepad2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useGames } from "@/context/GameContext";
 import { useLang } from "@/context/LanguageContext";
@@ -53,49 +53,40 @@ export function GameSelector() {
                        md:inset-x-auto md:left-1/2 md:top-1/2 md:bottom-auto md:w-[26rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2 md:-translate-y-1/2"
           >
             <p className="px-5 pt-5 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-background/45">{t("games.title")}</p>
-            <div className="grid max-h-[62vh] grid-cols-2 gap-2.5 overflow-y-auto p-4" data-testid="game-selector-list">
+            <ul className="max-h-[60vh] space-y-1 overflow-y-auto p-3" data-testid="game-selector-list">
               {games.map((g) => {
                 const isActive = g.id === selected?.id;
                 return (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => selectGame(g.id)}
-                    data-testid={`game-selector-item-${g.slug || g.id}`}
-                    aria-pressed={isActive}
-                    className={`group relative flex flex-col gap-2 rounded-[20px] p-2.5 text-left transition-colors ${isActive ? "bg-primary text-[#0A0A0A]" : "bg-background/10 text-background hover:bg-background/15"}`}
-                  >
-                    <span className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[14px] bg-black/20">
-                      {g.icon_url && !broken[g.id] ? (
-                        <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy"
-                          onError={() => setBroken((b) => ({ ...b, [g.id]: true }))} />
-                      ) : (
-                        <Gamepad2 className="h-8 w-8" strokeWidth={2} />
-                      )}
-                      {isActive && <span className="absolute left-1.5 top-1.5 rounded-full bg-[#0A0A0A] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">{t("games.active")}</span>}
-                    </span>
-                    <span className="flex items-center justify-between gap-1 px-0.5">
-                      <span className="min-w-0 truncate font-display text-sm font-bold leading-tight">{g.name}</span>
-                      {isActive
-                        ? <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden="true" />
-                        : <ArrowUpRight className="h-4 w-4 shrink-0 text-background/45 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" strokeWidth={2} aria-hidden="true" />}
-                    </span>
-                  </button>
+                  <li key={g.id}>
+                    <button
+                      type="button"
+                      onClick={() => selectGame(g.id)}
+                      data-testid={`game-selector-item-${g.slug || g.id}`}
+                      aria-pressed={isActive}
+                      className={`group flex w-full items-center gap-4 rounded-[20px] px-3 py-3 text-left transition-colors ${
+                        isActive ? "bg-background/10" : "hover:bg-background/5"
+                      }`}
+                    >
+                      <span className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-[#0A0A0A] ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-[hsl(var(--foreground))]" : ""}`}>
+                        {g.icon_url && !broken[g.id] ? (
+                          <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy"
+                            onError={() => setBroken((b) => ({ ...b, [g.id]: true }))} />
+                        ) : (
+                          <Gamepad2 className="h-6 w-6" strokeWidth={2} />
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-display text-[17px] font-semibold leading-tight text-background">{g.name}</span>
+                        {g.description && (
+                          <span className="mt-0.5 block truncate text-[12px] font-normal text-background/55">{g.description}</span>
+                        )}
+                      </span>
+                      <ArrowUpRight className="h-5 w-5 shrink-0 text-background/45 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" strokeWidth={2} aria-hidden="true" />
+                    </button>
+                  </li>
                 );
               })}
-              {[0, 1, 2].map((i) => (
-                <div key={`soon-${i}`} aria-disabled="true" data-testid={`game-selector-soon-${i}`}
-                  className="pointer-events-none flex cursor-not-allowed flex-col gap-2 rounded-[20px] p-2.5 opacity-45">
-                  <span className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-[14px] border border-dashed border-background/25 bg-background/5">
-                    <Gamepad2 className="h-7 w-7 text-background/40" strokeWidth={1.75} aria-hidden="true" />
-                  </span>
-                  <span className="flex items-center justify-between gap-1 px-0.5">
-                    <span className="text-sm font-bold text-background/50">—</span>
-                    <span className="rounded-full border border-background/25 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-background/55">{t("games.comingSoon")}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
+            </ul>
           </motion.div>
         </>
       )}
