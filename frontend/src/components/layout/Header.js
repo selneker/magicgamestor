@@ -70,7 +70,7 @@ export function Header() {
   const link = ({ isActive }) => `relative whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.08em] transition-colors ${isActive ? "text-foreground after:absolute after:-bottom-1.5 after:left-0 after:h-[3px] after:w-full after:rounded-full after:bg-primary" : "text-muted-foreground hover:text-foreground"}`;
 
   return (
-    <header className="glass sticky top-0 z-40 border-b">
+    <header className="sticky top-0 z-40 border-b-2 border-foreground bg-background">
       <div className="mx-auto flex h-16 max-w-7xl flex-nowrap items-center gap-2 px-3 sm:gap-4 sm:px-6">
         <Link to="/" data-testid="header-logo" className="shrink-0 whitespace-nowrap font-display text-[13px] font-bold uppercase leading-none tracking-tight text-foreground sm:text-lg">
           Magic<span className="rounded-[4px] bg-primary px-1 text-[#0A0A0A]">Game</span>Store
