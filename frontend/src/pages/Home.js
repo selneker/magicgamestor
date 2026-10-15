@@ -270,7 +270,7 @@ function ProductRow({ eyebrow, title, sub, products, seeMoreTo, gridTestid, more
           {t("common.seeMore")}<ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
         </Link>
       </div>
-      <div className="no-scrollbar -mx-4 mt-6 flex w-fit max-w-full snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0" data-testid={gridTestid}>
+      <div className="no-scrollbar -mx-4 mt-6 flex w-fit max-w-full snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0" data-testid={gridTestid}>
         {products === null && Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="w-[40vw] max-w-[11.5rem] shrink-0 snap-start sm:w-44">
             <Skeleton className="aspect-[4/5] w-full rounded-[20px]" />
