@@ -273,14 +273,14 @@ function ProductRow({ eyebrow, title, sub, products, seeMoreTo, gridTestid, more
       </div>
       <div className="no-scrollbar -mx-4 mt-6 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0" data-testid={gridTestid}>
         {products === null && Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="w-[42vw] max-w-[12rem] shrink-0 snap-start sm:w-48">
+          <div key={i} className="w-[40vw] max-w-[11.5rem] shrink-0 snap-start sm:w-44">
             <Skeleton className="aspect-[4/5] w-full rounded-[20px]" />
             <Skeleton className="mt-2 h-4 w-3/4 rounded" />
             <Skeleton className="mt-2 h-4 w-1/2 rounded" />
           </div>
         ))}
         {products?.map((p, i) => (
-          <div key={p.id} className="w-[42vw] max-w-[12rem] shrink-0 snap-start sm:w-48">
+          <div key={p.id} className="w-[40vw] max-w-[11.5rem] shrink-0 snap-start sm:w-44">
             <ProductCard product={p} index={i} />
           </div>
         ))}
