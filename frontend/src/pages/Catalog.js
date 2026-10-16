@@ -104,6 +104,15 @@ export default function Catalog() {
   const types = (currentGame?.product_types || []).filter((pt) => pt.key !== "evo");
   const hasEvo = (currentGame?.product_types || []).some((pt) => pt.key === "evo");
   const activeTypes = type.split(",").filter(Boolean);
+  const visibleProducts = useMemo(() => {
+    if (!products) return products;
+    if (sort !== "unit_price") return products;
+    return [...products].sort((a, b) => {
+      const aUnit = a.uc_amount ? a.price / a.uc_amount : Number.POSITIVE_INFINITY;
+      const bUnit = b.uc_amount ? b.price / b.uc_amount : Number.POSITIVE_INFINITY;
+      return aUnit - bUnit;
+    });
+  }, [products, sort]);
 
   if (!game || (games.length > 0 && !currentGame)) {
     return <GamePicker games={games} onPick={(g) => { selectGame(g.id); setParams({ game: g.id }, { replace: true }); }} />;
@@ -143,7 +152,7 @@ export default function Catalog() {
       </div>
 
       {showFilters && (
-        <div className="mt-4 flex flex-wrap items-end gap-3 rounded-[14px] border bg-card p-4" data-testid="price-filters">
+        <div className="fixed inset-x-0 bottom-0 z-50 flex flex-wrap items-end gap-3 border bg-card p-4 pb-safe shadow-[0_-8px_24px_hsl(0_0%_4%_/_0.18)] lg:static lg:mt-4 lg:rounded-[14px] lg:p-4 lg:shadow-none" data-testid="price-filters">
           <label className="text-sm font-semibold">{t("catalog.price")} ({t("catalog.min")})<Input data-testid="filter-min" type="number" min="0" value={minPrice} onChange={(e) => update({ min: e.target.value })} className="mt-1 w-36" placeholder="0" /></label>
           <label className="text-sm font-semibold">{t("catalog.price")} ({t("catalog.max")})<Input data-testid="filter-max" type="number" min="0" value={maxPrice} onChange={(e) => update({ max: e.target.value })} className="mt-1 w-36" placeholder="800000" /></label>
           <Button variant="ghost" size="sm" data-testid="filter-reset" onClick={() => setParams({ game }, { replace: true })}>{t("catalog.reset")}</Button>
@@ -152,9 +161,9 @@ export default function Catalog() {
 
       <p className="mt-8 eyebrow" data-testid="results-count" aria-live="polite">{products ? `${products.length} ${t("catalog.results")}` : t("common.loading")}</p>
       {type === "evo" ? <PackEvolutif embedded products={products} /> : <>
-        <div className="mt-3 grid grid-cols-2 items-stretch gap-3 md:grid-cols-3 lg:grid-cols-4" data-testid="catalog-grid">
-          {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="aspect-[4/5] rounded-[20px]" />)}
-          {products?.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
+        <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">
+          {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}
+          {visibleProducts?.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
         </div>
         {products?.length === 0 && (
           <div className="mt-6 rounded-[16px] border border-dashed bg-card p-10 text-center" data-testid="catalog-empty">

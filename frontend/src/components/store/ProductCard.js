@@ -28,6 +28,7 @@ export function ProductCard({ product, index = 0 }) {
   const hasRealOldPrice = Number(product.old_price) > Number(product.price) && Number.isFinite(Number(product.old_price));
   const discount = hasRealOldPrice ? Math.round((1 - product.price / product.old_price) * 100) : 0;
   const showDiscount = discount >= 5;
+  const unitPrice = product.uc_amount ? Math.round(product.price / product.uc_amount) : null;
   const available = product.purchasable !== false;
   return (
     <motion.article
@@ -69,6 +70,7 @@ export function ProductCard({ product, index = 0 }) {
               <div className="mt-1.5 flex min-h-4 items-center gap-1.5 leading-none">
                 {showDiscount && <><span className="text-[11px] text-muted-foreground line-through">{formatAr(product.old_price)}</span><span className="rounded-full bg-primary px-2 py-1 text-[11px] font-semibold leading-none text-[#0A0A0A]">-{discount}%</span></>}
               </div>
+              {unitPrice && <p className="mt-2 text-sm font-semibold text-muted-foreground">{formatAr(unitPrice)}/UC</p>}
             </div>
             <span className="sr-only">Voir le détail de {name}</span>
           </div>
