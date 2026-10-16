@@ -9,7 +9,7 @@ import { gameOf, productFigure, typeLabel } from "@/lib/catalog";
 
 export const productName = (p, lang) => (lang === "en" && p.name_en ? p.name_en : p.name);
 
-export function ProductCard({ product, index = 0 }) {
+export function ProductCard({ product, index = 0, displayPopular = product.popular === true, bestUnitPrice = false }) {
   const { add, setOpen } = useCart();
   const { t, lang } = useLang();
   const { games } = useGames();
@@ -28,6 +28,7 @@ export function ProductCard({ product, index = 0 }) {
   const discount = hasRealOldPrice ? Math.round((1 - product.price / product.old_price) * 100) : 0;
   const showDiscount = discount >= 5;
   const unitPrice = product.uc_amount ? Math.round(product.price / product.uc_amount) : null;
+  const safeBadge = /^(new|hot)$/i.test(String(product.badge || "").trim()) ? String(product.badge).trim().toUpperCase() : null;
   const available = product.purchasable !== false;
   return (
     <article
@@ -39,10 +40,10 @@ export function ProductCard({ product, index = 0 }) {
           <span className="truncate rounded-full border border-[color:var(--rule-strong)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground" data-testid={`product-type-${product.slug}`}>
             {typeLabel(game, product.type, lang)}
           </span>
-          {product.popular ? (
+          {displayPopular ? (
             <span data-testid={`badge-popular-${product.slug}`} className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] leading-none text-[#0A0A0A]">{t("common.popular")}</span>
-          ) : product.badge ? (
-            <span className="shrink-0 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-background">{product.badge}</span>
+          ) : safeBadge ? (
+            <span className="shrink-0 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-background">{safeBadge}</span>
           ) : null}
         </div>
 
@@ -68,6 +69,7 @@ export function ProductCard({ product, index = 0 }) {
                 {showDiscount && <><span className="text-[11px] text-muted-foreground line-through">{formatAr(product.old_price)}</span><span className="rounded-full bg-primary px-2 py-1 text-[11px] font-semibold leading-none text-[#0A0A0A]">-{discount}%</span></>}
               </div>
               {unitPrice && <p className="mt-2 text-sm font-semibold text-muted-foreground">{formatAr(unitPrice)}/UC</p>}
+              {bestUnitPrice && <span className="mt-2 inline-flex w-fit rounded-full bg-primary px-2 py-1 text-[10px] font-bold text-[#0A0A0A]">Meilleur prix par UC</span>}
             </div>
             <span className="sr-only">Voir le détail de {name}</span>
           </div>

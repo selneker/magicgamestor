@@ -113,6 +113,14 @@ export default function Catalog() {
       return aUnit - bUnit;
     });
   }, [products, sort]);
+  const popularIds = useMemo(() => new Set(
+    (visibleProducts || []).filter((p) => p.popular === true).sort((a, b) => (Number(b.sales_count || b.sales || 0) - Number(a.sales_count || a.sales || 0))).slice(0, 3).map((p) => p.id)
+  ), [visibleProducts]);
+  const fallbackPopularIds = useMemo(() => new Set((visibleProducts || []).slice(0, 3).map((p) => p.id)), [visibleProducts]);
+  const bestUnitId = useMemo(() => {
+    const candidates = (visibleProducts || []).filter((p) => Number(p.uc_amount) > 0);
+    return candidates.sort((a, b) => (a.price / a.uc_amount) - (b.price / b.uc_amount))[0]?.id;
+  }, [visibleProducts]);
 
   if (!game || (games.length > 0 && !currentGame)) {
     return <GamePicker games={games} onPick={(g) => { selectGame(g.id); setParams({ game: g.id }, { replace: true }); }} />;
@@ -163,7 +171,7 @@ export default function Catalog() {
       {type === "evo" ? <PackEvolutif embedded products={products} /> : <>
         <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">
           {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}
-          {visibleProducts?.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
+          {visibleProducts?.map((p, i) => <ProductCard key={p.id} product={p} index={i} displayPopular={popularIds.size > 0 ? popularIds.has(p.id) : fallbackPopularIds.has(p.id)} bestUnitPrice={p.id === bestUnitId} />)}
         </div>
         {products?.length === 0 && (
           <div className="mt-6 rounded-[16px] border border-dashed bg-card p-10 text-center" data-testid="catalog-empty">
