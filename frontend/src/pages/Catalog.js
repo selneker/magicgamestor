@@ -192,10 +192,10 @@ export default function Catalog() {
       <p className="mt-8 eyebrow" data-testid="results-count" aria-live="polite">{products ? `${products.length} ${t("catalog.results")}` : t("common.loading")}</p>
       {type === "evo" ? <PackEvolutif embedded products={products} /> : <>
         {sectioned && products === null ? <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}</div> : sectioned ? <div className="mt-8 space-y-10" data-testid="catalog-sections">
-          <ProductSection id="popular" title="Les plus choisis" products={sections?.featured} popularIds={popularIds} bestUnitId={bestUnitId} />
-          <ProductSection id="packs-uc" title="Packs UC" products={sections?.uc} popularIds={popularIds} bestUnitId={bestUnitId} />
-          <ProductSection id="prime" title="Prime / Prime+" products={sections?.prime} popularIds={popularIds} bestUnitId={bestUnitId} />
-          <ProductSection id="packs-evolutifs" title="Packs évolutifs" products={sections?.evo} popularIds={popularIds} bestUnitId={bestUnitId} />
+          <ProductSection id="popular" title={t("catalog.popularSection")} products={sections?.featured} popularIds={popularIds} bestUnitId={bestUnitId} />
+          <ProductSection id="packs-uc" title={t("catalog.ucSection")} products={sections?.uc} popularIds={popularIds} bestUnitId={bestUnitId} />
+          <ProductSection id="prime" title={t("catalog.primeSection")} products={sections?.prime} popularIds={popularIds} bestUnitId={bestUnitId} />
+          <ProductSection id="packs-evolutifs" title={t("catalog.evoSection")} products={sections?.evo} popularIds={popularIds} bestUnitId={bestUnitId} />
         </div> : <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">
           {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}
           {visibleProducts?.map((p, i) => <ProductCard key={p.id} product={p} index={i} displayPopular={popularIds.has(p.id)} bestUnitPrice={p.id === bestUnitId} />)}

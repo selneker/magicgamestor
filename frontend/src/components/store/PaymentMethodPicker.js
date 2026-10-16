@@ -68,7 +68,7 @@ export function PaymentMethodPicker({ method, setMethod, phone, setPhone, refere
               <p className="min-w-0 text-sm text-foreground"><span className="font-medium">{t("checkout.ussdNumberShort")} :</span> <span className="num break-all" data-testid="merchant-number">{pretty(merchant.merchant)}</span></p>
               <button type="button" onClick={() => copy(merchant.merchant)} data-testid="copy-merchant" aria-label={`${t("checkout.copy")} ${merchant.merchant}`}
                 className="ml-auto inline-flex h-8 shrink-0 items-center gap-1 rounded-[8px] border px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:border-foreground hover:bg-primary hover:text-[#0A0A0A]">
-                <Copy className="h-3.5 w-3.5" />{copied ? "Copié" : t("checkout.copy")}
+                <Copy className="h-3.5 w-3.5" />{copied ? t("common.copied") : t("checkout.copy")}
               </button>
             </div>
           </div>
