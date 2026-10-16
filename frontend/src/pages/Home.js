@@ -7,6 +7,7 @@ import { useGames } from "@/context/GameContext";
 import { useLang, localized } from "@/context/LanguageContext";
 import { StatusBadge } from "@/components/layout/Header";
 import { ProductCard } from "@/components/store/ProductCard";
+import { Reviews } from "@/components/store/Reviews";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -295,8 +296,9 @@ export default function Home() {
         </div>
       </section>
 
-      <Faq />
-      <BackToTop />
+  <Faq />
+  <Reviews reviews={[]} />
+  <BackToTop />
     </div>
   );
 }
