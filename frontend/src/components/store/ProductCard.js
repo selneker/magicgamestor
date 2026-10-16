@@ -34,11 +34,11 @@ export function ProductCard({ product, index = 0 }) {
     >
       <Link to={`/produit/${product.slug}`} className="flex flex-1 flex-col p-4 sm:p-5" aria-label={name}>
         <div className="flex items-center justify-between gap-2">
-          <span className="truncate rounded-full border border-[color:var(--rule-strong)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground" data-testid={`product-type-${product.slug}`}>
+          <span className="truncate rounded-full border border-[color:var(--rule-strong)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground" data-testid={`product-type-${product.slug}`}>
             {typeLabel(game, product.type, lang)}
           </span>
           {product.popular ? (
-            <span data-testid={`badge-popular-${product.slug}`} className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[#0A0A0A]">{t("common.popular")}</span>
+            <span data-testid={`badge-popular-${product.slug}`} className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] leading-none text-[#0A0A0A]">{t("common.popular")}</span>
           ) : product.badge ? (
             <span className="shrink-0 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-background">{product.badge}</span>
           ) : null}
@@ -65,7 +65,7 @@ export function ProductCard({ product, index = 0 }) {
               {(product.old_price || discount > 0) && (
                 <p className="mt-1.5 flex flex-wrap items-center gap-1.5 leading-none">
                   {product.old_price && <span className="text-[11px] text-muted-foreground line-through">{formatAr(product.old_price)}</span>}
-                  {discount > 0 && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-[#0A0A0A]">-{discount}%</span>}
+                  {discount > 0 && <span className="rounded-full bg-primary px-2 py-1 text-[11px] font-semibold leading-none text-[#0A0A0A]">-{discount}%</span>}
                 </p>
               )}
             </div>
@@ -75,7 +75,7 @@ export function ProductCard({ product, index = 0 }) {
       </Link>
       <button
         type="button" disabled={!available} data-testid={`add-to-cart-${product.slug}`}
-        className="flex h-12 w-full items-center justify-center gap-1.5 border-t bg-card px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground transition-colors hover:bg-foreground hover:text-background active:bg-primary active:text-[#0A0A0A] disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-muted-foreground"
+        className="flex min-h-11 w-full items-center justify-center gap-2 border-t-2 border-[color:var(--rule-strong)] bg-card px-3 text-xs font-semibold uppercase tracking-[0.05em] text-foreground transition-[transform,background-color,color] hover:-translate-y-0.5 hover:bg-foreground hover:text-background active:translate-y-0.5 active:bg-primary active:text-[#0A0A0A] disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:bg-card disabled:hover:text-muted-foreground"
         onClick={() => addFeedback(add(product), t, toast, setOpen)}
       >
         {available ? <><Plus className="h-3.5 w-3.5" />{t("product.add")}</> : t("product.unavailable")}
