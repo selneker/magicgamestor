@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowUpRight, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { addFeedback, useCart } from "@/context/CartContext";
 import { useLang } from "@/context/LanguageContext";
@@ -22,8 +22,12 @@ export function ProductCard({ product, index = 0 }) {
   const { value, unit } = productFigure(product, game, lang);
   // Avoid repeating the headline figure as a subtitle (e.g. a "30 UC" pack named "30 UC").
   const figureStr = hasFigure ? `${value} ${unit || ""}`.trim().toLowerCase() : "";
-  const showName = !hasFigure || name.trim().toLowerCase() !== figureStr;
-  const discount = product.old_price ? Math.round((1 - product.price / product.old_price) * 100) : 0;
+  const normalizedName = name.toLowerCase().replace(/[\s,_-]+/g, " ").trim();
+  const normalizedFigure = figureStr.replace(/[\s,_-]+/g, " ").trim();
+  const showName = !hasFigure || (!normalizedName.includes(normalizedFigure) && !normalizedName.match(new RegExp(`(?:prime\\+?|pack évolutif)\\s+${String(value).replace(/[-/\\^$*+?.()|[\\]{}]/g, "\\$&")}`)));
+  const hasRealOldPrice = Number(product.old_price) > Number(product.price) && Number.isFinite(Number(product.old_price));
+  const discount = hasRealOldPrice ? Math.round((1 - product.price / product.old_price) * 100) : 0;
+  const showDiscount = discount >= 5;
   const available = product.purchasable !== false;
   return (
     <motion.article
@@ -62,14 +66,11 @@ export function ProductCard({ product, index = 0 }) {
           <div className="flex items-end justify-between gap-2 border-t pt-3">
             <div className="min-w-0">
               <p data-testid={`price-${product.slug}`} className="num text-[1.25rem] font-bold leading-none text-foreground">{formatAr(product.price)}</p>
-              {(product.old_price || discount > 0) && (
-                <p className="mt-1.5 flex flex-wrap items-center gap-1.5 leading-none">
-                  {product.old_price && <span className="text-[11px] text-muted-foreground line-through">{formatAr(product.old_price)}</span>}
-                  {discount > 0 && <span className="rounded-full bg-primary px-2 py-1 text-[11px] font-semibold leading-none text-[#0A0A0A]">-{discount}%</span>}
-                </p>
-              )}
+              <div className="mt-1.5 flex min-h-4 items-center gap-1.5 leading-none">
+                {showDiscount && <><span className="text-[11px] text-muted-foreground line-through">{formatAr(product.old_price)}</span><span className="rounded-full bg-primary px-2 py-1 text-[11px] font-semibold leading-none text-[#0A0A0A]">-{discount}%</span></>}
+              </div>
             </div>
-            <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
+            <span className="sr-only">Voir le détail de {name}</span>
           </div>
         </div>
       </Link>

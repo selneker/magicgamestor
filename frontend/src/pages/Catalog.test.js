@@ -45,7 +45,7 @@ test("the evolutionary tab requests only evo packs and clears the popular-only f
     });
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 30)); });
     expect(api.get).toHaveBeenLastCalledWith("/products", { params: {
-      game: "pubg-mobile", type: "evo", q: undefined, sort: "default", popular: undefined, min_price: undefined, max_price: undefined,
+      game: "pubg-mobile", type: "evo", q: undefined, sort: "price_asc", popular: undefined, min_price: undefined, max_price: undefined,
     } });
     expect(JSON.parse(container.querySelector("[data-offers]").getAttribute("data-offers"))).toEqual(evo);
   } finally {

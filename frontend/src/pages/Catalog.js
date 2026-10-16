@@ -77,7 +77,7 @@ export default function Catalog() {
   const game = params.get("game") || "";
   const type = params.get("type") || "";
   const q = params.get("q") || "";
-  const sort = params.get("sort") || "default";
+  const sort = params.get("sort") || "price_asc";
   const popular = params.get("popular") === "1";
   const minPrice = params.get("min") || "";
   const maxPrice = params.get("max") || "";
@@ -134,8 +134,8 @@ export default function Catalog() {
           <Select value={sort} onValueChange={(v) => update({ sort: v === "default" ? "" : v })}>
             <SelectTrigger className="h-10 w-36 shrink-0 rounded-full sm:w-44" data-testid="sort-select"><SelectValue placeholder={t("catalog.sort")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="default">{t("catalog.sortDefault")}</SelectItem>
               <SelectItem value="price_asc">{t("catalog.priceAsc")}</SelectItem>
+              <SelectItem value="unit_price">{t("catalog.unitPrice")}</SelectItem>
               <SelectItem value="price_desc">{t("catalog.priceDesc")}</SelectItem>
             </SelectContent>
           </Select>
