@@ -34,6 +34,7 @@ export function ProductCard({ product, index = 0 }) {
     >
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       <Link to={`/produit/${product.slug}`} className="block" aria-label={name}>
         <div className="relative aspect-[4/5] w-full overflow-hidden" data-testid={`product-figure-${product.slug}`}>
           <div className="absolute inset-0" style={{ background: grad }} aria-hidden="true" />
@@ -165,6 +166,49 @@ export function ProductCard({ product, index = 0 }) {
         </div>
       </Link>
 >>>>>>> origin/main
+=======
+      <Link to={`/produit/${product.slug}`} className="flex flex-1 flex-col p-4 sm:p-5" aria-label={name}>
+        <div className="flex items-center justify-between gap-2">
+          <span className="truncate rounded-full border border-[color:var(--rule-strong)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground" data-testid={`product-type-${product.slug}`}>
+            {typeLabel(game, product.type, lang)}
+          </span>
+          {product.popular ? (
+            <span data-testid={`badge-popular-${product.slug}`} className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[#0A0A0A]">{t("common.popular")}</span>
+          ) : product.badge ? (
+            <span className="shrink-0 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-background">{product.badge}</span>
+          ) : null}
+        </div>
+
+        {hasFigure && (
+          <div className="mt-5 flex items-baseline gap-1.5" data-testid={`product-figure-${product.slug}`}>
+            <span className="num text-[2.4rem] font-bold leading-none tabular-nums">{value}</span>
+            {unit && <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-sm">{unit}</span>}
+          </div>
+        )}
+
+        <h3
+          data-testid={`product-name-${product.slug}`}
+          className={`mt-3 font-display font-bold leading-tight text-foreground [overflow-wrap:anywhere] line-clamp-2 ${hasFigure ? "min-h-[2.5rem] text-sm text-muted-foreground" : "min-h-[3.25rem] text-xl"}`}
+        >
+          {showName ? name : ""}
+        </h3>
+
+        <div className="mt-auto pt-5">
+          <div className="flex items-end justify-between gap-2 border-t pt-3">
+            <div className="min-w-0">
+              <p data-testid={`price-${product.slug}`} className="num text-[1.25rem] font-bold leading-none text-foreground">{formatAr(product.price)}</p>
+              {(product.old_price || discount > 0) && (
+                <p className="mt-1.5 flex flex-wrap items-center gap-1.5 leading-none">
+                  {product.old_price && <span className="text-[11px] text-muted-foreground line-through">{formatAr(product.old_price)}</span>}
+                  {discount > 0 && <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-[#0A0A0A]">-{discount}%</span>}
+                </p>
+              )}
+            </div>
+            <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
+          </div>
+        </div>
+      </Link>
+>>>>>>> origin/main
       <button
         type="button" disabled={!available} data-testid={`add-to-cart-${product.slug}`}
         className="flex h-12 w-full items-center justify-center gap-1.5 border-t bg-card px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground transition-colors hover:bg-foreground hover:text-background active:bg-primary active:text-[#0A0A0A] disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-muted-foreground"
@@ -173,7 +217,10 @@ export function ProductCard({ product, index = 0 }) {
         {available ? <><Plus className="h-3.5 w-3.5" />{t("product.add")}</> : t("product.unavailable")}
       </button>
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> df1cac3aecfa8b7c135c594204962e24ba227f6c
+=======
+>>>>>>> origin/main
 =======
 >>>>>>> origin/main
     </motion.article>

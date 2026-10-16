@@ -3,10 +3,14 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { ArrowRight, ArrowUp, ArrowUpRight, ChevronLeft, ChevronRight, Gamepad2, HelpCircle, MessageCircle, Receipt, ShieldCheck, Wallet } from "lucide-react";
 =======
 import { ArrowRight, ArrowUp, ArrowUpRight, Gamepad2, HelpCircle, MessageCircle, Receipt, ShieldCheck, Wallet } from "lucide-react";
 >>>>>>> df1cac3aecfa8b7c135c594204962e24ba227f6c
+=======
+import { ArrowRight, ArrowUp, ArrowUpRight, Gamepad2, HelpCircle, MessageCircle, Receipt, ShieldCheck, Wallet } from "lucide-react";
+>>>>>>> origin/main
 =======
 import { ArrowRight, ArrowUp, ArrowUpRight, Gamepad2, HelpCircle, MessageCircle, Receipt, ShieldCheck, Wallet } from "lucide-react";
 >>>>>>> origin/main
@@ -85,6 +89,7 @@ function Hero({ games, shopUrl }) {
         </div>
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       </div>
 
       <div className="panel-black mt-3 grid gap-4 p-4 sm:p-5 lg:grid-cols-[1.25fr_1fr_auto] lg:items-center" data-testid="hero-trust">
@@ -130,6 +135,16 @@ function Hero({ games, shopUrl }) {
         </div>
       </motion.div>
 >>>>>>> origin/main
+=======
+      </motion.div>
+      <motion.div {...rise(2)} className="panel-neon flex flex-col justify-between gap-6 p-6 sm:p-8 lg:col-span-4" data-testid="hero-pay-card">
+        <div className="flex items-center gap-2"><Wallet className="h-5 w-5" /><p className="text-[11px] font-semibold uppercase tracking-[0.2em]">{t("store.payTitle")}</p></div>
+        <p className="max-w-xs text-sm text-[#0A0A0A]/75">{t("store.step3d")}</p>
+        <div className="flex flex-wrap gap-2">
+          {["MVola", "Orange Money", "Binance USDT"].map((m) => <span key={m} className="rounded-full border border-[#0A0A0A]/30 px-3 py-1 text-xs font-semibold">{m}</span>)}
+        </div>
+      </motion.div>
+>>>>>>> origin/main
     </section>
   );
 }
@@ -163,10 +178,14 @@ function GamesBento({ games, selectGame }) {
           <Link key={g.id} to={`/boutique?game=${g.id}`} onClick={() => selectGame(g.id)} data-testid={`home-game-${g.slug || g.id}`}
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
             className={`brutal-card card-lift group relative flex min-h-[200px] flex-col justify-between overflow-hidden border-2 bg-card p-6 ${i === 0 && games.length === 2 ? "sm:col-span-2" : ""}`}>
 =======
             className={`card-lift group relative flex min-h-[200px] flex-col justify-between overflow-hidden rounded-[16px] border bg-card p-6 ${i === 0 && games.length > 1 ? "sm:col-span-2" : ""}`}>
 >>>>>>> df1cac3aecfa8b7c135c594204962e24ba227f6c
+=======
+            className={`card-lift group relative flex min-h-[200px] flex-col justify-between overflow-hidden rounded-[16px] border bg-card p-6 ${i === 0 && games.length > 1 ? "sm:col-span-2" : ""}`}>
+>>>>>>> origin/main
 =======
             className={`card-lift group relative flex min-h-[200px] flex-col justify-between overflow-hidden rounded-[16px] border bg-card p-6 ${i === 0 && games.length > 1 ? "sm:col-span-2" : ""}`}>
 >>>>>>> origin/main
@@ -275,11 +294,15 @@ export default function Home() {
   const shopUrl = games.length === 1 ? `/boutique?game=${games[0].id}` : "/boutique";
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   const popularIds = new Set((products || []).map((product) => product.id));
   const visibleSubs = subs?.filter((product, index, list) => !popularIds.has(product.id) && list.findIndex((item) => item.id === product.id) === index);
 =======
   const subsUrl = `${shopUrl}${shopUrl.includes("?") ? "&" : "?"}type=prime,prime_plus`;
 >>>>>>> df1cac3aecfa8b7c135c594204962e24ba227f6c
+=======
+  const subsUrl = `${shopUrl}${shopUrl.includes("?") ? "&" : "?"}type=prime,prime_plus`;
+>>>>>>> origin/main
 =======
   const subsUrl = `${shopUrl}${shopUrl.includes("?") ? "&" : "?"}type=prime,prime_plus`;
 >>>>>>> origin/main
@@ -301,8 +324,11 @@ export default function Home() {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       <ProductRow eyebrow={t("catalog.prime")} title={t("common.subsTitle")} sub={t("common.subsSub")} products={visibleSubs} seeMoreTo={`${shopUrl}${shopUrl.includes("?") ? "&" : "?"}type=prime,prime_plus`} gridTestid="subs-grid" moreTestid="subs-more-link" />
 =======
+=======
+>>>>>>> origin/main
 =======
 >>>>>>> origin/main
       <section className="mt-20" data-testid="subs-section">
@@ -315,7 +341,10 @@ export default function Home() {
         {subs?.length === 0 && <p className="mt-6 text-sm text-muted-foreground" data-testid="subs-empty">{t("store.noOffers")}</p>}
       </section>
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> df1cac3aecfa8b7c135c594204962e24ba227f6c
+=======
+>>>>>>> origin/main
 =======
 >>>>>>> origin/main
 
