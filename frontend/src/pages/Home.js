@@ -249,7 +249,7 @@ export default function Home() {
       <section className="mt-20">
         <SectionHead eyebrow={t("catalog.popular")} title={t("store.offersTitle")} sub={t("store.offersSub")}
           action={<Link to={shopUrl} data-testid="see-all-link" className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground">{t("common.seeAll")}<ArrowRight className="h-3.5 w-3.5" /></Link>} />
-        <div className="mt-6 grid grid-cols-2 items-stretch gap-3 md:grid-cols-3 lg:grid-cols-4" data-testid="popular-grid">
+        <div className="mt-6 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="popular-grid">
           {products === null && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-60 rounded-[14px]" />)}
           {products?.map((p, i) => <ProductCard key={p.id} product={p} index={i} displayPopular />)}
         </div>
@@ -259,7 +259,7 @@ export default function Home() {
       <section className="mt-20" data-testid="subs-section">
         <SectionHead eyebrow={t("catalog.prime")} title={t("common.subsTitle")} sub={t("common.subsSub")}
           action={<Link to={subsUrl} data-testid="subs-more-link" className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground">{t("common.seeAll")}<ArrowRight className="h-3.5 w-3.5" /></Link>} />
-        <div className="mt-6 grid grid-cols-2 items-stretch gap-3 md:grid-cols-3 lg:grid-cols-4" data-testid="subs-grid">
+        <div className="mt-6 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="subs-grid">
           {subs === null && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-60 rounded-[14px]" />)}
           {visibleSubs?.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
         </div>
