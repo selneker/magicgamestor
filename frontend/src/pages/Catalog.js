@@ -134,13 +134,11 @@ export default function Catalog() {
   const sections = useMemo(() => {
     if (!sectioned || !visibleProducts) return null;
     const featured = visibleProducts.filter((p) => p.popular === true).slice(0, 3);
-    const featuredIds = new Set(featured.map((p) => p.id));
-    const remaining = visibleProducts.filter((p) => !featuredIds.has(p.id));
     return {
       featured,
-      uc: remaining.filter((p) => Number(p.uc_amount) > 0).sort((a, b) => (a.price / a.uc_amount) - (b.price / b.uc_amount)),
-      prime: remaining.filter((p) => ["prime", "prime_plus"].includes(p.type)),
-      evo: remaining.filter((p) => p.type === "evo"),
+      uc: visibleProducts.filter((p) => Number(p.uc_amount) > 0).sort((a, b) => Number(a.uc_amount) - Number(b.uc_amount)),
+      prime: visibleProducts.filter((p) => ["prime", "prime_plus"].includes(p.type)),
+      evo: visibleProducts.filter((p) => p.type === "evo"),
     };
   }, [sectioned, visibleProducts]);
 
