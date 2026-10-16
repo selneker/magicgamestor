@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { addFeedback, useCart } from "@/context/CartContext";
@@ -31,9 +30,7 @@ export function ProductCard({ product, index = 0 }) {
   const unitPrice = product.uc_amount ? Math.round(product.price / product.uc_amount) : null;
   const available = product.purchasable !== false;
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.2 }}
-      transition={{ delay: Math.min(index * 0.03, 0.24), duration: 0.3 }}
+    <article
       data-testid={`product-card-${product.slug}`}
       className={`card-lift group relative flex min-h-[112px] min-w-0 flex-row overflow-hidden rounded-[14px] border bg-card min-[480px]:h-full min-[480px]:flex-col ${available ? "" : "opacity-70"}`}
     >
@@ -83,6 +80,6 @@ export function ProductCard({ product, index = 0 }) {
       >
         {available ? <><Plus className="h-3.5 w-3.5" />{t("product.add")}</> : t("product.unavailable")}
       </button>
-    </motion.article>
+    </article>
   );
 }

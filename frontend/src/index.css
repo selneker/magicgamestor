@@ -18,7 +18,7 @@
         --secondary: 0 0% 4%;
         --secondary-foreground: 48 20% 94%;
         --muted: 48 14% 90%;
-        --muted-foreground: 60 3% 41%; /* #8A8A82 */
+        --muted-foreground: 60 3% 32%; /* accessible on the light background */
         --accent: 72 99% 50%;
         --accent-foreground: 0 0% 4%;
         --destructive: 6 78% 45%;
@@ -85,7 +85,7 @@
     .panel-soft { border: 1px solid var(--rule); background: hsl(var(--card)); border-radius: var(--radius); }
     .panel-black { @apply bg-foreground text-background; border-radius: var(--radius); }
     .panel-neon { background: hsl(var(--primary)); color: #0A0A0A; border: 1px solid var(--rule-strong); border-radius: var(--radius); }
-    .eyebrow { @apply text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground; }
+    .eyebrow { @apply text-[11px] font-medium tracking-[0.08em] text-muted-foreground; }
     /* Loyalty balance surface — stable dark card in both themes so the neon figure stays readable */
     .panel-points { background: #1F1F1F; color: #F4F3EE; border: 1px solid var(--rule-strong); border-radius: var(--radius); }
     .dark .panel-points { background: #232323; border-color: hsl(72 99% 50% / .55); box-shadow: inset 0 0 0 1px hsl(72 99% 50% / .1); }
