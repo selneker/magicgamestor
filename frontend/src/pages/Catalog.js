@@ -15,13 +15,13 @@ import { usePageMeta } from "@/lib/catalog";
 
 const tab = (active) => `shrink-0 rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors ${active ? "border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]" : "bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`;
 
-function ProductSection({ id, title, products, popularIds, fallbackPopularIds, bestUnitId }) {
+function ProductSection({ id, title, products, popularIds, bestUnitId }) {
   if (!products?.length) return null;
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-24">
       <h2 id={`${id}-title`} className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
       <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-        {products.map((p, i) => <ProductCard key={p.id} product={p} index={i} displayPopular={popularIds.size > 0 ? popularIds.has(p.id) : fallbackPopularIds.has(p.id)} bestUnitPrice={p.id === bestUnitId} />)}
+        {products.map((p, i) => <ProductCard key={p.id} product={p} index={i} displayPopular={popularIds.has(p.id)} bestUnitPrice={p.id === bestUnitId} />)}
       </div>
     </section>
   );
@@ -125,10 +125,7 @@ export default function Catalog() {
       return aUnit - bUnit;
     });
   }, [products, sort]);
-  const popularIds = useMemo(() => new Set(
-    (visibleProducts || []).filter((p) => p.popular === true).sort((a, b) => (Number(b.sales_count || b.sales || 0) - Number(a.sales_count || a.sales || 0))).slice(0, 3).map((p) => p.id)
-  ), [visibleProducts]);
-  const fallbackPopularIds = useMemo(() => new Set((visibleProducts || []).slice(0, 3).map((p) => p.id)), [visibleProducts]);
+  const popularIds = useMemo(() => new Set((visibleProducts || []).filter((p) => p.popular === true).slice(0, 3).map((p) => p.id)), [visibleProducts]);
   const bestUnitId = useMemo(() => {
     const candidates = (visibleProducts || []).filter((p) => Number(p.uc_amount) > 0);
     return candidates.sort((a, b) => (a.price / a.uc_amount) - (b.price / b.uc_amount))[0]?.id;
@@ -136,7 +133,7 @@ export default function Catalog() {
   const sectioned = !type && !q && !popular && !minPrice && !maxPrice;
   const sections = useMemo(() => {
     if (!sectioned || !visibleProducts) return null;
-    const featured = [...visibleProducts].sort((a, b) => Number(b.sales_count || b.sales || 0) - Number(a.sales_count || a.sales || 0)).filter((p) => p.popular === true || !visibleProducts.some((item) => item.popular === true)).slice(0, 3);
+    const featured = visibleProducts.filter((p) => p.popular === true).slice(0, 3);
     const featuredIds = new Set(featured.map((p) => p.id));
     const remaining = visibleProducts.filter((p) => !featuredIds.has(p.id));
     return {
@@ -197,13 +194,13 @@ export default function Catalog() {
       <p className="mt-8 eyebrow" data-testid="results-count" aria-live="polite">{products ? `${products.length} ${t("catalog.results")}` : t("common.loading")}</p>
       {type === "evo" ? <PackEvolutif embedded products={products} /> : <>
         {sectioned && products === null ? <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}</div> : sectioned ? <div className="mt-8 space-y-10" data-testid="catalog-sections">
-          <ProductSection id="popular" title="Les plus choisis" products={sections?.featured} popularIds={popularIds} fallbackPopularIds={fallbackPopularIds} bestUnitId={bestUnitId} />
-          <ProductSection id="packs-uc" title="Packs UC" products={sections?.uc} popularIds={popularIds} fallbackPopularIds={fallbackPopularIds} bestUnitId={bestUnitId} />
-          <ProductSection id="prime" title="Prime / Prime+" products={sections?.prime} popularIds={popularIds} fallbackPopularIds={fallbackPopularIds} bestUnitId={bestUnitId} />
-          <ProductSection id="packs-evolutifs" title="Packs évolutifs" products={sections?.evo} popularIds={popularIds} fallbackPopularIds={fallbackPopularIds} bestUnitId={bestUnitId} />
+          <ProductSection id="popular" title="Les plus choisis" products={sections?.featured} popularIds={popularIds} bestUnitId={bestUnitId} />
+          <ProductSection id="packs-uc" title="Packs UC" products={sections?.uc} popularIds={popularIds} bestUnitId={bestUnitId} />
+          <ProductSection id="prime" title="Prime / Prime+" products={sections?.prime} popularIds={popularIds} bestUnitId={bestUnitId} />
+          <ProductSection id="packs-evolutifs" title="Packs évolutifs" products={sections?.evo} popularIds={popularIds} bestUnitId={bestUnitId} />
         </div> : <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">
           {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}
-          {visibleProducts?.map((p, i) => <ProductCard key={p.id} product={p} index={i} displayPopular={popularIds.size > 0 ? popularIds.has(p.id) : fallbackPopularIds.has(p.id)} bestUnitPrice={p.id === bestUnitId} />)}
+          {visibleProducts?.map((p, i) => <ProductCard key={p.id} product={p} index={i} displayPopular={popularIds.has(p.id)} bestUnitPrice={p.id === bestUnitId} />)}
         </div>}
         {products?.length === 0 && (
           <div className="mt-6 rounded-[16px] border border-dashed bg-card p-10 text-center" data-testid="catalog-empty">

@@ -226,11 +226,10 @@ export default function Home() {
       const unique = new Map();
       [...popularResponse.data, ...primeResponse.data, ...evoResponse.data].forEach((product) => unique.set(product.id, product));
       const all = [...unique.values()];
-      const bySales = (list) => [...list].sort((a, b) => Number(b.sales_count || b.sales || 0) - Number(a.sales_count || a.sales || 0));
       const selected = [
-        ...bySales(all.filter((product) => Number(product.uc_amount) > 0)).slice(0, 2),
-        ...bySales(all.filter((product) => ["prime", "prime_plus"].includes(product.type))).slice(0, 1),
-        ...bySales(all.filter((product) => product.type === "evo")).slice(0, 1),
+        ...all.filter((product) => Number(product.uc_amount) > 0).slice(0, 2),
+        ...all.filter((product) => ["prime", "prime_plus"].includes(product.type)).slice(0, 1),
+        ...all.filter((product) => product.type === "evo").slice(0, 1),
       ];
       setProducts([...new Map(selected.map((product) => [product.id, product])).values()].slice(0, 4));
       setSubs(primeResponse.data.slice(0, 8));
