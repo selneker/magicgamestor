@@ -13,7 +13,7 @@ export function OrderSummary({ summary, sticky = false }) {
       <Row label={t("checkout.playerId")}><span className="num font-semibold" data-testid="confirm-player-id">{summary.pubgId}{summary.name ? ` · ${summary.name}` : ""}</span></Row>
       <Row label={t("checkout.methodCol")}><span className="font-semibold" data-testid="confirm-method">{summary.method}</span></Row>
       <Row label={t("checkout.amount")}><span className="font-semibold">{formatAr(summary.subtotal)}</span></Row>
-      <Row label={t("checkout.paymentFee")}><span className="font-semibold" data-testid="confirm-fee">{formatAr(summary.fee)}</span></Row>
+      {summary.method && <Row label={t("checkout.paymentFee")}><span className="font-semibold" data-testid="confirm-fee">{formatAr(summary.fee)}</span></Row>}
       <div className="flex items-center justify-between border-t-2 border-[color:var(--rule)] pt-2 text-base font-bold">
         <span>{t("checkout.total")}</span><span className="num" data-testid="confirm-total">{formatAr(summary.subtotal + summary.fee)}</span>
       </div>

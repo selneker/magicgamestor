@@ -36,6 +36,7 @@ function ManualPay({ config, summary, reference, onPaid }) {
   const code = merchant ? USSD[provider](merchant.merchant, amount) : "";
   return (
     <section className="space-y-4" data-testid="checkout-step-pay-manual">
+      <OrderSummary summary={summary} sticky />
       <div className="rounded-[22px] border-2 border-[color:var(--rule)] bg-card p-4 sm:p-6">
         <h2 className="font-display text-xl font-bold">{t("checkout.manualPayTitle")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t("checkout.manualHowto")}</p>
