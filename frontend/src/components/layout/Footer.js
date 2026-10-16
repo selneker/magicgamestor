@@ -6,13 +6,13 @@ import { useAuth } from "@/context/AuthContext";
 export function Footer() {
   const { t } = useLang();
   const { isAdmin } = useAuth();
-  const ticker = t("footer.ticker");
+  const tickerMessages = t("footer.tickerMessages") || [];
   return (
     <footer className="mt-24 border-t border-foreground bg-card pb-28 md:pb-10">
-      <div className="overflow-hidden border-b border-foreground bg-primary py-2">
-        <div className="marquee flex w-max whitespace-nowrap font-display text-[11px] font-black uppercase tracking-[0.2em] text-[#0A0A0A]">
-          <span className="px-3">{ticker.repeat(3)}</span><span className="px-3">{ticker.repeat(3)}</span>
-        </div>
+      <div className="border-b border-foreground bg-primary px-4 py-3 text-[#0A0A0A]">
+        <ul className="mx-auto grid max-w-7xl gap-1.5 text-center text-xs font-semibold sm:grid-cols-3 sm:gap-3 sm:text-left" aria-label={t("footer.tickerLabel")}>
+          {tickerMessages.map((message) => <li key={message} className="leading-snug">{message}</li>)}
+        </ul>
       </div>
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_0.8fr_0.8fr]">
         <div>
