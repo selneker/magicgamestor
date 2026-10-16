@@ -5,10 +5,10 @@ import { useLang } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-export function OrderSummary({ summary }) {
+export function OrderSummary({ summary, sticky = false }) {
   const { t } = useLang();
   return (
-    <div className="space-y-3 rounded-[18px] border-2 border-[color:var(--rule)] bg-card p-4 text-sm" data-testid="checkout-summary">
+    <div className={`space-y-3 rounded-[18px] border-2 border-[color:var(--rule)] bg-card p-4 text-sm ${sticky ? "sticky top-16 z-10" : ""}`} data-testid="checkout-summary">
       <Row label={t("checkout.product")}><div className="text-right">{summary.lines.map((l) => <p key={l.key} className="font-semibold">{l.label}</p>)}</div></Row>
       <Row label={t("checkout.playerId")}><span className="num font-semibold" data-testid="confirm-player-id">{summary.pubgId}{summary.name ? ` · ${summary.name}` : ""}</span></Row>
       <Row label={t("checkout.methodCol")}><span className="font-semibold" data-testid="confirm-method">{summary.method}</span></Row>
@@ -32,6 +32,7 @@ export function OrderDone({ order, trackUrl }) {
       <CheckCircle2 className="mx-auto h-16 w-16 text-emerald-500" />
       <h2 className="mt-4 font-display text-2xl font-bold">{t("checkout.orderConfirmed")}</h2>
       <p className="mt-2 text-sm text-muted-foreground">{t("checkout.orderPaidAuto")}</p>
+      <p className="mt-4 text-sm font-semibold">{t("checkout.deliveryReceived")} · {t("checkout.deliveryChecking")} · {t("checkout.deliveryDelivered")}</p>
       <p className="mt-4 inline-block rounded-full bg-muted px-4 py-1 font-mono text-sm font-bold" data-testid="checkout-done-order-number">{order.order_number}</p>
       <Button asChild className="mt-6 h-12 w-full rounded-full font-bold" data-testid="checkout-done-view-order"><Link to={trackUrl}>{t("checkout.viewOrder")}</Link></Button>
     </section>
