@@ -8,13 +8,18 @@ import { formatAr } from "@/lib/api";
 import { useGames } from "@/context/GameContext";
 
 export function CartDrawer() {
-  const { items, open, setOpen, setQty, remove, total, gameId } = useCart();
+  const { items, open, setOpen, setQty, remove, total, count, gameId } = useCart();
   const { games } = useGames();
   const cartGame = games.find((g) => g.id === gameId);
   const { t, lang } = useLang();
   const navigate = useNavigate();
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <>
+      {items.length > 0 && <div className="fixed inset-x-3 bottom-3 z-30 flex items-center gap-3 border-2 border-foreground bg-foreground p-2 text-background shadow-[4px_4px_0_hsl(var(--primary))] md:hidden" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }} data-testid="mobile-cart-bar">
+        <button type="button" className="min-h-11 min-w-0 flex-1 px-2 text-left" onClick={() => setOpen(true)}><span className="block text-sm font-semibold">{count} {count === 1 ? "article" : "articles"}</span><span className="num block text-lg text-primary">{formatAr(total)}</span></button>
+        <button type="button" className="min-h-11 shrink-0 bg-primary px-4 text-sm font-bold text-[#0A0A0A]" onClick={() => { setOpen(false); navigate("/commande"); }}>{t("cart.checkout")}</button>
+      </div>}
+      <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent aria-describedby={undefined} className="flex w-full flex-col pb-safe sm:max-w-md" data-testid="cart-drawer">
         <SheetHeader><SheetTitle className="font-display text-xl">{t("cart.title")}</SheetTitle>{cartGame && <p className="eyebrow" data-testid="cart-game">{t("store.gameLabel")} · {cartGame.name}</p>}</SheetHeader>
         {items.length === 0 ? (
@@ -48,6 +53,7 @@ export function CartDrawer() {
           </>
         )}
       </SheetContent>
-    </Sheet>
+      </Sheet>
+    </>
   );
 }

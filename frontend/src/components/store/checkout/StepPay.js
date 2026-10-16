@@ -19,7 +19,8 @@ function AutoPay({ summary, busy, onPay }) {
   return (
     <section className="space-y-4" data-testid="checkout-step-pay-auto">
       <OrderSummary summary={summary} />
-      <p className="flex items-center gap-2 rounded-[14px] bg-muted px-3 py-2 text-xs font-semibold text-muted-foreground"><Zap className="h-4 w-4 shrink-0" />{t("checkout.autoVerifyNote")}</p>
+      <p className="flex items-center gap-2 rounded-[14px] bg-muted px-3 py-2 text-sm font-semibold text-foreground"><Zap className="h-4 w-4 shrink-0" />{t("checkout.autoVerifyNote")}</p>
+      <p className="text-sm text-muted-foreground">{t("checkout.playerVerifyNote")}</p>
       <Button type="button" onClick={onPay} disabled={busy} data-testid="checkout-pay-now" className="h-12 w-full rounded-full text-base font-bold">
         {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.processing")}</> : `${t("checkout.payNow")} · ${formatAr(summary.subtotal + summary.fee)}`}
       </Button>

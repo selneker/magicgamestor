@@ -33,7 +33,10 @@ export default function Checkout() {
   const ctx = location.state || {};
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
-  const [pubgId, setPubgId] = useState(ctx.pubgId || searchParams.get("pubg_id") || user?.saved_pubg_ids?.[0] || "");
+  const [pubgId, setPubgId] = useState(() => {
+    const fallback = user?.saved_pubg_ids?.[0] || "";
+    try { return ctx.pubgId || searchParams.get("pubg_id") || localStorage.getItem("mgs_last_player_id") || fallback; } catch (_) { return ctx.pubgId || searchParams.get("pubg_id") || fallback; }
+  });
   const [verified, setVerifiedState] = useState(null);
   const [email, setEmail] = useState(ctx.email || "");
   const [method, setMethod] = useState(null);
@@ -50,6 +53,10 @@ export default function Checkout() {
   const [identity, setIdentity] = useState(null);
   const [identityValues, setIdentityValues] = useState({});
   const setVerified = useCallback((v) => setVerifiedState(v), []);
+  useEffect(() => {
+    if (!pubgId) return;
+    try { localStorage.setItem("mgs_last_player_id", pubgId); } catch (_) { /* storage can be unavailable in private mode */ }
+  }, [pubgId]);
   // The order's game is the CART's game (a cart holds one game), never a stale header selection.
   const gameId = order?.game_id || cartGameId || gameSel?.selectedId || "pubg-mobile";
   const game = (gameSel?.games || []).find((g) => g.id === gameId);

@@ -59,7 +59,7 @@
         --shadow-brut: 3px 3px 0 hsl(0 0% 0% / .35);
     }
     * { border-color: var(--rule); }
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; overflow-x: hidden; }
     body {
         @apply bg-background text-foreground antialiased;
         font-family: var(--font-body);
