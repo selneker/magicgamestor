@@ -13,21 +13,27 @@ const getFavoritesFromStorage = () => {
   }
 };
 
-// Subscribe to storage events
+// Cache the snapshot to prevent infinite loops with useSyncExternalStore
+let cachedSnapshot = getFavoritesFromStorage();
+
+// Subscribe to storage events and update cached snapshot
 const subscribe = (onStoreChange) => {
-  const handleStorageChange = (e) => {
-    if (e.key === STORAGE_KEY) {
+  const handleStoreChange = () => {
+    const newSnapshot = getFavoritesFromStorage();
+    // Only update if the snapshot actually changed
+    if (JSON.stringify(newSnapshot) !== JSON.stringify(cachedSnapshot)) {
+      cachedSnapshot = newSnapshot;
       onStoreChange();
     }
   };
-  window.addEventListener('storage', handleStorageChange);
+  window.addEventListener('storage', handleStoreChange);
   return () => {
-    window.removeEventListener('storage', handleStorageChange);
+    window.removeEventListener('storage', handleStoreChange);
   };
 };
 
 // Get the current snapshot (used by useSyncExternalStore)
-const getSnapshot = getFavoritesFromStorage;
+const getSnapshot = () => cachedSnapshot;
 
 export function useFavorites() {
   const favorites = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
@@ -37,10 +43,13 @@ export function useFavorites() {
       ? favorites.filter((id) => id !== productId)
       : [...favorites, productId];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newFavorites));
+    // Update our cached snapshot immediately
+    cachedSnapshot = newFavorites;
   }, [favorites]);
 
   const clearFavorites = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
+    cachedSnapshot = [];
   }, []);
 
   return [favorites, toggleFavorite, clearFavorites];

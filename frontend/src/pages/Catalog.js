@@ -124,6 +124,47 @@ export default function Catalog() {
     return filteredProducts;
   }, [products, sort, favorites, favoriteIds]);
 
+  // Compute badge for each product based on priority and limits
+  const productsWithBadge = useMemo(() => {
+    if (!visibleProducts) return null;
+
+    // Step 1: popular badge (max 3 per page)
+    let popularSeen = 0;
+    // Step 2: compute best price/UC among UC products
+    const ucProducts = visibleProducts.filter(p => p.uc_amount);
+    let bestPriceUC = null;
+    if (ucProducts.length > 0) {
+      bestPriceUC = Math.min(...ucProducts.map(p => p.price / p.uc_amount));
+    }
+    // Step 3: assign badges in priority order
+    return visibleProducts.map((p, idx) => {
+      let badge = null;
+      // Popular badge (max 3)
+      if (p.popular && popularSeen < 3) {
+        badge = "popular";
+        popularSeen++;
+      } else {
+        // Best price/UC badge (only for UC products)
+        if (p.uc_amount && bestPriceUC !== null) {
+          const priceUC = p.price / p.uc_amount;
+          if (Math.abs(priceUC - bestPriceUC) < 0.01) { // tolerance for floating point
+            badge = "best";
+          }
+        }
+        // New/Hot badge (only if no higher priority badge)
+        if (!badge && p.badge) {
+          const badgeLower = p.badge.toLowerCase();
+          if (badgeLower === "new") {
+            badge = "new";
+          } else if (badgeLower === "promo") {
+            badge = "hot";
+          }
+        }
+      }
+      return { product: p, badge };
+    });
+  }, [visibleProducts]);
+
   if (!game || (games.length > 0 && !currentGame)) {
     return <GamePicker games={games} onPick={(g) => { selectGame(g.id); setParams({ game: g.id }, { replace: true }); }} />;
   }
@@ -174,7 +215,7 @@ export default function Catalog() {
       {type === "evo" ? <PackEvolutif embedded products={products} /> : <>
         <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">
           {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}
-          {visibleProducts?.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
+          {productsWithBadge?.map(({ product, badge }, i) => <ProductCard key={product.id} product={product} index={i} badge={badge} />)}
         </div>
         {products?.length === 0 && (
           <div className="mt-6 rounded-[16px] border border-dashed bg-card p-10 text-center" data-testid="catalog-empty">

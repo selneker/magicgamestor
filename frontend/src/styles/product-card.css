@@ -1,0 +1,19 @@
+/* Neo-brutalist card styles */
+.neo-card {
+  box-shadow: 8px 8px 0 hsl(var(--neo-text) / 0.18);
+}
+.neo-card:hover {
+  box-shadow: 12px 12px 0 hsl(var(--neo-text) / 0.18);
+}
+.neo-card:focus-visible {
+  outline: 2px solid hsl(var(--neo-border));
+  outline-offset: 2px;
+}
+.neo-card-radius {
+  border-radius: 3rem;
+}
+@media (max-width: 559px) {
+  .neo-card-radius {
+    border-radius: 2rem;
+  }
+}

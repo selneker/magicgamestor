@@ -11,7 +11,7 @@ import { useFavorites } from "@/lib/favorites";
 
 export const productName = (p, lang) => (lang === "en" && p.name_en ? p.name_en : p.name);
 
-export function ProductCard({ product, index = 0 }) {
+export function ProductCard({ product, index = 0, badge = null }) {
   const { add, setOpen } = useCart();
   const { t, lang } = useLang();
   const { games } = useGames();
@@ -36,88 +36,6 @@ export function ProductCard({ product, index = 0 }) {
   return (
     <article
       data-testid={`product-card-${product.slug}`}
-      className="group relative w-full rounded-[3rem] border-[3px] border-[color:var(--neo-border)] bg-[color:var(--neo-card-bg)] text-[color:var(--neo-text)] shadow-neo hover:shadow-neo-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--neo-border)] transition-all duration-200 ease-in-out"
-      // Neo-brutalist shadow classes: we'll define them in CSS or use inline style? We'll use Tailwind-like classes via className.
-      // We'll define the neo-brutalist shadow in the CSS later, but for now we can use inline style or rely on the tokens.
-      // We'll add the shadow via className and define the CSS in index.css.
-      // Let's add a class for the neo-brutalist style and define the CSS in index.css.
-      // We'll do: className="... neo-card"
-      // And then in index.css we define .neo-card with the shadow and other properties.
-      // However, we are to use the tokens and apply the style via the tokens.
-      // We'll use the tokens in the className by using the CSS variables.
-      // We'll set the background, text color, border color via the tokens.
-      // For the shadow, we can use the tokens as well: --neo-text for the shadow color.
-      // We'll define the shadow in the style attribute or use a class that uses the tokens.
-      // Since we are already using the tokens for background, border, and text, we can define the shadow in the CSS using the tokens.
-      // We'll add a class "neo-card" and define it in index.css.
-      // Let's do that.
-      // We'll change the className to include "neo-card" and then define the neo-card class in index.css.
-      // But note: we are to avoid changing the rest of the site. We'll define the neo-card class in index.css and use it only here.
-      // We'll do that after we write the component.
-      // For now, we'll use the tokens in the className string.
-      // We'll use the following format:
-      //   className=`rounded-[3rem] border-[3px] border-[color:var(--neo-border)] bg-[color:var(--neo-card-bg)] text-[color:var(--neo-text)] shadow-[8px_8px_0_0hsl(0_0%_6.7%_/_0.18)] hover:shadow-[12px_12px_0_0hsl(0_0%_6.7%_/_0.18)]`
-      // But note: the shadow color is hsl(0 0% 6.7% / 0.18) which is approximately #111111 with 18% opacity.
-      // We can use the token --neo-text and adjust the opacity.
-      // We'll use: shadow-[8px_8px_0_0hsl(0_0%_6.7%_/_0.18)] but we don't have the exact hsl value for --neo-text.
-      // We can compute: #111111 is hsl(0 0% 6.7%).
-      // So we can use: shadow-[8px_8px_0_0_hsl(0_0%_6.7%_/_0.18)]
-      // However, Tailwind does not support arbitrary values with hsl() in the same way. We'll use the tokens in the style attribute?
-      // Alternatively, we can define the shadow in the CSS using the tokens and then use a class.
-      // Let's do: we'll define a class .neo-card in index.css that uses the tokens for the shadow.
-      // We'll do that after we finish the component.
-      // For now, we'll use inline style for the shadow? But we are to avoid inline style for the shadow?
-      // We'll use the className and rely on the CSS we will add to index.css.
-      // We'll add the class "neo-card" and then in index.css we define:
-      //   .neo-card {
-      //     box-shadow: 8px 8px 0 hsl(var(--neo-text) / 0.18);
-      //   }
-      //   .neo-card:hover {
-      //     box-shadow: 12px 12px 0 hsl(var(--neo-text) / 0.18);
-      //   }
-      //   .neo-card:focus-visible {
-      //     outline: 2px solid hsl(var(--neo-border));
-      //     outline-offset: 2px;
-      //   }
-      // We'll do that.
-      // Let's set the className to include "neo-card" and the other classes for the layout.
-      // We'll also need to adjust the radius: 3rem from 560px, 2rem below.
-      // We'll use: rounded-[3rem] and then use a media query to change to 2rem? Or we can use a CSS variable for the radius.
-      // We'll use: rounded-[3rem] and then override in a media query?
-      // We can use: rounded-[3rem] and then add a class that changes it at a certain breakpoint?
-      // We'll use: rounded-[3rem] and then in the CSS we can override with a media query?
-      // Alternatively, we can use: rounded-[3rem] and then use a utility class that changes at a breakpoint?
-      // We'll do: we'll set the radius to 3rem and then use a media query in the CSS to change it to 2rem for screens under 560px.
-      // We'll do that in index.css.
-      // For now, we'll set the radius to 3rem and note that we need to add the media query.
-      // We'll add a class "neo-card-radius" and define it in index.css with the media query.
-      // Let's do: className="neo-card neo-card-radius"
-      // And then in index.css we define:
-      //   .neo-card-radius {
-      //     border-radius: 3rem;
-      //   }
-      //   @media (max-width: 559px) {
-      //     .neo-card-radius {
-      //       border-radius: 2rem;
-      //     }
-      //   }
-      // We'll do that.
-      // Now, let's write the className for the article.
-      // We'll also need to set the min-height and other layout classes.
-      // We'll use flex and min-h-[112px] etc. as in the original, but we adjust for the néo-brutalist design.
-      // We'll keep the same flex behavior but adjust the classes.
-      // We'll write the className string for the article.
-      // We'll break it down:
-      //   - neo-card: for the background, text, border, shadow, focus outline
-      //   - neo-card-radius: for the radius (with media query in CSS)
-      //   - group: for the hover state of the inner elements (we'll use group for the hover effects on the inner elements)
-      //   - relative: for the absolute positioning of the link and favorite button
-      //   - w-full: full width
-      //   - We'll also set the min-height and padding.
-      //   - We'll use: min-h-[112px] min-w-0 flex min-[480px]:h-full min-[480px]:flex-col max-[479px]:min-h-[140px]
-      //   - We'll also set the padding: pt-4 pb-10 px-4 (to accommodate the favorite button at top and capsule at bottom)
-      //   - We'll also set the z-index for the inner content.
-      // Let's construct the className:
       className={`${available ? "" : "opacity-70"} neo-card neo-card-radius group relative w-full min-h-[112px] min-w-0 flex min-[480px]:h-full min-[480px]:flex-col max-[479px]:min-h-[140px] pt-4 pb-10 px-4`}
     >
       {/* Link to product page - covers the entire card */}
@@ -135,18 +53,30 @@ export function ProductCard({ product, index = 0 }) {
             {typeLabel(game, product.type, lang)}
           </span>
           {/* Context badge */}
-          {product.popular ? (
+          {badge === "popular" && (
             <span
               data-testid={`badge-popular-${product.slug}`}
               className="shrink-0 rounded-full bg-[color:var(--neo-border)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] leading-none text-[color:var(--neo-card-bg)]"
             >
               {t("common.popular")}
-            )
-          ) : product.badge ? (
-            <span className="shrink-0 rounded-full bg-[color:var(--neo-text)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[color:var(--neo-card-bg)]">
-              {product.badge}
             </span>
-          ) : null}
+          )}
+          {badge === "best" && (
+            <span
+              data-testid={`badge-best-${product.slug}`}
+              className="shrink-0 rounded-full bg-[color:var(--neo-text)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[color:var(--neo-card-bg)]"
+            >
+              {t("catalog.bestPriceUC")}
+            </span>
+          )}
+          {(badge === "new" || badge === "hot") && (
+            <span
+              data-testid={`badge-${badge}-${product.slug}`}
+              className="shrink-0 rounded-full bg-[color:var(--neo-text)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[color:var(--neo-card-bg)]"
+            >
+              {badge === "new" ? t("common.new") : t("common.promo")}
+            </span>
+          )}
         </div>
 
         {/* Quantity figure (if applicable) */}
@@ -183,7 +113,7 @@ export function ProductCard({ product, index = 0 }) {
                   <span className="text-[11px] text-[color:var(--neo-text)]/50 line-through">{formatAr(product.old_price)}</span>
                   <span className="rounded-full bg-[color:var(--neo-card-bg)] px-2 py-1 text-[11px] font-semibold leading-none text-[color:var(--neo-text)]">
                     -{discount}%
-                  </>
+                  </span>
                 </>
               )}
             </div>
