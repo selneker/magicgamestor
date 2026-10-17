@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 // is "Logo URL" and the administrator can set/change it. No upload, no media manager.
 // Multi-jeux : `identity_fields` définit le contrat de saisie du joueur POUR CE JEU
 // (clé, libellé, format). Aucune clé n'est imposée : `player_id` n'est pas une hypothèse globale.
-const EMPTY = { id: "", name: "", slug: "", icon_url: "", currency_label: "", description: "", description_en: "", active: false, sort_order: 0, identity_fields: [], product_types: [] };
+const EMPTY = { id: "", name: "", slug: "", icon_url: "", currency_label: "", description: "", description_en: "", active: false, sort_order: 0, identity_fields: [], product_types: [], fazercards_validation_category: "" };
 const TYPE_RE = /^[a-z][a-z0-9_]{0,31}$/;
 const CHECK_LABELS = { identity: "Identité joueur", product_types: "Types de produit", provider_categories: "Catégories FazerCards", catalog: "Catalogue livrable", type_compat: "Types des produits", mapping_scope: "Périmètre des mappings" };
 
@@ -68,6 +68,7 @@ export default function AdminGames() {
       identity_fields: fields,
       description: editing.description || "", description_en: editing.description_en || null,
       active: !!editing.active, sort_order: Number(editing.sort_order || 0),
+      fazercards_validation_category: (editing.fazercards_validation_category || "").trim() || null,
     };
     try {
       if (editing._existing) await api.put(`/admin/games/${editing.id}`, body);
@@ -91,6 +92,7 @@ export default function AdminGames() {
         currency_label: g.currency_label || null,
         description: g.description || "", description_en: g.description_en || null,
         active: !g.active, sort_order: Number(g.sort_order || 0),
+        fazercards_validation_category: g.fazercards_validation_category || null,
       });
       load();
     } catch (err) { toast.error(errorMessage(err)); }
@@ -158,6 +160,11 @@ export default function AdminGames() {
                 <Input data-testid="game-field-currency_label" maxLength={24} placeholder="UC, Diamants, Coins…"
                   value={editing.currency_label ?? ""} onChange={(e) => setEditing({ ...editing, currency_label: e.target.value })} className="mt-1 h-10 rounded-xl" />
                 <span className="mt-1 block text-xs font-normal text-slate-500">Utilisée pour nommer la monnaie des packs dans la boutique (ex. UC, Diamants).</span>
+              </label>
+              <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Catégorie de validation FazerCards
+                <Input data-testid="game-field-fazercards_validation_category" placeholder="ex: ff_validation_cat"
+                  value={editing.fazercards_validation_category ?? ""} onChange={(e) => setEditing({ ...editing, fazercards_validation_category: e.target.value })} className="mt-1 h-10 rounded-xl" />
+                <span className="mt-1 block text-xs font-normal text-slate-500">ID de la catégorie d'espace de validation chez FazerCards (distinct des catégories commerciales). À renseigner par l'admin pour ce jeu ; laissé vide, la validation d'identité n'est pas disponible pour ce jeu.</span>
               </label>
               <label className="text-sm font-semibold text-slate-700">Logo URL
                 <Input data-testid="game-field-icon_url" type="url" inputMode="url" placeholder="https://example.com/logo.png"

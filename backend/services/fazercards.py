@@ -83,13 +83,18 @@ _game_discovery_cache: dict = {}  # game_id -> (category_id, field_key, at)
 
 
 async def validation_target(game_id: str | None) -> tuple[str, str]:
-    """(category_id, field_key) de validation pour un jeu, découvert dynamiquement.
+    """(category_id, field_key) de validation pour un jeu.
 
     PUBG Mobile (et les commandes legacy sans game_id) conserve EXACTEMENT le comportement
-    historique (cache legacy). Un autre jeu n'est résolu que si une correspondance explicite et
-    fiable existe (GAME_MATCHERS) ET qu'une cible de validation est réellement configurée chez le
-    fournisseur. Sinon, échec explicite et sûr (503) : jamais de repli silencieux sur la cible
-    PUBG, aucune catégorie fournisseur inventée.
+    historique (découverte via GET /topups/validate-id).
+
+    Pour tout autre jeu, la catégorie de validation est celle déclarée explicitement dans le
+    document jeu (`fazercards_validation_category`), séparée des catégories commerciales
+    (`fazercards_categories` de GET /topups). Les deux espaces d'IDs sont distincts chez
+    FazerCards : une catégorie commerciale ne peut pas servir à valider un ID.
+
+    Fail-closed (503) si aucune catégorie de validation n'est configurée pour le jeu :
+    jamais de repli silencieux sur PUBG, aucune catégorie fournisseur inventée.
     """
     if not game_id or game_id == "pubg-mobile":
         return await pubg_validation_target()
@@ -97,25 +102,26 @@ async def validation_target(game_id: str | None) -> tuple[str, str]:
     hit = _game_discovery_cache.get(game_id)
     if hit and now - hit[2] < DISCOVERY_TTL_S:
         return hit[0], hit[1]
-    game = await db.games.find_one({"id": game_id}, {"_id": 0, "fazercards_categories_configured": 1,
-                                                     "fazercards_categories": 1})
-    # Admin-assigned categories are authoritative; keyword matchers are only the legacy fallback.
-    selected = set((game or {}).get("fazercards_categories") or []) \
-        if (game or {}).get("fazercards_categories_configured") is True else None
-    matchers = GAME_MATCHERS.get(game_id)
-    if selected or (selected is None and matchers):
-        data = await _request("GET", "/topups/validate-id")
-        for item in data.get("items", []):
-            haystack = f"{item.get('category_id') or ''} {item.get('name') or ''}".lower()
-            if (item.get("category_id") in selected) if selected else any(m in haystack for m in matchers):
-                keys = [f.get("key") for f in (item.get("fields") or []) if f.get("key")]
-                field_key = "player_id" if "player_id" in keys else (keys[0] if keys else None)
-                if field_key:
-                    _game_discovery_cache[game_id] = (item["category_id"], field_key, now)
-                    return item["category_id"], field_key
-    raise HTTPException(
-        status_code=503,
-        detail="La validation d'identité n'est pas disponible pour ce jeu chez le fournisseur.")
+    game = await db.games.find_one({"id": game_id}, {"_id": 0,
+                                                     "fazercards_validation_category": 1})
+    category_id = (game or {}).get("fazercards_validation_category")
+    if not category_id:
+        raise HTTPException(
+            status_code=503,
+            detail="La validation d'identité n'est pas disponible pour ce jeu chez le fournisseur.")
+    data = await _request("GET", "/topups/validate-id")
+    keys: list[str] = []
+    for item in data.get("items", []):
+        if item.get("category_id") == category_id:
+            keys = [f.get("key") for f in (item.get("fields") or []) if f.get("key")]
+            break
+    field_key = "player_id" if "player_id" in keys else (keys[0] if keys else None)
+    if not field_key:
+        raise HTTPException(
+            status_code=503,
+            detail="La validation d'identité n'est pas disponible pour ce jeu chez le fournisseur.")
+    _game_discovery_cache[game_id] = (category_id, field_key, now)
+    return category_id, field_key
 
 
 async def validate_identity(fields: dict, game_id: str | None = None) -> dict:
