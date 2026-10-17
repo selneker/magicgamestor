@@ -33,9 +33,9 @@ export function ProductCard({ product, index = 0, displayPopular = product.popul
   return (
     <article
       data-testid={`product-card-${product.slug}`}
-      className={`product-card-lift group relative flex min-h-[112px] min-w-0 flex-row overflow-hidden rounded-[14px] border bg-card min-[480px]:h-full min-[480px]:flex-col ${available ? "" : "opacity-70"}`}
+      className={`product-card-lift group relative flex min-h-[112px] min-w-0 flex-row rounded-[14px] border bg-card min-[480px]:h-full min-[480px]:flex-col max-[479px]:min-h-[140px] ${available ? "" : "opacity-70"}`}
     >
-      <Link to={`/produit/${product.slug}`} className="focus-ring flex min-w-0 flex-1 flex-col justify-center p-3 min-[480px]:p-4 sm:p-5" aria-label={name}>
+      <Link to={`/produit/${product.slug}`} className="product-card-link focus-ring flex min-w-0 flex-1 flex-col justify-center p-3 max-[479px]:p-6 min-[480px]:p-4 sm:p-5 active:scale-[0.98]" aria-label={name}>
         <div className="flex items-center justify-between gap-2">
           <span className="truncate rounded-full border border-[color:var(--rule-strong)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground" data-testid={`product-type-${product.slug}`}>
             {typeLabel(game, product.type, lang)}
@@ -48,9 +48,9 @@ export function ProductCard({ product, index = 0, displayPopular = product.popul
         </div>
 
         {hasFigure && (
-          <div className="mt-4" data-testid={`product-figure-${product.slug}`}>
-            <div className="figure-highlight flex items-baseline gap-1.5">
-              <span className="num text-[2.2rem] font-bold leading-none tabular-nums min-[480px]:text-[2.6rem]">{value}</span>
+          <div className="mt-4 flex items-baseline gap-1.5" data-testid={`product-figure-${product.slug}`}>
+            <div className="figure-highlight">
+              <span className="num text-[2.4rem] font-bold leading-none tabular-nums min-[480px]:text-[2.8rem]">{value}</span>
               {unit && <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-sm">{unit}</span>}
             </div>
           </div>
@@ -66,7 +66,7 @@ export function ProductCard({ product, index = 0, displayPopular = product.popul
         <div className="mt-auto pt-4">
           <div className="flex items-end justify-between gap-2 border-t pt-3">
             <div className="min-w-0">
-              <p data-testid={`price-${product.slug}`} className="num text-[1.5rem] font-bold leading-none text-foreground">{formatAr(product.price)}</p>
+              <p data-testid={`price-${product.slug}`} className="num text-[1.75rem] font-bold leading-none text-foreground min-[480px]:text-[2rem]">{formatAr(product.price)}</p>
               <div className="mt-1.5 flex min-h-4 items-center gap-1.5 leading-none">
                 {showDiscount && <><span className="text-[11px] text-muted-foreground line-through">{formatAr(product.old_price)}</span><span className="rounded-full bg-primary px-2 py-1 text-[11px] font-semibold leading-none text-[#0A0A0A]">-{discount}%</span></>}
               </div>
