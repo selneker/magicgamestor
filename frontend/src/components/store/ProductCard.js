@@ -33,9 +33,9 @@ export function ProductCard({ product, index = 0, displayPopular = product.popul
   return (
     <article
       data-testid={`product-card-${product.slug}`}
-      className={`card-lift group relative flex min-h-[112px] min-w-0 flex-row overflow-hidden rounded-[14px] border bg-card min-[480px]:h-full min-[480px]:flex-col ${available ? "" : "opacity-70"}`}
+      className={`product-card-lift group relative flex min-h-[112px] min-w-0 flex-row overflow-hidden rounded-[14px] border bg-card min-[480px]:h-full min-[480px]:flex-col ${available ? "" : "opacity-70"}`}
     >
-      <Link to={`/produit/${product.slug}`} className="flex min-w-0 flex-1 flex-col justify-center p-3 min-[480px]:p-4 sm:p-5" aria-label={name}>
+      <Link to={`/produit/${product.slug}`} className="focus-ring flex min-w-0 flex-1 flex-col justify-center p-3 min-[480px]:p-4 sm:p-5" aria-label={name}>
         <div className="flex items-center justify-between gap-2">
           <span className="truncate rounded-full border border-[color:var(--rule-strong)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground" data-testid={`product-type-${product.slug}`}>
             {typeLabel(game, product.type, lang)}
@@ -48,9 +48,11 @@ export function ProductCard({ product, index = 0, displayPopular = product.popul
         </div>
 
         {hasFigure && (
-          <div className="mt-5 flex items-baseline gap-1.5" data-testid={`product-figure-${product.slug}`}>
-            <span className="num text-[2rem] font-bold leading-none tabular-nums min-[480px]:text-[2.4rem]">{value}</span>
-            {unit && <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-sm">{unit}</span>}
+          <div className="mt-4" data-testid={`product-figure-${product.slug}`}>
+            <div className="figure-highlight flex items-baseline gap-1.5">
+              <span className="num text-[2.2rem] font-bold leading-none tabular-nums min-[480px]:text-[2.6rem]">{value}</span>
+              {unit && <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:text-sm">{unit}</span>}
+            </div>
           </div>
         )}
 
@@ -61,10 +63,10 @@ export function ProductCard({ product, index = 0, displayPopular = product.popul
           {showName ? name : ""}
         </h3>
 
-        <div className="mt-auto pt-5">
+        <div className="mt-auto pt-4">
           <div className="flex items-end justify-between gap-2 border-t pt-3">
             <div className="min-w-0">
-              <p data-testid={`price-${product.slug}`} className="num text-[1.25rem] font-bold leading-none text-foreground">{formatAr(product.price)}</p>
+              <p data-testid={`price-${product.slug}`} className="num text-[1.5rem] font-bold leading-none text-foreground">{formatAr(product.price)}</p>
               <div className="mt-1.5 flex min-h-4 items-center gap-1.5 leading-none">
                 {showDiscount && <><span className="text-[11px] text-muted-foreground line-through">{formatAr(product.old_price)}</span><span className="rounded-full bg-primary px-2 py-1 text-[11px] font-semibold leading-none text-[#0A0A0A]">-{discount}%</span></>}
               </div>
@@ -77,7 +79,7 @@ export function ProductCard({ product, index = 0, displayPopular = product.popul
       </Link>
       <button
         type="button" disabled={!available} data-testid={`add-to-cart-${product.slug}`}
-        className="flex min-h-11 w-auto shrink-0 items-center justify-center gap-2 border-l-2 px-3 min-[480px]:w-full min-[480px]:border-l-0 min-[480px]:border-t-2 border-[color:var(--rule-strong)] bg-card px-3 whitespace-nowrap text-xs font-semibold uppercase tracking-[0.05em] text-foreground transition-[transform,background-color,color] hover:-translate-y-0.5 hover:bg-foreground hover:text-background active:translate-y-0.5 active:bg-primary active:text-[#0A0A0A] disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:bg-card disabled:hover:text-muted-foreground"
+        className="focus-ring flex min-h-11 w-auto shrink-0 items-center justify-center gap-2 border-l-2 px-3 min-[480px]:w-full min-[480px]:border-l-0 min-[480px]:border-t-2 border-[color:var(--rule-strong)] bg-card px-3 whitespace-nowrap text-xs font-semibold uppercase tracking-[0.05em] text-foreground transition-[transform,background-color,color] hover:-translate-y-0.5 hover:bg-foreground hover:text-background active:translate-y-0.5 active:bg-primary active:text-[#0A0A0A] disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:bg-card disabled:hover:text-muted-foreground"
         onClick={() => addFeedback(add(product), t, toast, setOpen)}
       >
         {available ? <><Plus className="h-3.5 w-3.5" />{t("product.add")}</> : t("product.unavailable")}
