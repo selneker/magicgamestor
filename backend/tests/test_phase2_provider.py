@@ -175,3 +175,18 @@ def test_legacy_order_without_snapshot_falls_back_to_pubg_id(monkeypatch):
     order = make_order(status="paid", product_id=make_mapped_product())  # pas d'identity_snapshot
     run(fzr_fulfillment.fulfill_order(order["id"], "test"))
     assert len(calls) == 1 and calls[0]["fields"] == {"player_id": order["pubg_id"]}
+
+
+def test_get_categories_returns_all_categories(monkeypatch):
+    """Provider.get_categories should return all top-up categories (not only PUBG)."""
+    fake_cats = [
+        {"category_id": "cat1", "name": "Category One", "note": "note1"},
+        {"category_id": "cat2", "name": "Category Two", "note": "note2"},
+    ]
+    async def mock_topup_categories():
+        return fake_cats
+    monkeypatch.setattr(fazercards, "_topup_categories", mock_topup_categories)
+    prov = providers.get_provider("pubg-mobile")
+    result = run(prov.get_categories())
+    assert result == fake_cats
+
