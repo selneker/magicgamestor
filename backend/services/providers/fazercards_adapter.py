@@ -47,7 +47,7 @@ class FazerCardsProvider(Provider):
                                   region=data.get("region"), raw=data)
 
     async def get_categories(self) -> list[dict]:
-        return await fazercards.pubg_categories()
+        return await fazercards._topup_categories()
 
     async def get_offers(self, category_id: str, fresh: bool = False) -> dict:
         if fresh:

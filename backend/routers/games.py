@@ -18,7 +18,8 @@ PUBLIC = {"_id": 0}
 # recopiés sur les réponses publiques (une boutique n'expose pas la nomenclature du fournisseur).
 # En revanche `identity_fields` EST public : c'est le contrat de saisie que le checkout doit
 # rendre (libellés/formats), et il ne contient aucune donnée commerciale ni identifiant fournisseur.
-PUBLIC_GAME = {"_id": 0, "fazercards_categories": 0, "fazercards_categories_configured": 0}
+PUBLIC_GAME = {"_id": 0, "fazercards_categories": 0, "fazercards_categories_configured": 0,
+               "fazercards_validation_category": 0}
 FIELD_KEY = re.compile(r"[a-z][a-z0-9_]{0,31}", re.ASCII)
 
 
@@ -155,6 +156,9 @@ class GameIn(BaseModel):
     identity_fields: list[dict] | None = None
     # Per-game MGS product types [{"key","label","label_en"}] (None = keep current configuration).
     product_types: list[dict] | None = None
+    # Catégorie de validation FazerCards pour ce jeu (espace de validation, distinct des catégories commerciales).
+    # Aucun jeu n'est présumé l'avoir : None signifie "validation non disponible".
+    fazercards_validation_category: str | None = None
     description: str = ""
     description_en: str | None = None
     active: bool = True
@@ -228,6 +232,12 @@ async def update_game(game_id: str, body: GameIn, user=Depends(require_permissio
         data["product_types"] = current.get("product_types") or []
     else:
         data["product_types"] = normalize_product_types(body.product_types, game_id)
+    if "fazercards_validation_category" not in body.model_fields_set:
+        # Champ absent de la requête : on conserve la valeur actuelle (un simple
+        # changement de nom/logo/activation ne doit pas effacer la catégorie).
+        data["fazercards_validation_category"] = current.get("fazercards_validation_category")
+    # sinon (fourni explicitement, y compris None) : on applique tel quel —
+    # None signifie "catégorie effacée, validation indisponible pour ce jeu".
     if body.active and game_id == DEFAULT_GAME_ID and not current.get("active"):
         from core.games import game_has_sellable_catalog
         if not await game_has_sellable_catalog(game_id):

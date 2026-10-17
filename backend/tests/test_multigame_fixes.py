@@ -56,7 +56,16 @@ def test_validation_target_pubg_uses_legacy_discovery(monkeypatch):
 
 
 def test_validation_target_other_game_uses_its_own_category(monkeypatch):
-    """Un autre jeu est résolu via GAME_MATCHERS : sa propre catégorie, jamais celle de PUBG."""
+    """Un autre jeu est résolu via sa catégorie de validation déclarée (fazercards_validation_category),
+    jamais via une correspondance de mots-clés, jamais celle de PUBG."""
+    from types import SimpleNamespace
+
+    async def fake_find_one(query, projection=None):
+        if query.get("id") == FREE_FIRE:
+            return {"fazercards_validation_category": "free_fire"}
+        return None
+
+    monkeypatch.setattr(fazercards.db, "games", SimpleNamespace(find_one=fake_find_one))
     def handler(req):
         if req.url.path.endswith("/topups/validate-id") and req.method == "GET":
             return httpx.Response(200, json=FF_VALIDATE_LIST)
@@ -76,6 +85,14 @@ def test_validation_target_unknown_game_fails_safely(monkeypatch):
 
 def test_validation_target_configured_game_without_target_fails_safely(monkeypatch):
     """Un jeu configuré mais sans cible de validation chez le fournisseur échoue (503), sans repli PUBG."""
+    from types import SimpleNamespace
+
+    async def fake_find_one(query, projection=None):
+        if query.get("id") == FREE_FIRE:
+            return {"fazercards_validation_category": None}
+        return None
+
+    monkeypatch.setattr(fazercards.db, "games", SimpleNamespace(find_one=fake_find_one))
     def handler(req):
         if req.url.path.endswith("/topups/validate-id") and req.method == "GET":
             return httpx.Response(200, json=VALIDATE_LIST)  # seule la cible PUBG existe
@@ -96,7 +113,15 @@ def test_validate_identity_unknown_game_fails_safely(monkeypatch):
 
 
 def test_validate_identity_sends_the_game_category(monkeypatch):
-    """La validation d'un jeu dynamique envoie SA catégorie fournisseur (pas PUBG)."""
+    """La validation d'un jeu dynamique envoie SA catégorie déclarée (pas PUBG)."""
+    from types import SimpleNamespace
+
+    async def fake_find_one(query, projection=None):
+        if query.get("id") == FREE_FIRE:
+            return {"fazercards_validation_category": "free_fire"}
+        return None
+
+    monkeypatch.setattr(fazercards.db, "games", SimpleNamespace(find_one=fake_find_one))
     seen = {}
 
     def handler(req):
@@ -165,6 +190,14 @@ def test_preflight_invalid_identity_message_is_game_neutral(monkeypatch):
             return httpx.Response(200, json={"ok": True, "valid": False})
         return httpx.Response(404, json={"ok": False})
     mock_transport(monkeypatch, handler)
+    from types import SimpleNamespace
+
+    async def fake_find_one(query, projection=None):
+        if query.get("id") == FREE_FIRE:
+            return {"fazercards_validation_category": "free_fire"}
+        return None
+
+    monkeypatch.setattr(fazercards.db, "games", SimpleNamespace(find_one=fake_find_one))
     pid = make_mapped_product()
     ff_order = make_order(status="paid", product_id=pid)
     run(db.orders.update_one({"id": ff_order["id"]}, {"$set": {"game_id": FREE_FIRE}}))

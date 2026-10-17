@@ -23,6 +23,9 @@ FREE_FIRE_GAME = {
     "id": FREE_FIRE_GAME_ID, "slug": FREE_FIRE_GAME_ID, "name": "Free Fire", "active": False, "sort_order": 1,
     "icon_url": None,
     "description": "Diamants Free Fire", "description_en": "Free Fire Diamonds",
+    # Catégorie de validation FazerCards pour ce jeu (espace de validation, distinct des catégories commerciales).
+    # À renseigner par l'admin (Admin → Jeux). Aucun jeu n'est présumé l'avoir par défaut.
+    "fazercards_validation_category": None,
 }
 
 
