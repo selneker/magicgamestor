@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import PackEvolutif from "@/pages/PackEvolutif";
 import { usePageMeta } from "@/lib/catalog";
+import { useFavorites } from "@/lib/favorites";
 
 const tab = (active) => `shrink-0 rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors ${active ? "border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]" : "bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`;
 
@@ -74,11 +75,13 @@ export default function Catalog() {
   const [params, setParams] = useSearchParams();
   const [products, setProducts] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [favoriteIds] = useFavorites();
   const game = params.get("game") || "";
   const type = params.get("type") || "";
   const q = params.get("q") || "";
   const sort = params.get("sort") || "price_asc";
   const popular = params.get("popular") === "1";
+  const favorites = params.get("favorites") === "1";
   const minPrice = params.get("min") || "";
   const maxPrice = params.get("max") || "";
   const currentGame = useMemo(() => games.find((g) => g.id === game) || null, [games, game]);
@@ -94,25 +97,32 @@ export default function Catalog() {
     if (!game) return;
     const id = setTimeout(() => {
       setProducts(null);
-      api.get("/products", { params: { game, type: type || undefined, q: q || undefined, sort, popular: popular || undefined, min_price: minPrice || undefined, max_price: maxPrice || undefined } })
+      api.get("/products", { params: { game, type: type || undefined, q: q || undefined, sort, popular: popular || undefined, favorites: favorites || undefined, min_price: minPrice || undefined, max_price: maxPrice || undefined } })
         .then((r) => setProducts(r.data)).catch(() => setProducts([]));
     }, q ? 250 : 0);
     return () => clearTimeout(id);
-  }, [game, type, q, sort, popular, minPrice, maxPrice]);
+  }, [game, type, q, sort, popular, favorites, minPrice, maxPrice]);
 
   // Type tabs come from the game's own configuration; the evolving pack keeps its dedicated view.
   const types = (currentGame?.product_types || []).filter((pt) => pt.key !== "evo");
   const hasEvo = (currentGame?.product_types || []).some((pt) => pt.key === "evo");
   const activeTypes = type.split(",").filter(Boolean);
   const visibleProducts = useMemo(() => {
-    if (!products) return products;
-    if (sort !== "unit_price") return products;
-    return [...products].sort((a, b) => {
-      const aUnit = a.uc_amount ? a.price / a.uc_amount : Number.POSITIVE_INFINITY;
-      const bUnit = b.uc_amount ? b.price / b.uc_amount : Number.POSITIVE_INFINITY;
-      return aUnit - bUnit;
-    });
-  }, [products, sort]);
+    if (!products) return null;
+    let filteredProducts = products;
+    if (favorites) {
+      filteredProducts = products.filter(p => favoriteIds.includes(p.id));
+    }
+    if (!filteredProducts) return null;
+    if (sort === "unit_price") {
+      return [...filteredProducts].sort((a, b) => {
+        const aUnit = a.uc_amount ? a.price / a.uc_amount : Number.POSITIVE_INFINITY;
+        const bUnit = b.uc_amount ? b.price / b.uc_amount : Number.POSITIVE_INFINITY;
+        return aUnit - bUnit;
+      });
+    }
+    return filteredProducts;
+  }, [products, sort, favorites, favoriteIds]);
 
   if (!game || (games.length > 0 && !currentGame)) {
     return <GamePicker games={games} onPick={(g) => { selectGame(g.id); setParams({ game: g.id }, { replace: true }); }} />;
@@ -132,6 +142,7 @@ export default function Catalog() {
           ))}
           {hasEvo && <button role="tab" aria-selected={type === "evo"} data-testid="type-tab-evo" onClick={() => update({ type: "evo", popular: "" })} className={tab(type === "evo")}>{t("nav.evo")}</button>}
           <button data-testid="filter-popular" aria-pressed={popular} onClick={() => update({ popular: popular ? "" : "1" })} className={tab(popular)}>{t("catalog.popular")}</button>
+          <button data-testid="filter-favorites" aria-pressed={favorites} onClick={() => update({ favorites: favorites ? "" : "1" })} className={tab(favorites)}>{t("catalog.favorites")}</button>
         </div>
         <div className="flex w-full items-center gap-2 lg:w-auto">
           <div className="relative min-w-0 flex-1 lg:w-64">
