@@ -98,6 +98,11 @@
     .card-lift { @apply transition-[transform,box-shadow,border-color] duration-200 ease-out; }
     .card-lift:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 hsl(var(--foreground) / .22); border-color: var(--rule-strong); }
     .dark .card-lift:hover { box-shadow: 4px 4px 0 hsl(var(--primary) / .5); }
+    .product-card-lift { @apply transition-[transform,box-shadow,border-color] duration-200 ease-out; }
+    .product-card-lift:hover { transform: translate(-3px, -3px); box-shadow: 5px 5px 0 hsl(var(--foreground) / .25); border-color: var(--rule-strong); }
+    .dark .product-card-lift:hover { box-shadow: 5px 5px 0 hsl(var(--primary) / .55); }
+    .figure-highlight { @apply inline-flex items-baseline rounded-md bg-primary/10 px-2 py-1; }
+    .focus-ring:focus-visible { outline: 3px solid hsl(var(--primary)); outline-offset: 3px; }
     .glass { @apply bg-background/85 backdrop-blur-xl; }
     /* Neubrutalist rhythm: crisp panels, offset shadows, and intentional hard edges. */
     .brutal-panel { border: 2px solid hsl(var(--foreground)); box-shadow: 5px 5px 0 hsl(var(--foreground)); }
@@ -132,7 +137,7 @@
     }
     @media (prefers-reduced-motion: reduce) {
         .marquee { animation: none; }
-        .card-lift:hover, .hover-slide:hover { transform: none; }
+        .card-lift:hover, .product-card-lift:hover, .hover-slide:hover { transform: none; }
         *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
     }
 }
