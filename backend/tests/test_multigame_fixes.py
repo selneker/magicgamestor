@@ -190,6 +190,14 @@ def test_preflight_invalid_identity_message_is_game_neutral(monkeypatch):
             return httpx.Response(200, json={"ok": True, "valid": False})
         return httpx.Response(404, json={"ok": False})
     mock_transport(monkeypatch, handler)
+    from types import SimpleNamespace
+
+    async def fake_find_one(query, projection=None):
+        if query.get("id") == FREE_FIRE:
+            return {"fazercards_validation_category": "free_fire"}
+        return None
+
+    monkeypatch.setattr(fazercards.db, "games", SimpleNamespace(find_one=fake_find_one))
     pid = make_mapped_product()
     ff_order = make_order(status="paid", product_id=pid)
     run(db.orders.update_one({"id": ff_order["id"]}, {"$set": {"game_id": FREE_FIRE}}))
