@@ -12,6 +12,9 @@ from services import fazercards
 MAX_COMPONENTS = 10
 _UC_NAME = re.compile(r"^([\d\s]+)\s*UC$", re.IGNORECASE)
 _UC_ID = re.compile(r"^(\d+)_uc$", re.IGNORECASE)
+# Autres jeux : nombre AUTONOME uniquement — jamais un chiffre inclus dans un mot (MP40),
+# jamais deux nombres (bonus « 500+50 », « 20 30 », séparateur « 1 000 »).
+_OTHER_QTY = re.compile(r"(?<![A-Za-z0-9])(\d+)(?![0-9])")
 
 
 def _now():
@@ -51,27 +54,25 @@ def get_currency_label(product: dict, game_id: str | None = None, game_data: dic
 
 
 def uc_amount_of(offer: dict, game_id: str | None = None) -> int | None:
-    """Quantity from a supplier offer, deducted from live catalog (never hardcoded).
-    For PUBG (game_id None or DEFAULT_GAME_ID), uses UC-specific regex.
-    For other games, extracts quantity from offer name if unambiguous (exactly one number).
+    """Quantité d'une offre fournisseur, déduite du catalogue live (jamais hardcodée).
+
+    - PUBG (game_id absent ou DEFAULT_GAME_ID) : comportement historique au bit près
+      (nom « ... UC » puis offer_id « ..._uc »).
+    - Autres jeux : la quantité n'est lue que si le nom de l'offre contient UN SEUL nombre
+      autonome — « 30 Diamants » → 30, « 80 CP » → 80. Sinon l'offre est refusée pour la
+      composition : « Diamonds Pack », « 20 30 Diamonds », « 500+50 Diamants », « 1 000
+      Diamants » (séparateur) et « MP40 Bundle » (chiffres dans un mot) → None. Aucune
+      approximation : un doute = refus par l'appelant.
     """
     if game_id is None or game_id == DEFAULT_GAME_ID:
-        # PUBG legacy behavior
+        # PUBG legacy behavior — inchangé
         m = _UC_NAME.match((offer.get("name") or "").strip())
         if m:
             return int(m.group(1).replace(" ", ""))
         m = _UC_ID.match((offer.get("offer_id") or "").strip())
         return int(m.group(1)) if m else None
-    else:
-        # For other games: try to extract quantity unambiguously from offer name
-        name = (offer.get("name") or "").strip()
-        numbers = re.findall(r'\d+', name)
-        if len(numbers) == 1:
-            try:
-                return int(numbers[0])
-            except ValueError:
-                return None
-        return None
+    amounts = _OTHER_QTY.findall(offer.get("name") or "")
+    return int(amounts[0]) if len(amounts) == 1 else None
 
 
 def classify_offer(offer: dict, game_id: str | None = None) -> str:

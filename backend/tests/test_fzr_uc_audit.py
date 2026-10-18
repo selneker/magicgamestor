@@ -253,3 +253,42 @@ class TestIsCurrencyProduct:
     ])
     def test_semantics(self, product, expected):
         assert fzr_mapping.is_currency_product(product) is expected
+
+
+class TestQuantityReading:
+    """Lecture de la quantité d'une offre. PUBG : comportement historique au bit près.
+    Autres jeux : un seul nombre AUTONOME dans le nom → lu ; zéro, plusieurs, ou chiffres
+    inclus dans un mot (MP40) → refus (None), jamais une quantité devinée."""
+
+    @pytest.mark.parametrize("offer,expected", [
+        ({"offer_id": "x", "name": "60 UC"}, 60),
+        ({"offer_id": "x", "name": "8 100 UC"}, 8100),      # espaces historiques
+        ({"offer_id": "x", "name": "60UC"}, 60),            # collage historique
+        ({"offer_id": "60_uc", "name": ""}, 60),            # offer_id historique
+        ({"offer_id": "x", "name": "1,000 UC"}, None),      # virgule : jamais lue (inchangé)
+        ({"offer_id": "x", "name": "First Purchase Pack"}, None),
+    ])
+    def test_pubg_unchanged(self, offer, expected):
+        assert fzr_mapping.uc_amount_of(offer, "pubg-mobile") == expected
+        assert fzr_mapping.uc_amount_of(offer) == expected
+        assert fzr_mapping.uc_amount_of(offer, None) == expected
+
+    @pytest.mark.parametrize("offer,expected", [
+        # Free Fire (fixtures) : un seul nombre autonome → lu
+        ({"offer_id": "ff_30", "name": "30 Diamants"}, 30),
+        ({"offer_id": "ff_70", "name": "70 Diamants"}, 70),
+        ({"offer_id": "ff_1000", "name": "1000 Diamants"}, 1000),
+        # CODM (fixtures) : un seul nombre autonome → lu
+        ({"offer_id": "cp_80", "name": "80 CP"}, 80),
+        ({"offer_id": "cp_400", "name": "400 CP"}, 400),
+        # Aucun nombre, plusieurs nombres, séparateur de milliers ou chiffres dans un mot → refus
+        ({"offer_id": "ff_ambig", "name": "Diamonds Pack"}, None),
+        ({"offer_id": "ff_two", "name": "20 30 Diamonds"}, None),
+        ({"offer_id": "ff_bonus", "name": "500+50 Diamants"}, None),
+        ({"offer_id": "ff_spaced", "name": "1 000 Diamants"}, None),
+        ({"offer_id": "cp_pass", "name": "Battle Pass"}, None),
+        ({"offer_id": "cp_weapon", "name": "MP40 Bundle"}, None),
+        ({"offer_id": "cp_two", "name": "40 80 CP"}, None),
+    ])
+    def test_other_games_standalone_number_only(self, offer, expected):
+        assert fzr_mapping.uc_amount_of(offer, "free-fire") == expected
