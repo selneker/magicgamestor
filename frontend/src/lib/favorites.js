@@ -1,55 +1,68 @@
-import { useSyncExternalStore, useState, useCallback } from 'react';
+import { useSyncExternalStore, useCallback } from "react";
 
-const STORAGE_KEY = 'mgs_favorites';
+const STORAGE_KEY = "mgs_favorites";
 
-// Parse favorites from localStorage, return empty array if invalid or missing
+// Parse favorites from localStorage, return an empty array if storage is unavailable or invalid.
 const getFavoritesFromStorage = () => {
   try {
     const json = localStorage.getItem(STORAGE_KEY);
-    return json ? JSON.parse(json) : [];
+    const parsed = json ? JSON.parse(json) : [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch (e) {
-    console.warn('Failed to parse favorites from localStorage', e);
+    console.warn("Failed to parse favorites from localStorage", e);
     return [];
   }
 };
 
-// Cache the snapshot to prevent infinite loops with useSyncExternalStore
 let cachedSnapshot = getFavoritesFromStorage();
+const listeners = new Set();
 
-// Subscribe to storage events and update cached snapshot
+const notify = () => {
+  listeners.forEach((listener) => listener());
+};
+
 const subscribe = (onStoreChange) => {
-  const handleStoreChange = () => {
-    const newSnapshot = getFavoritesFromStorage();
-    // Only update if the snapshot actually changed
-    if (JSON.stringify(newSnapshot) !== JSON.stringify(cachedSnapshot)) {
-      cachedSnapshot = newSnapshot;
-      onStoreChange();
+  listeners.add(onStoreChange);
+  const handleStorage = () => {
+    const next = getFavoritesFromStorage();
+    if (JSON.stringify(next) !== JSON.stringify(cachedSnapshot)) {
+      cachedSnapshot = next;
+      notify();
     }
   };
-  window.addEventListener('storage', handleStoreChange);
+  window.addEventListener("storage", handleStorage);
   return () => {
-    window.removeEventListener('storage', handleStoreChange);
+    listeners.delete(onStoreChange);
+    window.removeEventListener("storage", handleStorage);
   };
 };
 
-// Get the current snapshot (used by useSyncExternalStore)
 const getSnapshot = () => cachedSnapshot;
 
 export function useFavorites() {
   const favorites = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   const toggleFavorite = useCallback((productId) => {
-    const newFavorites = favorites.includes(productId)
+    const next = favorites.includes(productId)
       ? favorites.filter((id) => id !== productId)
       : [...favorites, productId];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newFavorites));
-    // Update our cached snapshot immediately
-    cachedSnapshot = newFavorites;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch (e) {
+      console.warn("Failed to save favorites to localStorage", e);
+    }
+    cachedSnapshot = next;
+    notify();
   }, [favorites]);
 
   const clearFavorites = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      console.warn("Failed to clear favorites from localStorage", e);
+    }
     cachedSnapshot = [];
+    notify();
   }, []);
 
   return [favorites, toggleFavorite, clearFavorites];

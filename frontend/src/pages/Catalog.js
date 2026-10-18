@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowUpRight, Search, SlidersHorizontal, X } from "lucide-react";
 import { api } from "@/lib/api";
+import { toast } from "sonner";
+import { addFeedback, useCart } from "@/context/CartContext";
 import { useLang } from "@/context/LanguageContext";
 import { useGames } from "@/context/GameContext";
 import { ProductCard } from "@/components/store/ProductCard";
@@ -16,13 +18,13 @@ import { useFavorites } from "@/lib/favorites";
 
 const tab = (active) => `shrink-0 rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors ${active ? "border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]" : "bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`;
 
-function ProductSection({ id, title, products, popularIds, bestUnitId }) {
+function ProductSection({ id, title, products, popularIds, bestUnitId, renderProductCard }) {
   if (!products?.length) return null;
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-24">
       <h2 id={`${id}-title`} className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
-      <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[560px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-        {products.map((p, i) => <ProductCard key={p.id} product={p} index={i} displayPopular={popularIds.has(p.id)} bestUnitPrice={p.id === bestUnitId} />)}
+      <div className="mt-6 grid grid-cols-1 items-stretch gap-10 sm:grid-cols-2 lg:grid-cols-3">
+        {products.map((p, i) => renderProductCard(p, i, popularIds.has(p.id) ? "popular" : p.id === bestUnitId ? "best" : p.badge === "new" ? "new" : p.badge === "promo" ? "hot" : null))}
       </div>
     </section>
   );
@@ -87,7 +89,8 @@ export default function Catalog() {
   const [params, setParams] = useSearchParams();
   const [products, setProducts] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [favoriteIds] = useFavorites();
+  const [favoriteIds, toggleFavorite] = useFavorites();
+  const { items: cartItems, add: addCartItem, setQty: setCartQty, remove: removeCartItem, setOpen: setCartOpen } = useCart();
   const game = params.get("game") || "";
   const type = params.get("type") || "";
   const q = params.get("q") || "";
@@ -182,6 +185,36 @@ export default function Catalog() {
     const candidates = (visibleProducts || []).filter((p) => Number(p.uc_amount) > 0);
     return candidates.sort((a, b) => (a.price / a.uc_amount) - (b.price / b.uc_amount))[0]?.id;
   }, [visibleProducts]);
+  const handleAddProduct = (product) => addFeedback(addCartItem(product), t, toast, setCartOpen);
+  const handleIncreaseProduct = (product) => {
+    const current = cartItems.find((item) => item.id === product.id);
+    if (!current) return handleAddProduct(product);
+    if (["prime", "prime_plus", "evo"].includes(product.type)) return;
+    setCartQty(product.id, Math.min(20, current.qty + 1));
+  };
+  const handleDecreaseProduct = (product) => {
+    const current = cartItems.find((item) => item.id === product.id);
+    if (!current) return;
+    if (current.qty <= 1) removeCartItem(product.id);
+    else setCartQty(product.id, current.qty - 1);
+  };
+  const renderProductCard = (product, index, badge) => {
+    const cartItem = cartItems.find((item) => item.id === product.id);
+    return (
+      <ProductCard
+        key={product.id}
+        product={product}
+        badge={badge}
+        qty={cartItem?.qty || 0}
+        favorite={favoriteIds.includes(product.id)}
+        onAdd={handleAddProduct}
+        onIncrease={handleIncreaseProduct}
+        onDecrease={handleDecreaseProduct}
+        onToggleFavorite={(item) => toggleFavorite(item.id)}
+      />
+    );
+  };
+
   const sectioned = !type && !q && !popular && !minPrice && !maxPrice;
   const sections = useMemo(() => {
     if (!sectioned || !visibleProducts) return null;
@@ -243,14 +276,14 @@ export default function Catalog() {
 
       <p className="mt-8 eyebrow" data-testid="results-count" aria-live="polite">{products ? `${products.length} ${t("catalog.results")}` : t("common.loading")}</p>
       {type === "evo" ? <PackEvolutif embedded products={products} /> : <>
-        {sectioned && products === null ? <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[560px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}</div> : sectioned ? <div className="mt-8 space-y-10" data-testid="catalog-sections">
-          <ProductSection id="popular" title={t("catalog.popularSection")} products={sections?.featured} popularIds={popularIds} bestUnitId={bestUnitId} />
-          <ProductSection id="packs-uc" title={t("catalog.ucSection")} products={sections?.uc} popularIds={popularIds} bestUnitId={bestUnitId} />
-          <ProductSection id="prime" title={t("catalog.primeSection")} products={sections?.prime} popularIds={popularIds} bestUnitId={bestUnitId} />
-          <ProductSection id="packs-evolutifs" title={t("catalog.evoSection")} products={sections?.evo} popularIds={popularIds} bestUnitId={bestUnitId} />
-        </div> : <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[560px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">
-          {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}
-          {productsWithBadge?.map(({ product, badge }, i) => <ProductCard key={product.id} product={product} index={i} badge={badge} />)}
+        {sectioned && products === null ? <div className="mt-6 grid grid-cols-1 items-stretch gap-10 sm:grid-cols-2 lg:grid-cols-3" data-testid="catalog-grid">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-[360px] rounded-neo border-[3px] border-ink bg-neo shadow-brut" />)}</div> : sectioned ? <div className="mt-8 space-y-10" data-testid="catalog-sections">
+          <ProductSection id="popular" title={t("catalog.popularSection")} products={sections?.featured} popularIds={popularIds} bestUnitId={bestUnitId} renderProductCard={renderProductCard} />
+          <ProductSection id="packs-uc" title={t("catalog.ucSection")} products={sections?.uc} popularIds={popularIds} bestUnitId={bestUnitId} renderProductCard={renderProductCard} />
+          <ProductSection id="prime" title={t("catalog.primeSection")} products={sections?.prime} popularIds={popularIds} bestUnitId={bestUnitId} renderProductCard={renderProductCard} />
+          <ProductSection id="packs-evolutifs" title={t("catalog.evoSection")} products={sections?.evo} popularIds={popularIds} bestUnitId={bestUnitId} renderProductCard={renderProductCard} />
+        </div> : <div className="mt-6 grid grid-cols-1 items-stretch gap-10 sm:grid-cols-2 lg:grid-cols-3" data-testid="catalog-grid">
+          {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-[360px] rounded-neo border-[3px] border-ink bg-neo shadow-brut" />)}
+          {productsWithBadge?.map(({ product, badge }, i) => renderProductCard(product, i, badge))}
         </div>}
         {products?.length === 0 && (
           <div className="mt-6 rounded-[16px] border border-dashed bg-card p-10 text-center" data-testid="catalog-empty">
