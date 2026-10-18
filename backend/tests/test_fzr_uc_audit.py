@@ -234,3 +234,22 @@ class TestPubgMessagesUnchanged:
         assert {k: v for k, v in m.items() if k != "linked_at"} == {
             "category_id": "pubg_mobile_auto", "confirmed": True, "mode": "direct",
             "offer_id": "uc_60", "offer_name": "60 UC", "price_usd_at_link": "0.8800"}
+
+
+class TestIsCurrencyProduct:
+    """Un seul critère pour tous les jeux : quantité > 0 et type hors prime / prime_plus / evo."""
+
+    @pytest.mark.parametrize("product,expected", [
+        ({"type": "uc", "uc_amount": 60}, True),
+        ({"type": "diamonds", "uc_amount": 100}, True),   # autre jeu, type non réservé
+        ({"type": "cp", "uc_amount": 400}, True),
+        ({"uc_amount": 100}, True),                       # type absent = non réservé
+        ({"type": "prime", "uc_amount": 60}, False),
+        ({"type": "prime_plus", "uc_amount": 60}, False),
+        ({"type": "evo", "uc_amount": 170}, False),       # le type réservé prime sur la quantité
+        ({"type": "uc", "uc_amount": 0}, False),
+        ({"type": "uc"}, False),
+        ({"type": "uc", "uc_amount": -5}, False),
+    ])
+    def test_semantics(self, product, expected):
+        assert fzr_mapping.is_currency_product(product) is expected

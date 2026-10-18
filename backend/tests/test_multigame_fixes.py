@@ -626,3 +626,43 @@ def test_free_fire_currency_product_composition(monkeypatch):
     run(db.products.delete_many({"id": [product_id, prime_product_id, pubg_product_id, pubg_simple_id]}))
     run(db.games.update_one({"id": FREE_FIRE}, {"$set": {"active": False}}))
     run(db.games.update_one({"id": PUBG}, {"$set": {"active": True}}))
+
+
+FF_OFFERS_SIMPLE = [{"offer_id": "ff_30", "name": "30 Diamants", "price_usd": "0.50"},
+                    {"offer_id": "ff_70", "name": "70 Diamants", "price_usd": "1.10"}]
+
+
+def _setup_free_fire(monkeypatch, offers=None):
+    """Jeu Free Fire configuré (catégorie + monnaie) et catalogue mocké, sans réseau réel."""
+    run(db.games.update_one(
+        {"id": FREE_FIRE},
+        {"$set": {"active": True, "currency_label": "Diamants",
+                  "fazercards_categories": ["ff_cat_1"], "fazercards_categories_configured": True}},
+        upsert=True))
+
+    async def fake_all():
+        return [{"category_id": "ff_cat_1", "name": "Free Fire Category", "note": ""}]
+    monkeypatch.setattr(fazercards, "_topup_categories", fake_all)
+    catalog = offers or FF_OFFERS_SIMPLE
+
+    async def fake_offers(category_id):
+        return {"category_id": category_id, "offers": catalog if category_id == "ff_cat_1" else [], "fields": []}
+    monkeypatch.setattr(fazercards, "pubg_offers_fresh", fake_offers)
+
+
+@pytest.mark.parametrize("type_key", ["prime", "prime_plus", "evo"])
+def test_free_fire_non_currency_composition_refused(monkeypatch, type_key):
+    """Prime / Prime+ / Pack évolutif : composition toujours refusée, même avec une quantité,
+    et le message porte la monnaie du jeu."""
+    from types import SimpleNamespace
+    _setup_free_fire(monkeypatch)
+    product = {"id": str(uuid.uuid4()), "slug": f"ff-{type_key}", "type": type_key,
+               "name": "Abonnement FF", "uc_amount": 70 if type_key == "evo" else 0,
+               "price": 5000, "active": True, "game_id": FREE_FIRE}
+    body = SimpleNamespace(category_id="ff_cat_1", mode="composite", offer_id=None, confirmed=True,
+                           components=[SimpleNamespace(offer_id="ff_30", quantity=1)])
+    with pytest.raises(HTTPException) as exc:
+        run(fzr_mapping.build_mapping(product, body))
+    assert exc.value.status_code == 409
+    assert exc.value.detail == ("La composition n'est autorisée que pour les produits Diamants. "
+                                "Prime / Prime Plus / Pack évolutif : mapping direct uniquement.")
