@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import PackEvolutif from "@/pages/PackEvolutif";
-import { usePageMeta } from "@/lib/catalog";
+import { usePageMeta, currencyOf } from "@/lib/catalog";
 import { useFavorites } from "@/lib/favorites";
 
 const tab = (active) => `shrink-0 rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors ${active ? "border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]" : "bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`;
@@ -97,6 +97,9 @@ export default function Catalog() {
   const minPrice = params.get("min") || "";
   const maxPrice = params.get("max") || "";
   const currentGame = useMemo(() => games.find((g) => g.id === game) || null, [games, game]);
+  // Libellé monétaire du jeu pour les titres (« Packs Diamants », « Prix par CP »…) ;
+  // « UC » seulement en dernier recours si le jeu n'a pas de monnaie configurée (comportement historique PUBG).
+  const currencyLabel = currencyOf(currentGame) || "UC";
   usePageMeta(currentGame ? `${currentGame.name} — ${t("catalog.title")}` : null);
 
   const update = (patch) => {
@@ -226,7 +229,7 @@ export default function Catalog() {
             <SelectTrigger className="h-10 w-36 shrink-0 rounded-full sm:w-44" data-testid="sort-select"><SelectValue placeholder={t("catalog.sort")} /></SelectTrigger>
             <SelectContent>
               <SelectItem value="price_asc">{t("catalog.priceAsc")}</SelectItem>
-              <SelectItem value="unit_price">{t("catalog.unitPrice")}</SelectItem>
+              <SelectItem value="unit_price">{t("catalog.unitPrice", { label: currencyLabel })}</SelectItem>
               <SelectItem value="price_desc">{t("catalog.priceDesc")}</SelectItem>
             </SelectContent>
           </Select>
@@ -245,7 +248,7 @@ export default function Catalog() {
       {type === "evo" ? <PackEvolutif embedded products={products} /> : <>
         {sectioned && products === null ? <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[360px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}</div> : sectioned ? <div className="mt-8 space-y-10" data-testid="catalog-sections">
           <ProductSection id="popular" title={t("catalog.popularSection")} products={sections?.featured} popularIds={popularIds} bestUnitId={bestUnitId} />
-          <ProductSection id="packs-uc" title={t("catalog.ucSection")} products={sections?.uc} popularIds={popularIds} bestUnitId={bestUnitId} />
+          <ProductSection id="packs-uc" title={t("catalog.ucSection", { label: currencyLabel })} products={sections?.uc} popularIds={popularIds} bestUnitId={bestUnitId} />
           <ProductSection id="prime" title={t("catalog.primeSection")} products={sections?.prime} popularIds={popularIds} bestUnitId={bestUnitId} />
           <ProductSection id="packs-evolutifs" title={t("catalog.evoSection")} products={sections?.evo} popularIds={popularIds} bestUnitId={bestUnitId} />
         </div> : <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[360px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">
