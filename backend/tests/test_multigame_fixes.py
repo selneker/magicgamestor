@@ -666,3 +666,23 @@ def test_free_fire_non_currency_composition_refused(monkeypatch, type_key):
     assert exc.value.status_code == 409
     assert exc.value.detail == ("La composition n'est autorisée que pour les produits Diamants. "
                                 "Prime / Prime Plus / Pack évolutif : mapping direct uniquement.")
+
+
+def test_free_fire_direct_mapping_requires_same_quantity(monkeypatch):
+    """La règle « même quantité que l'offre » s'applique aussi aux produits de monnaie non-PUBG."""
+    from types import SimpleNamespace
+    _setup_free_fire(monkeypatch, offers=[{"offer_id": "ff_50", "name": "50 Diamants", "price_usd": "0.75"},
+                                          {"offer_id": "ff_100", "name": "100 Diamants", "price_usd": "1.50"}])
+    product = {"id": str(uuid.uuid4()), "slug": "ff-100", "type": "uc", "name": "100 Diamants",
+               "uc_amount": 100, "price": 5000, "active": True, "game_id": FREE_FIRE}
+    # Quantité différente → refus, message avec la monnaie du jeu
+    body = SimpleNamespace(category_id="ff_cat_1", mode="direct", offer_id="ff_50", confirmed=True, components=None)
+    with pytest.raises(HTTPException) as exc:
+        run(fzr_mapping.build_mapping(product, body))
+    assert exc.value.status_code == 409
+    assert exc.value.detail == ("Mapping direct invalide : « 50 Diamants » = 50 Diamants ≠ 100 Diamants attendus. "
+                                "Utilisez l'offre exacte ou une composition dont la somme vaut exactement 100 Diamants.")
+    # Même quantité → accepté
+    body = SimpleNamespace(category_id="ff_cat_1", mode="direct", offer_id="ff_100", confirmed=True, components=None)
+    m = run(fzr_mapping.build_mapping(product, body))
+    assert m["mode"] == "direct" and m["offer_id"] == "ff_100" and m["offer_name"] == "100 Diamants"
