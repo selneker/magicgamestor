@@ -26,12 +26,21 @@ def is_currency_product(product: dict) -> bool:
     prod_type = product.get("type")
     return prod_type not in ("prime", "prime_plus", "evo")
 
-def get_currency_label(product: dict) -> str:
+def get_currency_label(product: dict, game_id: str | None = None, game_data: dict | None = None) -> str:
     """Return the currency label for a currency product.
-    For now, we return the type key (e.g., 'uc'). In the future, this should
-    look up the label in the game's product_types.
+    For PUBG (game_id None or DEFAULT_GAME_ID) and type uc, returns "UC".
+    For other games, uses game_data['currency_label'] if available, else product's type key, else 'unités'.
     """
-    return product.get("type", "uc")
+    if game_id is None or game_id == DEFAULT_GAME_ID:
+        if product.get("type") == "uc":
+            return "UC"
+    # For other games or non-uc PUBG products (should not happen)
+    if game_data and isinstance(game_data, dict):
+        label = game_data.get("currency_label")
+        if label:
+            return label
+    # Fallback to product type key
+    return product.get("type", "unités")
 
 
 def uc_amount_of(offer: dict, game_id: str | None = None) -> int | None:
@@ -49,7 +58,7 @@ def uc_amount_of(offer: dict, game_id: str | None = None) -> int | None:
     else:
         # For other games: try to extract quantity unambiguously from offer name
         name = (offer.get("name") or "").strip()
-        numbers = re.findall(r'\\d+', name)
+        numbers = re.findall(r'\d+', name)
         if len(numbers) == 1:
             try:
                 return int(numbers[0])
@@ -133,6 +142,10 @@ async def build_mapping(product: dict, body) -> dict:
     offers = await offers_for_game(product.get("game_id"), body.category_id)
     by_id = {o["offer_id"]: o for o in offers["offers"]}
     base = {"category_id": offers["category_id"], "confirmed": bool(body.confirmed), "linked_at": _now()}
+    game_id = product.get("game_id")
+    game_data = None
+    if game_id not in (None, DEFAULT_GAME_ID):
+        game_data = await db.games.find_one({"id": game_id}, {"currency_label": 1})
     if body.mode == "direct":
         if not body.offer_id:
             raise HTTPException(status_code=422, detail="offer_id requis pour un mapping direct.")
@@ -144,14 +157,14 @@ async def build_mapping(product: dict, body) -> dict:
         if is_currency_product(product):
             amount = uc_amount_of(offer, product.get("game_id"))
             if amount is not None and amount != product["uc_amount"]:
-                label = get_currency_label(product)
+                label = get_currency_label(product, product.get("game_id"), game_data)
                 raise HTTPException(status_code=409,
                                     detail=f"Mapping direct invalide : « {offer['name']} » = {amount} {label} ≠ {product['uc_amount']} {label} attendus. "
                                            f"Utilisez l'offre exacte ou une composition dont la somme vaut exactement {product['uc_amount']} {label}.")
         return {**base, "mode": "direct", "offer_id": offer["offer_id"], "offer_name": offer["name"],
                 "price_usd_at_link": offer["price_usd"]}
     if not is_currency_product(product):
-        label = get_currency_label(product)
+        label = get_currency_label(product, product.get("game_id"), game_data)
         raise HTTPException(status_code=409, detail=f"La composition n'est autorisée que pour les produits {label}. Prime / Prime Plus / Pack évolutif : mapping direct uniquement.")
     if not body.components:
         raise HTTPException(status_code=422, detail="Au moins un composant est requis.")
@@ -159,7 +172,7 @@ async def build_mapping(product: dict, body) -> dict:
         raise HTTPException(status_code=422, detail=f"Maximum {MAX_COMPONENTS} composants.")
     target = product.get("uc_amount")
     if not target:
-        label = get_currency_label(product)
+        label = get_currency_label(product, product.get("game_id"), game_data)
         raise HTTPException(status_code=409, detail=f"Produit sans quantité {label} : composition impossible.")
     components, total_uc, total_usd = [], 0, 0.0
     for comp in body.components:
@@ -168,7 +181,7 @@ async def build_mapping(product: dict, body) -> dict:
             raise HTTPException(status_code=409, detail=f"Offre « {comp.offer_id} » introuvable dans le catalogue FazerCards live.")
         amount = uc_amount_of(offer, product.get("game_id"))
         if amount is None:
-            label = get_currency_label(product)
+            label = get_currency_label(product, product.get("game_id"), game_data)
             raise HTTPException(status_code=409, detail=f"« {offer['name']} » n'est pas une offre {label} : composition refusée.")
         try:
             price = float(offer["price_usd"])
@@ -179,7 +192,7 @@ async def build_mapping(product: dict, body) -> dict:
         total_uc += amount * comp.quantity
         total_usd += price * comp.quantity
     if total_uc != target:
-        label = get_currency_label(product)
+        label = get_currency_label(product, product.get("game_id"), game_data)
         raise HTTPException(status_code=409,
                             detail=f"Composition invalide : {total_uc} {label} ≠ {target} {label} attendus. La somme des composants doit être exactement égale au produit vendu.")
     return {**base, "mode": "composite", "components": components, "total_uc": total_uc,
@@ -310,7 +323,7 @@ async def audit_uc_products(catalog: list[dict], game_id: str | None = None) -> 
     (et inversement). Sans `game_id`, le comportement historique est conservé.
     """
     catalog_by_offer = {(cat["category_id"], o["offer_id"]): o for cat in catalog for o in (cat.get("offers") or [])}
-    query = {"type": "uc", "uc_amount": {"$gt": 0}, **game_product_query(game_id)}
+    query = {"uc_amount": {"$gt": 0}, "type": {"$nin": ["prime", "prime_plus", "evo"]}, **game_product_query(game_id)}
     rows = []
     async for p in db.products.find(query,
                                     {"_id": 0, "id": 1, "slug": 1, "name": 1, "uc_amount": 1,
