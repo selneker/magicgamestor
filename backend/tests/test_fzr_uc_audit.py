@@ -134,6 +134,89 @@ class TestAuditApply:
         assert "fc_" not in text and "x-api-key" not in text and "fzr.cards" not in text
 
 
+# ---------- Audit d'un autre jeu : règles du jeu + isolation stricte ----------
+# Catalogue Free Fire simulé : quantités lisibles au nombre autonome unique (jamais « UC »).
+FF_OFFERS = [("ff_30", "30 Diamants", "0.5000"), ("ff_70", "70 Diamants", "1.1000")]
+FF_CATALOG = [{"category_id": "ff_cat_1", "name": "Free Fire",
+               "offers": [{"offer_id": oid, "name": name, "price_usd": price} for oid, name, price in FF_OFFERS],
+               "fields": [{"key": "player_id", "label": "Player ID", "type": "text"}]}]
+FF = "free-fire"
+
+
+class TestAuditGameIsolation:
+    """L'audit et son application sont strictement isolés par jeu et lisent les quantités avec
+    les règles du jeu audité (ici Free Fire : « 30 Diamants »), jamais celles de PUBG."""
+
+    def test_audit_reads_only_the_audited_game(self):
+        tag = uuid.uuid4().hex[:8]
+        ff_generic, ff_uc = f"qa-iso-{tag}-g", f"qa-iso-{tag}-f"
+        pubg_id, legacy_id = f"qa-iso-{tag}-p", f"qa-iso-{tag}-l"
+        run(db.products.insert_many([
+            {"id": ff_generic, "slug": ff_generic, "type": "diamonds", "name": "100 Diamants",
+             "uc_amount": 100, "active": True, "game_id": FF},  # type de monnaie non « uc » : audité
+            {"id": ff_uc, "slug": ff_uc, "type": "uc", "name": "30 Diamants",
+             "uc_amount": 30, "active": True, "game_id": FF},
+            {"id": pubg_id, "slug": pubg_id, "type": "uc", "name": "60 UC",
+             "uc_amount": 60, "active": True, "game_id": "pubg-mobile"},
+            {"id": legacy_id, "slug": legacy_id, "type": "uc", "name": "60 UC legacy",
+             "uc_amount": 60, "active": True},
+        ]))
+        try:
+            rows = {r["product_id"]: r for r in run(fzr_mapping.audit_uc_products(FF_CATALOG, FF))}
+            assert ff_generic in rows and ff_uc in rows
+            assert pubg_id not in rows and legacy_id not in rows  # isolation stricte
+            assert rows[ff_generic]["resolved_mode"] == "composite"  # 30 + 70 = 100, somme exacte
+            assert set(rows[ff_generic]["resolved_summary"].split(" + ")) == {"1×30 Diamants", "1×70 Diamants"}
+            assert rows[ff_uc]["resolved_mode"] == "direct"
+            assert rows[ff_uc]["resolved_summary"] == "30 Diamants"
+            # L'audit PUBG reste PUBG + legacy historique : jamais les produits d'un autre jeu.
+            pubg_rows = {r["product_id"]: r for r in run(fzr_mapping.audit_uc_products(CATALOG, "pubg-mobile"))}
+            assert pubg_id in pubg_rows and legacy_id in pubg_rows
+            assert ff_generic not in pubg_rows and ff_uc not in pubg_rows
+        finally:
+            run(db.products.delete_many({"id": {"$in": [ff_generic, ff_uc, pubg_id, legacy_id]}}))
+
+    def test_apply_fixes_free_fire_mapping_with_ff_rules(self):
+        """Cause racine : l'application relit le catalogue avec le jeu audité ; sans cela les
+        offres Free Fire (« 30 Diamants ») restent illisibles et aucun correctif n'est calculable."""
+        pid = f"qa-iso-fix-{uuid.uuid4().hex[:8]}"
+        run(db.products.insert_one({
+            "id": pid, "slug": pid, "type": "diamonds", "name": "100 Diamants", "uc_amount": 100,
+            "active": True, "game_id": FF, "requires_mapping": True,
+            "fazercards_mapping": {"mode": "direct", "category_id": "ff_cat_1", "offer_id": "ff_30",
+                                   "offer_name": "30 Diamants", "price_usd_at_link": "0.5000", "confirmed": True}}))
+        try:
+            result = run(fzr_mapping.apply_uc_audit(FF_CATALOG, "test", FF))
+            assert pid in {r["product_id"] for r in result["fixed"]}
+            m = run(db.products.find_one({"id": pid}, {"_id": 0, "fazercards_mapping": 1}))["fazercards_mapping"]
+            assert m["mode"] == "composite" and m["total_uc"] == 100
+            assert sum(c["uc_amount"] * c["quantity"] for c in m["components"]) == 100
+            assert {c["offer_id"] for c in m["components"]} == {"ff_30", "ff_70"}
+            assert all(c["offer_name"].endswith("Diamants") for c in m["components"])
+        finally:
+            run(db.products.delete_one({"id": pid}))
+
+    def test_apply_never_touches_another_game(self):
+        tag = uuid.uuid4().hex[:8]
+        ff_id, pubg_id = f"qa-iso-{tag}-f", f"qa-iso-{tag}-p"
+        pubg_mapping = {"mode": "direct", "category_id": "pubg_mobile_auto", "offer_id": "uc_60",
+                        "offer_name": "60 UC", "price_usd_at_link": "0.8800", "confirmed": True}
+        run(db.products.insert_many([
+            {"id": ff_id, "slug": ff_id, "type": "uc", "name": "100 Diamants", "uc_amount": 100,
+             "active": True, "game_id": FF, "fazercards_mapping": None},
+            {"id": pubg_id, "slug": pubg_id, "type": "uc", "name": "120 UC", "uc_amount": 120,
+             "active": True, "game_id": "pubg-mobile", "fazercards_mapping": dict(pubg_mapping)},
+        ]))
+        try:
+            result = run(fzr_mapping.apply_uc_audit(FF_CATALOG, "test", FF))
+            touched = {r["product_id"] for r in result["fixed"]} | {r["product_id"] for r in result["removed"]}
+            assert ff_id in touched and pubg_id not in touched  # seuls les produits du jeu audité
+            stored = run(db.products.find_one({"id": pubg_id}, {"_id": 0, "fazercards_mapping": 1}))
+            assert stored["fazercards_mapping"] == pubg_mapping  # PUBG strictement intact
+        finally:
+            run(db.products.delete_many({"id": {"$in": [ff_id, pubg_id]}}))
+
+
 def _mock_offers_with_pack(monkeypatch):
     """Offres PUBG + une offre spéciale sans quantité lisible (comme aujourd'hui)."""
     offers = [{"offer_id": oid, "name": name, "price_usd": price} for oid, name, price in UC_OFFERS]

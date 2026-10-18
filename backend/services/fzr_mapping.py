@@ -373,7 +373,9 @@ async def apply_uc_audit(catalog: list[dict], actor: str | None = None, game_id:
     fixed, removed = [], []
     for row in rows:
         if row["action"] == "fix":
-            doc = mapping_doc_from_resolution(resolve_uc_mapping(row["uc_amount"], catalog))
+            # MÊMES règles de jeu qu'à l'audit : sans `game_id`, les offres d'un autre jeu
+            # (« 30 Diamants ») seraient illisibles et aucun correctif ne serait calculable.
+            doc = mapping_doc_from_resolution(resolve_uc_mapping(row["uc_amount"], catalog, game_id))
             await db.products.update_one({"id": row["product_id"]}, {"$set": {"fazercards_mapping": doc}})
             await audit("fzr.uc_audit_fix", actor, row["product_id"],
                         {"slug": row["slug"], "uc_amount": row["uc_amount"], "mode": doc["mode"],
