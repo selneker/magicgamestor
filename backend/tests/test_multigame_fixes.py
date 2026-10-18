@@ -11,6 +11,8 @@ Couvre, sans jamais créer de vraie commande fournisseur ni toucher la productio
 Les tests unitaires utilisent le Mongo local + les helpers de test_fzr_phase3 (loop partagée).
 Aucun appel réseau réel : httpx est mocké.
 """
+import hashlib
+import hmac
 import uuid
 
 import httpx
@@ -19,7 +21,7 @@ from fastapi import HTTPException
 
 from test_fzr_phase3 import (VALIDATE_LIST, db, happy_handler, make_mapped_product, make_order,
                              mock_transport, run)  # noqa: F401
-from services import fazercards, fzr_fulfillment, fzr_mapping  # noqa: E402
+from services import fazercards, fzr_fulfillment, fzr_mapping, providers  # noqa: E402
 from services.providers import fazercards_adapter  # noqa: E402
 
 PUBG = "pubg-mobile"
@@ -666,6 +668,36 @@ def test_free_fire_non_currency_composition_refused(monkeypatch, type_key):
     assert exc.value.status_code == 409
     assert exc.value.detail == ("La composition n'est autorisée que pour les produits Diamants. "
                                 "Prime / Prime Plus / Pack évolutif : mapping direct uniquement.")
+
+
+# --------------------------------------------------------------------------- #
+# E. Couverture admin & webhook : aucun libellé ni jeu présumé PUBG
+# --------------------------------------------------------------------------- #
+
+def test_coverage_kind_is_game_specific():
+    """La couverture admin nomme la monnaie du jeu : « uc » reste réservé à PUBG Mobile,
+    un autre jeu est étiqueté « currency » — jamais un libellé PUBG pour un autre jeu."""
+    ff_offer = {"offer_id": "ff_30", "name": "30 Diamants", "price_usd": "0.5"}
+    assert fzr_mapping.classify_offer(ff_offer, FREE_FIRE) == "currency"
+    assert fzr_mapping.classify_offer(ff_offer, None) == "currency"  # comportement historique inchangé
+    pubg_offer = {"offer_id": "uc_60", "name": "60 UC", "price_usd": "0.88"}
+    assert fzr_mapping.classify_offer(pubg_offer, PUBG) == "uc"
+    assert fzr_mapping.classify_offer(pubg_offer, None) == "uc"
+    # Les autres familles restent inchangées, quel que soit le jeu.
+    assert fzr_mapping.classify_offer({"offer_id": "ff_pass", "name": "Battle Pass", "price_usd": "1"}, FREE_FIRE) == "special"
+    assert fzr_mapping.classify_offer({"offer_id": "ff_prime", "name": "Prime FF", "price_usd": "1"}, FREE_FIRE) == "subscription"
+    assert fzr_mapping.classify_offer({"offer_id": "ff_ambig", "name": "20 30 Diamants", "price_usd": "1"}, FREE_FIRE) == "currency"
+
+
+def test_webhook_signature_is_game_neutral(monkeypatch):
+    """La signature webhook est globale au fournisseur : elle ne dépend d'aucun jeu."""
+    from routers.fzr_orders import verify_fzr_signature
+    monkeypatch.setenv("FAZERCARDS_WEBHOOK_SECRET", "s3cret")
+    monkeypatch.setattr(providers, "GAME_PROVIDER", {})  # aucun jeu configuré
+    raw = b'{"event":"order.status_changed"}'
+    sig = "sha256=" + hmac.new(b"s3cret", raw, hashlib.sha256).hexdigest()
+    assert verify_fzr_signature(raw, sig) is True
+    assert verify_fzr_signature(raw, "sha256=" + "0" * 64) is False
 
 
 def test_free_fire_direct_mapping_requires_same_quantity(monkeypatch):

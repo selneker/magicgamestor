@@ -76,9 +76,13 @@ def uc_amount_of(offer: dict, game_id: str | None = None) -> int | None:
 
 
 def classify_offer(offer: dict, game_id: str | None = None) -> str:
-    """uc | subscription | currency | special — dérivé du catalogue live, pour la couverture admin."""
+    """uc | subscription | currency | special — dérivé du catalogue live, pour la couverture admin.
+
+    « uc » n'est renvoyé que pour le jeu historique PUBG Mobile : la couverture d'un autre jeu
+    étiquette sa monnaie (Diamants, CP…) « currency », jamais avec le libellé d'un autre jeu.
+    """
     if uc_amount_of(offer, game_id) is not None:
-        return "uc"
+        return "uc" if game_id in (None, DEFAULT_GAME_ID) else "currency"
     name, oid = (offer.get("name") or "").lower(), (offer.get("offer_id") or "").lower()
     if "prime" in oid or "prime" in name:
         return "subscription"

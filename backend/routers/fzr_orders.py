@@ -335,8 +335,12 @@ async def fzr_ack_alert(alert_id: str, admin=Depends(require_admin)):
 
 # ---------- Webhook FazerCards (signature + parsing encapsulés dans l'adapter Provider) ----------
 def verify_fzr_signature(raw: bytes, signature: str | None) -> bool:
-    """Signature HMAC-SHA256 sur le RAW BODY — déléguée à l'adapter FazerCards."""
-    return providers.get_provider("pubg-mobile").verify_webhook_signature(raw, signature)
+    """Signature HMAC-SHA256 sur le RAW BODY — déléguée à l'adapter FazerCards.
+
+    Le webhook est GLOBAL au fournisseur, pas à un jeu : le provider est résolu sans jeu
+    (aucun jeu, PUBG Mobile compris, n'est présumé être celui du webhook).
+    """
+    return providers.get_provider(None).verify_webhook_signature(raw, signature)
 
 
 @router.post("/fazercards/webhook")
