@@ -12,7 +12,16 @@ jest.mock("react-router-dom", () => {
   };
 });
 jest.mock("@/lib/api", () => ({ api: { get: jest.fn() } }));
-jest.mock("@/context/LanguageContext", () => ({ useLang: () => ({ t: (key) => key, lang: "fr" }) }));
+// t() RÉEL (translations fr/en + interpolation {label}) : les titres de section et les options
+// de tri doivent afficher la monnaie du jeu, jamais la variable littérale « {label} ».
+jest.mock("@/context/LanguageContext", () => {
+  const { translations } = jest.requireActual("@/i18n/translations");
+  const make = (lang) => (path, vars) => {
+    const value = path.split(".").reduce((a, k) => (a && a[k] !== undefined ? a[k] : undefined), translations[lang]) ?? path;
+    return vars && typeof value === "string" ? value.replace(/\{(\w+)\}/g, (_, k) => (vars[k] !== undefined ? vars[k] : `{${k}}`)) : value;
+  };
+  return { useLang: () => ({ t: make(global.mockLang || "fr"), lang: global.mockLang || "fr" }) };
+});
 const PUBG_TYPES = [{ key: "uc", label: "UC" }, { key: "prime", label: "Prime" }, { key: "prime_plus", label: "Prime+" }, { key: "evo", label: "Pack évolutif" }];
 let mockGames = [];
 jest.mock("@/context/GameContext", () => ({ useGames: () => ({ games: mockGames, selectGame: jest.fn() }) }));
@@ -20,6 +29,7 @@ jest.mock("@/pages/Home", () => ({ GameLogo: () => null, BackToTop: () => null }
 beforeEach(() => {
   mockGames = [
     { id: "pubg-mobile", name: "PUBG Mobile", slug: "pubg-mobile", currency_label: "UC", product_types: PUBG_TYPES },
+    { id: "free-fire", name: "Free Fire", slug: "free-fire", currency_label: "Diamants", product_types: [{ key: "diamonds", label: "Diamants" }] },
     { id: "codm", name: "Call of Duty Mobile", slug: "codm", currency_label: "CP", product_types: [{ key: "cp", label: "CP" }, { key: "battle_pass", label: "Battle Pass" }] },
   ];
 });
@@ -64,6 +74,62 @@ test("type tabs follow the selected game's configuration (no PUBG list for anoth
     const tabs = [...container.querySelectorAll('[data-testid^="type-tab-"]')].map((n) => n.dataset.testid);
     expect(tabs).toEqual(["type-tab-all", "type-tab-cp", "type-tab-battle_pass"]);
     expect(container.querySelector('[data-testid="type-tab-evo"]')).toBeNull();
+  } finally {
+    await act(async () => root.unmount());
+    delete global.mockQuery;
+    delete global.IS_REACT_ACT_ENVIRONMENT;
+  }
+});
+test("Free Fire : la section des packs affiche « Packs Diamants », jamais {label} littéral", async () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  global.mockQuery = "game=free-fire";
+  api.get.mockResolvedValue({ data: [{ id: "ff-100", slug: "ff-100", name: "100 Diamants", type: "diamonds", uc_amount: 100, price: 5000, game_id: "free-fire" }] });
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  try {
+    await act(async () => { root.render(<Catalog />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 30)); });
+    expect(container.querySelector("#packs-uc-title").textContent).toBe("Packs Diamants");
+    expect(container.textContent).toContain("Prix par Diamants");
+    expect(container.textContent).not.toContain("{label}");
+  } finally {
+    await act(async () => root.unmount());
+    delete global.mockQuery;
+    delete global.IS_REACT_ACT_ENVIRONMENT;
+  }
+});
+test("Free Fire (en) : « Diamants packs » et « Price per Diamants »", async () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  global.mockQuery = "game=free-fire";
+  global.mockLang = "en";
+  api.get.mockResolvedValue({ data: [{ id: "ff-100", slug: "ff-100", name: "100 Diamonds", type: "diamonds", uc_amount: 100, price: 5000, game_id: "free-fire" }] });
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  try {
+    await act(async () => { root.render(<Catalog />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 30)); });
+    expect(container.querySelector("#packs-uc-title").textContent).toBe("Diamants packs");
+    expect(container.textContent).toContain("Price per Diamants");
+    expect(container.textContent).not.toContain("{label}");
+  } finally {
+    await act(async () => root.unmount());
+    delete global.mockQuery;
+    delete global.mockLang;
+    delete global.IS_REACT_ACT_ENVIRONMENT;
+  }
+});
+test("PUBG Mobile : libellés UC inchangés (« Packs UC », « Prix par UC »)", async () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  global.mockQuery = "game=pubg-mobile";
+  api.get.mockResolvedValue({ data: [{ id: "pubg-60", slug: "pubg-60", name: "60 UC", type: "uc", uc_amount: 60, price: 900, game_id: "pubg-mobile" }] });
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  try {
+    await act(async () => { root.render(<Catalog />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 30)); });
+    expect(container.querySelector("#packs-uc-title").textContent).toBe("Packs UC");
+    expect(container.textContent).toContain("Prix par UC");
+    expect(container.textContent).not.toContain("{label}");
   } finally {
     await act(async () => root.unmount());
     delete global.mockQuery;
