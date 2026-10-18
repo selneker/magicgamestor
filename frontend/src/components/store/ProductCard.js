@@ -130,20 +130,19 @@ export function ProductCard({ product, index = 0, badge = null }) {
             )}
           </div>
 
-          {/* Right: add to cart button */}
-          <button
-            type="button"
-            disabled={!available}
-            data-testid={`add-to-cart-${product.slug}`}
-            className="flex min-h-11 w-auto shrink-0 items-center justify-center gap-2 border-l-2 px-3 min-[480px]:w-full min-[480px]:border-l-0 min-[480px]:border-t-2 border-[color:var(--neo-border)] bg-[color:var(--neo-card-bg)] px-3 whitespace-nowrap text-xs font-semibold uppercase tracking-[0.05em] text-[color:var(--neo-text)] transition-[transform,background-color,color] hover:-translate-y-0.5 hover:bg-[color:var(--neo-text)] hover:text-[color:var(--neo-card-bg)] active:translate-y-0.5 active:bg-[color:var(--neo-text)] active:text-[color:var(--neo-card-bg)] disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:bg-[color:var(--neo-card-bg)] disabled:hover:text-[color:var(--neo-text)]/50 focus-ring"
-            onClick={() => addFeedback(add(product), t, toast, setOpen)}
-          >
-            {available ? (
+          {/* Right: add to cart button (only when available) */}
+          {available && (
+            <button
+              type="button"
+              data-testid={`add-to-cart-${product.slug}`}
+              className="flex min-h-11 w-auto shrink-0 items-center justify-center gap-2 border-l-2 px-3 min-[480px]:w-full min-[480px]:border-l-0 min-[480px]:border-t-2 border-[color:var(--neo-border)] bg-[color:var(--neo-card-bg)] px-3 whitespace-nowrap text-xs font-semibold uppercase tracking-[0.05em] text-[color:var(--neo-text)] transition-[transform,background-color,color] hover:-translate-y-0.5 hover:bg-[color:var(--neo-text)] hover:text-[color:var(--neo-card-bg)] active:translate-y-0.5 active:bg-[color:var(--neo-text)] active:text-[color:var(--neo-card-bg)] focus-ring"
+              onClick={() => addFeedback(add(product), t, toast, setOpen)}
+            >
               <>
                 <Plus className="h-3.5 w-3.5" />{t("product.add")}
               </>
-            ) : t("product.unavailable")}
-          </button>
+            </button>
+          )}
         </div>
       </div>
 
