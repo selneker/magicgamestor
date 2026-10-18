@@ -1,5 +1,10 @@
 import { Link } from "react-router-dom";
+import { useCart } from "@/context/CartContext";
+import { useFavorites } from "@/lib/favorites";
+import { useLang } from "@/context/LanguageContext";
 import { formatAr } from "@/lib/api";
+import { addFeedback } from "@/context/CartContext";
+import { toast } from "sonner";
 
 const ICONS = {
   plus: <path d="M12 5v14M5 12h14" strokeWidth="3.2" strokeLinecap="round" />,
@@ -11,6 +16,7 @@ const ICONS = {
   minus: <path d="M5 12h14" strokeWidth="3.2" strokeLinecap="round" />,
   trash: <path d="M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13M10 11v6M14 11v6" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />,
   heart: <path d="M12 20.5s-8-4.7-8-10.2A4.3 4.3 0 0 1 12 7.8a4.3 4.3 0 0 1 8 2.5c0 5.5-8 10.2-8 10.2z" strokeWidth="2.4" strokeLinejoin="round" />,
+  check: <path d="M5 12l7 7 10-10" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />,
 };
 
 function Icon({ name, className = "h-5 w-5" }) {
@@ -19,21 +25,13 @@ function Icon({ name, className = "h-5 w-5" }) {
 
 export const productName = (product, lang) => (lang === "en" && product.name_en ? product.name_en : product.name);
 
-function typeLabel(product) {
-  if (product.type === "prime_plus") return "Prime+";
-  if (product.type === "prime") return "Prime";
-  if (product.type === "evo") return "Évolutif";
-  return "UC";
-}
-
-function actionIcon(product) {
-  if (product.type === "uc") return "plus";
-  if (product.type === "evo") return "cart";
-  return "arrow";
-}
-
-export function ProductCard({ product, badge, onAdd, onIncrease, onDecrease, qty = 0, favorite = false, onToggleFavorite }) {
-  const name = product.name || product.slug || "Produit";
+export function ProductCard({ product, index = 0, badge }) {
+  const { t, lang } = useLang();
+  const { items, add, setQty, remove, open, setOpen } = useCart();
+  const [favorites, toggleFavorite] = useFavorites();
+  const productInCart = items.find((item) => item.id === product.id);
+  const qty = productInCart ? productInCart.qty : 0;
+  const showCart = qty > 0;
   const available = product.purchasable !== false;
   const max = product.type === "uc" ? 20 : 1;
   const oldPrice = Number(product.old_price);
@@ -42,40 +40,75 @@ export function ProductCard({ product, badge, onAdd, onIncrease, onDecrease, qty
   const showDiscount = discount >= 5;
   const figure = product.type === "uc" ? product.uc_amount : product.duration_months;
   const unit = product.type === "uc" ? "UC" : product.duration_months ? "mois" : "";
-  const figureLength = String(figure || "").length;
-  const figureSize = figureLength >= 5 ? "text-2xl min-[400px]:text-3xl sm:text-4xl" : figureLength >= 4 ? "text-3xl min-[400px]:text-4xl sm:text-5xl" : "text-4xl min-[400px]:text-5xl sm:text-6xl";
+  const figureLength = figure ? figure.toString().length : 0;
   const context = badge || (product.popular ? "popular" : product.type === "evo" ? "evo" : "offer");
   const contextIcon = context === "popular" ? "flame" : context === "evo" ? "crown" : product.type === "prime" || product.type === "prime_plus" ? "bolt" : "cart";
   const contextLabel = context === "popular" ? "Populaire" : context === "evo" ? "Elite Pack" : product.type === "prime_plus" ? "Abonnement" : product.type === "prime" ? "Abonnement" : "Pack UC";
   const focus = "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-ink";
-  const add = () => onAdd?.(product);
-  const increase = () => onIncrease?.(product);
-  const decrease = () => onDecrease?.(product);
+  const actionIconName = product.type === "uc" ? "plus" : product.type === "evo" ? "cart" : "arrow";
+
+  const handleAdd = () => {
+    const addResult = add(product);
+    addFeedback(addResult, t, toast, setOpen);
+  };
+
+  const handleIncrease = () => {
+    if (qty < max) {
+      setQty(product.id, qty + 1);
+    }
+  };
+
+  const handleDecrease = () => {
+    if (qty > 0) {
+      setQty(product.id, qty - 1);
+    }
+  };
+
+  const handleToggleFavorite = () => {
+    toggleFavorite(product.id);
+  };
 
   return (
     <article data-testid={`product-card-${product.slug}`} className={`group relative flex min-w-0 min-h-[260px] flex-col rounded-[28px] border-2 border-ink bg-neo p-3 sm:p-5 shadow-none transition duration-200 ease-out hover:shadow-[8px_8px_0_#111111] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
-      <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-[28px]" aria-label={name} />
+      <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-[28px]" aria-label={product.name || product.slug || "Produit"} />
       <div className="relative z-10 flex h-full flex-col">
         <div className="flex items-start justify-between gap-1.5 sm:gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-3">
             <span className="rounded-full border border-ink bg-white/40 px-2.5 py-1 font-body text-[8px] font-bold uppercase leading-none tracking-wider backdrop-blur">{typeLabel(product)}</span>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-ink/10 px-3 py-1 font-body text-[10px] font-bold uppercase leading-none tracking-wider backdrop-blur"><Icon name={contextIcon} className="h-3 w-3" />{contextLabel}</span>
           </div>
-          <button type="button" aria-label={`${favorite ? "Retirer des favoris" : "Ajouter aux favoris"} : ${name}`} aria-pressed={favorite} onClick={onToggleFavorite} className={`grid aspect-square h-8 w-8 shrink-0 place-items-center !rounded-full border border-ink bg-ink text-white transition duration-150 hover:scale-105 hover:bg-red-500 active:scale-95 aria-[pressed=true]:bg-red-500 aria-[pressed=true]:[&_svg]:fill-white ${focus}`}><Icon name="heart" /></button>
+          <button type="button" aria-label={`${favorites.includes(product.id) ? t("product.removeFavorite") : t("product.addFavorite")} : ${product.name || product.slug}`} aria-pressed={favorites.includes(product.id)} onClick={handleToggleFavorite} className={`grid aspect-square h-8 w-8 shrink-0 place-items-center !rounded-full border border-ink bg-ink text-white transition duration-150 hover:scale-105 hover:bg-red-500 active:scale-95 aria-[pressed=true]:bg-red-500 aria-[pressed=true]:[&_svg]:fill-white ${focus}`}><Icon name="heart" /></button>
         </div>
 
-        <h2 className="mt-3 line-clamp-2 min-h-[2.75rem] break-words font-display text-sm font-extrabold leading-tight tracking-tight sm:mt-4 sm:min-h-[3.5rem] sm:text-lg">{name}</h2>
-        {figure ? <p className={`mt-1 flex min-w-0 items-baseline gap-1 font-display font-extrabold tracking-tighter ${figureSize}`}><span className="min-w-0 truncate leading-none">{figure}</span><span className="shrink-0 text-sm font-bold uppercase tracking-tight text-ink/70 sm:text-xl">{unit}</span></p> : null}
+        <h2 className="mt-3 line-clamp-2 min-h-[2.75rem] break-words font-display text-sm font-extrabold leading-tight tracking-tight sm:mt-4 sm:min-h-[3.5rem] sm:text-lg">{product.name || product.slug}</h2>
+        {figure ? (
+          <p className={"mt-1 flex min-w-0 items-baseline gap-1 font-display font-extrabold tracking-tighter " + (figureLength >= 5 ? "text-2xl min-[400px]:text-3xl sm:text-4xl" : figureLength >= 4 ? "text-3xl min-[400px]:text-4xl sm:text-5xl" : "text-4xl min-[400px]:text-5xl sm:text-6xl")}>
+            <span className="min-w-0 truncate leading-none">{figure}</span>
+            <span className="shrink-0 text-sm font-bold uppercase tracking-tight text-ink/70 sm:text-xl">{unit}</span>
+          </p>
+        ) : null}
 
         <div className={`mt-auto flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border-2 border-ink sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-white py-1 pl-2 pr-1 sm:pl-3" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
-          {!available ? <span className="font-body text-sm font-bold uppercase tracking-wide">Indisponible</span> : qty > 0 ? <>
-            <button type="button" aria-label={`${qty === 1 ? "Retirer du panier" : "Retirer un exemplaire"} : ${name}`} onClick={decrease} className={`grid aspect-square h-7 w-7 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}><Icon name={qty === 1 ? "trash" : "minus"} /></button>
-            <span className="min-w-0 text-center font-body text-sm font-bold leading-tight text-neo" aria-live="polite"><span className="font-display text-2xl font-extrabold">{qty}</span> au panier</span>
-            <button type="button" aria-label={`Ajouter un exemplaire : ${name}`} disabled={qty >= max} onClick={increase} className={`grid aspect-square h-7 w-7 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}><Icon name="plus" /></button>
-          </> : <>
-            <div className="flex min-w-0 flex-1 items-center gap-1"><span className="min-w-0 truncate font-display text-base font-extrabold leading-none min-[400px]:text-lg sm:text-2xl">{formatAr(product.price)}</span>{showDiscount ? <span className="shrink-0 rounded-full border border-ink bg-neo px-1.5 py-0.5 font-body text-[9px] font-bold leading-3 sm:px-2 sm:text-[11px] sm:leading-4">-{discount}%</span> : null}</div>
-            <button type="button" aria-label={`Ajouter au panier : ${name}`} onClick={add} className={`grid aspect-square h-10 w-10 shrink-0 place-items-center !rounded-full border-2 border-ink bg-ink text-neo transition duration-150 hover:scale-105 active:scale-95 ${focus}`}><Icon name={actionIcon(product)} /></button>
-          </>}
+          {!available ? (
+            <span className="font-body text-sm font-bold uppercase tracking-wide">Indisponible</span>
+          ) : qty > 0 ? (
+            <>
+              <button type="button" aria-label={`${qty === 1 ? "Retirer du panier" : "Retirer un exemplaire"} : ${product.name || product.slug}`} onClick={handleDecrease} className={`grid aspect-square h-7 w-7 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
+                <Icon name={qty === 1 ? "trash" : "minus"} />
+              </button>
+              <span className="min-w-0 text-center font-body text-sm font-bold leading-tight text-neo" aria-live="polite"><span className="font-display text-2xl font-extrabold">{qty}</span> au panier</span>
+              <button type="button" aria-label={`Ajouter un exemplaire : ${product.name || product.slug}`} disabled={qty >= max} onClick={handleIncrease} className={`grid aspect-square h-7 w-7 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
+                <Icon name="plus" />
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="flex min-w-0 flex-1 items-center gap-1"><span className="min-w-0 truncate font-display text-base font-extrabold leading-none min-[400px]:text-lg sm:text-2xl">{formatAr(product.price)}</span>{showDiscount ? <span className="shrink-0 rounded-full border border-ink bg-neo px-1.5 py-0.5 font-body text-[9px] font-bold leading-3 sm:px-2 sm:text-[11px] sm:leading-4">-{discount}%</span> : null}</div>
+              <button type="button" aria-label={`Ajouter au panier : ${product.name || product.slug}`} onClick={handleAdd} className={`grid aspect-square h-10 w-10 shrink-0 place-items-center !rounded-full border-2 border-ink bg-ink text-neo transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
+                <Icon name={actionIconName} />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </article>
