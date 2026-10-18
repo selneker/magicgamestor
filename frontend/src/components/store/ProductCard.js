@@ -53,7 +53,7 @@ export function ProductCard({ product, badge, onAdd, onIncrease, onDecrease, qty
   const decrease = () => onDecrease?.(product);
 
   return (
-    <article data-testid={`product-card-${product.slug}`} className={`group relative flex min-h-[224px] flex-col rounded-[24px] border-2 border-ink bg-neo p-3 shadow-[5px_5px_0_#111111] transition duration-200 ease-out hover:-translate-y-1 hover:shadow-brut-lg motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
+    <article data-testid={`product-card-${product.slug}`} className={`group relative flex min-h-[224px] flex-col rounded-[24px] border-2 border-ink bg-neo p-3 shadow-none transition duration-200 ease-out hover:shadow-[5px_5px_0_#111111] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
       <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-[1.35rem]" aria-label={name} />
       <div className="relative z-10 flex h-full flex-col">
         <div className="flex items-start justify-between gap-2">
@@ -64,8 +64,8 @@ export function ProductCard({ product, badge, onAdd, onIncrease, onDecrease, qty
           <button type="button" aria-label={`${favorite ? "Retirer des favoris" : "Ajouter aux favoris"} : ${name}`} aria-pressed={favorite} onClick={onToggleFavorite} className={`grid aspect-square h-8 w-8 shrink-0 place-items-center !rounded-full border border-ink bg-ink text-white transition duration-150 hover:scale-105 hover:bg-red-500 active:scale-95 aria-[pressed=true]:bg-red-500 aria-[pressed=true]:[&_svg]:fill-white ${focus}`}><Icon name="heart" /></button>
         </div>
 
-        <h2 className="mt-3 line-clamp-2 min-h-[2.5rem] font-display text-sm font-extrabold leading-tight tracking-tight sm:text-base">{name}</h2>
-        {figure ? <p className={`mt-5 flex items-baseline gap-2 font-display font-extrabold tracking-tighter ${figureSize}`}><span className="leading-none">{figure}</span><span className="text-xl font-bold uppercase tracking-tight text-ink/70">{unit}</span></p> : null}
+        <h2 className="mt-2 line-clamp-2 min-h-[2rem] font-display text-sm font-extrabold leading-tight tracking-tight sm:text-base">{name}</h2>
+        {figure ? <p className={`mt-2 flex items-baseline gap-2 font-display font-extrabold tracking-tighter ${figureSize}`}><span className="leading-none">{figure}</span><span className="text-xl font-bold uppercase tracking-tight text-ink/70">{unit}</span></p> : null}
 
         <div className={`mt-auto flex h-11 items-center justify-between gap-1.5 rounded-[9999px] border-2 border-ink ${qty > 0 ? "bg-ink p-1.5" : available ? "bg-white py-1 pl-3 pr-1" : "border-dashed bg-transparent px-3"}`}>
           {!available ? <span className="font-body text-sm font-bold uppercase tracking-wide">Indisponible</span> : qty > 0 ? <>
