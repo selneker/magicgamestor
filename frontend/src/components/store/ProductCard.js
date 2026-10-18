@@ -53,10 +53,10 @@ export function ProductCard({ product, badge, onAdd, onIncrease, onDecrease, qty
   const decrease = () => onDecrease?.(product);
 
   return (
-    <article data-testid={`product-card-${product.slug}`} className={`group relative flex min-h-[248px] flex-col rounded-[1.35rem] border-2 border-ink bg-neo p-3 shadow-[5px_5px_0_#111111] transition duration-200 ease-out hover:-translate-y-1 hover:shadow-brut-lg motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
+    <article data-testid={`product-card-${product.slug}`} className={`group relative flex min-h-[224px] flex-col rounded-[1.25rem] border-2 border-ink bg-neo p-2.5 shadow-[4px_4px_0_#111111] transition duration-200 ease-out hover:-translate-y-1 hover:shadow-brut-lg motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
       <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-[1.35rem]" aria-label={name} />
       <div className="relative z-10 flex h-full flex-col">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-ink bg-white/40 px-2 py-0.5 font-body text-[8px] font-bold uppercase leading-none tracking-wider backdrop-blur">{typeLabel(product)}</span>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-ink/10 px-3 py-1 font-body text-[10px] font-bold uppercase leading-none tracking-wider backdrop-blur"><Icon name={contextIcon} className="h-3 w-3" />{contextLabel}</span>
@@ -74,7 +74,7 @@ export function ProductCard({ product, badge, onAdd, onIncrease, onDecrease, qty
             <button type="button" aria-label={`Ajouter un exemplaire : ${name}`} disabled={qty >= max} onClick={increase} className={`grid h-7 w-7 shrink-0 place-items-center rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}><Icon name="plus" /></button>
           </> : <>
             <div className="flex min-w-0 flex-col items-start gap-1 min-[400px]:flex-row min-[400px]:items-center min-[400px]:gap-3"><span className="whitespace-nowrap font-display text-2xl font-extrabold leading-none">{formatAr(product.price)}</span>{showDiscount ? <span className="rounded-full border border-ink bg-neo px-2 py-0.5 font-body text-[11px] font-bold leading-4">-{discount}%</span> : null}</div>
-            <button type="button" aria-label={`Ajouter au panier : ${name}`} onClick={add} className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border border-ink bg-ink text-neo transition duration-150 hover:scale-105 active:scale-95 ${focus}`}><Icon name={actionIcon(product)} /></button>
+            <button type="button" aria-label={`Ajouter au panier : ${name}`} onClick={add} className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-ink bg-ink text-neo transition duration-150 hover:scale-105 active:scale-95 ${focus}`}><Icon name={actionIcon(product)} /></button>
           </>}
         </div>
       </div>
