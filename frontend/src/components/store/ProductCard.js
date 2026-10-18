@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useCart } from "@/context/CartContext";
+import { useCart, SUBSCRIPTION_TYPES } from "@/context/CartContext";
 import { useFavorites } from "@/lib/favorites";
 import { useLang } from "@/context/LanguageContext";
 import { formatAr } from "@/lib/api";
@@ -40,7 +40,10 @@ export function ProductCard({ product, index = 0, badge }) {
   const qty = productInCart ? productInCart.qty : 0;
   const showCart = qty > 0;
   const available = product.purchasable !== false;
-  const max = product.type === "uc" ? 20 : 1;
+  // Même règle que le panier (CartContext) : abonnements Prime/Prime+ et évo = 1 max,
+  // jetons de monnaie de TOUT jeu = plafond 20 (jamais « type === "uc" »).
+  const single = SUBSCRIPTION_TYPES.includes(product.type) || product.type === "evo";
+  const max = single ? 1 : 20;
   const oldPrice = Number(product.old_price);
   const price = Number(product.price);
   const discount = oldPrice > price ? Math.round((1 - price / oldPrice) * 100) : 0;

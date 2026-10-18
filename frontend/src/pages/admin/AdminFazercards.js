@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
+import { currencyOf, DEFAULT_GAME as DEFAULT_GAME_ID } from "@/lib/catalog";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -18,11 +19,36 @@ const typeGroups = (game, products) => {
   const extra = [...new Set(products.map((p) => p.type))].filter((k) => !declared.some(([d]) => d === k)).map((k) => [k, `${k} (type non configuré)`]);
   return [...declared, ...extra];
 };
-const ucAmountOf = (o) => {
-  const m = /^([\d\s]+)\s*UC$/i.exec((o?.name || "").trim());
-  if (m) return parseInt(m[1].replace(/\s/g, ""), 10);
-  const m2 = /^(\d+)_uc$/i.exec(o?.offer_id || "");
-  return m2 ? parseInt(m2[1], 10) : null;
+// Types réservés à PUBG Mobile (abonnement / pack évolutif) : jamais des produits de monnaie.
+const RESERVED_TYPES = ["prime", "prime_plus", "evo"];
+
+// Produit de monnaie : quantité > 0 et type hors types réservés — MÊME règle que le backend
+// (services/fzr_mapping.is_currency_product), pour tous les jeux.
+export const isCurrencyProduct = (p) => (p?.uc_amount || 0) > 0 && !RESERVED_TYPES.includes(p?.type);
+
+// Quantité d'une offre — MÊME règle que le backend (services/fzr_mapping.uc_amount_of).
+export const ucAmountOf = (offer, gameId) => {
+  const name = (offer?.name || "").trim();
+  const offerId = (offer?.offer_id || "").trim();
+
+  if (gameId === null || gameId === DEFAULT_GAME_ID) {
+    // PUBG legacy behavior
+    const ucNameMatch = name.match(/^([\d\s]+)\s*UC$/i);
+    if (ucNameMatch) {
+      return parseInt(ucNameMatch[1].replace(/\s/g, ""), 10);
+    }
+    const ucIdMatch = offerId.match(/^(\d+)_uc$/i);
+    return ucIdMatch ? parseInt(ucIdMatch[1], 10) : null;
+  } else {
+    // Autres jeux : UN SEUL nombre AUTONOME — jamais un chiffre inclus dans un mot (MP40), ni
+    // deux nombres (bonus « 500+50 », « 20 30 », séparateur « 1 000 »). Sinon null : le backend
+    // refusera la composition, l'admin ne doit donc jamais l'afficher comme valide.
+    const numbers = name.match(/(?<![A-Za-z0-9])(\d+)(?![0-9])/g);
+    if (numbers && numbers.length === 1) {
+      return parseInt(numbers[0], 10);
+    }
+    return null;
+  }
 };
 
 const StatusBadge = ({ p, t }) => {
@@ -55,6 +81,11 @@ export default function AdminFazercards() {
   const [game, setGame] = useState("pubg-mobile");
   const [games, setGames] = useState([]);
   const [gamesReady, setGamesReady] = useState(false);
+
+  // Libellé de la monnaie du jeu courant — JAMAIS la clé de type brute : « UC » pour PUBG Mobile,
+  // sinon la monnaie déclarée par le jeu (game.currency_label), sinon un repli neutre.
+  const currentGame = games.find((g) => g.id === game);
+  const currencyLabel = currencyOf(currentGame || { id: game }) || t("admin.fzr.currencyFallback");
 
   const load = useCallback((g = "") => {
     api.get("/admin/fazercards/settings").then((r) => setSettings(r.data)).catch(() => {});
@@ -177,14 +208,14 @@ export default function AdminFazercards() {
     let uc = 0, usd = 0, valid = true;
     for (const c of form.components) {
       const offer = catOffers.find((o) => o.offer_id === c.offer_id);
-      const amount = ucAmountOf(offer);
+      const amount = ucAmountOf(offer, game);
       if (!offer || amount === null) { valid = false; continue; }
       uc += amount * (Number(c.quantity) || 0);
       usd += parseFloat(offer.price_usd || 0) * (Number(c.quantity) || 0);
     }
     const target = editing?.uc_amount || 0;
     return { uc, usd: usd.toFixed(4), target, exact: valid && uc === target && uc > 0 };
-  }, [form, catOffers, editing]);
+  }, [form, catOffers, editing, game]);
 
   const saveMapping = async () => {
     setBusy("save");
@@ -322,11 +353,11 @@ export default function AdminFazercards() {
             )}
           </div>
         </div>
-        {can("catalog.manage") && game === "pubg-mobile" && (
+        {can("catalog.manage") && (
           <div className="mt-4 flex flex-col gap-2 rounded-xl border border-border bg-muted/40 p-3 sm:flex-row sm:items-center" data-testid="fzr-uc-audit">
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-foreground">{t("admin.fzr.ucAudit")}</p>
-              <p className="text-xs text-muted-foreground">{t("admin.fzr.ucAuditHint")}</p>
+              <p className="text-sm font-bold text-foreground">{t("admin.fzr.ucAudit", { label: currencyLabel })}</p>
+              <p className="text-xs text-muted-foreground">{t("admin.fzr.ucAuditHint", { label: currencyLabel })}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="outline" className="rounded-full" onClick={runAudit} disabled={busy === "audit"} data-testid="fzr-uc-audit-run">
@@ -342,7 +373,7 @@ export default function AdminFazercards() {
           <div className="mt-2 space-y-1" data-testid="fzr-uc-audit-rows">
             {audit.map((r) => (
               <div key={r.product_id} className={`flex flex-wrap items-center gap-2 rounded-lg px-3 py-1.5 text-xs ${r.action === "ok" ? "bg-emerald-50 dark:bg-emerald-500/10" : r.action === "fix" ? "bg-amber-50 dark:bg-amber-500/10" : r.action === "remove" ? "bg-rose-50 dark:bg-rose-500/10" : "bg-muted/50"}`} data-testid={`fzr-uc-audit-row-${r.slug}`}>
-                <span className="w-20 shrink-0 font-bold text-foreground">{r.uc_amount} UC</span>
+                <span className="w-20 shrink-0 font-bold text-foreground">{r.uc_amount} {currencyLabel}</span>
                 <span className="min-w-0 flex-1 basis-full break-words text-muted-foreground sm:basis-0">{r.resolved_mode === "missing" ? t("admin.fzr.auditMissing") : `${r.resolved_mode === "direct" ? t("admin.fzr.direct") : t("admin.fzr.composite")} · ${r.resolved_summary}`}</span>
                 <span className={`ml-auto shrink-0 rounded-full px-2 py-0.5 font-bold ${r.action === "ok" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200" : r.action === "fix" ? "bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200" : r.action === "remove" ? "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200" : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-200"}`} data-testid={`fzr-uc-audit-action-${r.slug}`}>
                   {r.action === "ok" ? t("admin.fzr.auditOk") : r.action === "fix" ? t("admin.fzr.auditFix") : r.action === "remove" ? t("admin.fzr.auditRemove") : t("admin.fzr.auditMissing")}
@@ -353,7 +384,7 @@ export default function AdminFazercards() {
         )}
         {products.length === 0 && (
           <div className="mt-5 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground" data-testid="fzr-no-game-products">
-            Aucun produit MagicGameStore pour ce jeu. Créez d'abord un pack inactif dans Admin → Catalogue, sélectionnez ce jeu, puis revenez ici pour lui associer une offre FazerCards.
+            {t("admin.fzr.noProducts")}
           </div>
         )}
         {typeGroups(games.find((g) => g.id === game), products).map(([type, label]) => {
@@ -435,7 +466,7 @@ export default function AdminFazercards() {
                 <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200">{o.kind} · {t("admin.fzr.usedBy")} {o.used_by.map((u) => u.name).join(", ")}</span>
               </div>
             ))}
-            {coverage.length === 0 && <p className="text-sm text-muted-foreground">Aucune offre : affectez d'abord les catégories de ce jeu.</p>}
+            {coverage.length === 0 && <p className="text-sm text-muted-foreground">{t("admin.fzr.noOffers")}</p>}
           </div>
         )}
       </section>
@@ -449,7 +480,7 @@ export default function AdminFazercards() {
                 <p className="mb-1.5 text-xs font-bold uppercase tracking-widest text-slate-500">{t("admin.fzr.mode")}</p>
                 <RadioGroup value={form.mode} onValueChange={(v) => setForm((f) => ({ ...f, mode: v }))} className="flex gap-4">
                   <label className="flex items-center gap-2"><RadioGroupItem value="direct" data-testid="fzr-mode-direct" />{t("admin.fzr.direct")}</label>
-                  {editing.type === "uc" && (
+                  {isCurrencyProduct(editing) && (
                     <label className="flex items-center gap-2"><RadioGroupItem value="composite" data-testid="fzr-mode-composite" />{t("admin.fzr.composite")}</label>
                   )}
                 </RadioGroup>
@@ -487,7 +518,7 @@ export default function AdminFazercards() {
                       <span className="text-slate-400">×</span>
                       <Select value={c.offer_id} onValueChange={(v) => setComp(i, { offer_id: v })} disabled={!form.category_id}>
                         <SelectTrigger className="h-9 flex-1" data-testid={`fzr-comp-offer-${i}`}><SelectValue placeholder={t("admin.fzr.pickOffer")} /></SelectTrigger>
-                        <SelectContent>{catOffers.filter((o) => ucAmountOf(o) !== null).map((o) => <SelectItem key={o.offer_id} value={o.offer_id}>{o.name} · ${o.price_usd}</SelectItem>)}</SelectContent>
+                        <SelectContent>{catOffers.filter((o) => ucAmountOf(o, game) !== null).map((o) => <SelectItem key={o.offer_id} value={o.offer_id}>{o.name} · ${o.price_usd}</SelectItem>)}</SelectContent>
                       </Select>
                       <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-600" onClick={() => setForm((f) => ({ ...f, components: f.components.filter((_, j) => j !== i) }))} disabled={form.components.length <= 1} data-testid={`fzr-comp-remove-${i}`}>
                         <Trash2 className="h-3.5 w-3.5" />
@@ -499,7 +530,7 @@ export default function AdminFazercards() {
                   </Button>
                   {compTotals && (
                     <div className="space-y-1 rounded-xl bg-slate-50 p-3 text-xs">
-                      <p className="flex justify-between"><span className="text-slate-500">{t("admin.fzr.totalUc")}</span><span className="font-semibold" data-testid="fzr-comp-total-uc">{compTotals.uc} / {compTotals.target} UC</span></p>
+                      <p className="flex justify-between"><span className="text-slate-500">{t("admin.fzr.totalUc", { label: currencyLabel })}</span><span className="font-semibold" data-testid="fzr-comp-total-uc">{compTotals.uc} / {compTotals.target} {currencyLabel}</span></p>
                       <p className="flex justify-between"><span className="text-slate-500">{t("admin.fzr.totalSupplier")}</span><span className="font-semibold" data-testid="fzr-comp-total-usd">${compTotals.usd}</span></p>
                       <p className={`font-bold ${compTotals.exact ? "text-emerald-700" : "text-rose-700"}`} data-testid="fzr-comp-check">
                         {compTotals.exact ? t("admin.fzr.compExact") : t("admin.fzr.compInvalid")}

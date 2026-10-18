@@ -172,10 +172,12 @@ async def fzr_mappings(game: str | None = None):
     (compatibilité Phase 1), tout autre jeu ne voit QUE ses propres produits — jamais ceux d'un autre jeu.
     """
     query = fzr_mapping.game_product_query(game)
-    products = await db.products.find(query, {"_id": 0, "id": 1, "slug": 1, "name": 1, "type": 1, "price": 1,
-                                              "uc_amount": 1, "duration_months": 1, "active": 1, "game_id": 1,
-                                              "requires_mapping": 1, "fazercards_mapping": 1}) \
-        .sort("sort_order", 1).to_list(500)
+    # Liste COMPLÈTE du jeu : un plafond silencieux masquerait des produits dans l'admin, qui ne
+    # pourraient alors jamais être mappés/composés (l'audit `audit_uc_products` itère déjà sans plafond).
+    products = [p async for p in db.products.find(query, {"_id": 0, "id": 1, "slug": 1, "name": 1, "type": 1,
+                                                          "price": 1, "uc_amount": 1, "duration_months": 1,
+                                                          "active": 1, "game_id": 1, "requires_mapping": 1,
+                                                          "fazercards_mapping": 1}).sort("sort_order", 1)]
     for p in products:
         mapping = p.get("fazercards_mapping")
         p["mapping_status"] = fzr_mapping.mapping_status(mapping)
@@ -229,7 +231,7 @@ async def fzr_coverage(game: str | None = None):
     for cat in categories:
         for o in cat["offers"]:
             offers.append({"category_id": cat["category_id"], "offer_id": o["offer_id"], "name": o["name"],
-                           "price_usd": o["price_usd"], "kind": fzr_mapping.classify_offer(o),
+                           "price_usd": o["price_usd"], "kind": fzr_mapping.classify_offer(o, game),
                            "used_by": used.get((cat["category_id"], o["offer_id"]), [])})
     return {"offers": offers}
 
@@ -335,8 +337,12 @@ async def fzr_ack_alert(alert_id: str, admin=Depends(require_admin)):
 
 # ---------- Webhook FazerCards (signature + parsing encapsulés dans l'adapter Provider) ----------
 def verify_fzr_signature(raw: bytes, signature: str | None) -> bool:
-    """Signature HMAC-SHA256 sur le RAW BODY — déléguée à l'adapter FazerCards."""
-    return providers.get_provider("pubg-mobile").verify_webhook_signature(raw, signature)
+    """Signature HMAC-SHA256 sur le RAW BODY — déléguée à l'adapter FazerCards.
+
+    Le webhook est GLOBAL au fournisseur, pas à un jeu : le provider est résolu sans jeu
+    (aucun jeu, PUBG Mobile compris, n'est présumé être celui du webhook).
+    """
+    return providers.get_provider(None).verify_webhook_signature(raw, signature)
 
 
 @router.post("/fazercards/webhook")

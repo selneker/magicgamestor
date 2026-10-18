@@ -31,6 +31,24 @@ def env_and_cache(monkeypatch):
     fazercards._discovery_cache["data"] = None
 
 
+_CREATED_PIDS: list[str] = []
+
+
+@pytest.fixture(autouse=True)
+def cleanup_created_products():
+    """Nettoie les produits créés par les helpers du module (ciblé par id, jamais global).
+
+    Sans ce teardown, chaque exécution laissait ~15 produits `test-comp-*`/`test-direct-*` dans
+    la base de test ; au-delà du plafond de 500 de `fzr_mappings` (tri par `sort_order`, champ
+    absent = en tête), ces fuites finissaient par masquer les produits des autres tests
+    (cf. tests/test_multigame_fixes.py::test_admin_mappings_filter_isolates_games).
+    """
+    yield
+    if _CREATED_PIDS:
+        run(db.products.delete_many({"id": {"$in": _CREATED_PIDS}}))
+        _CREATED_PIDS.clear()
+
+
 def mock_transport(monkeypatch, handler):
     monkeypatch.setattr(fazercards.httpx, "AsyncClient", lambda **kw: RealAsyncClient(transport=httpx.MockTransport(handler)))
 
@@ -67,6 +85,7 @@ def make_composite_product(uc_amount, components):
         "fazercards_mapping": {"mode": "composite", "category_id": "pubg_mobile_auto", "confirmed": True,
                                "linked_at": _now(), "components": comps,
                                "total_uc": uc_amount, "total_price_usd_at_link": 1.0}}))
+    _CREATED_PIDS.append(pid)
     return pid
 
 
@@ -76,6 +95,7 @@ def make_direct_product(offer_id, offer_name, name):
         "id": pid, "slug": f"test-direct-{offer_id}-{pid[:6]}", "type": "uc", "name": name, "price": 5000, "active": True,
         "fazercards_mapping": {"mode": "direct", "category_id": "pubg_mobile_auto", "offer_id": offer_id,
                                "offer_name": offer_name, "price_usd_at_link": "0.8800", "confirmed": True, "linked_at": _now()}}))
+    _CREATED_PIDS.append(pid)
     return pid
 
 
@@ -207,3 +227,116 @@ class TestCompositeDecomposition:
         out = run(fzr_fulfillment.fulfill_order(order["id"], "test"))
         text = json.dumps(out).lower()
         assert "fc_" not in text and "x-api-key" not in text and "fzr.cards" not in text
+
+
+# --------------------------------------------------------------------------- #
+# Composition Free Fire : livraison de bout en bout, sans hypothèse PUBG
+# --------------------------------------------------------------------------- #
+FF = "free-fire"
+FF_VALIDATE_LIST = {"ok": True, "items": [
+    {"category_id": "pubg_mobile", "name": "PUBG Mobile",
+     "fields": [{"key": "player_id", "label": "Player ID", "type": "text"}]},
+    {"category_id": "free_fire", "name": "Free Fire",
+     "fields": [{"key": "player_id", "label": "Player ID", "type": "text"}]},
+]}
+FF_OFFERS = {"ok": True, "kind": "topup", "category_id": "ff_cat_1", "name": "Free Fire",
+             "offers": [{"offer_id": "ff_30", "name": "30 Diamants", "price_usd": "0.5000"},
+                        {"offer_id": "ff_70", "name": "70 Diamants", "price_usd": "1.1000"}],
+             "fields": [{"key": "player_id", "label": "Player ID", "type": "text"}]}
+
+
+def ff_handler(order_calls, seen):
+    def handler(req: httpx.Request) -> httpx.Response:
+        path = req.url.path
+        if path.endswith("/topups/validate-id") and req.method == "GET":
+            return httpx.Response(200, json=FF_VALIDATE_LIST)
+        if path.endswith("/topups/validate-id"):
+            seen["validate"] = json.loads(req.content)
+            return httpx.Response(200, json={"ok": True, "valid": True, "player_name": "FFPlayer"})
+        if path.endswith("/topups/offers"):
+            return httpx.Response(200, json=FF_OFFERS)
+        if path.endswith("/topups/order"):
+            order_calls.append({"idempotency_key": req.headers.get("Idempotency-Key"), "body": json.loads(req.content)})
+            return httpx.Response(200, json={"ok": True, "order": {"id": f"ff-ord-{len(order_calls)}", "kind": "topup",
+                                                                  "status": "processing"}})
+        if "/orders/" in path:
+            return httpx.Response(200, json={"ok": True, "order": {"id": path.rsplit("/", 1)[-1], "kind": "topup",
+                                                                   "status": "completed"}})
+        return httpx.Response(404, json={"ok": False, "error": "not found"})
+    return handler
+
+
+def _setup_ff_game(monkeypatch):
+    """Jeu Free Fire réellement configuré (validation + catégories) + catalogue mocké, sans réseau."""
+    before = run(db.games.find_one({"id": FF}, {"_id": 0}))
+    run(db.games.update_one({"id": FF}, {"$set": {
+        "active": True, "currency_label": "Diamants", "fazercards_validation_category": "free_fire",
+        "fazercards_categories": ["ff_cat_1"], "fazercards_categories_configured": True}}, upsert=True))
+
+    async def fake_categories():
+        return [{"category_id": "ff_cat_1", "name": "Free Fire", "note": ""}]
+    monkeypatch.setattr(fazercards, "_topup_categories", fake_categories)
+    return before
+
+
+def _restore_ff_game(before):
+    if before:
+        run(db.games.replace_one({"id": FF}, before))
+    else:
+        run(db.games.delete_one({"id": FF}))
+
+
+class TestFreeFireEndToEnd:
+    """Composition Free Fire livrée de bout en bout : validation par la catégorie FF déclarée,
+    offres de SON catalogue, unités composées indépendantes, synchro webhook — aucun appel réel."""
+
+    def test_ff_composite_fulfillment_then_webhook_delivers(self, monkeypatch):
+        calls, seen = [], {}
+        mock_transport(monkeypatch, ff_handler(calls, seen))
+        before = _setup_ff_game(monkeypatch)
+        pid = str(uuid.uuid4())
+        try:
+            run(db.products.insert_one({
+                "id": pid, "slug": f"test-ff-100-{pid[:6]}", "type": "diamonds", "name": "100 Diamants",
+                "price": 5000, "active": True, "game_id": FF,
+                "fazercards_mapping": {"mode": "composite", "category_id": "ff_cat_1", "confirmed": True,
+                                       "linked_at": _now(), "total_uc": 100, "total_price_usd_at_link": 1.6,
+                                       "components": [
+                                           {"offer_id": "ff_30", "offer_name": "30 Diamants", "uc_amount": 30,
+                                            "quantity": 1, "price_usd_at_link": "0.5000"},
+                                           {"offer_id": "ff_70", "offer_name": "70 Diamants", "uc_amount": 70,
+                                            "quantity": 1, "price_usd_at_link": "1.1000"}]}}))
+            order = make_order(status="paid", items=[{"product_id": pid, "slug": "ff-100", "name": "100 Diamants",
+                                                      "type": "diamonds", "unit_price": 5000, "quantity": 1,
+                                                      "line_total": 5000}])
+            run(db.orders.update_one({"id": order["id"]}, {"$set": {
+                "game_id": FF,
+                "identity_snapshot": {"source": "checkout", "game_id": FF, "fields": {"player_id": "123456789"},
+                                      "player_name": "FFPlayer", "validated": False, "captured_at": _now()}}}))
+
+            out = run(fzr_fulfillment.fulfill_order(order["id"], "test"))
+            # Validation via la catégorie FF déclarée, champs d'identité du snapshot (jamais supposés PUBG)
+            assert seen["validate"] == {"category_id": "free_fire", "fields": {"player_id": "123456789"}}
+            # 30 + 70 = 100 Diamants : 2 unités fournisseur indépendantes, offres FF uniquement
+            assert len(calls) == 2 and all(r["ok"] for r in out["results"])
+            assert sorted(c["body"]["offer_id"] for c in calls) == ["ff_30", "ff_70"]
+            assert [c["idempotency_key"] for c in calls] == [f"{order['order_number']}-L1-C1",
+                                                             f"{order['order_number']}-L1-C2"]
+            assert all(c["body"]["category_id"] == "ff_cat_1" for c in calls)
+            stored = run(db.orders.find_one({"id": order["id"]}, {"_id": 0}))
+            assert stored["status"] == "paid" and stored["game_id"] == FF
+            pids = [r["fazercards"]["provider_order_id"] for r in out["results"]]
+            assert len(set(pids)) == 2 and all(pids)
+            # Webhook fournisseur (global) : la commande FF composée est retrouvée par l'id d'UNE unité
+            ev = {"event": "order.status_changed", "event_id": str(uuid.uuid4()),
+                  "data": {"order_id": pids[0], "status": "completed", "previous_status": "processing"}}
+            assert run(fzr_fulfillment.apply_webhook_event(ev)) == {"ok": True}
+            assert run(db.orders.find_one({"id": order["id"]}, {"_id": 0}))["status"] == "paid"  # 1/2 unité
+            ev2 = {**ev, "event_id": str(uuid.uuid4()), "data": {**ev["data"], "order_id": pids[1]}}
+            assert run(fzr_fulfillment.apply_webhook_event(ev2)) == {"ok": True}
+            final = run(db.orders.find_one({"id": order["id"]}, {"_id": 0}))
+            assert final["status"] == "delivered"
+            assert all(final["fazercards_components"]["0"][str(i)]["provider_status"] == "completed" for i in (0, 1))
+        finally:
+            run(db.products.delete_one({"id": pid}))
+            _restore_ff_game(before)
