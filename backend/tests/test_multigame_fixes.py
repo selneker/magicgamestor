@@ -429,3 +429,200 @@ def test_purchase_blocking_protections_unchanged():
     assert fzr_mapping.purchase_blocked(
         {"name": "X", "requires_mapping": True,
          "fazercards_mapping": {"mode": "direct", "category_id": "c", "offer_id": "o", "confirmed": True}}) is None
+def test_free_fire_currency_product_composition(monkeypatch):
+    from types import SimpleNamespace
+    """Testez la composition de produits de monnaie pour Free Fire."""
+    # Setup Free Fire game with currency label
+    run(db.games.update_one(
+        {"id": FREE_FIRE},
+        {"$set": {"active": True, "currency_label": "Diamants", "fazercards_categories": ["ff_cat_1"], "fazercards_categories_configured": True}},
+        upsert=True,
+    ))
+    # Ensure PUBG game remains active for regression
+    run(db.games.update_one(
+        {"id": PUBG},
+        {"$set": {"active": True}},
+        upsert=True,
+    ))
+
+    # Mock categories for Free Fire
+    def _patch_categor(monkeypatch, catalog):
+        async def fake_all():
+            return [dict(c) for c in catalog]
+        monkeypatch.setattr(fazercards, "_topup_categories", fake_all)
+    _patch_categor(monkeypatch, [{"category_id": "ff_cat_1", "name": "Free Fire Category", "note": ""}])
+
+    # Mock offers for Free Fire category
+    ff_offers = [
+        {"offer_id": "ff_30", "name": "30 Diamants", "price_usd": "0.50"},
+        {"offer_id": "ff_70", "name": "70 Diamants", "price_usd": "1.10"},
+        {"offer_id": "ff_20", "name": "20 Diamants", "price_usd": "0.35"},
+        {"offer_id": "ff_ambig", "name": "Diamonds Pack", "price_usd": "1.00"},
+        {"offer_id": "ff_two", "name": "20 30 Diamonds", "price_usd": "1.50"},
+    ]
+
+    async def fake_offers(category_id):
+        if category_id == "ff_cat_1":
+            return {"category_id": category_id, "offers": ff_offers, "fields": []}
+        return {"category_id": category_id, "offers": [], "fields": []}
+
+    monkeypatch.setattr(fazercards, "pubg_offers_fresh", fake_offers)
+
+    # Create a Free Fire currency product
+    product_id = str(uuid.uuid4())
+    slug = f"ff-100-diamonds-{product_id[:8]}"
+    run(db.products.insert_one({
+        "id": product_id,
+        "slug": slug,
+        "type": "uc",
+        "name": "100 Diamonds",
+        "uc_amount": 100,
+        "price": 5000,
+        "active": True,
+        "game_id": FREE_FIRE,
+        "requires_mapping": True,
+        "fazercards_mapping": None,
+    }))
+
+    product = {"id": product_id, "slug": slug, "type": "uc", "name": "100 Diamonds",
+               "uc_amount": 100, "price": 5000, "active": True, "game_id": FREE_FIRE, "requires_mapping": True,
+               "fazercards_mapping": None}
+
+    # Helper to create mapping body
+    def make_body(category_id, mode, components=None, offer_id=None, confirmed=True):
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            category_id=category_id,
+            mode=mode,
+            components=components,
+            offer_id=offer_id,
+            confirmed=confirmed,
+        )
+
+    # 1. Exact composition accepted (30 + 70 = 100)
+    body = make_body("ff_cat_1", "composite", components=[
+        SimpleNamespace(offer_id="ff_30", quantity=1),
+        SimpleNamespace(offer_id="ff_70", quantity=1),
+    ])
+    mapping = run(fzr_mapping.build_mapping(product, body))
+    assert mapping["mode"] == "composite"
+    assert len(mapping["components"]) == 2
+    assert mapping["total_uc"] == 100
+    assert {c["offer_id"] for c in mapping["components"]} == {"ff_30", "ff_70"}
+
+    # 2. Wrong sum refused (30 + 20 = 50 != 100)
+    body = make_body("ff_cat_1", "composite", components=[
+        SimpleNamespace(offer_id="ff_30", quantity=1),
+        SimpleNamespace(offer_id="ff_20", quantity=1),
+    ])
+    with pytest.raises(HTTPException) as exc:
+        run(fzr_mapping.build_mapping(product, body))
+    assert exc.value.status_code == 409
+    assert "Composition invalide" in exc.value.detail
+    assert "50 Diamants" in exc.value.detail or "50" in exc.value.detail
+
+    # 3. Offer without clear quantity refused
+    body = make_body("ff_cat_1", "composite", components=[
+        SimpleNamespace(offer_id="ff_ambig", quantity=1),
+    ])
+    with pytest.raises(HTTPException) as exc:
+        run(fzr_mapping.build_mapping(product, body))
+    assert exc.value.status_code == 409
+    assert "n'est pas une offre" in exc.value.detail
+    assert "Diamants" in exc.value.detail
+
+    # 4. Prime product refused in composition
+    prime_product_id = str(uuid.uuid4())
+    run(db.products.insert_one({
+        "id": prime_product_id,
+        "slug": f"ff-prime-{prime_product_id[:8]}",
+        "type": "prime",
+        "name": "Prime Subscription",
+        "price": 5000,
+        "active": True,
+        "game_id": FREE_FIRE,
+        "requires_mapping": True,
+        "fazercards_mapping": None,
+        "uc_amount": 0,
+    }))
+    prime_product = {"id": prime_product_id, "slug": f"ff-prime-{prime_product_id[:8]}", "type": "prime", "name": "Prime Subscription",
+                     "price": 5000, "active": True, "game_id": FREE_FIRE, "requires_mapping": True,
+                     "fazercards_mapping": None, "uc_amount": 0}
+    body = make_body("ff_cat_1", "composite", components=[
+        SimpleNamespace(offer_id="ff_30", quantity=1),
+    ])
+    with pytest.raises(HTTPException) as exc:
+        run(fzr_mapping.build_mapping(prime_product, body))
+    assert exc.value.status_code == 409
+    assert "La composition n'est autorisée que pour les produits" in exc.value.detail
+    assert "Diamants" in exc.value.detail
+    assert "Prime / Prime Plus / Pack évolutif : mapping direct uniquement." in exc.value.detail
+
+    # 5. Direct mapping with another quantity refused (product 100 Diamants -> offer 50 Diamants)
+    ff_offers_with_50 = ff_offers + [
+        {"offer_id": "ff_50", "name": "50 Diamants", "price_usd": "0.75"},
+    ]
+    async def fake_offers_50(category_id):
+        return {"category_id": category_id, "offers": ff_offers_with_50 if category_id == "ff_cat_1" else [], "fields": []}
+
+    monkeypatch.setattr(fazercards, "pubg_offers_fresh", fake_offers_50)
+    body = make_body("ff_cat_1", "direct", offer_id="ff_50")
+    with pytest.raises(HTTPException) as exc:
+        run(fzr_mapping.build_mapping(product, body))
+    assert exc.value.status_code == 409
+    assert "Mapping direct invalide" in exc.value.detail
+    assert "50 Diamants" in exc.value.detail
+    assert "100 Diamants" in exc.value.detail
+
+    # 6. Isolation between games: PUBG product cannot use Free Fire offers
+    pubg_product_id = str(uuid.uuid4())
+    run(db.products.insert_one({
+        "id": pubg_product_id,
+        "slug": f"pubg-60-uc-{pubg_product_id[:8]}",
+        "type": "uc",
+        "name": "60 UC",
+        "price": 5000,
+        "active": True,
+        "game_id": PUBG,
+        "requires_mapping": True,
+        "fazercards_mapping": None,
+        "uc_amount": 60,
+    }))
+    pubg_product = {"id": pubg_product_id, "slug": f"pubg-60-uc-{pubg_product_id[:8]}", "type": "uc", "name": "60 UC",
+                    "price": 5000, "active": True, "game_id": PUBG, "requires_mapping": True,
+                    "fazercards_mapping": None, "uc_amount": 60}
+    body = make_body("ff_cat_1", "direct", offer_id="ff_30")
+    with pytest.raises(HTTPException) as exc:
+        run(fzr_mapping.build_mapping(pubg_product, body))
+    assert exc.value.status_code == 409
+    assert "Cette catégorie FazerCards n'appartient pas au jeu" in exc.value.detail
+
+    # 7. Free Fire product cannot use PUBG offers
+    body = make_body("pubg_mobile_auto", "direct", offer_id="uc_60")
+    with pytest.raises(HTTPException) as exc:
+        run(fzr_mapping.build_mapping(product, body))
+    assert exc.value.status_code == 409
+    assert "Cette catégorie FazerCards n'appartient pas au jeu" in exc.value.detail
+
+    # 8. PUBG regression: ensure a PUBG product still works as before
+    pubg_simple_id = str(uuid.uuid4())
+    run(db.products.insert_one({
+        "id": pubg_simple_id,
+        "slug": f"pubg-simple-{pubg_simple_id[:8]}",
+        "type": "uc",
+        "name": "60 UC Simple",
+        "price": 5000,
+        "active": True,
+        "game_id": PUBG,
+        "requires_mapping": True,
+        "fazercards_mapping": {"mode": "direct", "category_id": "pubg_mobile_auto", "offer_id": "uc_60",
+                               "offer_name": "60 UC", "price_usd_at_link": "0.88", "confirmed": True},
+    }))
+    stored = run(db.products.find_one({"id": pubg_simple_id}, {"_id": 0, "fazercards_mapping": 1}))
+    assert stored["fazercards_mapping"] is not None
+    assert fzr_mapping.mapping_ok(stored["fazercards_mapping"]) is True
+
+    # Cleanup
+    run(db.products.delete_many({"id": [product_id, prime_product_id, pubg_product_id, pubg_simple_id]}))
+    run(db.games.update_one({"id": FREE_FIRE}, {"$set": {"active": False}}))
+    run(db.games.update_one({"id": PUBG}, {"$set": {"active": True}}))
