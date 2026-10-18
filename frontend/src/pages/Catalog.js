@@ -21,7 +21,7 @@ function ProductSection({ id, title, products, popularIds, bestUnitId }) {
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-24">
       <h2 id={`${id}-title`} className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
-      <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[560px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+      <div className="mt-3 grid grid-cols-2 items-stretch gap-2 md:grid-cols-3 xl:grid-cols-4">
         {products.map((p, i) => <ProductCard key={p.id} product={p} index={i} displayPopular={popularIds.has(p.id)} bestUnitPrice={p.id === bestUnitId} />)}
       </div>
     </section>
@@ -243,12 +243,12 @@ export default function Catalog() {
 
       <p className="mt-8 eyebrow" data-testid="results-count" aria-live="polite">{products ? `${products.length} ${t("catalog.results")}` : t("common.loading")}</p>
       {type === "evo" ? <PackEvolutif embedded products={products} /> : <>
-        {sectioned && products === null ? <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[560px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}</div> : sectioned ? <div className="mt-8 space-y-10" data-testid="catalog-sections">
+        {sectioned && products === null ? <div className="mt-3 grid grid-cols-2 items-stretch gap-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}</div> : sectioned ? <div className="mt-8 space-y-10" data-testid="catalog-sections">
           <ProductSection id="popular" title={t("catalog.popularSection")} products={sections?.featured} popularIds={popularIds} bestUnitId={bestUnitId} />
           <ProductSection id="packs-uc" title={t("catalog.ucSection")} products={sections?.uc} popularIds={popularIds} bestUnitId={bestUnitId} />
           <ProductSection id="prime" title={t("catalog.primeSection")} products={sections?.prime} popularIds={popularIds} bestUnitId={bestUnitId} />
           <ProductSection id="packs-evolutifs" title={t("catalog.evoSection")} products={sections?.evo} popularIds={popularIds} bestUnitId={bestUnitId} />
-        </div> : <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[560px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">
+        </div> : <div className="mt-3 grid grid-cols-2 items-stretch gap-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">
           {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}
           {productsWithBadge?.map(({ product, badge }, i) => <ProductCard key={product.id} product={product} index={i} badge={badge} />)}
         </div>}
