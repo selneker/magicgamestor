@@ -302,9 +302,12 @@ def test_include_inactive_is_staff_only():
     run(db.products.insert_one({"id": pid, "slug": f"qa-inact-{tag}", "type": "uc", "name": "Inactif",
                                 "price": 1, "active": False, "game_id": PUBG}))
     try:
-        anon = {p["id"] for p in run(list_products(sort="default", include_inactive=True, user=None))}
+        # `q` cible le produit du test : le catalogue admin est plafonné à 500 lignes (list_products),
+        # donc s'appuyer sur sa position dans l'ordre par défaut d'une base locale polluée rendrait le
+        # test dépendant des données ambiantes (produits insérés sans `sort_order` passent en tête).
+        anon = {p["id"] for p in run(list_products(sort="default", include_inactive=True, q=tag, user=None))}
         assert pid not in anon
-        staff = {p["id"] for p in run(list_products(sort="default", include_inactive=True, user={"role": "admin"}))}
+        staff = {p["id"] for p in run(list_products(sort="default", include_inactive=True, q=tag, user={"role": "admin"}))}
         assert pid in staff
     finally:
         run(db.products.delete_one({"id": pid}))
