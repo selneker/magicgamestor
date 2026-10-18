@@ -216,6 +216,11 @@
 [data-testid="product-visual"] { background-image: none !important; background-color: hsl(var(--muted)); }
 .text-slate-900\/10 { color: hsl(var(--foreground) / .08); }
 .dark .text-slate-900\/10 { color: hsl(var(--foreground) / .12); }
+/* Neon product cards — pin their ink so text on #D4FF00 stays readable in dark mode. */
+article[data-testid^="product-card-"] { color: var(--neo-text); }
+.dark article[data-testid^="product-card-"] { color: var(--neo-text); }
+.dark article[data-testid^="product-card-"] .bg-white { background-color: #FFFFFF; }
+.dark article[data-testid^="product-card-"]:hover { box-shadow: 8px 8px 0 hsl(var(--primary) / .55); }
 .recharts-default-tooltip { background-color: hsl(var(--popover)) !important; border-color: hsl(var(--foreground)) !important; border-radius: 0 !important; color: hsl(var(--popover-foreground)); }
 .recharts-cartesian-axis-tick text { fill: hsl(var(--muted-foreground)); }
 
