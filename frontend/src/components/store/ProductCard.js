@@ -43,7 +43,7 @@ export function ProductCard({ product, badge, onAdd, onIncrease, onDecrease, qty
   const figure = product.type === "uc" ? product.uc_amount : product.duration_months;
   const unit = product.type === "uc" ? "UC" : product.duration_months ? "mois" : "";
   const figureLength = String(figure || "").length;
-  const figureSize = figureLength >= 5 ? "text-3xl sm:text-4xl" : figureLength >= 4 ? "text-4xl sm:text-5xl" : "text-5xl sm:text-6xl";
+  const figureSize = figureLength >= 5 ? "text-2xl min-[400px]:text-3xl sm:text-4xl" : figureLength >= 4 ? "text-3xl min-[400px]:text-4xl sm:text-5xl" : "text-4xl min-[400px]:text-5xl sm:text-6xl";
   const context = badge || (product.popular ? "popular" : product.type === "evo" ? "evo" : "offer");
   const contextIcon = context === "popular" ? "flame" : context === "evo" ? "crown" : product.type === "prime" || product.type === "prime_plus" ? "bolt" : "cart";
   const contextLabel = context === "popular" ? "Populaire" : context === "evo" ? "Elite Pack" : product.type === "prime_plus" ? "Abonnement" : product.type === "prime" ? "Abonnement" : "Pack UC";
@@ -53,27 +53,27 @@ export function ProductCard({ product, badge, onAdd, onIncrease, onDecrease, qty
   const decrease = () => onDecrease?.(product);
 
   return (
-    <article data-testid={`product-card-${product.slug}`} className={`group relative flex min-h-[260px] flex-col rounded-[28px] border-2 border-ink bg-neo p-5 shadow-none transition duration-200 ease-out hover:shadow-[8px_8px_0_#111111] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
+    <article data-testid={`product-card-${product.slug}`} className={`group relative flex min-w-0 min-h-[260px] flex-col rounded-[28px] border-2 border-ink bg-neo p-3 sm:p-5 shadow-none transition duration-200 ease-out hover:shadow-[8px_8px_0_#111111] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
       <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-[28px]" aria-label={name} />
       <div className="relative z-10 flex h-full flex-col">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-start justify-between gap-1.5 sm:gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-3">
             <span className="rounded-full border border-ink bg-white/40 px-2.5 py-1 font-body text-[8px] font-bold uppercase leading-none tracking-wider backdrop-blur">{typeLabel(product)}</span>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-ink/10 px-3 py-1 font-body text-[10px] font-bold uppercase leading-none tracking-wider backdrop-blur"><Icon name={contextIcon} className="h-3 w-3" />{contextLabel}</span>
           </div>
           <button type="button" aria-label={`${favorite ? "Retirer des favoris" : "Ajouter aux favoris"} : ${name}`} aria-pressed={favorite} onClick={onToggleFavorite} className={`grid aspect-square h-8 w-8 shrink-0 place-items-center !rounded-full border border-ink bg-ink text-white transition duration-150 hover:scale-105 hover:bg-red-500 active:scale-95 aria-[pressed=true]:bg-red-500 aria-[pressed=true]:[&_svg]:fill-white ${focus}`}><Icon name="heart" /></button>
         </div>
 
-        <h2 className="mt-4 line-clamp-2 min-h-[3.5rem] font-display text-lg font-extrabold leading-tight tracking-tight">{name}</h2>
-        {figure ? <p className={`mt-1 flex items-baseline gap-2 font-display font-extrabold tracking-tighter ${figureSize}`}><span className="leading-none">{figure}</span><span className="text-xl font-bold uppercase tracking-tight text-ink/70">{unit}</span></p> : null}
+        <h2 className="mt-3 line-clamp-2 min-h-[2.75rem] break-words font-display text-sm font-extrabold leading-tight tracking-tight sm:mt-4 sm:min-h-[3.5rem] sm:text-lg">{name}</h2>
+        {figure ? <p className={`mt-1 flex min-w-0 items-baseline gap-1 font-display font-extrabold tracking-tighter ${figureSize}`}><span className="min-w-0 truncate leading-none">{figure}</span><span className="shrink-0 text-sm font-bold uppercase tracking-tight text-ink/70 sm:text-xl">{unit}</span></p> : null}
 
-        <div className={`mt-auto flex h-[54px] items-center justify-between gap-2 rounded-[9999px] border-2 border-ink ${qty > 0 ? "bg-ink p-1.5" : available ? "bg-white py-1 pl-3 pr-1" : "border-dashed bg-transparent px-3"}`}>
+        <div className={`mt-auto flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border-2 border-ink sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-white py-1 pl-2 pr-1 sm:pl-3" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
           {!available ? <span className="font-body text-sm font-bold uppercase tracking-wide">Indisponible</span> : qty > 0 ? <>
             <button type="button" aria-label={`${qty === 1 ? "Retirer du panier" : "Retirer un exemplaire"} : ${name}`} onClick={decrease} className={`grid aspect-square h-7 w-7 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}><Icon name={qty === 1 ? "trash" : "minus"} /></button>
             <span className="min-w-0 text-center font-body text-sm font-bold leading-tight text-neo" aria-live="polite"><span className="font-display text-2xl font-extrabold">{qty}</span> au panier</span>
             <button type="button" aria-label={`Ajouter un exemplaire : ${name}`} disabled={qty >= max} onClick={increase} className={`grid aspect-square h-7 w-7 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}><Icon name="plus" /></button>
           </> : <>
-            <div className="flex min-w-0 flex-col items-start gap-1 min-[400px]:flex-row min-[400px]:items-center min-[400px]:gap-3"><span className="whitespace-nowrap font-display text-2xl font-extrabold leading-none">{formatAr(product.price)}</span>{showDiscount ? <span className="rounded-full border border-ink bg-neo px-2 py-0.5 font-body text-[11px] font-bold leading-4">-{discount}%</span> : null}</div>
+            <div className="flex min-w-0 flex-1 items-center gap-1"><span className="min-w-0 truncate font-display text-base font-extrabold leading-none min-[400px]:text-lg sm:text-2xl">{formatAr(product.price)}</span>{showDiscount ? <span className="shrink-0 rounded-full border border-ink bg-neo px-1.5 py-0.5 font-body text-[9px] font-bold leading-3 sm:px-2 sm:text-[11px] sm:leading-4">-{discount}%</span> : null}</div>
             <button type="button" aria-label={`Ajouter au panier : ${name}`} onClick={add} className={`grid aspect-square h-10 w-10 shrink-0 place-items-center !rounded-full border-2 border-ink bg-ink text-neo transition duration-150 hover:scale-105 active:scale-95 ${focus}`}><Icon name={actionIcon(product)} /></button>
           </>}
         </div>
