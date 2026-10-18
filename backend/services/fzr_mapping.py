@@ -19,28 +19,35 @@ def _now():
 
 
 def is_currency_product(product: dict) -> bool:
-    """True if product is a currency product (uc_amount > 0 and type not prime/prime_plus/evo)."""
+    """Produit de monnaie : quantité > 0 et type hors prime, prime_plus, evo."""
     uc_amount = product.get("uc_amount")
     if not uc_amount or uc_amount <= 0:
         return False
     prod_type = product.get("type")
     return prod_type not in ("prime", "prime_plus", "evo")
 
+
 def get_currency_label(product: dict, game_id: str | None = None, game_data: dict | None = None) -> str:
-    """Return the currency label for a currency product.
-    For PUBG (game_id None or DEFAULT_GAME_ID) and type uc, returns "UC".
-    For other games, uses game_data['currency_label'] if available, else product's type key, else 'unités'.
+    """Libellé de la monnaie utilisé dans les messages de mapping. Jamais la clé de type brute.
+
+    - PUBG Mobile (game_id absent → compat historique) : toujours « UC » → messages PUBG
+      identiques au caractère près, quel que soit le type du produit (uc, prime, evo…).
+    - Autre jeu : `currency_label` du jeu déjà chargé par l'appelant, sinon le libellé déclaré
+      du type du produit (game.product_types), sinon « unités ». AUCUNE requête DB ici :
+      c'est l'appelant async (build_mapping) qui lui passe le jeu déjà chargé.
     """
     if game_id is None or game_id == DEFAULT_GAME_ID:
-        if product.get("type") == "uc":
-            return "UC"
-    # For other games or non-uc PUBG products (should not happen)
-    if game_data and isinstance(game_data, dict):
-        label = game_data.get("currency_label")
-        if label:
-            return label
-    # Fallback to product type key
-    return product.get("type", "unités")
+        return "UC"
+    game_data = game_data or {}
+    label = (game_data.get("currency_label") or "").strip()
+    if label:
+        return label
+    for declared in game_data.get("product_types") or []:
+        if declared.get("key") == product.get("type"):
+            type_label = (declared.get("label") or "").strip()
+            if type_label:
+                return type_label
+    return "unités"
 
 
 def uc_amount_of(offer: dict, game_id: str | None = None) -> int | None:
@@ -145,14 +152,15 @@ async def build_mapping(product: dict, body) -> dict:
     game_id = product.get("game_id")
     game_data = None
     if game_id not in (None, DEFAULT_GAME_ID):
-        game_data = await db.games.find_one({"id": game_id}, {"currency_label": 1})
+        # Le jeu est chargé UNE fois ici (route async) ; le helper get_currency_label ne fait aucune requête.
+        game_data = await db.games.find_one({"id": game_id}, {"currency_label": 1, "product_types": 1})
     if body.mode == "direct":
         if not body.offer_id:
             raise HTTPException(status_code=422, detail="offer_id requis pour un mapping direct.")
         offer = by_id.get(body.offer_id)
         if not offer:
             raise HTTPException(status_code=409, detail="Cette offre n'existe pas dans le catalogue FazerCards live.")
-        # Un produit UC ne peut être lié EN DIRECT qu'à l'offre fournisseur de MÊME quantité UC.
+        # Un produit de monnaie ne peut être lié EN DIRECT qu'à l'offre fournisseur de MÊME quantité.
         # Sinon (ex. 120 UC → 60 UC) c'est un faux mapping : refuser et exiger une composition exacte.
         if is_currency_product(product):
             amount = uc_amount_of(offer, product.get("game_id"))

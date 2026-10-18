@@ -132,3 +132,105 @@ class TestAuditApply:
         import json
         text = json.dumps(rows).lower()
         assert "fc_" not in text and "x-api-key" not in text and "fzr.cards" not in text
+
+
+def _mock_offers_with_pack(monkeypatch):
+    """Offres PUBG + une offre spéciale sans quantité lisible (comme aujourd'hui)."""
+    offers = [{"offer_id": oid, "name": name, "price_usd": price} for oid, name, price in UC_OFFERS]
+    offers.append({"offer_id": "first_purchase_pack", "name": "First Purchase Pack", "price_usd": "0.5000"})
+
+    async def fake_fresh(category_id):
+        return {"category_id": "pubg_mobile_auto", "fields": [{"key": "player_id"}], "offers": offers}
+    monkeypatch.setattr(fzr_mapping.fazercards, "pubg_offers_fresh", fake_fresh)
+
+
+def _body(mode, **kw):
+    defaults = {"category_id": "pubg_mobile_auto", "offer_id": None, "components": None, "confirmed": True}
+    return SimpleNamespace(mode=mode, **{**defaults, **kw})
+
+
+class TestCurrencyLabel:
+    """Libellé monnaie : PUBG = « UC » au caractère près, autres jeux = monnaie du jeu. Zéro requête DB."""
+
+    def test_pubg_always_uc(self):
+        assert fzr_mapping.get_currency_label({"type": "uc"}, "pubg-mobile") == "UC"
+        assert fzr_mapping.get_currency_label({"type": "prime"}, "pubg-mobile") == "UC"
+        assert fzr_mapping.get_currency_label({"type": "evo"}, None) == "UC"
+        # Même si un game_data traîne, PUBG reste PUBG.
+        assert fzr_mapping.get_currency_label({"type": "prime"}, "pubg-mobile",
+                                              {"currency_label": "Diamants"}) == "UC"
+
+    def test_other_game_uses_loaded_currency_label(self):
+        game = {"currency_label": "Diamants", "product_types": [{"key": "diamonds", "label": "Diamants FF"}]}
+        assert fzr_mapping.get_currency_label({"type": "diamonds"}, "free-fire", game) == "Diamants"
+
+    def test_other_game_falls_back_to_type_label_then_units(self):
+        declared = {"product_types": [{"key": "diamonds", "label": "Diamants FF"}]}
+        assert fzr_mapping.get_currency_label({"type": "diamonds"}, "free-fire", declared) == "Diamants FF"
+        assert fzr_mapping.get_currency_label({"type": "coins"}, "free-fire", declared) == "unités"
+        # Jeu non chargé par l'appelant : aucun accès DB ici, repli neutre.
+        assert fzr_mapping.get_currency_label({"type": "diamonds"}, "free-fire", None) == "unités"
+
+    def test_label_is_never_the_raw_type_key(self):
+        assert fzr_mapping.get_currency_label({"type": "diamonds"}, "free-fire", {}) != "diamonds"
+
+
+class TestPubgMessagesUnchanged:
+    """Régression PUBG : chaque message reste identique au caractère près."""
+
+    def test_direct_mismatch_message(self, monkeypatch):
+        _mock_offers(monkeypatch)
+        with pytest.raises(HTTPException) as e:
+            run(fzr_mapping.build_mapping({"type": "uc", "uc_amount": 120, "name": "120 UC"},
+                                          _body("direct", offer_id="uc_60")))
+        assert e.value.status_code == 409
+        assert e.value.detail == ("Mapping direct invalide : « 60 UC » = 60 UC ≠ 120 UC attendus. "
+                                  "Utilisez l'offre exacte ou une composition dont la somme vaut exactement 120 UC.")
+
+    @pytest.mark.parametrize("type_key", ["prime", "prime_plus", "evo"])
+    def test_subscription_composition_refusal_message(self, monkeypatch, type_key):
+        _mock_offers(monkeypatch)
+        with pytest.raises(HTTPException) as e:
+            run(fzr_mapping.build_mapping({"type": type_key, "uc_amount": 0, "name": "Prime"},
+                                          _body("composite", components=[SimpleNamespace(offer_id="uc_60", quantity=1)])))
+        assert e.value.status_code == 409
+        assert e.value.detail == ("La composition n'est autorisée que pour les produits UC. "
+                                  "Prime / Prime Plus / Pack évolutif : mapping direct uniquement.")
+
+    def test_unreadable_component_message(self, monkeypatch):
+        _mock_offers_with_pack(monkeypatch)
+        with pytest.raises(HTTPException) as e:
+            run(fzr_mapping.build_mapping(
+                {"type": "uc", "uc_amount": 120, "name": "120 UC"},
+                _body("composite", components=[SimpleNamespace(offer_id="first_purchase_pack", quantity=1)])))
+        assert e.value.status_code == 409
+        assert e.value.detail == "« First Purchase Pack » n'est pas une offre UC : composition refusée."
+
+    def test_wrong_sum_message(self, monkeypatch):
+        _mock_offers(monkeypatch)
+        with pytest.raises(HTTPException) as e:
+            run(fzr_mapping.build_mapping({"type": "uc", "uc_amount": 120, "name": "120 UC"},
+                                          _body("composite", components=[SimpleNamespace(offer_id="uc_60", quantity=1)])))
+        assert e.value.status_code == 409
+        assert e.value.detail == ("Composition invalide : 60 UC ≠ 120 UC attendus. "
+                                  "La somme des composants doit être exactement égale au produit vendu.")
+
+    def test_valid_composite_document(self, monkeypatch):
+        _mock_offers(monkeypatch)
+        m = run(fzr_mapping.build_mapping({"type": "uc", "uc_amount": 120, "name": "120 UC"},
+                                          _body("composite", components=[SimpleNamespace(offer_id="uc_60", quantity=2)])))
+        assert set(m) == {"category_id", "confirmed", "linked_at", "mode", "components",
+                          "total_uc", "total_price_usd_at_link"}
+        assert {k: v for k, v in m.items() if k != "linked_at"} == {
+            "category_id": "pubg_mobile_auto", "confirmed": True, "mode": "composite",
+            "components": [{"offer_id": "uc_60", "offer_name": "60 UC", "quantity": 2,
+                            "uc_amount": 60, "price_usd_at_link": "0.8800"}],
+            "total_uc": 120, "total_price_usd_at_link": 1.76}
+
+    def test_valid_direct_document(self, monkeypatch):
+        _mock_offers(monkeypatch)
+        m = run(fzr_mapping.build_mapping({"type": "uc", "uc_amount": 60, "name": "60 UC"},
+                                          _body("direct", offer_id="uc_60")))
+        assert {k: v for k, v in m.items() if k != "linked_at"} == {
+            "category_id": "pubg_mobile_auto", "confirmed": True, "mode": "direct",
+            "offer_id": "uc_60", "offer_name": "60 UC", "price_usd_at_link": "0.8800"}
