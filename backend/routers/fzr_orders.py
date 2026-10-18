@@ -172,10 +172,12 @@ async def fzr_mappings(game: str | None = None):
     (compatibilité Phase 1), tout autre jeu ne voit QUE ses propres produits — jamais ceux d'un autre jeu.
     """
     query = fzr_mapping.game_product_query(game)
-    products = await db.products.find(query, {"_id": 0, "id": 1, "slug": 1, "name": 1, "type": 1, "price": 1,
-                                              "uc_amount": 1, "duration_months": 1, "active": 1, "game_id": 1,
-                                              "requires_mapping": 1, "fazercards_mapping": 1}) \
-        .sort("sort_order", 1).to_list(500)
+    # Liste COMPLÈTE du jeu : un plafond silencieux masquerait des produits dans l'admin, qui ne
+    # pourraient alors jamais être mappés/composés (l'audit `audit_uc_products` itère déjà sans plafond).
+    products = [p async for p in db.products.find(query, {"_id": 0, "id": 1, "slug": 1, "name": 1, "type": 1,
+                                                          "price": 1, "uc_amount": 1, "duration_months": 1,
+                                                          "active": 1, "game_id": 1, "requires_mapping": 1,
+                                                          "fazercards_mapping": 1}).sort("sort_order", 1)]
     for p in products:
         mapping = p.get("fazercards_mapping")
         p["mapping_status"] = fzr_mapping.mapping_status(mapping)
