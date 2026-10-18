@@ -31,6 +31,24 @@ def env_and_cache(monkeypatch):
     fazercards._discovery_cache["data"] = None
 
 
+_CREATED_PIDS: list[str] = []
+
+
+@pytest.fixture(autouse=True)
+def cleanup_created_products():
+    """Nettoie les produits créés par les helpers du module (ciblé par id, jamais global).
+
+    Sans ce teardown, chaque exécution laissait ~15 produits `test-comp-*`/`test-direct-*` dans
+    la base de test ; au-delà du plafond de 500 de `fzr_mappings` (tri par `sort_order`, champ
+    absent = en tête), ces fuites finissaient par masquer les produits des autres tests
+    (cf. tests/test_multigame_fixes.py::test_admin_mappings_filter_isolates_games).
+    """
+    yield
+    if _CREATED_PIDS:
+        run(db.products.delete_many({"id": {"$in": _CREATED_PIDS}}))
+        _CREATED_PIDS.clear()
+
+
 def mock_transport(monkeypatch, handler):
     monkeypatch.setattr(fazercards.httpx, "AsyncClient", lambda **kw: RealAsyncClient(transport=httpx.MockTransport(handler)))
 
@@ -67,6 +85,7 @@ def make_composite_product(uc_amount, components):
         "fazercards_mapping": {"mode": "composite", "category_id": "pubg_mobile_auto", "confirmed": True,
                                "linked_at": _now(), "components": comps,
                                "total_uc": uc_amount, "total_price_usd_at_link": 1.0}}))
+    _CREATED_PIDS.append(pid)
     return pid
 
 
@@ -76,6 +95,7 @@ def make_direct_product(offer_id, offer_name, name):
         "id": pid, "slug": f"test-direct-{offer_id}-{pid[:6]}", "type": "uc", "name": name, "price": 5000, "active": True,
         "fazercards_mapping": {"mode": "direct", "category_id": "pubg_mobile_auto", "offer_id": offer_id,
                                "offer_name": offer_name, "price_usd_at_link": "0.8800", "confirmed": True, "linked_at": _now()}}))
+    _CREATED_PIDS.append(pid)
     return pid
 
 
