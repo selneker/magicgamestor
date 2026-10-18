@@ -19,6 +19,13 @@ const ICONS = {
   check: <path d="M5 12l7 7 10-10" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />,
 };
 
+export const typeLabel = (product) => {
+  if (product.type === "prime_plus") return "Prime+";
+  if (product.type === "prime") return "Prime";
+  if (product.type === "evo") return "Évolutif";
+  return "UC";
+};
+
 function Icon({ name, className = "h-5 w-5" }) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className} aria-hidden="true">{ICONS[name]}</svg>;
 }
