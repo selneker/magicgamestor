@@ -18,18 +18,49 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
-def uc_amount_of(offer: dict) -> int | None:
-    """Quantité UC d'une offre fournisseur, déduite du catalogue live (jamais hardcodée)."""
-    m = _UC_NAME.match((offer.get("name") or "").strip())
-    if m:
-        return int(m.group(1).replace(" ", ""))
-    m = _UC_ID.match((offer.get("offer_id") or "").strip())
-    return int(m.group(1)) if m else None
+def is_currency_product(product: dict) -> bool:
+    """True if product is a currency product (uc_amount > 0 and type not prime/prime_plus/evo)."""
+    uc_amount = product.get("uc_amount")
+    if not uc_amount or uc_amount <= 0:
+        return False
+    prod_type = product.get("type")
+    return prod_type not in ("prime", "prime_plus", "evo")
+
+def get_currency_label(product: dict) -> str:
+    """Return the currency label for a currency product.
+    For now, we return the type key (e.g., 'uc'). In the future, this should
+    look up the label in the game's product_types.
+    """
+    return product.get("type", "uc")
 
 
-def classify_offer(offer: dict) -> str:
+def uc_amount_of(offer: dict, game_id: str | None = None) -> int | None:
+    """Quantity from a supplier offer, deducted from live catalog (never hardcoded).
+    For PUBG (game_id None or DEFAULT_GAME_ID), uses UC-specific regex.
+    For other games, extracts quantity from offer name if unambiguous (exactly one number).
+    """
+    if game_id is None or game_id == DEFAULT_GAME_ID:
+        # PUBG legacy behavior
+        m = _UC_NAME.match((offer.get("name") or "").strip())
+        if m:
+            return int(m.group(1).replace(" ", ""))
+        m = _UC_ID.match((offer.get("offer_id") or "").strip())
+        return int(m.group(1)) if m else None
+    else:
+        # For other games: try to extract quantity unambiguously from offer name
+        name = (offer.get("name") or "").strip()
+        numbers = re.findall(r'\\d+', name)
+        if len(numbers) == 1:
+            try:
+                return int(numbers[0])
+            except ValueError:
+                return None
+        return None
+
+
+def classify_offer(offer: dict, game_id: str | None = None) -> str:
     """uc | subscription | currency | special — dérivé du catalogue live, pour la couverture admin."""
-    if uc_amount_of(offer) is not None:
+    if uc_amount_of(offer, game_id) is not None:
         return "uc"
     name, oid = (offer.get("name") or "").lower(), (offer.get("offer_id") or "").lower()
     if "prime" in oid or "prime" in name:
@@ -110,31 +141,35 @@ async def build_mapping(product: dict, body) -> dict:
             raise HTTPException(status_code=409, detail="Cette offre n'existe pas dans le catalogue FazerCards live.")
         # Un produit UC ne peut être lié EN DIRECT qu'à l'offre fournisseur de MÊME quantité UC.
         # Sinon (ex. 120 UC → 60 UC) c'est un faux mapping : refuser et exiger une composition exacte.
-        if product.get("type") == "uc" and product.get("uc_amount"):
-            amount = uc_amount_of(offer)
+        if is_currency_product(product):
+            amount = uc_amount_of(offer, product.get("game_id"))
             if amount is not None and amount != product["uc_amount"]:
+                label = get_currency_label(product)
                 raise HTTPException(status_code=409,
-                                    detail=f"Mapping direct invalide : « {offer['name']} » = {amount} UC ≠ {product['uc_amount']} UC attendus. "
-                                           f"Utilisez l'offre exacte ou une composition dont la somme vaut exactement {product['uc_amount']} UC.")
+                                    detail=f"Mapping direct invalide : « {offer['name']} » = {amount} {label} ≠ {product['uc_amount']} {label} attendus. "
+                                           f"Utilisez l'offre exacte ou une composition dont la somme vaut exactement {product['uc_amount']} {label}.")
         return {**base, "mode": "direct", "offer_id": offer["offer_id"], "offer_name": offer["name"],
                 "price_usd_at_link": offer["price_usd"]}
-    if product.get("type") != "uc":
-        raise HTTPException(status_code=409, detail="La composition n'est autorisée que pour les produits UC. Prime / Prime Plus / Pack évolutif : mapping direct uniquement.")
+    if not is_currency_product(product):
+        label = get_currency_label(product)
+        raise HTTPException(status_code=409, detail=f"La composition n'est autorisée que pour les produits {label}. Prime / Prime Plus / Pack évolutif : mapping direct uniquement.")
     if not body.components:
         raise HTTPException(status_code=422, detail="Au moins un composant est requis.")
     if len(body.components) > MAX_COMPONENTS:
         raise HTTPException(status_code=422, detail=f"Maximum {MAX_COMPONENTS} composants.")
     target = product.get("uc_amount")
     if not target:
-        raise HTTPException(status_code=409, detail="Produit sans quantité UC : composition impossible.")
+        label = get_currency_label(product)
+        raise HTTPException(status_code=409, detail=f"Produit sans quantité {label} : composition impossible.")
     components, total_uc, total_usd = [], 0, 0.0
     for comp in body.components:
         offer = by_id.get(comp.offer_id)
         if not offer:
             raise HTTPException(status_code=409, detail=f"Offre « {comp.offer_id} » introuvable dans le catalogue FazerCards live.")
-        amount = uc_amount_of(offer)
+        amount = uc_amount_of(offer, product.get("game_id"))
         if amount is None:
-            raise HTTPException(status_code=409, detail=f"« {offer['name']} » n'est pas une offre UC : composition refusée.")
+            label = get_currency_label(product)
+            raise HTTPException(status_code=409, detail=f"« {offer['name']} » n'est pas une offre {label} : composition refusée.")
         try:
             price = float(offer["price_usd"])
         except (TypeError, ValueError):
@@ -144,14 +179,15 @@ async def build_mapping(product: dict, body) -> dict:
         total_uc += amount * comp.quantity
         total_usd += price * comp.quantity
     if total_uc != target:
+        label = get_currency_label(product)
         raise HTTPException(status_code=409,
-                            detail=f"Composition invalide : {total_uc} UC ≠ {target} UC attendus. La somme des composants doit être exactement égale au produit vendu.")
+                            detail=f"Composition invalide : {total_uc} {label} ≠ {target} {label} attendus. La somme des composants doit être exactement égale au produit vendu.")
     return {**base, "mode": "composite", "components": components, "total_uc": total_uc,
             "total_price_usd_at_link": round(total_usd, 4)}
 
 
 # ---------- Audit générique des mappings UC : direct / composition exacte / manquant ----------
-def mapping_total_uc(mapping: dict | None, catalog_by_offer: dict) -> int | None:
+def mapping_total_uc(mapping: dict | None, catalog_by_offer: dict, game_id: str | None = None) -> int | None:
     """UC réellement livrés par un mapping, recalculés depuis le catalogue live. None si indéterminable."""
     if not mapping:
         return None
@@ -161,22 +197,22 @@ def mapping_total_uc(mapping: dict | None, catalog_by_offer: dict) -> int | None
             amt = c.get("uc_amount")
             if amt is None:
                 offer = catalog_by_offer.get((mapping.get("category_id"), c.get("offer_id")))
-                amt = uc_amount_of(offer) if offer else None
+                amt = uc_amount_of(offer, game_id) if offer else None
             if amt is None:
                 return None
             total += amt * c.get("quantity", 1)
         return total
     offer = catalog_by_offer.get((mapping.get("category_id"), mapping.get("offer_id")))
-    return uc_amount_of(offer) if offer else None
+    return uc_amount_of(offer, game_id) if offer else None
 
 
-def _uc_offers_by_category(catalog: list[dict]) -> dict:
+def _uc_offers_by_category(catalog: list[dict], game_id: str | None = None) -> dict:
     """Offres UC disponibles par catégorie, quantités déduites du catalogue live (jamais hardcodées)."""
     out = {}
     for cat in catalog:
         ucs = []
         for o in cat.get("offers") or []:
-            amt = uc_amount_of(o)
+            amt = uc_amount_of(o, game_id)
             if amt and amt > 0:
                 ucs.append({"offer_id": o["offer_id"], "offer_name": o["name"],
                             "price_usd": o["price_usd"], "uc_amount": amt})
@@ -219,11 +255,11 @@ def _group_components(combo: list[dict]) -> list[dict]:
     return [counts[oid] for oid in order]
 
 
-def resolve_uc_mapping(target_uc: int, catalog: list[dict]) -> dict | None:
+def resolve_uc_mapping(target_uc: int, catalog: list[dict], game_id: str | None = None) -> dict | None:
     """RÈGLE GÉNÉRALE — SKU UC exact → direct ; sinon somme exacte disponible → composition ; sinon None (manquant)."""
     if not target_uc:
         return None
-    by_cat = _uc_offers_by_category(catalog)
+    by_cat = _uc_offers_by_category(catalog, game_id)
     for cat_id, offers in by_cat.items():
         exact = [o for o in offers if o["uc_amount"] == target_uc]
         if exact:
@@ -281,9 +317,9 @@ async def audit_uc_products(catalog: list[dict], game_id: str | None = None) -> 
                                      "fazercards_mapping": 1}).sort("uc_amount", 1):
         target = p.get("uc_amount")
         current = p.get("fazercards_mapping")
-        current_uc = mapping_total_uc(current, catalog_by_offer)
+        current_uc = mapping_total_uc(current, catalog_by_offer, game_id)
         current_ok = bool(target) and mapping_ok(current) and current_uc == target
-        resolution = resolve_uc_mapping(target, catalog) if target else None
+        resolution = resolve_uc_mapping(target, catalog, game_id) if target else None
         if resolution and resolution["mode"] == "direct":
             resolved_mode, summary = "direct", resolution["offer"]["offer_name"]
         elif resolution:

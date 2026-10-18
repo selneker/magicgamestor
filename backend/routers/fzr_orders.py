@@ -229,7 +229,7 @@ async def fzr_coverage(game: str | None = None):
     for cat in categories:
         for o in cat["offers"]:
             offers.append({"category_id": cat["category_id"], "offer_id": o["offer_id"], "name": o["name"],
-                           "price_usd": o["price_usd"], "kind": fzr_mapping.classify_offer(o),
+                           "price_usd": o["price_usd"], "kind": fzr_mapping.classify_offer(o, game),
                            "used_by": used.get((cat["category_id"], o["offer_id"]), [])})
     return {"offers": offers}
 
