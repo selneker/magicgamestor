@@ -1,172 +1,83 @@
 import { Link } from "react-router-dom";
-import { useSyncExternalStore } from "react";
-import { Plus } from "lucide-react";
-import { toast } from "sonner";
-import { addFeedback, useCart } from "@/context/CartContext";
-import { useLang } from "@/context/LanguageContext";
-import { useGames } from "@/context/GameContext";
 import { formatAr } from "@/lib/api";
-import { gameOf, productFigure, typeLabel } from "@/lib/catalog";
-import { useFavorites } from "@/lib/favorites";
 
-export const productName = (p, lang) => (lang === "en" && p.name_en ? p.name_en : p.name);
+const ICONS = {
+  plus: <path d="M12 5v14M5 12h14" strokeWidth="3.2" strokeLinecap="round" />,
+  arrow: <path d="M5 12h14M13 6l6 6-6 6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />,
+  cart: <><path d="M3 4h2.5l2 11h10l2-8H7" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /><circle cx="9.5" cy="19.5" r="1.4" fill="currentColor" stroke="none" /><circle cx="17" cy="19.5" r="1.4" fill="currentColor" stroke="none" /></>,
+  flame: <path d="M12 3c1 3.5 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 .3 1.2 1 1.8 1.8 2C10.5 8.5 11 5.5 12 3z" fill="currentColor" stroke="none" />,
+  bolt: <path d="M13 2 5 13h6l-1 9 8-11h-6l1-9z" fill="currentColor" stroke="none" />,
+  crown: <path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5L3 8z" fill="currentColor" stroke="none" />,
+  minus: <path d="M5 12h14" strokeWidth="3.2" strokeLinecap="round" />,
+  trash: <path d="M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13M10 11v6M14 11v6" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />,
+  heart: <path d="M12 20.5s-8-4.7-8-10.2A4.3 4.3 0 0 1 12 7.8a4.3 4.3 0 0 1 8 2.5c0 5.5-8 10.2-8 10.2z" strokeWidth="2.4" strokeLinejoin="round" />,
+};
 
-export function ProductCard({ product, index = 0, badge = null }) {
-  const { add, setOpen } = useCart();
-  const { t, lang } = useLang();
-  const { games } = useGames();
-  const game = games.find((g) => g.id === gameOf(product));
-  const name = productName(product, lang);
-  const hasFigure = !!(product.uc_amount || product.duration_months);
-  const { value, unit } = productFigure(product, game, lang);
-  const figureStr = hasFigure ? `${value} ${unit || ""}`.trim().toLowerCase() : "";
-  const normalizedName = name.toLowerCase().replace(/[\s,_-]+/g, " ").trim();
-  const normalizedFigure = figureStr.replace(/[\s,_-]+/g, " ").trim();
-  const showName = !hasFigure || (!normalizedName.includes(normalizedFigure) && !normalizedName.match(new RegExp(`(?:prime\\+?|pack évolutif)\\s+${String(value).replace(/[-/\\^$*+?.()|[\\]{}]/g, "\\$&")}`)));
-  const hasRealOldPrice = Number(product.old_price) > Number(product.price) && Number.isFinite(Number(product.old_price));
-  const discount = hasRealOldPrice ? Math.round((1 - product.price / product.old_price) * 100) : 0;
-  const showDiscount = discount >= 5;
-  const unitPrice = product.uc_amount ? Math.round(product.price / product.uc_amount) : null;
-  const safeBadge = /^(new|hot)$/i.test(String(product.badge || "").trim()) ? String(product.badge).trim().toUpperCase() : null;
+function Icon({ name, className = "h-5 w-5" }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className} aria-hidden="true">{ICONS[name]}</svg>;
+}
+
+export const productName = (product, lang) => (lang === "en" && product.name_en ? product.name_en : product.name);
+
+function typeLabel(product) {
+  if (product.type === "prime_plus") return "Prime+";
+  if (product.type === "prime") return "Prime";
+  if (product.type === "evo") return "Évolutif";
+  return "UC";
+}
+
+function actionIcon(product) {
+  if (product.type === "uc") return "plus";
+  if (product.type === "evo") return "cart";
+  return "arrow";
+}
+
+export function ProductCard({ product, badge, onAdd, onIncrease, onDecrease, qty = 0, favorite = false, onToggleFavorite }) {
+  const name = product.name || product.slug || "Produit";
   const available = product.purchasable !== false;
-
-  // Favorites
-  const [favorites, toggleFavorite] = useFavorites();
-  const isFavorite = favorites.includes(product.id);
+  const max = product.type === "uc" ? 20 : 1;
+  const oldPrice = Number(product.old_price);
+  const price = Number(product.price);
+  const discount = oldPrice > price ? Math.round((1 - price / oldPrice) * 100) : 0;
+  const showDiscount = discount >= 5;
+  const figure = product.type === "uc" ? product.uc_amount : product.duration_months;
+  const unit = product.type === "uc" ? "UC" : product.duration_months ? "mois" : "";
+  const figureLength = String(figure || "").length;
+  const figureSize = figureLength >= 5 ? "text-5xl sm:text-6xl" : figureLength >= 4 ? "text-6xl sm:text-7xl" : "text-7xl sm:text-8xl";
+  const context = badge || (product.popular ? "popular" : product.type === "evo" ? "evo" : "offer");
+  const contextIcon = context === "popular" ? "flame" : context === "evo" ? "crown" : product.type === "prime" || product.type === "prime_plus" ? "bolt" : "cart";
+  const contextLabel = context === "popular" ? "Populaire" : context === "evo" ? "Elite Pack" : product.type === "prime_plus" ? "Abonnement" : product.type === "prime" ? "Abonnement" : "Pack UC";
+  const focus = "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-ink";
+  const add = () => onAdd?.(product);
+  const increase = () => onIncrease?.(product);
+  const decrease = () => onDecrease?.(product);
 
   return (
-    <article
-      data-testid={`product-card-${product.slug}`}
-      className={`${available ? "" : "opacity-70"} neo-card neo-card-radius group relative w-full min-h-[112px] min-w-0 flex min-[480px]:h-full min-[480px]:flex-col max-[479px]:min-h-[140px] pt-4 pb-10 px-4`}
-    >
-      {/* Link to product page - covers the entire card */}
-      <Link to={`/produit/${product.slug}`} className="absolute inset-0 focus-ring active:scale-[98]" aria-label={name} />
-
-      {/* Inner content */}
+    <article data-testid={`product-card-${product.slug}`} className={`group relative flex min-h-[360px] flex-col rounded-neo border-[3px] border-ink bg-neo p-6 shadow-brut transition duration-200 ease-out hover:-translate-y-1 hover:shadow-brut-lg motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
+      <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-neo" aria-label={name} />
       <div className="relative z-10 flex h-full flex-col">
-        {/* Top row: type badge and context badge */}
-        <div className="flex items-center justify-between gap-2 mb-2">
-          {/* Type badge */}
-          <span
-            className="truncate rounded-full border-[2px] border-[color:var(--neo-border)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[color:var(--neo-text)]"
-            data-testid={`product-type-${product.slug}`}
-          >
-            {typeLabel(game, product.type, lang)}
-          </span>
-          {/* Context badge */}
-          {badge === "popular" && (
-            <span
-              data-testid={`badge-popular-${product.slug}`}
-              className="shrink-0 rounded-full bg-[color:var(--neo-border)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] leading-none text-[color:var(--neo-card-bg)]"
-            >
-              {t("common.popular")}
-            </span>
-          )}
-          {badge === "best" && (
-            <span
-              data-testid={`badge-best-${product.slug}`}
-              className="shrink-0 rounded-full bg-[color:var(--neo-text)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[color:var(--neo-card-bg)]"
-            >
-              {t("catalog.bestPriceUC")}
-            </span>
-          )}
-          {(badge === "new" || badge === "hot") && (
-            <span
-              data-testid={`badge-${badge}-${product.slug}`}
-              className="shrink-0 rounded-full bg-[color:var(--neo-text)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-[color:var(--neo-card-bg)]"
-            >
-              {badge === "new" ? t("common.new") : t("common.promo")}
-            </span>
-          )}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border-2 border-ink bg-white/40 px-3 py-1 font-body text-[10px] font-bold uppercase leading-none tracking-wider backdrop-blur">{typeLabel(product)}</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-ink/10 px-3 py-1 font-body text-[10px] font-bold uppercase leading-none tracking-wider backdrop-blur"><Icon name={contextIcon} className="h-3 w-3" />{contextLabel}</span>
+          </div>
+          <button type="button" aria-label={`${favorite ? "Retirer des favoris" : "Ajouter aux favoris"} : ${name}`} aria-pressed={favorite} onClick={onToggleFavorite} className={`grid h-12 w-12 shrink-0 place-items-center rounded-full border-2 border-ink bg-ink text-white transition duration-150 hover:scale-105 hover:bg-red-500 active:scale-95 aria-[pressed=true]:bg-red-500 aria-[pressed=true]:[&_svg]:fill-white ${focus}`}><Icon name="heart" /></button>
         </div>
 
-        {/* Quantity figure (if applicable) */}
-        {hasFigure && (
-          <div className="mb-4 flex items-baseline gap-1.5" data-testid={`product-figure-${product.slug}`}>
-            <div className="figure-highlight">
-              <span className="num text-[2.4rem] font-bold leading-none tabular-nums min-[480px]:text-[2.8rem]">{value}</span>
-              {unit && <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--neo-text)]/70 sm:text-sm">{unit}</span>}
-            </div>
-          </div>
-        )}
+        <h2 className="mt-6 line-clamp-2 min-h-[4rem] font-display text-2xl font-extrabold leading-tight tracking-tight">{name}</h2>
+        {figure ? <p className={`mt-5 flex items-baseline gap-2 font-display font-extrabold tracking-tighter ${figureSize}`}><span className="leading-none">{figure}</span><span className="text-xl font-bold uppercase tracking-tight text-ink/70">{unit}</span></p> : null}
 
-        {/* Title */}
-        <h3
-          data-testid={`product-name-${product.slug}`}
-          className={`mt-3 font-display font-bold leading-tight text-[color:var(--neo-text)] [overflow-wrap:anywhere] line-clamp-2 ${hasFigure ? "min-h-[2.5rem] text-sm text-[color:var(--neo-text)]/70" : "min-h-[3.25rem] text-xl"}`}
-        >
-          {showName ? name : ""}
-        </h3>
-
-        {/* Spacer to push the capsule to the bottom */}
-        <div className="mt-auto" />
-
-        {/* Capsule at the bottom */}
-        <div className="absolute bottom-0 left-0 right-0 h-20 flex items-end justify-between gap-2 border-t pt-3">
-          {/* Left: price and discount */}
-          <div className="min-w-0">
-            <p data-testid={`price-${product.slug}`} className="num text-[1.75rem] font-bold leading-none text-[color:var(--neo-text)] min-[480px]:text-[2rem]">
-              {formatAr(product.price)}
-            </p>
-            <div className="mt-1.5 flex min-h-4 items-center gap-1.5 leading-none">
-              {showDiscount && (
-                <>
-                  <span className="text-[11px] text-[color:var(--neo-text)]/50 line-through">{formatAr(product.old_price)}</span>
-                  <span className="rounded-full bg-[color:var(--neo-card-bg)] px-2 py-1 text-[11px] font-semibold leading-none text-[color:var(--neo-text)]">
-                    -{discount}%
-                  </span>
-                </>
-              )}
-            </div>
-            {unitPrice && (
-              <p className="mt-2 text-sm font-semibold text-[color:var(--neo-text)]/70">
-                {formatAr(unitPrice)}/UC
-              </p>
-            )}
-            {bestUnitPrice && (
-              <span className="mt-2 inline-flex w-fit rounded-full bg-[color:var(--neo-text)] px-2 py-1 text-[10px] font-bold text-[color:var(--neo-card-bg)]">
-                Meilleur prix par UC
-              </span>
-            )}
-          </div>
-
-          {/* Right: add to cart button (only when available) */}
-          {available && (
-            <button
-              type="button"
-              data-testid={`add-to-cart-${product.slug}`}
-              className="flex min-h-11 w-auto shrink-0 items-center justify-center gap-2 border-l-2 px-3 min-[480px]:w-full min-[480px]:border-l-0 min-[480px]:border-t-2 border-[color:var(--neo-border)] bg-[color:var(--neo-card-bg)] px-3 whitespace-nowrap text-xs font-semibold uppercase tracking-[0.05em] text-[color:var(--neo-text)] transition-[transform,background-color,color] hover:-translate-y-0.5 hover:bg-[color:var(--neo-text)] hover:text-[color:var(--neo-card-bg)] active:translate-y-0.5 active:bg-[color:var(--neo-text)] active:text-[color:var(--neo-card-bg)] focus-ring"
-              onClick={() => addFeedback(add(product), t, toast, setOpen)}
-            >
-              <>
-                <Plus className="h-3.5 w-3.5" />{t("product.add")}
-              </>
-            </button>
-          )}
+        <div className={`mt-auto flex h-20 items-center justify-between gap-3 rounded-full border-2 border-ink ${qty > 0 ? "bg-ink p-1.5" : available ? "bg-white py-2 pl-6 pr-2" : "border-dashed bg-transparent px-6"}`}>
+          {!available ? <span className="font-body text-sm font-bold uppercase tracking-wide">Indisponible</span> : qty > 0 ? <>
+            <button type="button" aria-label={`${qty === 1 ? "Retirer du panier" : "Retirer un exemplaire"} : ${name}`} onClick={decrease} className={`grid h-14 w-14 shrink-0 place-items-center rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}><Icon name={qty === 1 ? "trash" : "minus"} /></button>
+            <span className="min-w-0 text-center font-body text-sm font-bold leading-tight text-neo" aria-live="polite"><span className="font-display text-2xl font-extrabold">{qty}</span> au panier</span>
+            <button type="button" aria-label={`Ajouter un exemplaire : ${name}`} disabled={qty >= max} onClick={increase} className={`grid h-14 w-14 shrink-0 place-items-center rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}><Icon name="plus" /></button>
+          </> : <>
+            <div className="flex min-w-0 flex-col items-start gap-1 min-[400px]:flex-row min-[400px]:items-center min-[400px]:gap-3"><span className="whitespace-nowrap font-display text-2xl font-extrabold leading-none">{formatAr(product.price)}</span>{showDiscount ? <span className="rounded-full border border-ink bg-neo px-2 py-0.5 font-body text-[11px] font-bold leading-4">-{discount}%</span> : null}</div>
+            <button type="button" aria-label={`Ajouter au panier : ${name}`} onClick={add} className={`grid h-16 w-16 shrink-0 place-items-center rounded-full border-2 border-ink bg-ink text-neo transition duration-150 hover:scale-105 active:scale-95 ${focus}`}><Icon name={actionIcon(product)} /></button>
+          </>}
         </div>
       </div>
-
-      {/* Favorite button (top right) */}
-      <button
-        type="button"
-        aria-label={t("product.favorite")}
-        aria-pressed={isFavorite}
-        data-testid={`favorite-button-${product.slug}`}
-        className="absolute top-0 right-0 z-20 mt-2 mr-2 w-11 h-11 shrink-0 rounded-full border-[2px] border-[color:var(--neo-border)] bg-[color:var(--neo-card-bg)] text-[color:var(--neo-text)] hover:bg-red-600 hover:text-[color:var(--neo-card-bg)] active:bg-red-700 active:text-[color:var(--neo-card-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--neo-border)] transition-colors duration-200"
-        onClick={toggleFavorite}
-      >
-        {isFavorite ? (
-          // Filled heart
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.36l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-          </svg>
-        ) : (
-          // Outline heart
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M20.845 4.693c-4.142-1.274-8.788.116-8.904 4.124c-.116 3.012.381 6.45 2.014 8.607a48.388 48.388 0 013.477 5.207c-.256 1.06-.41 2.227-.41 3.49v4.733a.75.75 0 00.75.75h4.5a.75.75 0 00.75-.75v-4.733c0-1.263-.154-2.517-.41-3.49a48.388 48.388 0 013.477-5.207c1.633-2.157 2.13-5.595 2.014-8.607a48.398 48.398 0 00-.116-4.124c-1.152-4.248-4.762-5.398-8.904-4.124z" />
-          </svg>
-        )}
-      </button>
     </article>
   );
 }

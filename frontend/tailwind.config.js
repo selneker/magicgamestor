@@ -13,14 +13,23 @@ module.exports = {
         sans: ['var(--font-body)'],
         serif: ['var(--font-body)'],
         mono: ['var(--font-body)'],
-        display: ['var(--font-display)']
+        display: ['"Bricolage Grotesque"', 'var(--font-display)', 'system-ui', 'sans-serif'],
+        body: ['Onest', 'var(--font-body)', 'system-ui', 'sans-serif']
+      },
+      boxShadow: {
+        brut: '8px 8px 0 #111111',
+        'brut-lg': '12px 12px 0 #111111'
       },
       borderRadius: {
+        neo: '3rem',
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)'
       },
       colors: {
+        ink: '#111111',
+        neo: '#D4FF00',
+        paper: '#F8F8F8',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
