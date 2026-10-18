@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { useCart, SUBSCRIPTION_TYPES } from "@/context/CartContext";
 import { useFavorites } from "@/lib/favorites";
 import { useLang } from "@/context/LanguageContext";
+import { useGames } from "@/context/GameContext";
+import { currencyOf, gameOf, typeLabel as gameTypeLabel } from "@/lib/catalog";
 import { formatAr } from "@/lib/api";
 import { addFeedback } from "@/context/CartContext";
 import { toast } from "sonner";
@@ -19,11 +21,13 @@ const ICONS = {
   check: <path d="M5 12l7 7 10-10" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />,
 };
 
-export const typeLabel = (product) => {
+// Badge de type de la carte : abonnements/évolutif inchangés ; sinon la monnaie
+// DU JEU (PUBG « UC » comme avant, Free Fire « Diamants », CODM « CP »…) — jamais de « UC » codé en dur.
+export const typeLabel = (product, game, lang) => {
   if (product.type === "prime_plus") return "Prime+";
   if (product.type === "prime") return "Prime";
   if (product.type === "evo") return "Évolutif";
-  return "UC";
+  return currencyOf(game) || gameTypeLabel(game, product.type, lang);
 };
 
 function Icon({ name, className = "h-5 w-5" }) {
@@ -34,8 +38,11 @@ export const productName = (product, lang) => (lang === "en" && product.name_en 
 
 export function ProductCard({ product, index = 0, badge }) {
   const { t, lang } = useLang();
+  const { games } = useGames();
   const { items, add, setQty, remove, open, setOpen } = useCart();
   const [favorites, toggleFavorite] = useFavorites();
+  const game = (games || []).find((g) => g.id === gameOf(product));
+  const currencyLabel = currencyOf(game) || gameTypeLabel(game, product.type, lang);
   const productInCart = items.find((item) => item.id === product.id);
   const qty = productInCart ? productInCart.qty : 0;
   const showCart = qty > 0;
@@ -53,7 +60,7 @@ export function ProductCard({ product, index = 0, badge }) {
   const figureLength = figure ? figure.toString().length : 0;
   const context = badge || (product.popular ? "popular" : product.type === "evo" ? "evo" : "offer");
   const contextIcon = context === "popular" ? "flame" : context === "evo" ? "crown" : product.type === "prime" || product.type === "prime_plus" ? "bolt" : "cart";
-  const contextLabel = context === "popular" ? "Populaire" : context === "evo" ? "Elite Pack" : product.type === "prime_plus" ? "Abonnement" : product.type === "prime" ? "Abonnement" : "Pack UC";
+  const contextLabel = context === "popular" ? "Populaire" : context === "evo" ? "Elite Pack" : product.type === "prime_plus" ? "Abonnement" : product.type === "prime" ? "Abonnement" : `Pack ${currencyLabel}`;
   const focus = "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-ink";
   const actionIconName = product.type === "uc" ? "plus" : product.type === "evo" ? "cart" : "arrow";
 
@@ -84,8 +91,8 @@ export function ProductCard({ product, index = 0, badge }) {
       <div className="relative z-10 flex h-full flex-col">
         <div className="flex items-start justify-between gap-1.5 sm:gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-3">
-            <span className="rounded-full border border-ink bg-white/40 px-2.5 py-1 font-body text-[8px] font-bold uppercase leading-none tracking-wider backdrop-blur">{typeLabel(product)}</span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-ink/10 px-3 py-1 font-body text-[10px] font-bold uppercase leading-none tracking-wider backdrop-blur"><Icon name={contextIcon} className="h-3 w-3" />{contextLabel}</span>
+            <span data-testid={`card-type-${product.slug}`} className="rounded-full border border-ink bg-white/40 px-2.5 py-1 font-body text-[8px] font-bold uppercase leading-none tracking-wider backdrop-blur">{typeLabel(product, game, lang)}</span>
+            <span data-testid={`card-context-${product.slug}`} className="inline-flex items-center gap-1.5 rounded-full bg-ink/10 px-3 py-1 font-body text-[10px] font-bold uppercase leading-none tracking-wider backdrop-blur"><Icon name={contextIcon} className="h-3 w-3" />{contextLabel}</span>
           </div>
           <button type="button" aria-label={`${favorites.includes(product.id) ? t("product.removeFavorite") : t("product.addFavorite")} : ${product.name || product.slug}`} aria-pressed={favorites.includes(product.id)} onClick={handleToggleFavorite} className={`grid aspect-square h-8 w-8 shrink-0 place-items-center !rounded-full border border-ink bg-ink text-white transition duration-150 hover:scale-105 hover:bg-red-500 active:scale-95 aria-[pressed=true]:bg-red-500 aria-[pressed=true]:[&_svg]:fill-white ${focus}`}><Icon name="heart" /></button>
         </div>

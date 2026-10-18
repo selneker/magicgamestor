@@ -13,6 +13,8 @@ jest.mock("react-router-dom", () => {
   const R = require("react");
   return { Link: ({ children }) => R.createElement("span", null, children) };
 });
+// Les badges des cartes doivent suivre la monnaie du jeu (données /games), pas un « UC » codé en dur.
+jest.mock("@/context/GameContext", () => ({ useGames: () => ({ games: global.mockGames || [] }) }));
 
 const FF = { id: "ff-310", slug: "ff-310-diamants", name: "310 Diamants", type: "diamonds", price: 2500,
              game_id: "free-fire", uc_amount: 310, purchasable: true };
@@ -20,6 +22,8 @@ const PUBG = { id: "pubg-60", slug: "pubg-60-uc", name: "60 UC", type: "uc", pri
                game_id: "pubg-mobile", uc_amount: 60, purchasable: true };
 const PRIME = { id: "pubg-prime", slug: "pubg-prime", name: "Prime", type: "prime", price: 1100,
                 game_id: "pubg-mobile", duration_months: 1, purchasable: true };
+const CODM = { id: "codm-80", slug: "codm-80-cp", name: "80 CP", type: "cp", price: 700,
+               game_id: "codm", uc_amount: 80, purchasable: true };
 const FF_OFF = { ...FF, id: "ff-off", slug: "ff-off", name: "Pack épuisé", purchasable: false };
 
 function ItemsProbe() {
@@ -50,8 +54,16 @@ async function unmountCard(container, root) {
   container.remove();
 }
 
-beforeEach(() => { global.IS_REACT_ACT_ENVIRONMENT = true; localStorage.clear(); });
-afterEach(() => { delete global.IS_REACT_ACT_ENVIRONMENT; });
+beforeEach(() => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  localStorage.clear();
+  global.mockGames = [
+    { id: "pubg-mobile", currency_label: "UC", product_types: [{ key: "uc", label: "UC" }, { key: "prime", label: "Prime" }, { key: "prime_plus", label: "Prime+" }, { key: "evo", label: "Pack évolutif" }] },
+    { id: "free-fire", currency_label: "Diamants", product_types: [{ key: "diamonds", label: "Diamants" }] },
+    { id: "codm", currency_label: "CP", product_types: [{ key: "cp", label: "CP" }] },
+  ];
+});
+afterEach(() => { delete global.mockGames; delete global.IS_REACT_ACT_ENVIRONMENT; });
 
 test("Free Fire : l'ajout puis le « + » incrémentent la carte ET le panier", async () => {
   const { container, root } = await mountCard(FF);
@@ -114,5 +126,31 @@ test("Parcours panier : setQty met à jour la carte (même source de vérité)",
     await act(async () => { container.querySelector('[data-testid="probe-set-5"]').click(); });
     expect(probeQty(container)).toEqual([["ff-310", 5]]);
     expect(container.querySelector('[aria-live="polite"]').textContent).toContain("5");
+  } finally { await unmountCard(container, root); }
+});
+
+test("Free Fire : badges « Diamants » et « Pack Diamants », jamais UC", async () => {
+  const { container, root } = await mountCard(FF);
+  try {
+    expect(container.querySelector('[data-testid="card-type-ff-310-diamants"]').textContent).toBe("Diamants");
+    expect(container.querySelector('[data-testid="card-context-ff-310-diamants"]').textContent).toBe("Pack Diamants");
+    expect(container.textContent).not.toMatch(/\bUC\b/);
+  } finally { await unmountCard(container, root); }
+});
+
+test("PUBG Mobile : badges « UC » et « Pack UC » inchangés", async () => {
+  const { container, root } = await mountCard(PUBG);
+  try {
+    expect(container.querySelector('[data-testid="card-type-pubg-60-uc"]').textContent).toBe("UC");
+    expect(container.querySelector('[data-testid="card-context-pubg-60-uc"]').textContent).toBe("Pack UC");
+  } finally { await unmountCard(container, root); }
+});
+
+test("CODM : badges « CP » et « Pack CP » (monnaie du jeu, pas UC)", async () => {
+  const { container, root } = await mountCard(CODM);
+  try {
+    expect(container.querySelector('[data-testid="card-type-codm-80-cp"]').textContent).toBe("CP");
+    expect(container.querySelector('[data-testid="card-context-codm-80-cp"]').textContent).toBe("Pack CP");
+    expect(container.textContent).not.toMatch(/\bUC\b/);
   } finally { await unmountCard(container, root); }
 });
