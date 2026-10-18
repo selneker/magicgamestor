@@ -145,7 +145,7 @@
     }
     @media (prefers-reduced-motion: reduce) {
         .marquee { animation: none; }
-        .card-lift:hover, .hover-slide:hover { transform: none; }
+        .card-lift:hover, .product-card-lift:hover, .hover-slide:hover, .product-card-link:active { transform: none; }
         *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
     }
     /* Neo-brutalist card styles */

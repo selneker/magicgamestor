@@ -16,6 +16,18 @@ import { useFavorites } from "@/lib/favorites";
 
 const tab = (active) => `shrink-0 rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors ${active ? "border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]" : "bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`;
 
+function ProductSection({ id, title, products, popularIds, bestUnitId }) {
+  if (!products?.length) return null;
+  return (
+    <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-24">
+      <h2 id={`${id}-title`} className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
+      <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+        {products.map((p, i) => <ProductCard key={p.id} product={p} index={i} displayPopular={popularIds.has(p.id)} bestUnitPrice={p.id === bestUnitId} />)}
+      </div>
+    </section>
+  );
+}
+
 // `/boutique` without `?game=` always shows this picker; only backend-authorized games are listed.
 function GamePicker({ games, onPick }) {
   const { t } = useLang();
@@ -165,6 +177,23 @@ export default function Catalog() {
     });
   }, [visibleProducts]);
 
+  const popularIds = useMemo(() => new Set((visibleProducts || []).filter((p) => p.popular === true).slice(0, 3).map((p) => p.id)), [visibleProducts]);
+  const bestUnitId = useMemo(() => {
+    const candidates = (visibleProducts || []).filter((p) => Number(p.uc_amount) > 0);
+    return candidates.sort((a, b) => (a.price / a.uc_amount) - (b.price / b.uc_amount))[0]?.id;
+  }, [visibleProducts]);
+  const sectioned = !type && !q && !popular && !minPrice && !maxPrice;
+  const sections = useMemo(() => {
+    if (!sectioned || !visibleProducts) return null;
+    const featured = visibleProducts.filter((p) => p.popular === true).slice(0, 3);
+    return {
+      featured,
+      uc: visibleProducts.filter((p) => Number(p.uc_amount) > 0).sort((a, b) => Number(a.uc_amount) - Number(b.uc_amount)),
+      prime: visibleProducts.filter((p) => ["prime", "prime_plus"].includes(p.type)),
+      evo: visibleProducts.filter((p) => p.type === "evo"),
+    };
+  }, [sectioned, visibleProducts]);
+
   if (!game || (games.length > 0 && !currentGame)) {
     return <GamePicker games={games} onPick={(g) => { selectGame(g.id); setParams({ game: g.id }, { replace: true }); }} />;
   }
@@ -174,7 +203,8 @@ export default function Catalog() {
       {currentGame && <GameBanner game={currentGame} games={games} onSwitch={(g) => { selectGame(g.id); setParams({ game: g.id }, { replace: true }); }} />}
 
       <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center">
-        <div className="no-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto" role="tablist" data-testid="type-tabs">
+        <div className="relative min-w-0 flex-1 after:pointer-events-none after:absolute after:right-0 after:top-0 after:h-full after:w-10 after:bg-gradient-to-l after:from-background after:to-transparent" role="tablist" data-testid="type-tabs">
+          <div className="no-scrollbar flex min-w-0 gap-2 overflow-x-auto pr-8">
           <button role="tab" aria-selected={!type} data-testid="type-tab-all" onClick={() => update({ type: "" })} className={tab(!type)}>{t("catalog.all")}</button>
           {types.map((pt) => (
             <button key={pt.key} role="tab" aria-selected={activeTypes.includes(pt.key)} data-testid={`type-tab-${pt.key}`} onClick={() => update({ type: pt.key })} className={tab(activeTypes.length === 1 && activeTypes[0] === pt.key)}>
@@ -183,7 +213,7 @@ export default function Catalog() {
           ))}
           {hasEvo && <button role="tab" aria-selected={type === "evo"} data-testid="type-tab-evo" onClick={() => update({ type: "evo", popular: "" })} className={tab(type === "evo")}>{t("nav.evo")}</button>}
           <button data-testid="filter-popular" aria-pressed={popular} onClick={() => update({ popular: popular ? "" : "1" })} className={tab(popular)}>{t("catalog.popular")}</button>
-          <button data-testid="filter-favorites" aria-pressed={favorites} onClick={() => update({ favorites: favorites ? "" : "1" })} className={tab(favorites)}>{t("catalog.favorites")}</button>
+          </div>
         </div>
         <div className="flex w-full items-center gap-2 lg:w-auto">
           <div className="relative min-w-0 flex-1 lg:w-64">
@@ -213,10 +243,15 @@ export default function Catalog() {
 
       <p className="mt-8 eyebrow" data-testid="results-count" aria-live="polite">{products ? `${products.length} ${t("catalog.results")}` : t("common.loading")}</p>
       {type === "evo" ? <PackEvolutif embedded products={products} /> : <>
-        <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">
+        {sectioned && products === null ? <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}</div> : sectioned ? <div className="mt-8 space-y-10" data-testid="catalog-sections">
+          <ProductSection id="popular" title={t("catalog.popularSection")} products={sections?.featured} popularIds={popularIds} bestUnitId={bestUnitId} />
+          <ProductSection id="packs-uc" title={t("catalog.ucSection")} products={sections?.uc} popularIds={popularIds} bestUnitId={bestUnitId} />
+          <ProductSection id="prime" title={t("catalog.primeSection")} products={sections?.prime} popularIds={popularIds} bestUnitId={bestUnitId} />
+          <ProductSection id="packs-evolutifs" title={t("catalog.evoSection")} products={sections?.evo} popularIds={popularIds} bestUnitId={bestUnitId} />
+        </div> : <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">
           {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}
           {productsWithBadge?.map(({ product, badge }, i) => <ProductCard key={product.id} product={product} index={i} badge={badge} />)}
-        </div>
+        </div>}
         {products?.length === 0 && (
           <div className="mt-6 rounded-[16px] border border-dashed bg-card p-10 text-center" data-testid="catalog-empty">
             <p className="font-display text-lg font-bold">{t("catalog.empty")}</p>

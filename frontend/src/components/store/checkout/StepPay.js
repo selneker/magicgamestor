@@ -18,7 +18,7 @@ function AutoPay({ summary, busy, onPay }) {
   const { t } = useLang();
   return (
     <section className="space-y-4" data-testid="checkout-step-pay-auto">
-      <OrderSummary summary={summary} />
+      <OrderSummary summary={summary} sticky />
       <p className="flex items-center gap-2 rounded-[14px] bg-muted px-3 py-2 text-sm font-semibold text-foreground"><Zap className="h-4 w-4 shrink-0" />{t("checkout.autoVerifyNote")}</p>
       <p className="text-sm text-muted-foreground">{t("checkout.playerVerifyNote")}</p>
       <Button type="button" onClick={onPay} disabled={busy} data-testid="checkout-pay-now" className="h-12 w-full rounded-full text-base font-bold">
@@ -36,6 +36,7 @@ function ManualPay({ config, summary, reference, onPaid }) {
   const code = merchant ? USSD[provider](merchant.merchant, amount) : "";
   return (
     <section className="space-y-4" data-testid="checkout-step-pay-manual">
+      <OrderSummary summary={summary} sticky />
       <div className="rounded-[22px] border-2 border-[color:var(--rule)] bg-card p-4 sm:p-6">
         <h2 className="font-display text-xl font-bold">{t("checkout.manualPayTitle")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t("checkout.manualHowto")}</p>

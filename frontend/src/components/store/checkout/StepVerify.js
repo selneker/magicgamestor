@@ -79,6 +79,7 @@ export function StepVerify({ gameName, pubgId, setPubgId, user, verified, setVer
         ) : (
           <>
             <label htmlFor="pubg-id" className="text-sm font-semibold">{t("checkout.playerId")}</label>
+            <p className="mt-1 text-xs text-muted-foreground">{t("checkout.playerIdHelp")}</p>
             <Input id="pubg-id" data-testid="pubg-id-input" inputMode="numeric" value={pubgId} onChange={(e) => setPubgId(e.target.value.replace(/\D/g, ""))} required className="mt-1 h-12 rounded-[12px] num" placeholder="5123456789" />
             <PubgIdVerify pubgId={pubgId} onVerified={handleVerified} autoTrigger={autoVerify} checkout initial={verified} />
           </>

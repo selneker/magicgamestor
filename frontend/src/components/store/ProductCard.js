@@ -27,6 +27,7 @@ export function ProductCard({ product, index = 0, badge = null }) {
   const discount = hasRealOldPrice ? Math.round((1 - product.price / product.old_price) * 100) : 0;
   const showDiscount = discount >= 5;
   const unitPrice = product.uc_amount ? Math.round(product.price / product.uc_amount) : null;
+  const safeBadge = /^(new|hot)$/i.test(String(product.badge || "").trim()) ? String(product.badge).trim().toUpperCase() : null;
   const available = product.purchasable !== false;
 
   // Favorites
@@ -39,7 +40,7 @@ export function ProductCard({ product, index = 0, badge = null }) {
       className={`${available ? "" : "opacity-70"} neo-card neo-card-radius group relative w-full min-h-[112px] min-w-0 flex min-[480px]:h-full min-[480px]:flex-col max-[479px]:min-h-[140px] pt-4 pb-10 px-4`}
     >
       {/* Link to product page - covers the entire card */}
-      <Link to={`/produit/${product.slug}`} className="absolute inset-0" aria-label={name} />
+      <Link to={`/produit/${product.slug}`} className="absolute inset-0 focus-ring active:scale-[98]" aria-label={name} />
 
       {/* Inner content */}
       <div className="relative z-10 flex h-full flex-col">
@@ -121,6 +122,11 @@ export function ProductCard({ product, index = 0, badge = null }) {
               <p className="mt-2 text-sm font-semibold text-[color:var(--neo-text)]/70">
                 {formatAr(unitPrice)}/UC
               </p>
+            )}
+            {bestUnitPrice && (
+              <span className="mt-2 inline-flex w-fit rounded-full bg-[color:var(--neo-text)] px-2 py-1 text-[10px] font-bold text-[color:var(--neo-card-bg)]">
+                Meilleur prix par UC
+              </span>
             )}
           </div>
 

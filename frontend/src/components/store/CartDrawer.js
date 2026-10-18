@@ -16,7 +16,7 @@ export function CartDrawer() {
   return (
     <>
       {items.length > 0 && <div className="fixed inset-x-3 bottom-3 z-30 flex items-center gap-3 border-2 border-foreground bg-foreground p-2 text-background shadow-[4px_4px_0_hsl(var(--primary))] md:hidden" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }} data-testid="mobile-cart-bar">
-        <button type="button" className="min-h-11 min-w-0 flex-1 px-2 text-left" onClick={() => setOpen(true)}><span className="block text-sm font-semibold">{count} {count === 1 ? "article" : "articles"}</span><span className="num block text-lg text-primary">{formatAr(total)}</span></button>
+        <button type="button" className="min-h-11 min-w-0 flex-1 px-2 text-left" onClick={() => setOpen(true)}><span className="block text-sm font-semibold">{count} {count === 1 ? t("cart.item") : t("cart.items")}</span><span className="num block text-lg text-primary">{formatAr(total)}</span><span className="block text-xs leading-snug text-background">{t("cart.paymentFeeHint")}</span></button>
         <button type="button" className="min-h-11 shrink-0 bg-primary px-4 text-sm font-bold text-[#0A0A0A]" onClick={() => { setOpen(false); navigate("/commande"); }}>{t("cart.checkout")}</button>
       </div>}
       <Sheet open={open} onOpenChange={setOpen}>
@@ -48,6 +48,7 @@ export function CartDrawer() {
             </ul>
             <div className="border-t pt-4">
               <div className="flex items-center justify-between text-lg"><span className="eyebrow">{t("cart.total")}</span><span data-testid="cart-total" className="num text-2xl">{formatAr(total)}</span></div>
+              <p className="mt-2 text-xs text-muted-foreground">{t("cart.paymentFeeHint")}</p>
               <Button data-testid="cart-checkout-button" className="mt-4 h-12 w-full rounded-full text-base font-bold" onClick={() => { setOpen(false); navigate("/commande"); }}>{t("cart.checkout")}</Button>
             </div>
           </>

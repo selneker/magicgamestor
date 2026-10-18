@@ -7,6 +7,7 @@ import { useGames } from "@/context/GameContext";
 import { useLang, localized } from "@/context/LanguageContext";
 import { StatusBadge } from "@/components/layout/Header";
 import { ProductCard } from "@/components/store/ProductCard";
+import { Reviews } from "@/components/store/Reviews";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -116,7 +117,7 @@ function GamesBento({ games, selectGame }) {
   return (
     <section className="mt-20" data-testid="home-game-selection">
       <SectionHead eyebrow={t("games.title")} title={t("store.gamesTitle")} sub={t("store.gamesSub")} />
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
         {games.map((g, i) => (
           <Link key={g.id} to={`/boutique?game=${g.id}`} onClick={() => selectGame(g.id)} data-testid={`home-game-${g.slug || g.id}`}
             className={`card-lift group relative flex min-h-[200px] flex-col justify-between overflow-hidden rounded-[16px] border bg-card p-6 ${i === 0 && games.length === 2 ? "sm:col-span-2" : ""}`}>
@@ -218,8 +219,22 @@ export default function Home() {
   const [events, setEvents] = useState([]);
   usePageMeta(null, t("store.heroSub"));
   useEffect(() => {
-    api.get("/products", { params: { popular: true } }).then((r) => setProducts(r.data.slice(0, 8))).catch(() => setProducts([]));
-    api.get("/products", { params: { type: "prime,prime_plus" } }).then((r) => setSubs(r.data.slice(0, 8))).catch(() => setSubs([]));
+    Promise.all([
+      api.get("/products", { params: { popular: true } }),
+      api.get("/products", { params: { type: "prime,prime_plus" } }),
+      api.get("/products", { params: { type: "evo" } }),
+    ]).then(([popularResponse, primeResponse, evoResponse]) => {
+      const unique = new Map();
+      [...popularResponse.data, ...primeResponse.data, ...evoResponse.data].forEach((product) => unique.set(product.id, product));
+      const all = [...unique.values()];
+      const selected = [
+        ...all.filter((product) => Number(product.uc_amount) > 0).slice(0, 2),
+        ...all.filter((product) => ["prime", "prime_plus"].includes(product.type)).slice(0, 1),
+        ...all.filter((product) => product.type === "evo").slice(0, 1),
+      ];
+      setProducts([...new Map(selected.map((product) => [product.id, product])).values()].slice(0, 4));
+      setSubs(primeResponse.data.slice(0, 8));
+    }).catch(() => { setProducts([]); setSubs([]); });
     api.get("/events").then((r) => setEvents(r.data.slice(0, 1))).catch(() => {});
   }, []);
   const shopUrl = games.length === 1 ? `/boutique?game=${games[0].id}` : "/boutique";
@@ -235,9 +250,9 @@ export default function Home() {
       <section className="mt-20">
         <SectionHead eyebrow={t("catalog.popular")} title={t("store.offersTitle")} sub={t("store.offersSub")}
           action={<Link to={shopUrl} data-testid="see-all-link" className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground">{t("common.seeAll")}<ArrowRight className="h-3.5 w-3.5" /></Link>} />
-        <div className="mt-6 grid grid-cols-2 items-stretch gap-3 md:grid-cols-3 lg:grid-cols-4" data-testid="popular-grid">
+        <div className="mt-6 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="popular-grid">
           {products === null && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-60 rounded-[14px]" />)}
-          {products?.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
+          {products?.map((p, i) => <ProductCard key={p.id} product={p} index={i} displayPopular />)}
         </div>
         {products?.length === 0 && <p className="mt-6 text-sm text-muted-foreground" data-testid="popular-empty">{t("store.noOffers")}</p>}
       </section>
@@ -245,7 +260,7 @@ export default function Home() {
       <section className="mt-20" data-testid="subs-section">
         <SectionHead eyebrow={t("catalog.prime")} title={t("common.subsTitle")} sub={t("common.subsSub")}
           action={<Link to={subsUrl} data-testid="subs-more-link" className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:text-foreground">{t("common.seeAll")}<ArrowRight className="h-3.5 w-3.5" /></Link>} />
-        <div className="mt-6 grid grid-cols-2 items-stretch gap-3 md:grid-cols-3 lg:grid-cols-4" data-testid="subs-grid">
+        <div className="mt-6 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="subs-grid">
           {subs === null && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-60 rounded-[14px]" />)}
           {visibleSubs?.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
         </div>
@@ -281,8 +296,9 @@ export default function Home() {
         </div>
       </section>
 
-      <Faq />
-      <BackToTop />
+  <Faq />
+  <Reviews reviews={[]} />
+  <BackToTop />
     </div>
   );
 }
