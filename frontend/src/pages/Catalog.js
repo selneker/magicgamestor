@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import PackEvolutif from "@/pages/PackEvolutif";
 import { usePageMeta } from "@/lib/catalog";
+import { useFavorites } from "@/lib/favorites";
 
 const tab = (active) => `shrink-0 rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors ${active ? "border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]" : "bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`;
 
@@ -20,7 +21,7 @@ function ProductSection({ id, title, products, popularIds, bestUnitId }) {
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="scroll-mt-24">
       <h2 id={`${id}-title`} className="font-display text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
-      <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+      <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[560px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
         {products.map((p, i) => <ProductCard key={p.id} product={p} index={i} displayPopular={popularIds.has(p.id)} bestUnitPrice={p.id === bestUnitId} />)}
       </div>
     </section>
@@ -86,11 +87,13 @@ export default function Catalog() {
   const [params, setParams] = useSearchParams();
   const [products, setProducts] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [favoriteIds] = useFavorites();
   const game = params.get("game") || "";
   const type = params.get("type") || "";
   const q = params.get("q") || "";
   const sort = params.get("sort") || "price_asc";
   const popular = params.get("popular") === "1";
+  const favorites = params.get("favorites") === "1";
   const minPrice = params.get("min") || "";
   const maxPrice = params.get("max") || "";
   const currentGame = useMemo(() => games.find((g) => g.id === game) || null, [games, game]);
@@ -106,25 +109,74 @@ export default function Catalog() {
     if (!game) return;
     const id = setTimeout(() => {
       setProducts(null);
-      api.get("/products", { params: { game, type: type || undefined, q: q || undefined, sort, popular: popular || undefined, min_price: minPrice || undefined, max_price: maxPrice || undefined } })
+      api.get("/products", { params: { game, type: type || undefined, q: q || undefined, sort, popular: popular || undefined, favorites: favorites || undefined, min_price: minPrice || undefined, max_price: maxPrice || undefined } })
         .then((r) => setProducts(r.data)).catch(() => setProducts([]));
     }, q ? 250 : 0);
     return () => clearTimeout(id);
-  }, [game, type, q, sort, popular, minPrice, maxPrice]);
+  }, [game, type, q, sort, popular, favorites, minPrice, maxPrice]);
 
   // Type tabs come from the game's own configuration; the evolving pack keeps its dedicated view.
   const types = (currentGame?.product_types || []).filter((pt) => pt.key !== "evo");
   const hasEvo = (currentGame?.product_types || []).some((pt) => pt.key === "evo");
   const activeTypes = type.split(",").filter(Boolean);
   const visibleProducts = useMemo(() => {
-    if (!products) return products;
-    if (sort !== "unit_price") return products;
-    return [...products].sort((a, b) => {
-      const aUnit = a.uc_amount ? a.price / a.uc_amount : Number.POSITIVE_INFINITY;
-      const bUnit = b.uc_amount ? b.price / b.uc_amount : Number.POSITIVE_INFINITY;
-      return aUnit - bUnit;
+    if (!products) return null;
+    let filteredProducts = products;
+    if (favorites) {
+      filteredProducts = products.filter(p => favoriteIds.includes(p.id));
+    }
+    if (!filteredProducts) return null;
+    if (sort === "unit_price") {
+      return [...filteredProducts].sort((a, b) => {
+        const aUnit = a.uc_amount ? a.price / a.uc_amount : Number.POSITIVE_INFINITY;
+        const bUnit = b.uc_amount ? b.price / b.uc_amount : Number.POSITIVE_INFINITY;
+        return aUnit - bUnit;
+      });
+    }
+    return filteredProducts;
+  }, [products, sort, favorites, favoriteIds]);
+
+  // Compute badge for each product based on priority and limits
+  const productsWithBadge = useMemo(() => {
+    if (!visibleProducts) return null;
+
+    // Step 1: popular badge (max 3 per page)
+    let popularSeen = 0;
+    // Step 2: compute best price/UC among UC products
+    const ucProducts = visibleProducts.filter(p => p.uc_amount);
+    let bestPriceUC = null;
+    if (ucProducts.length > 0) {
+      bestPriceUC = Math.min(...ucProducts.map(p => p.price / p.uc_amount));
+    }
+    // Step 3: assign badges in priority order
+    return visibleProducts.map((p, idx) => {
+      let badge = null;
+      // Popular badge (max 3)
+      if (p.popular && popularSeen < 3) {
+        badge = "popular";
+        popularSeen++;
+      } else {
+        // Best price/UC badge (only for UC products)
+        if (p.uc_amount && bestPriceUC !== null) {
+          const priceUC = p.price / p.uc_amount;
+          if (Math.abs(priceUC - bestPriceUC) < 0.01) { // tolerance for floating point
+            badge = "best";
+          }
+        }
+        // New/Hot badge (only if no higher priority badge)
+        if (!badge && p.badge) {
+          const badgeLower = p.badge.toLowerCase();
+          if (badgeLower === "new") {
+            badge = "new";
+          } else if (badgeLower === "promo") {
+            badge = "hot";
+          }
+        }
+      }
+      return { product: p, badge };
     });
-  }, [products, sort]);
+  }, [visibleProducts]);
+
   const popularIds = useMemo(() => new Set((visibleProducts || []).filter((p) => p.popular === true).slice(0, 3).map((p) => p.id)), [visibleProducts]);
   const bestUnitId = useMemo(() => {
     const candidates = (visibleProducts || []).filter((p) => Number(p.uc_amount) > 0);
@@ -191,14 +243,14 @@ export default function Catalog() {
 
       <p className="mt-8 eyebrow" data-testid="results-count" aria-live="polite">{products ? `${products.length} ${t("catalog.results")}` : t("common.loading")}</p>
       {type === "evo" ? <PackEvolutif embedded products={products} /> : <>
-        {sectioned && products === null ? <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}</div> : sectioned ? <div className="mt-8 space-y-10" data-testid="catalog-sections">
+        {sectioned && products === null ? <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[560px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}</div> : sectioned ? <div className="mt-8 space-y-10" data-testid="catalog-sections">
           <ProductSection id="popular" title={t("catalog.popularSection")} products={sections?.featured} popularIds={popularIds} bestUnitId={bestUnitId} />
           <ProductSection id="packs-uc" title={t("catalog.ucSection")} products={sections?.uc} popularIds={popularIds} bestUnitId={bestUnitId} />
           <ProductSection id="prime" title={t("catalog.primeSection")} products={sections?.prime} popularIds={popularIds} bestUnitId={bestUnitId} />
           <ProductSection id="packs-evolutifs" title={t("catalog.evoSection")} products={sections?.evo} popularIds={popularIds} bestUnitId={bestUnitId} />
-        </div> : <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">
+        </div> : <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[560px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">
           {products === null && Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}
-          {visibleProducts?.map((p, i) => <ProductCard key={p.id} product={p} index={i} displayPopular={popularIds.has(p.id)} bestUnitPrice={p.id === bestUnitId} />)}
+          {productsWithBadge?.map(({ product, badge }, i) => <ProductCard key={product.id} product={product} index={i} badge={badge} />)}
         </div>}
         {products?.length === 0 && (
           <div className="mt-6 rounded-[16px] border border-dashed bg-card p-10 text-center" data-testid="catalog-empty">

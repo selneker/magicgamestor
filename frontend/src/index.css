@@ -6,7 +6,7 @@
     :root {
         --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
         --font-body: 'Onest', system-ui, sans-serif;
-        /* Neon Brutalism — light */
+        /* Neo Brutalism — light */
         --background: 48 20% 94%;      /* #F4F3EE */
         --foreground: 0 0% 4%;         /* #0A0A0A */
         --card: 0 0% 100%;
@@ -34,6 +34,10 @@
         --orange: #FF7900;
         --pubg: #C5FE02;
         --sab: env(safe-area-inset-bottom, 0px);
+        /* Neo-brutalist card tokens */
+        --neo-card-bg: #D4FF00;
+        --neo-text: #111111;
+        --neo-border: #111111;
     }
     .dark {
         --background: 0 0% 17%;        /* #2B2B2B */
@@ -57,6 +61,10 @@
         --rule: hsl(48 20% 94% / .15);
         --rule-strong: hsl(48 20% 94% / .4);
         --shadow-brut: 3px 3px 0 hsl(0 0% 0% / .35);
+        /* Neo-brutalist card tokens (same in dark mode) */
+        --neo-card-bg: #D4FF00;
+        --neo-text: #111111;
+        --neo-border: #111111;
     }
     * { border-color: var(--rule); }
     html { scroll-behavior: smooth; overflow-x: hidden; }
@@ -95,14 +103,14 @@
     .hover-slide { @apply transition-[transform,background-color,color,box-shadow] duration-200 ease-out; }
     .hover-slide:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow-brut); }
     .neon-shadow { box-shadow: 3px 3px 0 hsl(var(--primary) / .55); }
+.figure-highlight { @apply inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-1; }
+    .focus-ring:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
     .card-lift { @apply transition-[transform,box-shadow,border-color] duration-200 ease-out; }
     .card-lift:hover { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 hsl(var(--foreground) / .22); border-color: var(--rule-strong); }
     .dark .card-lift:hover { box-shadow: 4px 4px 0 hsl(var(--primary) / .5); }
     .product-card-lift { @apply transition-[transform,box-shadow,border-color] duration-200 ease-out; }
     .product-card-lift:hover { transform: translate(-3px, -3px); box-shadow: 5px 5px 0 hsl(var(--foreground) / .25); border-color: var(--rule-strong); }
     .dark .product-card-lift:hover { box-shadow: 5px 5px 0 hsl(var(--primary) / .55); }
-    .figure-highlight { @apply inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-1; }
-    .focus-ring:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
     .glass { @apply bg-background/85 backdrop-blur-xl; }
     /* Neubrutalist rhythm: crisp panels, offset shadows, and intentional hard edges. */
     .brutal-panel { border: 2px solid hsl(var(--foreground)); box-shadow: 5px 5px 0 hsl(var(--foreground)); }
@@ -140,6 +148,26 @@
         .card-lift:hover, .product-card-lift:hover, .hover-slide:hover, .product-card-link:active { transform: none; }
         *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
     }
+    /* Neo-brutalist card styles */
+    .neo-card {
+        box-shadow: 8px 8px 0 hsl(var(--neo-text) / 0.18);
+    }
+    .neo-card:hover {
+        box-shadow: 12px 12px 0 hsl(var(--neo-text) / 0.18);
+    }
+    .neo-card:focus-visible {
+        outline: 2px solid hsl(var(--neo-border));
+        outline-offset: 2px;
+    }
+    .neo-card-radius {
+        border-radius: 3rem;
+    }
+    @media (max-width: 559px) {
+        .neo-card-radius {
+            border-radius: 2rem;
+        }
+    }
+
 }
 
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
