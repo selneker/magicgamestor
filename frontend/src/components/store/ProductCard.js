@@ -1,5 +1,10 @@
 import { Link } from "react-router-dom";
+import { useCart } from "@/context/CartContext";
+import { useFavorites } from "@/lib/favorites";
+import { useLang } from "@/context/LanguageContext";
 import { formatAr } from "@/lib/api";
+import { addFeedback } from "@/context/CartContext";
+import { toast } from "sonner";
 
 const ICONS = {
   plus: <path d="M12 5v14M5 12h14" strokeWidth="3.2" strokeLinecap="round" />,
@@ -19,21 +24,13 @@ function Icon({ name, className = "h-5 w-5" }) {
 
 export const productName = (product, lang) => (lang === "en" && product.name_en ? product.name_en : product.name);
 
-function typeLabel(product) {
-  if (product.type === "prime_plus") return "Prime+";
-  if (product.type === "prime") return "Prime";
-  if (product.type === "evo") return "Évolutif";
-  return "UC";
-}
-
-function actionIcon(product) {
-  if (product.type === "uc") return "plus";
-  if (product.type === "evo") return "cart";
-  return "arrow";
-}
-
-export function ProductCard({ product, badge, onAdd, onIncrease, onDecrease, qty = 0, favorite = false, onToggleFavorite }) {
-  const name = product.name || product.slug || "Produit";
+export function ProductCard({ product, index = 0, badge }) {
+  const { t, lang } = useLang();
+  const { items, add, setQty, remove, open, setOpen } = useCart();
+  const [favorites, toggleFavorite] = useFavorites();
+  const productInCart = items.find((item) => item.id === product.id);
+  const qty = productInCart ? productInCart.qty : 0;
+  const showCart = qty > 0;
   const available = product.purchasable !== false;
   const max = product.type === "uc" ? 20 : 1;
   const oldPrice = Number(product.old_price);
@@ -42,40 +39,102 @@ export function ProductCard({ product, badge, onAdd, onIncrease, onDecrease, qty
   const showDiscount = discount >= 5;
   const figure = product.type === "uc" ? product.uc_amount : product.duration_months;
   const unit = product.type === "uc" ? "UC" : product.duration_months ? "mois" : "";
-  const figureLength = String(figure || "").length;
-  const figureSize = figureLength >= 5 ? "text-3xl sm:text-4xl" : figureLength >= 4 ? "text-4xl sm:text-5xl" : "text-5xl sm:text-6xl";
   const context = badge || (product.popular ? "popular" : product.type === "evo" ? "evo" : "offer");
   const contextIcon = context === "popular" ? "flame" : context === "evo" ? "crown" : product.type === "prime" || product.type === "prime_plus" ? "bolt" : "cart";
   const contextLabel = context === "popular" ? "Populaire" : context === "evo" ? "Elite Pack" : product.type === "prime_plus" ? "Abonnement" : product.type === "prime" ? "Abonnement" : "Pack UC";
   const focus = "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-ink";
-  const add = () => onAdd?.(product);
-  const increase = () => onIncrease?.(product);
-  const decrease = () => onDecrease?.(product);
+  const actionIconName = product.type === "uc" ? "plus" : product.type === "evo" ? "cart" : "arrow";
+
+  const handleAdd = () => {
+    const addResult = add(product);
+    addFeedback(addResult, t, toast, setOpen);
+  };
+
+  const handleIncrease = () => {
+    if (qty < max) {
+      setQty(product.id, qty + 1);
+    }
+  };
+
+  const handleDecrease = () => {
+    if (qty > 0) {
+      setQty(product.id, qty - 1);
+    }
+  };
+
+  const handleToggleFavorite = () => {
+    toggleFavorite(product.id);
+  };
 
   return (
     <article data-testid={`product-card-${product.slug}`} className={`group relative flex min-h-[224px] flex-col rounded-[24px] border-2 border-ink bg-neo p-3 shadow-none transition duration-200 ease-out hover:shadow-[5px_5px_0_#111111] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
-      <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-[1.35rem]" aria-label={name} />
+      <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-[1.35rem]" aria-label={product.name || product.slug || "Produit"} />
       <div className="relative z-10 flex h-full flex-col">
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-ink bg-white/40 px-2 py-0.5 font-body text-[8px] font-bold uppercase leading-none tracking-wider backdrop-blur">{typeLabel(product)}</span>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-ink/10 px-3 py-1 font-body text-[10px] font-bold uppercase leading-none tracking-wider backdrop-blur"><Icon name={contextIcon} className="h-3 w-3" />{contextLabel}</span>
           </div>
-          <button type="button" aria-label={`${favorite ? "Retirer des favoris" : "Ajouter aux favoris"} : ${name}`} aria-pressed={favorite} onClick={onToggleFavorite} className={`grid aspect-square h-8 w-8 shrink-0 place-items-center !rounded-full border border-ink bg-ink text-white transition duration-150 hover:scale-105 hover:bg-red-500 active:scale-95 aria-[pressed=true]:bg-red-500 aria-[pressed=true]:[&_svg]:fill-white ${focus}`}><Icon name="heart" /></button>
+          <button type="button" aria-label={`${favorites.includes(product.id) ? t("product.removeFavorite") : t("product.addFavorite")} : ${product.name || product.slug}`} aria-pressed={favorites.includes(product.id)} onClick={handleToggleFavorite} className={`grid aspect-square h-8 w-8 shrink-0 place-items-center !rounded-full border border-ink bg-ink text-white transition duration-150 hover:scale-105 hover:bg-red-500 active:scale-95 aria-[pressed=true]:bg-red-500 aria-[pressed=true]:[&_svg]:fill-white ${focus}`}><Icon name="heart" /></button>
         </div>
 
-        <h2 className="mt-2 line-clamp-2 min-h-[2rem] font-display text-sm font-extrabold leading-tight tracking-tight sm:text-base">{name}</h2>
-        {figure ? <p className={`mt-2 flex items-baseline gap-2 font-display font-extrabold tracking-tighter ${figureSize}`}><span className="leading-none">{figure}</span><span className="text-xl font-bold uppercase tracking-tight text-ink/70">{unit}</span></p> : null}
+        <h2 className="mt-2 line-clamp-2 min-h-[2rem] font-display text-sm font-extrabold leading-tight sm:text-base">{product.name || product.slug}</h2>
+        {figure ? (
+          <p className={"mt-2 flex items-baseline gap-2 font-display font-extrabold tracking-tighter " + (figureLength >= 5 ? "text-3xl sm:text-4xl" : figureLength >= 4 ? "text-4xl sm:text-5xl" : "text-5xl sm:text-6xl")}>
+            <span className="leading-none">{figure}</span>
+            <span className="text-xl font-bold uppercase tracking-tight text-ink/70">{unit}</span>
+          </p>
+        ) : null}
 
-        <div className={`mt-auto flex h-11 items-center justify-between gap-1.5 rounded-[9999px] border-2 border-ink ${qty > 0 ? "bg-ink p-1.5" : available ? "bg-white py-1 pl-3 pr-1" : "border-dashed bg-transparent px-3"}`}>
-          {!available ? <span className="font-body text-sm font-bold uppercase tracking-wide">Indisponible</span> : qty > 0 ? <>
-            <button type="button" aria-label={`${qty === 1 ? "Retirer du panier" : "Retirer un exemplaire"} : ${name}`} onClick={decrease} className={`grid aspect-square h-7 w-7 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}><Icon name={qty === 1 ? "trash" : "minus"} /></button>
-            <span className="min-w-0 text-center font-body text-sm font-bold leading-tight text-neo" aria-live="polite"><span className="font-display text-2xl font-extrabold">{qty}</span> au panier</span>
-            <button type="button" aria-label={`Ajouter un exemplaire : ${name}`} disabled={qty >= max} onClick={increase} className={`grid aspect-square h-7 w-7 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}><Icon name="plus" /></button>
-          </> : <>
-            <div className="flex min-w-0 flex-col items-start gap-1 min-[400px]:flex-row min-[400px]:items-center min-[400px]:gap-3"><span className="whitespace-nowrap font-display text-2xl font-extrabold leading-none">{formatAr(product.price)}</span>{showDiscount ? <span className="rounded-full border border-ink bg-neo px-2 py-0.5 font-body text-[11px] font-bold leading-4">-{discount}%</span> : null}</div>
-            <button type="button" aria-label={`Ajouter au panier : ${name}`} onClick={add} className={`grid aspect-square h-9 w-9 shrink-0 place-items-center !rounded-full border-2 border-ink bg-ink text-neo transition duration-150 hover:scale-105 active:scale-95 ${focus}`}><Icon name={actionIcon(product)} /></button>
-          </>}
+        <div className="mt-auto relative h-11">
+          {!available ? (
+            <span className="flex items-center justify-between gap-1.5 w-full px-3 font-body text-sm font-bold uppercase tracking-wide">Indisponible</span>
+          ) : (
+            <>
+              {/* Price view */}
+              <div className={`absolute inset-0 flex items-center justify-between gap-1.5 px-3 transition-all duration-200 ease-out ${showCart ? "opacity-0 pointer-events-none -translate-y-6" : "opacity-100 pointer-events-auto translate-y-0"} `}>
+                <div className="text-[color:var(--neo-text)]/70">
+                  <p className="num text-[1.75rem] font-bold leading-none">{formatAr(product.price)}</p>
+                  {showDiscount && (
+                    <span className="mt-1.5 flex min-h-4 items-center gap-1.5 leading-none">
+                      <span className="text-[11px] text-[color:var(--neo-text)]/50 line-through">{formatAr(product.old_price)}</span>
+                      <span className="rounded-full bg-[color:var(--neo-card-bg)] px-2 py-1 text-[11px] font-semibold leading-none text-[color:var(--neo-text)]">
+                        -{discount}%
+                      </span>
+                    </span>
+                  )}
+                </div>
+                <button type="button" onClick={handleAdd} className={`grid aspect-square h-9 w-9 shrink-0 place-items-center !rounded-full border-2 border-ink bg-ink text-neo transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
+                  <Icon name={actionIconName} />
+                </button>
+              </div>
+
+              {/* Cart view */}
+              <div className={`absolute inset-0 flex items-center justify-between gap-1.5 px-3 transition-all duration-200 ease-out ${showCart ? "opacity-100 pointer-events-auto translate-y-0" : "opacity-0 pointer-events-none translate-y-6"} `}>
+                {product.type === "prime" || product.type === "prime_plus" || product.type === "evo" ? (
+                  <>
+                    <span className="flex items-center gap-2">
+                      <Icon name="check" className="h-4 w-4 text-neo" />
+                      <span className="font-body text-sm font-semibold text-neo">{t("product.inCart")}</span>
+                    </span>
+                    <button type="button" onClick={() => setOpen(true)} className={`grid aspect-square h-9 w-9 shrink-0 place-items-center !rounded-full border-2 border-ink bg-neo text-white transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
+                      <Icon name="cart" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={handleDecrease} className={`grid aspect-square h-7 w-7 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
+                      <Icon name={qty === 1 ? "trash" : "minus"} />
+                    </button>
+                    <span className="min-w-0 text-center font-body text-sm font-bold leading-tight text-neo" aria-live="polite"><span className="font-display text-2xl font-extrabold">{qty}</span> au panier</span>
+                    <button type="button" onClick={handleIncrease} className={`grid aspect-square h-7 w-7 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
+                      <Icon name="plus" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </article>
