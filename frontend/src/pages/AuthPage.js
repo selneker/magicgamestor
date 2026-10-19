@@ -8,13 +8,14 @@ import { useAuth } from "@/context/AuthContext";
 import { startGoogleLogin } from "@/components/AuthCallback";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function AuthPage({ mode = "login" }) {
   const { t } = useLang();
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [form, setForm] = useState({ email: "", password: "", name: "" });
+  const [form, setForm] = useState({ email: "", password: "", name: "", remember: true });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -25,7 +26,7 @@ export default function AuthPage({ mode = "login" }) {
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setError("");
     try {
-      const { data } = await api.post(`/auth/${mode}`, mode === "login" ? { email: form.email, password: form.password } : form);
+      const { data } = await api.post(`/auth/${mode}`, mode === "login" ? { email: form.email, password: form.password, remember: form.remember } : form);
       setUser(data.user);
       if (mode === "register") toast.message(t("auth.verifySent"));
       navigate(from, { replace: true });
@@ -55,7 +56,15 @@ export default function AuthPage({ mode = "login" }) {
               </button>
             </div>
           </div>
-          {mode === "login" && <p className="text-right text-xs"><Link to="/mot-de-passe-oublie" className="font-medium text-muted-foreground hover:text-foreground" data-testid="login-forgot-password-link">{t("auth.forgot")}</Link></p>}
+          {mode === "login" && (
+            <div className="flex items-center justify-between gap-3">
+              <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-slate-600" data-testid="remember-label">
+                <Checkbox checked={form.remember} onCheckedChange={(v) => setForm({ ...form, remember: v === true })} data-testid="remember-checkbox" aria-label={t("auth.remember")} />
+                {t("auth.remember")}
+              </label>
+              <Link to="/mot-de-passe-oublie" className="text-xs font-medium text-muted-foreground hover:text-foreground" data-testid="login-forgot-password-link">{t("auth.forgot")}</Link>
+            </div>
+          )}
           {error && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700" data-testid="auth-error">{error}</p>}
           <Button type="submit" disabled={busy} className="h-12 w-full rounded-full text-base font-bold" data-testid="auth-submit">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.submit")}</Button>
         </form>

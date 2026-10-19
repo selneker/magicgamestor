@@ -12,6 +12,7 @@ from fastapi import FastAPI, APIRouter
 from starlette.middleware.cors import CORSMiddleware
 
 from core.db import client, ensure_indexes
+from core.origins import allowed_origins
 from core.security import PERMISSIONS as DEFAULT_ADMIN_PERMISSIONS
 from core.games import migrate_multigame, migrate_saved_pubg_ids, reconcile_sellable_games, seed_games
 from core.seed import seed_all
@@ -72,14 +73,6 @@ for r in (auth.router, products.router, orders.router, payments.router, events.r
     api.include_router(r)
 app.include_router(api)
 
-origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip() and o.strip() != "*"]
-frontend = os.environ.get("FRONTEND_URL")
-if frontend and frontend not in origins:
-    origins.append(frontend)
-# Accept the apex/www variant of each configured origin so credentialed requests are never wildcarded.
-for origin in list(origins):
-    variant = origin.replace("://www.", "://") if "://www." in origin else origin.replace("://", "://www.")
-    if variant not in origins:
-        origins.append(variant)
-app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=origins or ["http://localhost:3000"],
+# Liste exacte partagée avec la vérification anti-CSRF (core/origins.py).
+app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=sorted(allowed_origins()),
                    allow_methods=["*"], allow_headers=["*"])

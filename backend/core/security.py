@@ -1,4 +1,5 @@
 import os
+import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -11,8 +12,9 @@ from core.db import db
 
 JWT_ALGORITHM = "HS256"
 ACCESS_TTL = 15 * 60
-REFRESH_TTL = 7 * 24 * 3600
+REFRESH_TTL = 30 * 24 * 3600  # « Rester connecté » : session de 30 jours (cookies HttpOnly, révocable)
 PUBLIC_USER_FIELDS = {"_id": 0, "password_hash": 0}
+SESSION_KIND = "refresh"  # tag des entrées du registre user_sessions créées par set_auth_cookies
 
 SUPER_ADMIN = "super_admin"
 ADMIN_ROLES = ("admin", SUPER_ADMIN)
@@ -55,13 +57,19 @@ def _secret() -> str:
     return os.environ["JWT_SECRET"]
 
 
-def create_access_token(user_id: str, auth_version: int = 0) -> str:
+def create_access_token(user_id: str, auth_version: int = 0, sid: str | None = None) -> str:
+    """Access token court ; `sid` le rattache à la session du registre pour une révocation immédiate."""
     payload = {"sub": user_id, "type": "access", "v": auth_version, "exp": datetime.now(timezone.utc) + timedelta(seconds=ACCESS_TTL)}
+    if sid:
+        payload["sid"] = sid
     return jwt.encode(payload, _secret(), algorithm=JWT_ALGORITHM)
 
 
-def create_refresh_token(user_id: str, auth_version: int = 0) -> str:
-    payload = {"sub": user_id, "type": "refresh", "v": auth_version, "exp": datetime.now(timezone.utc) + timedelta(seconds=REFRESH_TTL)}
+def create_refresh_token(user_id: str, auth_version: int = 0, jti: str | None = None, remember: bool = True) -> str:
+    payload = {"sub": user_id, "type": "refresh", "v": auth_version, "remember": bool(remember),
+               "exp": datetime.now(timezone.utc) + timedelta(seconds=REFRESH_TTL)}
+    if jti:
+        payload["jti"] = jti
     return jwt.encode(payload, _secret(), algorithm=JWT_ALGORITHM)
 
 
@@ -81,10 +89,61 @@ def cookie_options() -> dict:
     return options
 
 
-def set_auth_cookies(response: Response, user_id: str, auth_version: int = 0):
+async def set_auth_cookies(response: Response, user_id: str, auth_version: int = 0, remember: bool = True):
+    """Emet les cookies de session et enregistre la session de rafraîchissement côté serveur.
+
+    Le refresh token porte un identifiant unique (`jti`) conservé dans user_sessions :
+    le logout peut ainsi révoquer précisément cet appareil, tandis qu'un changement de mot
+    de passe / blocage / suppression purge déjà toutes les sessions du compte (auth_version
+    + delete_many). `remember=False` émet un cookie de session : il disparaît à la fermeture
+    du navigateur (appareils partagés).
+    """
+    now = datetime.now(timezone.utc)
+    jti = secrets.token_hex(16)
+    await db.user_sessions.delete_many({"kind": SESSION_KIND, "expires_at": {"$lt": now}})  # ménage des sessions expirées
+    await db.user_sessions.insert_one({"session_token": jti, "kind": SESSION_KIND, "user_id": user_id,
+                                       "auth_version": auth_version, "remember": bool(remember),
+                                       "created_at": now.isoformat(),
+                                       "expires_at": now + timedelta(seconds=REFRESH_TTL)})
+    access = create_access_token(user_id, auth_version, sid=jti)
+    refresh = create_refresh_token(user_id, auth_version, jti, remember=remember)
     common = cookie_options()
-    response.set_cookie("access_token", create_access_token(user_id, auth_version), max_age=ACCESS_TTL, **common)
-    response.set_cookie("refresh_token", create_refresh_token(user_id, auth_version), max_age=REFRESH_TTL, **common)
+    response.set_cookie("access_token", access, max_age=ACCESS_TTL if remember else None, **common)
+    response.set_cookie("refresh_token", refresh, max_age=REFRESH_TTL if remember else None, **common)
+    return {"access_token": access}
+
+
+async def session_exists(user_id: str, session_id: str) -> bool:
+    """La session (jti) existe-t-elle encore dans le registre serveur ?"""
+    return bool(await db.user_sessions.find_one(
+        {"session_token": session_id, "kind": SESSION_KIND, "user_id": user_id}, {"_id": 1}))
+
+
+async def refresh_session_valid(user_id: str, jti: str | None) -> bool:
+    """Vérifie le registre des sessions. Les refresh tokens émis avant l'existence du
+    registre (sans jti) restent valides jusqu'à leur expiration (≤ 7 jours après déploiement)."""
+    if not jti:
+        return True
+    return await session_exists(user_id, jti)
+
+
+def refresh_remember(request: Request) -> bool:
+    """Préférence « Rester connecté » portée par le refresh token signé (legacy : True)."""
+    token = request.cookies.get("refresh_token")
+    if not token:
+        return True
+    try:
+        payload = jwt.decode(token, _secret(), algorithms=[JWT_ALGORITHM])
+    except jwt.InvalidTokenError:
+        return True
+    if payload.get("type") != "refresh":
+        return True
+    return bool(payload.get("remember", True))
+
+
+async def revoke_refresh_session(jti: str | None):
+    if jti:
+        await db.user_sessions.delete_many({"session_token": jti, "kind": SESSION_KIND})
 
 
 def clear_auth_cookies(response: Response):
@@ -114,11 +173,20 @@ async def _user_from_jwt(token: str):
         return None
     if payload.get("type") != "access" or not payload.get("sub"):
         return None
+    # Les access tokens émis depuis le registre portent le sid de leur session : le logout
+    # supprime cette entrée et révoque donc l'access token immédiatement, sans toucher aux
+    # autres appareils. Les tokens legacy sans sid restent valides ≤ 15 min (déploiement).
+    sid = payload.get("sid")
+    if sid and not await session_exists(payload["sub"], sid):
+        return None
     return _active(await db.users.find_one({"user_id": payload["sub"]}, PUBLIC_USER_FIELDS), payload.get("v", 0))
 
 
 async def _user_from_session(token: str):
-    session = await db.user_sessions.find_one({"session_token": token}, {"_id": 0})
+    # Seules les sessions opaques historiques (cookie session_token) sont résolues ici :
+    # les entrées du registre refresh (kind=refresh, valeur = jti) ne doivent jamais
+    # authentifier à elles seules.
+    session = await db.user_sessions.find_one({"session_token": token, "kind": {"$ne": SESSION_KIND}}, {"_id": 0})
     if not session:
         return None
     expires_at = session["expires_at"]
