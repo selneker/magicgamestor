@@ -120,6 +120,7 @@ cart: { otherGame: "Votre panier contient des offres d'un autre jeu. Finalisez o
         groupUc: "Packs {label}", groupPrime: "Prime", groupPrimePlus: "Prime+", groupEvo: "Pack évolutif",
         mappingMissingOrder: "⚠ Mapping fournisseur manquant" } },
     common: { loading: "Chargement…", error: "Une erreur est survenue", back: "Retour", close: "Fermer", confirm: "Confirmer", yes: "Oui", no: "Non", seeAll: "Tout voir", seeMore: "Voir plus", subsTitle: "Abonnements", subsSub: "Prime & Prime+ livrés sur votre compte", backToTop: "Retour en haut", popular: "Populaire", new: "Nouveau", promo: "Promo", copy: "Copier", copied: "Copié !" },
+    error: { title: "Une erreur est survenue", body: "La page n'a pas pu s'afficher. Rechargez la page pour réessayer.", reload: "Recharger" },
   },
   en: {
     nav: { shop: "Shop", uc: "Buy {UC}", prime: "Subscription", evo: "Evolving Pack", events: "Event", eventsFull: "Events", orders: "Orders", account: "Account", admin: "Admin", login: "Log in", logout: "Log out", track: "Track", cart: "Cart", support: "Support", messages: "Messages" },
@@ -242,5 +243,6 @@ cart: { otherGame: "Your cart holds offers from another game. Check out or empty
         groupUc: "{label} packs", groupPrime: "Prime", groupPrimePlus: "Prime+", groupEvo: "Evolving Pack",
         mappingMissingOrder: "⚠ Supplier mapping missing" } },
     common: { loading: "Loading…", error: "Something went wrong", back: "Back", close: "Close", confirm: "Confirm", yes: "Yes", no: "No", seeAll: "See all", seeMore: "See more", subsTitle: "Subscriptions", subsSub: "Prime & Prime+ delivered to your account", backToTop: "Back to top", popular: "Popular", new: "New", promo: "Promo", copy: "Copy", copied: "Copied!" },
+    error: { title: "Something went wrong", body: "The page could not be displayed. Reload the page to try again.", reload: "Reload" },
   },
 };
