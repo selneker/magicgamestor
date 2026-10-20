@@ -33,7 +33,7 @@ Merge only after manual validation on a real phone.
 | T2.3 Plaque blanche du logo | **fait** | `694ae49` | disque néon + bord encre pour le bouton de jeu ; plus aucun blanc en dur dans `GameButton.js` |
 | T2.5 Bouton désactivé « Vérifier l'ID » | **fait** | `f584111` + `8525054` + `87650b1` | `aria-disabled` + gestionnaire inerte, fond atténué ≥ 3:1 ; 8 tests (clic, Entrée, chargement, contraste) |
 | T2.6 Bouton « Payer via USSD » | **fait** | `d7f3207` | texte encre sur la couleur de marque inchangee : 5,9:1 / 7,2:1. Audit : 14 → 6 |
-| T2.7 Liens destructifs en sombre | todo | | « Déconnexion » 3,06:1, « Supprimer mon compte » 2,73:1 |
+| T2.7 Liens destructifs en sombre | **fait** | `8728d7b` | `--destructive` + `--destructive-foreground` déplacés en `.dark` : 3,06 → 5,40:1 et 2,73 → 4,82:1. Audit : 6 → 2 |
 | T2.8 Indice de vérification sur panneau néon | todo | | « Vérifiez que cet ID… » 3,87:1 en sombre — trouvé en couvrant l'étape 1 du checkout |
 | T2.9 Puce de choix du fournisseur | todo | | blanc sur la couleur de marque : 3,19:1 / 2,63:1 — invisible pour l'audit |
 | T2.10 Couleur de marque en texte ou icône ailleurs | todo | | icône de statut 2,79:1, badges admin 2,63 à 4,81:1, pastille du chat 1,08:1 |
@@ -296,6 +296,28 @@ cause que les 6 échecs de barre panier. Ce n'est pas un défaut propre à `/sui
 > Point de vérification : l'écran « statut de paiement » **est** bien atteint par le parcours de l'audit
 > (le mock doit renvoyer une commande pour `POST /orders`, sinon le parcours plante sur la garde d'erreur
 > globale et la page est comptée 0 échec sans avoir été mesurée).
+
+### T2.4 — état après T2.7 (2026-10-20) — état final de la phase 2
+
+| Page | 390 px clair | 390 px sombre | 1440 px clair | 1440 px sombre |
+|---|---|---|---|---|
+| accueil | 0 | 0 | 0 | 0 |
+| catalogue | 0 | 0 | 0 | 0 |
+| checkout-1-verification-initiale | 0 | 0 | 0 | 0 |
+| checkout-1-verification | 0 | 1 | 0 | 1 |
+| checkout-2-methode | 0 | 0 | 0 | 0 |
+| checkout-3-ussd-mvola | 0 | 0 | 0 | 0 |
+| checkout-3-ussd-orange | 0 | 0 | 0 | 0 |
+| checkout-4-reference | 0 | 0 | 0 | 0 |
+| statut-paiement | 0 | 0 | 0 | 0 |
+| fiche-produit | 0 | 0 | 0 | 0 |
+| compte | 0 | 0 | 0 | 0 |
+| suivi | 0 | 0 | 0 | 0 |
+| fidelite | 0 | 0 | 0 | 0 |
+| **total** | **0** | **1** | **0** | **1** |
+
+**TOTAL : 2 échecs** (101 → 30 → 14 → 6 → 2). Il ne reste que l'indice « Vérifiez que cet ID… »
+(2 × 3,87:1, sombre) → **T2.8**. Les 4 échecs destructifs et les 8 de l'USSD sont tombés.
 
 ### T1.5 implementation notes (2026-10-20)
 
@@ -613,16 +635,27 @@ L'audit ne voit que ce qu'il mesure : **le texte**, sur les pages listées. Les 
   pastille. Au passage, corriger le `bg-[var(--mvola)]/10` qui ne rend rien (une variable canal, pas un hex).
 - Validate: chaque élément mesuré à ≥ 4,5:1 (texte) ou ≥ 3:1 (icône), dans les deux thèmes.
 
-**T2.7 Destructive links in dark mode** (hole found on 2026-10-20)
-- Files: `index.css` (the `--destructive` / `--destructive-foreground` pair in `.dark`), `pages/Account.js`
-  (~l.63 « Déconnexion », ~l.247 « Supprimer mon compte », ~l.280).
-- Problem: in dark mode `--destructive` = `6 70% 50%` → « Déconnexion » **3,06:1** and « Supprimer mon
-  compte » **2,73:1** on `#2B2B2B`.
-- Do: fix the **token** in `.dark` — no local hex in the component. A lighter red reads as text on a dark
-  background, but the destructive *button* (`bg-destructive` + `--destructive-foreground`) must keep a
-  readable pairing, so the two tokens move together.
-- Validate: « Déconnexion » and « Supprimer mon compte » at ≥ 4.5:1 in dark mode, and the delete-confirmation
-  button (red background) still at ≥ 4.5:1.
+**T2.7 Destructive links in dark mode** — **DONE (`8728d7b`, 2026-10-20)**
+- Files: `index.css` **only** (the `.dark` block) — the 19 usages all go through the tokens, no component changes.
+- Problem: in dark mode `--destructive` = `6 70% 50%` → « Déconnexion » **3,06:1**, « Supprimer mon compte » **2,73:1** on `#2B2B2B` / `#333333`.
+- The same token is used **twice**: as a background (button, badge, icon disc — the label sits on the red) and as a text colour. One value cannot serve both, so **both tokens move together** in `.dark`:
+  - `--destructive: 6 90% 70%` (`#F77B6E`) — was `6 70% 50%`
+  - `--destructive-foreground: 0 0% 4%` (ink) — was inherited white
+  - The light theme is **not touched at all**.
+- Measured (390 px, `/compte`, dark):
+
+  | Element | Colours calculées | Contraste |
+  |---|---|---|
+  | « Déconnexion » (12 px) | `rgb(247,123,110)` on `rgb(43,43,43)` | **5,40:1** (was 3,06) |
+  | … its hover | bg `rgb(247,123,110)`, text `rgb(10,10,10)` | **7,55:1** |
+  | « Supprimer mon compte » (16 px) | `rgb(247,123,110)` on `rgb(51,51,51)` | **4,82:1** (was 2,73) |
+  | the icon disc (44×44) | bg `rgb(247,123,110)`, icon `rgb(10,10,10)` | **7,55:1** |
+  | the red button (189×36) | bg `rgb(247,123,110)`, text `rgb(10,10,10)` | **7,55:1** |
+  | … its hover (90 % opacity over the card) | bg `rgb(227,116,104)`, text `rgb(32,21,19)` | **5,93:1** |
+
+  Light theme (unchanged): 4,77 / 5,35 / 5,35:1. The **hover of the red button in light mode was already at 4,06:1** (pre-existing, untouched).
+- Validate: `yarn build`, `yarn test:ci` (7 suites / 31 tests), contrast audit **6 → 2**, no new failure. Captures in `/tmp/opencode/shots/t27-*.png` (the visual judgement is for a human: the coral `#F77B6E` replaces `#D93826` on the dark theme — **if that reads too soft, the fallback is two tokens**: one for the red-as-text and one for the red-as-background).
+- Out of scope, listed for **T5.4**: `toast.jsx:62` uses hardcoded reds (`text-red-300`, `group-[.destructive]:hover:text-red-50`, `focus:ring-red-400`, `focus:ring-offset-red-600`) that do not follow the token; same family as `text-red-600` / `text-rose-600` in the forms and the admin.
 
 **T2.8 « Vérifiez que cet ID… » on the tinted neon panel** (hole found on 2026-10-20)
 - File: `frontend/src/components/store/PubgIdVerify.js` (~l.67, the `pubg-verify-confirm` paragraph).
