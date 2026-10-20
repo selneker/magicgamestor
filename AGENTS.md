@@ -175,7 +175,7 @@ Consequences an agent will otherwise get wrong:
 
 | Written in markup | Actually renders as |
 |---|---|
-| `text-primary` | body-text colour, **not** neon (`.dark` → neon) — 17 uses |
+| `text-primary` | body-text colour, **not** neon (`.dark` → neon) — 19 uses |
 | `border-foreground` / `border-slate-900` / `border-black` | `var(--rule)`, a soft ~1.4:1 hairline, **not black** — 77 uses |
 | `rounded-full` | 10px — except `span.rounded-full` and `h-1/h-2/h-3/w-1..w-3` → 9999px |
 | `rounded-none` | 8px · `rounded-2xl/3xl` → 14px · `rounded-xl/lg` → 12px |
@@ -219,6 +219,20 @@ a *theme* surface (`bg-white` → `hsl(var(--card))`) — keeps `text-foreground
 foreground static.
 (The same inversion still hits `.panel-black` = `bg-foreground` + `text-background`, so "black accent panels" become
 cream in dark mode, and the neon `text-primary` inside them disappears at 1.06:1 → **T2.2**.)
+
+### Ink surfaces are ink in both themes (fixed in T2.2)
+
+`.panel-black`, the cart bar, the « 02 » card and the game selector are **fixed ink** surfaces —
+`bg-ink` (the Tailwind `ink` token, `#111111`) with **fixed cream** text (`--cream`, the light theme's
+`48 20% 94%`, promoted to a token and never overridden in `.dark`). The neon is allowed **only** there,
+via `.text-neo-on-ink`; neon on cream is unreadable.
+
+The trap: `text-background/xx` means the **dark** theme's colour, so on an ink surface it must become
+`text-[color:hsl(var(--cream)/.7)]` — and `text-primary` is the *body* colour in light and neon in dark,
+so it must become `text-neo-on-ink` (on ink) or `text-foreground` (elsewhere, in **T5.4**). The other
+inverted surfaces (`Header.js` points pill, `Account.js`, `AdminBottomNav.js`, `button.jsx`…) pair
+`bg-foreground` with `text-background` and are self-consistent: their contrast does not depend on the
+theme.
 
 ---
 

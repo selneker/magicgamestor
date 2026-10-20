@@ -29,7 +29,7 @@ Merge only after manual validation on a real phone.
 | T1.7 Garde-fou global sur les réponses `/api` | todo | | described below, not implemented |
 | T2.1 Texte fixe sur les surfaces néon | **fait** | `d5e7e78` | 72 échecs de carte produit ramenés à **0** sur les 4 combinaisons. Audit : 101 → 30 |
 | T2.4 Script d'audit de contraste | **fait** | `7bc393a` + `68416e0` + `7da61e1` | baseline re-mesurée : **101 échecs** ; exclusions et limites listées en tête de script |
-| T2.2 Panneaux d'encre et barre panier | todo | | 16 échecs : `.panel-black` crème en sombre, `text-primary` remappé |
+| T2.2 Surfaces d'encre et barre panier | **fait** | `aa831e9` | 16 échecs + les 2 de `/suivi` ramenés à **0**. Audit : 30 → 14. Inventaire complet dans le plan |
 | T2.3 Plaque blanche du logo | todo | | `GameButton.js`, `backgroundColor: "#FFFFFF"` |
 | T2.5 Bouton désactivé « Vérifier l'ID » | todo | | à faire après T2.3, commit séparé |
 | T2.6 Bouton « Payer via USSD » | todo | | blanc sur vert MVola (3,19:1) et sur orange (2,63:1) — 8 échecs |
@@ -124,6 +124,79 @@ sont dans les données simulées de l'audit depuis `7da61e1`.
 Une page qui ne se charge pas est désormais **signalée** (« NON CHARGÉE ») et fait sortir le script en
 erreur : une page absente ne peut pas passer pour conforme.
 
+### T2.2 — inventaire des surfaces d'encre, de `text-primary` et des alpha (2026-10-20)
+
+**Surfaces d'encre.** Une surface d'encre doit être **noire dans les deux thèmes**, avec un texte
+**crème fixe** : sinon le fond (fixe) et le texte (relatif au thème) se contredisent. Trois surfaces
+mélangeaient les deux et cassaient le contraste :
+
+| Surface | Avant | Après |
+|---|---|---|
+| `.panel-black` — 3 usages, `Home.js:75/89/311` | `bg-foreground` + `text-background` → crème en sombre | `bg-ink` + crème fixe |
+| Carte « 02 » — `Home.js:113` | `bg-foreground text-background` | `bg-ink` + crème fixe |
+| Barre panier — `CartDrawer.js:88` | `bg-foreground` + `text-background` | `bg-ink` + crème fixe |
+| Sélecteur de jeu — `GameSelector.js:51` | `bg-foreground` + `text-background` | `bg-ink` + crème fixe |
+
+Les **autres** surfaces inversées (`Header.js` pastille de points, `Account.js`,
+`AdminBottomNav.js`, `PubgIdVerify.js`, `button.jsx`, `PaymentMethodPicker.js`, `OrderTrack.js`…) sont
+**auto-cohérentes** (`bg-foreground` + `text-background`) : leur contraste ne dépend pas du thème. Elles
+ne sont pas touchées ici — les uniformiser relève de T5.4.
+
+**Jetons — pas de doublon.** L'encre vient du **jeton Tailwind `ink`** (`#111111`, déjà présent) : pas de
+variable CSS dupliquée. Le crème fixe n'existait pas en tant que jeton (`--background` bascule en
+sombre) ; la valeur `48 20% 94%` déjà présente dans le fichier est **promue en jeton `--cream`**
+(`--background: var(--cream)`) et réutilisée par `.panel-black`, `.eyebrow-invert` et `.panel-points` :
+une seule occurrence dans le fichier, aucun hex nouveau.
+
+**`text-primary` — les 19 usages, classés.**
+
+| Fichier | Usage | Surface | Classe cible |
+|---|---|---|---|
+| `Home.js:78` | nombre de jeux | panneau d'encre | **`text-neo-on-ink`** (migré) |
+| `Home.js:94` | chevron d'étape | panneau d'encre | **`text-neo-on-ink`** (migré) |
+| `Home.js:98` | « Moyens de paiement » | panneau d'encre | **`text-neo-on-ink`** (migré) |
+| `Home.js:114` | numéro « 02 » | carte d'encre | **`text-neo-on-ink`** (migré) |
+| `CartDrawer.js:89` | total du panier | barre d'encre | **`text-neo-on-ink`** (migré) |
+| `Home.js:69` | numéros 01/02/03 du héros | page | `text-foreground` (T5.4) |
+| `AuthPage.js:64`, `OrderTrack.js:125`+`:151`, `AuthExtras.js:39`, `StepVerify.js:72` | liens | page | `text-foreground` (T5.4) |
+| `ProtectedRoute.js:11` | spinner | page | `text-foreground` (T5.4) |
+| `AdminDashboard.js:12`+`:32` | chiffres de stats | carte | `text-foreground` (T5.4) |
+| `AdminBottomNav.js:105` | `hover:` du ✕ | en-tête d'encre | `hover:text-foreground` (T5.4) |
+| `button.jsx:21` (variante `link`), `radio-group.jsx:17` (pastille) | primitives | page | `text-foreground` (T5.4) |
+| `FloatingChat.js:51`+`:60` | chat flottant | **code mort** | inchangé (T5.7) |
+
+> Les usages « ailleurs » **ne sont pas migrés dans T2.2** : ils sont déjà lisibles, et les migrer
+> ferait passer l'accent néon en crème sur toute l'application en mode sombre — c'est un changement de
+> design, pas un correctif de contraste. Ils sont listés et classés ici pour **T5.4**, qui supprimera le
+> remappage de `.text-primary`.
+
+**`text-background/xx` et `border-background/xx` — tous les usages.**
+
+| Fichier | Classe | Surface | Verdict |
+|---|---|---|---|
+| `Home.js:80` | `text-background/70` | panneau d'encre | migré → crème fixe 70 % |
+| `Home.js:83` | `border-background/25` | panneau d'encre | bordure → crème fixe 25 % |
+| `Home.js:94` | `text-background/85` | panneau d'encre | migré → crème fixe 85 % |
+| `Home.js:98` | `border-background/20` (trait) + `/30` (puces) | panneau d'encre | crème fixe 20 % / 30 % |
+| `Home.js:98` | `text-background` (puces MVola…) | panneau d'encre | crème fixe |
+| `Home.js:116` | `text-background/70` | carte « 02 » | migré → crème fixe 70 % |
+| `Home.js:312` | `text-background/75` | panneau d'encre | migré → crème fixe 75 % |
+| `Header.js:61` | `text-background/70` (« pts ») | pastille inversée auto-cohérente | inchangé |
+| `GameSelector.js:55` | `text-background/45` | panneau d'encre | **non décoratif** (libellé de section, 11 px) : 4,2:1 → **remonté à 60 %** |
+| `GameSelector.js:81` | `text-background/55` (description) | panneau d'encre | 5,6:1 → crème fixe 55 % |
+| `GameSelector.js:84` | `text-background/45` | panneau d'encre | **décoratif** (icône `aria-hidden`) : 3:1 suffit |
+| `GameSelector.js:67` | `bg-background/10`, `hover:bg-background/5` | panneau d'encre | crème fixe 10 % / 5 % |
+| `FloatingChat.js:58` | `text-background/60` | **code mort** | inchangé (T5.7) |
+
+> **Aucun texte à 30 %** : le seul `30 %` du lot est une **bordure** (`border-background/30`,
+> `Home.js:98`), donc décorative. Le texte le plus faible était le libellé « JEUX » à 45 % — il n'est
+> pas décoratif, d'où la correction à 60 %.
+
+**Barre panier — ne pas se fondre dans le fond.** En mode sombre, la barre est noire (`#111111`) sur un
+fond `#2B2B2B` : 1,33:1, elle disparaît. Le cadre crème à 35 % ne donnait que 2,2:1 → **remonté à
+55 %**, soit **4,3:1** contre le fond sombre (et 5,8:1 contre la barre elle-même). L'ombre néon
+décalée (4 px, déjà présente) et le bouton « Commander » néon restent les principaux repères.
+
 ### T2.4 — état après T2.1 (2026-10-20)
 
 | Page | 390 px clair | 390 px sombre | 1440 px clair | 1440 px sombre |
@@ -160,6 +233,34 @@ erreur : une page absente ne peut pas passer pour conforme.
 (`index.css:209`), donc le total s'affiche en encre **sur l'encre** de la barre (1:1) en clair, et en néon
 sur crème en sombre. À 1440 px la barre panier n'existe plus (`md:hidden`), d'où 0 échec. → **T2.2**, même
 cause que les 6 échecs de barre panier. Ce n'est pas un défaut propre à `/suivi`.
+
+### T2.4 — état après T2.2 (2026-10-20)
+
+| Page | 390 px clair | 390 px sombre | 1440 px clair | 1440 px sombre |
+|---|---|---|---|---|
+| accueil | 0 | 0 | 0 | 0 |
+| catalogue | 0 | 0 | 0 | 0 |
+| checkout-1-verification-initiale | 0 | 0 | 0 | 0 |
+| checkout-1-verification | 0 | 1 | 0 | 1 |
+| checkout-2-methode | 0 | 0 | 0 | 0 |
+| checkout-3-ussd-mvola | 1 | 1 | 1 | 1 |
+| checkout-3-ussd-orange | 1 | 1 | 1 | 1 |
+| checkout-4-reference | 0 | 0 | 0 | 0 |
+| statut-paiement | 0 | 0 | 0 | 0 |
+| fiche-produit | 0 | 0 | 0 | 0 |
+| compte | 0 | 2 | 0 | 2 |
+| suivi | 0 | 0 | 0 | 0 |
+| fidelite | 0 | 0 | 0 | 0 |
+| **total** | **1** | **6** | **1** | **6** |
+
+**TOTAL : 14 échecs.** Les **16 échecs de T2.2 et les 2 de `/suivi` sont tombés**, il n'y a **aucun nouvel
+échec** nulle part. Il ne reste que quatre causes, toutes affectées à une tâche :
+
+| Cause | Nb | Exemple | Tâche |
+|---|---|---|---|
+| Bouton « Payer via USSD » : blanc sur vert MVola / orange | 8 | **3,19:1** (MVola), 2,63:1 (Orange) | **T2.6** |
+| Lien destructif en rouge sur fond sombre | 4 | « Déconnexion » **3,06:1**, « Supprimer mon compte » **2,73:1** | **T2.7** |
+| Indice « Vérifiez que cet ID… » sur un panneau teinté néon | 2 | **3,87:1** (sombre) | **T2.8** |
 
 ### T1.5 implementation notes (2026-10-20)
 
@@ -388,12 +489,13 @@ Goal: zero contrast failures, in light and dark.
   without the discount badge, « Pack UC », « Prime+ », « Prime », « Évolutif » (Elite Pack), « Indisponible »,
   card already in the cart (quantity pill) and hover state. Captures before/after at 390 px, light and dark.
 
-**T2.2 Black panels turn cream**
-- Files: `index.css` (`.panel-black`, `.text-primary`, remap block ~l.175-222), `Home.js` (~l.66, 69, 80, 85, 89, 293), **`CartDrawer.js`** (the cart bar total — the follow-up noted under T1.1).
+**T2.2 Black panels turn cream** — **DONE (`aa831e9`, 2026-10-20)**
+- Files: `index.css` (`.panel-black`, `.eyebrow-invert`, `.panel-points`, new `--cream` token, new `.text-neo-on-ink` class), `Home.js` (panels, « 02 » card), `CartDrawer.js` (cart bar), `GameSelector.js` (panel + alphas).
 - Problem: `.panel-black` = `bg-foreground`, so it is cream in dark mode. `.dark .text-primary` becomes neon on cream → 1.06:1. And in light mode `text-primary` is remapped to the body colour, so on an ink panel it is ink on ink → 1:1.
-- Do: `.panel-black` becomes a **fixed** ink surface (black in both themes) with fixed cream text. Neon is used **only** on ink surfaces, via an explicit class (e.g. `text-neo-on-ink`).
+- Do: `.panel-black` becomes a **fixed** ink surface (black in both themes) with fixed cream text. Neon is used **only** on ink surfaces, via an explicit class (`.text-neo-on-ink`).
 - **Do not make `.text-primary` neon everywhere** — neon on a cream background is unreadable.
-- Validate: "JEUX DISPONIBLES", "COMMENT ÇA MARCHE", "Ouvrir le chat" and the "02" card stay black in dark mode with readable text; the cart bar total (« 2 500 Ar ») is readable in both themes.
+- Implementation: the ink comes from the Tailwind token `ink` (`bg-ink`, no duplicated variable); the fixed cream is the value already in the file (`48 20% 94%`) promoted to the token `--cream` (`--background: var(--cream)`), reused by `.panel-black`, `.eyebrow-invert` and `.panel-points`. The `text-background/xx` inside those surfaces become `text-[color:hsl(var(--cream)/.x)]`. The **remap of `.text-primary` stays** (removed in T5.4).
+- Validate: "JEUX DISPONIBLES", "COMMENT ÇA MARCHE", "Ouvrir le chat" and the "02" card stay black in dark mode with readable text; the cart bar total (« 2 500 Ar ») is readable in both themes. **16 failures + the 2 of `/suivi` → 0**, no new failure anywhere (audit 30 → 14). Captures 390 px and 1440 px, light and dark: home page, cart bar, game selector.
 
 **T2.3 White logo plate**
 - File: `GameButton.js` (~l.32, `backgroundColor: "#FFFFFF"`).
