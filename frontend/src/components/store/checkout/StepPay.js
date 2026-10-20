@@ -98,7 +98,12 @@ function ManualPay({ config, summary, reference, onPaid }) {
               {/* The trailing # of a USSD code is a fragment delimiter if left raw:
                   the browser would drop it and dial an unterminated sequence.
                   Percent-encode the whole sequence so the OS decodes it as typed. */}
-              <a href={`tel:*${encodeURIComponent(code.slice(1))}`} data-testid="ussd-button" className="flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-full font-semibold text-white transition-opacity hover:opacity-90" style={{ background: provider === "mvola" ? "var(--mvola)" : "var(--orange)" }}>
+              {/* Texte ENCRE sur la couleur de marque inchangee : 5,9:1 sur le vert
+                  MVola, 7,2:1 sur l'orange (le blanc etait a 3,2:1 et 2,6:1).
+                  L'icone suit currentColor. L'anneau de focus est encre : le
+                  neon de l'anneau global ne se verrait ni sur le vert ni sur
+                  l'orange (2,7:1 et 2,2:1). */}
+              <a href={`tel:*${encodeURIComponent(code.slice(1))}`} data-testid="ussd-button" className="flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-full font-semibold text-ink transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-ink" style={{ background: provider === "mvola" ? "var(--mvola)" : "var(--orange)" }}>
                 <Smartphone className="h-4 w-4 shrink-0" aria-hidden="true" />{t("checkout.ussd")}
               </a>
             </div>
