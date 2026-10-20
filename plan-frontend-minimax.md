@@ -20,13 +20,18 @@ Merge only after manual validation on a real phone.
 
 | Task | Status | Commit | Notes |
 |---|---|---|---|
-| T1.1 Mobile cart bar | **done** | `450af04` + `572bb11` | CTA coverage 89% → 0% (measured). Follow-up commit fixed z-index, nav-less routes, product page and the virtual keyboard |
+| T1.1 Mobile cart bar | **done** | `450af04` + `572bb11` | CTA coverage 89% → 0% (measured across the full button width). Follow-up commit fixed z-index, nav-less routes, product page and the virtual keyboard |
 | T1.2 Step counter "Étape 4 / 3" | **done** | `2dfd7a6` | 4 named steps, total derived from `screens.length`, vertical layout. Walked 1/4 → 4/4 in FR and EN |
-| T1.3 USSD instructions | todo | | inventory done, awaiting approval — see note below |
+| T1.3 USSD instructions | **done** | `0131ea6` | Code, amount and merchant number are all rendered. Verified in the 4 combinations FR/EN × MVola/Orange at 390px |
 | T1.4 Payment status | todo | | |
 | T1.5 Build without backend URL | todo | | |
 | T1.6 Mémoiser le contrat d'identité | todo | | added 2026-10-20, own commit, after T1.5 |
 | T2 → T5 | todo | | |
+
+**T1.1 validation criterion (revised 2026-10-20):** measure the **coverage of the "Commander" button across its
+whole width** (walk the button's x-axis and check that every point hits the button), **not** `elementFromPoint` at
+the centre. On the broken layout the centre happened to fall in a 13 px gap between the nav glass and the FAB, so a
+centre-point check would have passed a 89 %-covered button.
 
 **T1.3 inventory (2026-10-20)** — everything needed is already available, nothing is missing:
 
@@ -161,7 +166,7 @@ Goal: zero contrast failures, in light and dark.
 
 **T3.1 Accessible names** — `Header.js` (~l.94): the account link has no name; add `aria-label` via `t()`. Sweep every `size="icon"` button.
 
-**T3.2 Chat button keyboard-operable** — `FloatingChat.js` (~l.29-43): add `onClick` (the keyboard does not fire `pointerup`), keep the drag. `aria-label` via `t()`.
+**T3.2 Chat button keyboard-operable** — **REMOVED (2026-10-20).** `components/chat/FloatingChat.js` is not imported anywhere: the floating chat button does not exist in the running app. The task is moot until the component is wired up. The dead code is scheduled for removal in Phase 5 (T5.7).
 
 **T3.3 Focus in dialogs** — `GameSelector.js` (~l.41-54), `AdminBottomNav.js` (~l.90-101), `FloatingChat.js` (~l.53). Use the Radix `Dialog` already present (focus trap, initial focus, focus restore) instead of the hand-rolled `role="dialog"`.
 
@@ -173,7 +178,7 @@ Goal: zero contrast failures, in light and dark.
 
 ### Phase 4 — Content and states (1–2 days)
 
-**T4.1 Missing translations** — `ProductCard.js` (~l.27-29, 58-59, 63, 110, 113, 116): "Prime+", "Évolutif", "UC", "mois", "Populaire", "Elite Pack", "Abonnement", "Indisponible", "Retirer du panier", "au panier". Then the 4 chat files (`Chat.js`, `ChatWorkspace.js`, `ChatThread.js`, `FloatingChat.js`, ~28 strings). FR and EN for every key.
+**T4.1 Missing translations** — `ProductCard.js` (~l.27-29, 58-59, 63, 110, 113, 116): "Prime+", "Évolutif", "UC", "mois", "Populaire", "Elite Pack", "Abonnement", "Indisponible", "Retirer du panier", "au panier". FR and EN for every key. **The chat files are out of scope for this task** (`Chat.js`, `ChatWorkspace.js`, `ChatThread.js`, ~28 strings) — the 4 chat files are still hardcoded French, but the floating chat they belong to is not mounted (see T5.7); revisit them only if the chat is actually wired into the app.
 
 **T4.2 Catalogue duplicate** — `Catalog.js` (~l.183, 191, 194): "Les plus choisis" and "Packs UC" show the same 3 cards. Apply the `popularIds` dedupe that is already computed.
 
@@ -194,6 +199,8 @@ Goal: zero contrast failures, in light and dark.
 **T5.5 Borders** — the brutalist identity must NOT go everywhere. 2 px ink border only on actionable elements: product cards, primary buttons, one or two key panels. Other surfaces keep thin but **visible** rules (≥ 3:1). Replace the `border-foreground` remap (~15% opacity) with an explicit `--rule` token.
 
 **T5.6 Hardcoded colours** — the 71 `text-[#0A0A0A]` → `text-primary-foreground`. Unify the 5 dark greys. Align the theme colour between `ThemeToggle.js` (~l.13) and `public/index.html` (~l.14).
+
+**T5.7 Delete the confirmed dead chat components** — `components/chat/FloatingChat.js` and `components/chat/ChatLink.js`. **Confirmed dead (2026-10-20):** each is referenced only by its own definition, there is no `import()` and no `React.lazy` anywhere in `src/`, the `/chat` route renders `pages/Chat.js` → `ChatWorkspace` and `/admin/messages` → `pages/admin/AdminChat.js` → `ChatWorkspace`, and the built bundle contains 0 occurrences of their strings (CRA tree-shook them out). **Do not delete them before this task is picked up** — until then they stay untouched.
 
 ---
 
