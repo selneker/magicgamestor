@@ -114,6 +114,14 @@ filtres CSS (`grayscale` de la carte « Indisponible »), l'**opacité** d'un é
 `disabled:opacity-50` est mesuré avec sa couleur pleine), le texte multi-lignes, les largeurs autres que
 390/1440 px, le thème « système », et les pages hors de la liste `PAGES`.
 
+> **Les pages admin ne sont pas auditées.** `PAGES` ne contient que les pages client ; `/admin` et ses
+> sous-pages (`/admin/products`, `/admin/orders`, `/admin/fazercards`…) **ne sont pas mesurées** — ni
+> leur contraste, ni celui des composants admin (`text-rose-600`, `text-emerald-600`, `hover:text-rose-600`,
+> qui sortent bruts du remappage, cf. T5.4). Le tableau de bord admin a notamment 5 tuiles de stats
+> colorées (`text-primary`, `text-amber-600`, `text-emerald-600`, `text-violet-600`) qui ne sont pas
+> couvertes. **À traiter dans une tâche dédiée** (ajouter les pages admin à `PAGES` et corriger les
+> familles de couleurs qui fuient) — pas dans T2.3.
+
 **Couverture corrigée** : l'étape 1 du checkout est désormais mesurée dans ses deux états —
 `checkout-1-verification-initiale` (champ vide, bouton « Vérifier l'ID » désactivé) et
 `checkout-1-verification` (après vérification). L'ancien script cliquait « Continuer » dans les deux cas :
