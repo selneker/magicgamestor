@@ -30,7 +30,7 @@ Merge only after manual validation on a real phone.
 | T2.1 Texte fixe sur les surfaces néon | **fait** | `d5e7e78` | 72 échecs de carte produit ramenés à **0** sur les 4 combinaisons. Audit : 101 → 30 |
 | T2.4 Script d'audit de contraste | **fait** | `7bc393a` + `68416e0` + `7da61e1` | baseline re-mesurée : **101 échecs** ; exclusions et limites listées en tête de script |
 | T2.2 Surfaces d'encre et barre panier | **fait** | `aa831e9` | 16 échecs + les 2 de `/suivi` ramenés à **0**. Audit : 30 → 14. Inventaire complet dans le plan |
-| T2.3 Plaque blanche du logo | todo | | `GameButton.js`, `backgroundColor: "#FFFFFF"` |
+| T2.3 Plaque blanche du logo | **fait** | `694ae49` | disque néon + bord encre pour le bouton de jeu ; plus aucun blanc en dur dans `GameButton.js` |
 | T2.5 Bouton désactivé « Vérifier l'ID » | todo | | à faire après T2.3, commit séparé |
 | T2.6 Bouton « Payer via USSD » | todo | | blanc sur vert MVola (3,19:1) et sur orange (2,63:1) — 8 échecs |
 | T2.7 Liens destructifs en sombre | todo | | « Déconnexion » 3,06:1, « Supprimer mon compte » 2,73:1 |
@@ -505,9 +505,12 @@ Goal: zero contrast failures, in light and dark.
 - Implementation: the ink comes from the Tailwind token `ink` (`bg-ink`, no duplicated variable); the fixed cream is the value already in the file (`48 20% 94%`) promoted to the token `--cream` (`--background: var(--cream)`), reused by `.panel-black`, `.eyebrow-invert` and `.panel-points`. The `text-background/xx` inside those surfaces become `text-[color:hsl(var(--cream)/.x)]`. The **remap of `.text-primary` stays** (removed in T5.4).
 - Validate: "JEUX DISPONIBLES", "COMMENT ÇA MARCHE", "Ouvrir le chat" and the "02" card stay black in dark mode with readable text; the cart bar total (« 2 500 Ar ») is readable in both themes. **16 failures + the 2 of `/suivi` → 0**, no new failure anywhere (audit 30 → 14). Captures 390 px and 1440 px, light and dark: home page, cart bar, game selector.
 
-**T2.3 White logo plate**
-- File: `GameButton.js` (~l.32, `backgroundColor: "#FFFFFF"`).
-- Do: theme-dependent background via a token — no white box on the black nav in dark mode.
+**T2.3 White logo plate** — **DONE (`694ae49`, 2026-10-20)**
+- File: `GameButton.js` only.
+- Problem: the disc's background was a hardcoded `#FFFFFF`, animated by framer-motion (`animate={{ backgroundColor: "#FFFFFF" }}`) — a raw white disc on the black nav, in **both** themes (the nav slab is dark in both).
+- There is **no logo file** in this component: the glyph is the lucide `Gamepad2` vector (`fill="none" stroke="currentColor"`, transparent), and the real game logos (API images, `GameLogo` in `Home.js`) sit on a **neon** disc (`bg-primary`) — never on white.
+- Do: the disc becomes the brand **neon** with an **ink** border (like the nav's active pill), the glyph stays ink, and **no hardcoded colour remains in the file** (the framer-motion background animation is removed; the soft shadow becomes theme-relative and is dropped in dark mode, where a dark shadow on the dark nav was invisible anyway).
+- Validate: 390 px, light and dark, cart bar visible. Touch target **60 × 60** kept, translated `aria-label` (« Jeux – PUBG Mobile ») kept, **no overlap** with the cart bar (12 px of clearance) nor with the nav, ink glyph on neon = **16,7:1**, and the nav's active neon pill is **191 px** away — the two neons cannot be confused. `yarn build`, `yarn test:ci` green, contrast audit unchanged at **14 failures**.
 
 **T2.4 Automated contrast audit** — **DONE (`7bc393a`, `68416e0`, `7da61e1`)**
 - New file: `frontend/scripts/audit-contrast.mjs` (`playwright-core` devDependency, Chromium via `CHROMIUM_PATH`).
