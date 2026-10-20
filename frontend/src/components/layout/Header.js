@@ -1,6 +1,6 @@
 import { Link, NavLink } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { ShoppingBag, Sparkles, UserRound } from "lucide-react";
+import { Loader2, RefreshCw, ShoppingBag, Sparkles, UserRound } from "lucide-react";
 import { api } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
@@ -65,7 +65,7 @@ function LoyaltyChip() {
 
 export function Header() {
   const { t } = useLang();
-  const { user, isAdmin } = useAuth();
+  const { user, loading, offline, refresh, isAdmin } = useAuth();
   const { count, setOpen } = useCart();
   const link = ({ isActive }) => `relative whitespace-nowrap text-[11px] font-medium uppercase tracking-[0.08em] transition-colors ${isActive ? "text-foreground after:absolute after:-bottom-1.5 after:left-0 after:h-[3px] after:w-full after:rounded-full after:bg-primary" : "text-muted-foreground hover:text-foreground"}`;
 
@@ -89,7 +89,15 @@ export function Header() {
             <ShoppingBag className="h-5 w-5" strokeWidth={1.75} />
             {count > 0 && <span data-testid="cart-count" className="absolute right-0 top-0.5 flex h-4 min-w-4 items-center justify-center bg-primary px-1 text-[10px] font-black text-[#0A0A0A]">{count}</span>}
           </Button>
-          {user ? (
+          {loading ? (
+            <Button variant="ghost" size="icon" className="rounded-none" disabled data-testid="auth-loading-icon" aria-label={t("auth.loading")}>
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" strokeWidth={1.75} />
+            </Button>
+          ) : offline ? (
+            <Button variant="ghost" size="icon" onClick={refresh} className="rounded-none" data-testid="auth-offline-button" aria-label={t("auth.retry")} title={t("auth.wakeFailed")}>
+              <RefreshCw className="h-5 w-5 text-muted-foreground" strokeWidth={1.75} />
+            </Button>
+          ) : user ? (
             <>
               <Button asChild variant="ghost" size="icon" className="rounded-none" data-testid="account-button"><Link to="/compte"><UserRound className="h-5 w-5" strokeWidth={1.75} /></Link></Button>
             </>
@@ -100,6 +108,14 @@ export function Header() {
           )}
         </div>
       </div>
+      {offline && !loading && (
+        <div role="status" className="border-t border-amber-200 bg-amber-50 px-3 py-1.5 text-center text-[11px] font-medium leading-snug text-amber-950" data-testid="auth-offline-banner">
+          {t("auth.wakeFailed")}{" "}
+          <button type="button" onClick={refresh} className="font-semibold underline underline-offset-2" data-testid="auth-offline-retry">
+            {t("auth.retry")}
+          </button>
+        </div>
+      )}
     </header>
   );
 }

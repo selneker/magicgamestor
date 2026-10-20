@@ -15,8 +15,10 @@ from pydantic import BaseModel, EmailStr, Field
 from core import ratelimit
 from core.audit import audit
 from core.db import db
+from core.origins import oauth_state_matches, require_trusted_origin
 from core.security import (ADMIN_ROLES, PUBLIC_USER_FIELDS, JWT_ALGORITHM, clear_auth_cookies, cookie_options, create_access_token,
-                           get_current_user, hash_password, new_user_id, set_auth_cookies, verify_password, ACCESS_TTL)
+                           get_current_user, hash_password, new_user_id, refresh_remember, refresh_session_valid,
+                           revoke_refresh_session, set_auth_cookies, verify_password, ACCESS_TTL)
 from services import mailer
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -37,6 +39,7 @@ class RegisterIn(BaseModel):
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
+    remember: bool = True  # « Rester connecté » : cookie persistant 30 jours (décoché = cookie de session)
 
 
 class PubgCardIn(BaseModel):
@@ -95,10 +98,10 @@ async def _public_user(query: dict) -> dict:
     return _public_dict(await db.users.find_one(query, PUBLIC_USER_FIELDS))
 
 
-def _auth_response(response: Response, user: dict) -> dict:
+async def _auth_response(response: Response, user: dict, remember: bool = True) -> dict:
     version = int(user.get("auth_version", 0))
-    set_auth_cookies(response, user["user_id"], version)
-    return {"user": _public_dict(user), "access_token": create_access_token(user["user_id"], version)}
+    tokens = await set_auth_cookies(response, user["user_id"], version, remember=remember)
+    return {"user": _public_dict(user), "access_token": tokens["access_token"]}
 
 
 async def _check_lock(identifier: str):
@@ -143,7 +146,7 @@ async def send_verification_email(user: dict):
 
 
 # ---------- Email / password ----------
-@router.post("/register")
+@router.post("/register", dependencies=[Depends(require_trusted_origin)])
 async def register(body: RegisterIn, request: Request, response: Response, background: BackgroundTasks):
     ratelimit.check(f"register:ip:{ratelimit.client_ip(request)}", ratelimit.setting("REGISTER_PER_HOUR_PER_IP", 10), 3600)
     email = body.email.lower()
@@ -157,10 +160,10 @@ async def register(body: RegisterIn, request: Request, response: Response, backg
     }
     await db.users.insert_one(user)
     background.add_task(send_verification_email, user)
-    return _auth_response(response, user)
+    return await _auth_response(response, user)
 
 
-@router.post("/login")
+@router.post("/login", dependencies=[Depends(require_trusted_origin)])
 async def login(body: LoginIn, request: Request, response: Response):
     email = body.email.lower()
     ratelimit.check(f"login:ip:{ratelimit.client_ip(request)}", ratelimit.setting("LOGIN_PER_10MIN_PER_IP", 30), 600)
@@ -172,10 +175,10 @@ async def login(body: LoginIn, request: Request, response: Response):
     if user.get("blocked"):
         raise HTTPException(status_code=403, detail="Ce compte est bloqué. Contactez le support.")
     await db.login_attempts.delete_one({"identifier": email})
-    return _auth_response(response, user)
+    return await _auth_response(response, user, body.remember)
 
 
-@router.post("/verify-email")
+@router.post("/verify-email", dependencies=[Depends(require_trusted_origin)])
 async def verify_email(body: TokenIn):
     doc = await consume_token(body.token, "verify_email")
     await db.users.update_one({"user_id": doc["user_id"]}, {"$set": {"email_verified": True, "email_verified_at": _now().isoformat()}})
@@ -183,7 +186,7 @@ async def verify_email(body: TokenIn):
     return {"ok": True}
 
 
-@router.post("/resend-verification")
+@router.post("/resend-verification", dependencies=[Depends(require_trusted_origin)])
 async def resend_verification(request: Request, background: BackgroundTasks, user=Depends(get_current_user)):
     if user.get("email_verified"):
         return {"ok": True, "already_verified": True}
@@ -194,7 +197,7 @@ async def resend_verification(request: Request, background: BackgroundTasks, use
     return {"ok": True}
 
 
-@router.post("/forgot-password")
+@router.post("/forgot-password", dependencies=[Depends(require_trusted_origin)])
 async def forgot_password(body: ForgotIn, request: Request, background: BackgroundTasks):
     ratelimit.check(f"forgot:ip:{ratelimit.client_ip(request)}", ratelimit.setting("AUTH_EMAILS_PER_HOUR_PER_IP", 10), 3600)
     email = body.email.lower()
@@ -219,7 +222,7 @@ async def _rotate_credentials(user: dict, new_password: str, actor: str):
     await mailer.send_password_changed(user["email"], user.get("name") or "")
 
 
-@router.post("/reset-password")
+@router.post("/reset-password", dependencies=[Depends(require_trusted_origin)])
 async def reset_password(body: ResetIn, request: Request):
     ratelimit.check(f"reset:ip:{ratelimit.client_ip(request)}", ratelimit.setting("RESET_PER_HOUR_PER_IP", 10), 3600)
     doc = await consume_token(body.token, "reset_password")
@@ -230,15 +233,16 @@ async def reset_password(body: ResetIn, request: Request):
     return {"ok": True}
 
 
-@router.post("/change-password")
-async def change_password(body: ChangePasswordIn, response: Response, user=Depends(get_current_user)):
+@router.post("/change-password", dependencies=[Depends(require_trusted_origin)])
+async def change_password(body: ChangePasswordIn, request: Request, response: Response, user=Depends(get_current_user)):
+    remember = refresh_remember(request)
     full = await db.users.find_one({"user_id": user["user_id"]})
     if full.get("password_hash"):
         if not body.current_password or not verify_password(body.current_password, full["password_hash"]):
             raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect.")
     await _rotate_credentials(full, body.new_password, user["user_id"])
     updated = await db.users.find_one({"user_id": user["user_id"]})
-    return _auth_response(response, updated)
+    return await _auth_response(response, updated, remember=remember)
 
 
 # ---------- Google OAuth 2.0 / OIDC owned by Magic Game Store ----------
@@ -248,6 +252,13 @@ def google_enabled() -> bool:
 
 def _safe_return_to(value: str | None) -> str:
     return value if value and re.fullmatch(r"/[A-Za-z0-9_\-/?=&%.]*", value) and not value.startswith("//") else "/compte"
+
+
+def _clear_oauth_state(response: Response):
+    common = cookie_options()
+    common["path"] = "/api/auth/google"
+    common.pop("httponly", None)
+    response.delete_cookie("oauth_state", **common)
 
 
 @router.get("/google/config")
@@ -266,7 +277,13 @@ async def google_start(request: Request, return_to: str | None = None):
         "response_type": "code", "scope": "openid email profile", "state": state, "nonce": nonce,
         "access_type": "online", "prompt": "select_account",
     }
-    return RedirectResponse(f"{GOOGLE_AUTH_URL}?{urlencode(params)}", status_code=302)
+    # State lié à CE navigateur : sans ce cookie, un callback forgé ne peut pas connecter
+    # la victime à un compte contrôlé par un attaquant (login CSRF OAuth).
+    response = RedirectResponse(f"{GOOGLE_AUTH_URL}?{urlencode(params)}", status_code=302)
+    common = cookie_options()
+    common["path"] = "/api/auth/google"
+    response.set_cookie("oauth_state", state, max_age=600, **common)
+    return response
 
 
 def _decode_id_token(id_token: str, nonce: str) -> dict:
@@ -283,7 +300,10 @@ def _decode_id_token(id_token: str, nonce: str) -> dict:
 @router.get("/google/callback")
 async def google_callback(request: Request, code: str | None = None, state: str | None = None, error: str | None = None):
     failure = RedirectResponse(f"{_frontend()}/connexion?error=google", status_code=302)
-    if error or not code or not state:
+    _clear_oauth_state(failure)
+    # Vérifier le cookie AVANT de consommer le state : un state volé/forgé sans le cookie
+    # du navigateur ne doit ni être consommé ni déclencher d'échange chez Google.
+    if error or not code or not state or not oauth_state_matches(request.cookies.get("oauth_state"), state):
         return failure
     stored = await db.oauth_states.find_one_and_delete({"state": state})
     if not stored:
@@ -314,13 +334,14 @@ async def google_callback(request: Request, code: str | None = None, state: str 
                 "created_at": _now().isoformat()}
         await db.users.insert_one(user)
     response = RedirectResponse(f"{_frontend()}{stored['return_to']}", status_code=302)
-    set_auth_cookies(response, user["user_id"], int(user.get("auth_version", 0)))
+    _clear_oauth_state(response)
+    await set_auth_cookies(response, user["user_id"], int(user.get("auth_version", 0)))
     await audit("auth.google_login", user["user_id"], user["user_id"])
     return response
 
 
 # ---------- Session ----------
-@router.post("/refresh")
+@router.post("/refresh", dependencies=[Depends(require_trusted_origin)])
 async def refresh(request: Request, response: Response):
     token = request.cookies.get("refresh_token")
     if not token:
@@ -334,8 +355,13 @@ async def refresh(request: Request, response: Response):
     user = await db.users.find_one({"user_id": payload["sub"]}, {"auth_version": 1, "deleted_at": 1})
     if not user or user.get("deleted_at") or int(payload.get("v", 0)) != int(user.get("auth_version", 0)):
         raise HTTPException(status_code=401, detail="Session expired")
-    access = create_access_token(payload["sub"], int(user.get("auth_version", 0)))
-    response.set_cookie("access_token", access, max_age=ACCESS_TTL, **cookie_options())
+    # Registre de sessions : un refresh token révoqué (logout) ne peut plus produire d'access token.
+    if not await refresh_session_valid(payload["sub"], payload.get("jti")):
+        raise HTTPException(status_code=401, detail="Session revoked")
+    remember = bool(payload.get("remember", True))
+    access = create_access_token(payload["sub"], int(user.get("auth_version", 0)), sid=payload.get("jti"))
+    # Le choix « Rester connecté » est conservé : décoché = cookie de session, même après refresh.
+    response.set_cookie("access_token", access, max_age=ACCESS_TTL if remember else None, **cookie_options())
     return {"access_token": access}
 
 
@@ -344,7 +370,7 @@ async def me(user=Depends(get_current_user)):
     return user
 
 
-@router.patch("/me")
+@router.patch("/me", dependencies=[Depends(require_trusted_origin)])
 async def update_me(body: ProfileIn, user=Depends(get_current_user)):
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if "saved_pubg_ids" in updates:
@@ -356,17 +382,39 @@ async def update_me(body: ProfileIn, user=Depends(get_current_user)):
     return await _public_user({"user_id": user["user_id"]})
 
 
-@router.post("/logout")
+@router.post("/logout", dependencies=[Depends(require_trusted_origin)])
 async def logout(request: Request, response: Response):
     token = request.cookies.get("session_token")
     if token:
         await db.user_sessions.delete_one({"session_token": token})
+    # Révocation côté serveur : la session de cet appareil est supprimée. L'access token
+    # porte le même `sid` que le refresh (jti) ; il est donc invalide dès la requête suivante.
+    refresh_token = request.cookies.get("refresh_token")
+    if refresh_token:
+        try:
+            payload = jwt.decode(refresh_token, os.environ["JWT_SECRET"], algorithms=[JWT_ALGORITHM])
+            if payload.get("type") == "refresh":
+                await revoke_refresh_session(payload.get("jti"))
+        except jwt.InvalidTokenError:
+            pass
+    access_token = request.cookies.get("access_token")
+    if not access_token:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            access_token = auth[7:]
+    if access_token:
+        try:
+            payload = jwt.decode(access_token, os.environ["JWT_SECRET"], algorithms=[JWT_ALGORITHM])
+            if payload.get("type") == "access":
+                await revoke_refresh_session(payload.get("sid"))
+        except jwt.InvalidTokenError:
+            pass
     clear_auth_cookies(response)
     return {"ok": True}
 
 
 # ---------- Account deletion (anonymisation, transactional history preserved) ----------
-@router.post("/me/delete")
+@router.post("/me/delete", dependencies=[Depends(require_trusted_origin)])
 async def delete_account(body: DeleteIn, response: Response, user=Depends(get_current_user)):
     if user.get("role") in ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Un compte administrateur ne peut pas être supprimé ici.")
