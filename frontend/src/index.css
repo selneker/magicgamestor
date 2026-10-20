@@ -59,7 +59,12 @@
         --muted-foreground: 60 4% 68%;
         --accent: 72 99% 50%;
         --accent-foreground: 0 0% 4%;
-        --destructive: 6 70% 50%;
+        --destructive: 6 90% 70%;          /* #F77B6E */
+        /* Le rouge est utilise comme fond (bouton, pastille, icone) ET comme
+           couleur de texte. En sombre il faut donc un rouge clair, avec un
+           texte encre pose dessus : 5,4:1 comme texte sur le fond de page,
+           4,8:1 sur une carte, 7,6:1 comme fond. */
+        --destructive-foreground: 0 0% 4%;
         --border: 48 12% 82%;
         --input: 48 12% 82%;
         --ring: 72 99% 50%;
