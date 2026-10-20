@@ -114,7 +114,7 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         <div className="rounded-[18px] border-2 border-foreground bg-primary/15 p-4" data-testid="identity-verify-valid">
           <p className="flex items-center gap-2 font-display text-lg font-bold"><CheckCircle2 className="h-5 w-5 text-emerald-600" />{t("checkout.verified")}</p>
           <p className="mt-1.5 pl-7 text-base font-bold" data-testid="identity-verify-player-name">Pseudo: {state.name || "—"}</p>
-          <p className="mt-2 text-xs text-muted-foreground" data-testid="identity-verify-confirm">{t("checkout.verifyConfirm")}</p>
+          <p className="mt-2 text-xs text-foreground/75" data-testid="identity-verify-confirm">{t("checkout.verifyConfirm")}</p>
         </div>
       )}
       {state.status === "invalid" && (
