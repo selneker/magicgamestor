@@ -25,7 +25,7 @@ Merge only after manual validation on a real phone.
 | T1.3 USSD instructions | **done** | `0131ea6` + `651dac8` | Code, amount and merchant number are all rendered. Verified in the 4 combinations FR/EN × MVola/Orange at 390px. Follow-up fixed the `tel:` encoding and the copy message |
 | T1.4 Payment status | **done** | `8522e20` | Icon disc via opacity overlay (not `color-mix()`), locale-aware amount, single `role="status"` region that never re-announces on poll |
 | T1.5 Build without backend URL | **done** | `8d70c0c` + `48a4e3d` + `6a87334` | Build fails without the var (production only); Error Boundary FR/EN; `Home.js` survives a non-array payload |
-| T1.6 Mémoiser le contrat d'identité | todo | | added 2026-10-20, own commit, right after T1.5 |
+| T1.6 Mémoiser le contrat d'identité | **done** | `f50db6c` | Without the `useMemo`, a game with no `identity_fields` left the customer **blocked at checkout step 1**. Before/after measured on the same build |
 | T1.7 Garde-fou global sur les réponses `/api` | todo | | described below, not implemented |
 | T2 → T5 | todo | | |
 
@@ -155,13 +155,20 @@ are never imported anywhere — the floating chat FAB does not exist in the runn
 `ChatThread` are used (by `/chat` and the admin chat page). The `panelOpen` guard added to the cart bar is
 correct but currently has nothing to hide.
 
-**Latent fragility found while driving the checkout:** `Checkout.js` does
+**Latent fragility found while driving the checkout (fixed in T1.6):** `Checkout.js` did
 `const identitySpec = game?.identity_fields || []` — when a game has no `identity_fields` this creates a
 **new array on every render**, which makes `handleVerified` a new function, which re-triggers
 `PubgIdVerify`'s reset effect (`useEffect(..., [pubgId, onVerified])`) and wipes the verification result.
-Not a live bug today because `GET /api/games` always injects the resolved contract
-(`backend/routers/games.py:27`), but the frontend has no equivalent fallback to the backend's
-`identity_spec()`. Worth a defensive `useMemo` on `identitySpec` if a game without fields ever ships.
+Measured on the same build, with a game that has **no** `identity_fields`:
+
+| | child state "valid" | "Continuer" button | screen reached |
+|---|---|---|---|
+| without the `useMemo` | **wiped** | **absent** | `checkout-screen-1` — **blocked** |
+| with the `useMemo` | kept ("Pseudo: TestPlayer") | present | `checkout-screen-2` |
+
+With `identity_fields` present, both builds pass — which is why the bug stayed latent: the backend always injects the
+resolved contract (`backend/routers/games.py:27`), so only a game *without* fields would trigger it. The frontend has
+no equivalent fallback to the backend's `identity_spec()`, so the reference is now memoised.
 
 ### Reconciliation notes (verified against the current tree)
 
