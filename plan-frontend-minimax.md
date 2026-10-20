@@ -24,9 +24,65 @@ Merge only after manual validation on a real phone.
 | T1.2 Step counter "Étape 4 / 3" | **done** | `2dfd7a6` | 4 named steps, total derived from `screens.length`, vertical layout. Walked 1/4 → 4/4 in FR and EN |
 | T1.3 USSD instructions | **done** | `0131ea6` + `651dac8` | Code, amount and merchant number are all rendered. Verified in the 4 combinations FR/EN × MVola/Orange at 390px. Follow-up fixed the `tel:` encoding and the copy message |
 | T1.4 Payment status | **done** | `8522e20` | Icon disc via opacity overlay (not `color-mix()`), locale-aware amount, single `role="status"` region that never re-announces on poll |
-| T1.5 Build without backend URL | todo | | |
-| T1.6 Mémoiser le contrat d'identité | todo | | added 2026-10-20, own commit, after T1.5 |
+| T1.5 Build without backend URL | **done** | `8d70c0c` + `48a4e3d` + `6a87334` | Build fails without the var (production only); Error Boundary FR/EN; `Home.js` survives a non-array payload |
+| T1.6 Mémoiser le contrat d'identité | todo | | added 2026-10-20, own commit, right after T1.5 |
+| T1.7 Garde-fou global sur les réponses `/api` | todo | | described below, not implemented |
 | T2 → T5 | todo | | |
+
+### T1.5 implementation notes (2026-10-20)
+
+Three commits, as agreed:
+
+1. **`8d70c0c`** — `frontend/scripts/check-backend-url.mjs` + the `prebuild` / `prestart` hooks in `package.json`.
+   - CRA replaces `process.env` with an object literal holding **only the `REACT_APP_*` keys present at build time**
+     (`react-scripts/config/env.js:70-100`). **Absent** → the bundle gets `baseURL: "undefined/api"` → blank page.
+   - **An empty value is legitimate** and is accepted: it produces `baseURL: "/api"`, a *relative* URL, which is the
+     "front and API on the same domain" case. **Only the absence of the variable is a build defect.** The check
+     therefore tests *presence*, not value. `yarn build` → exit 1 · `yarn start` → warning, still starts ·
+     `yarn test` → no hook, never blocked.
+2. **`48a4e3d`** — `frontend/src/components/ErrorBoundary.jsx`, mounted in `src/index.js` **outside every provider**,
+   plus the `error.*` strings in `translations.js`. The boundary resolves the language itself from
+   `localStorage["mgs_lang"]` (FR unless the stored value is exactly `"en"`) instead of using `useLang()`.
+3. **`6a87334`** — `asList(endpoint, payload)` in `pages/Home.js`: a non-array payload becomes `[]` and logs a
+   `console.warn` naming the endpoint. `subs === null` (loading) still yields `undefined` so the skeletons show
+   instead of the "no offers" message.
+
+Verified in the browser on the real defect (HTML payload on `/api/products`): the error screen appears in FR and EN,
+light and dark; **no stack trace on screen**; the error and its stack in the console; the "Recharger" button reloads.
+
+### T1.7 — Global guard on `/api` responses (to study, **not implemented**)
+
+`Home.js` is now guarded, but the same failure class exists elsewhere (see the list below). The proposed approach, for
+a future task:
+
+> An **axios response interceptor** in `src/lib/api.js` that rejects any response on `/api` whose `Content-Type` is
+> not JSON (or whose body is not a JSON array/object when the caller expects a list). The rejection would be a normal
+> `Promise` rejection, so every existing `.catch(() => setX([]))` would already handle it — no per-page change.
+> The interceptor would also log the offending URL.
+
+Open questions to settle before coding it: the interceptor must **not** touch the auth endpoints that legitimately
+answer with 401 (those are already handled by the refresh interceptor), and it must decide between *rejecting* and
+*normalising to `[]`* — rejecting is safer but would turn a partial outage into a full page error, normalising is
+quieter but hides the problem. My inclination: **normalise to `[]` for list endpoints and log loudly**, and keep the
+Error Boundary as the last resort. Needs a decision, and a test for each shape.
+
+### Other unguarded API-array call sites (listed, **not modified** — this is the material for T1.7)
+
+| File:line | Operation | Source |
+|---|---|---|
+| `pages/Catalog.js:116` → `183,185,191,194,195,196` | `setProducts(r.data)` then `visibleProducts.filter(...)` | `/api/products` |
+| `pages/Catalog.js:129` | `products.filter(...)` (favourites) | `/api/products` |
+| `pages/OrderTrack.js:77` → `160,168` | `setHistory(r.data)` then `history.slice().map()`, `o.items.map()` | `/api/orders/me` |
+| `pages/Loyalty.js:97` → `13,16` | `setData(r.data)` then `data.ledger` → `entries.map()` | `/api/loyalty/me` |
+| `pages/Loyalty.js:98,99` → `40,72` | `setRewards(r.data)`, `setTransfers(r.data)` then `.map()` | `/api/loyalty/rewards`, `/transfers` |
+| `pages/Events.js:14` → `18,26,36` | `setEvents(r.data)` then `list.map()` | `/api/events` |
+| `pages/Product.js:28` → `49` | `setProduct(r.data)` then `product.items.map()` | `/api/products/:slug` |
+| `components/chat/ChatThread.js:31` | `data.messages.map(...)` inside a spread | `/api/chat/…` |
+| `pages/admin/AdminOrders.js:33` | `data.products.filter(...)` | admin |
+| `pages/admin/AdminFazercards.js:19,131,242,243,244,391,521` | `.filter(...)` on API payloads | admin |
+| `pages/admin/AdminProducts.js:67,68`, `AdminGames.js:24` | `.filter(...)` on API payloads | admin |
+
+`pages/Catalog.js` is the most exposed: the catalogue is the main storefront page and it has no guard at all.
 
 **T1.4 implementation notes (2026-10-20):**
 - **Icon disc:** an absolutely-positioned overlay with `background: var(--mvola)` and `opacity: 0.12`. `color-mix()`
@@ -197,6 +253,14 @@ Goal: zero contrast failures, in light and dark.
 ### Phase 4 — Content and states (1–2 days)
 
 **T4.1 Missing translations** — `ProductCard.js` (~l.27-29, 58-59, 63, 110, 113, 116): "Prime+", "Évolutif", "UC", "mois", "Populaire", "Elite Pack", "Abonnement", "Indisponible", "Retirer du panier", "au panier". FR and EN for every key. **The chat files are out of scope for this task** (`Chat.js`, `ChatWorkspace.js`, `ChatThread.js`, ~28 strings) — the 4 chat files are still hardcoded French, but the floating chat they belong to is not mounted (see T5.7); revisit them only if the chat is actually wired into the app.
+
+**T4.5 Locale-aware amounts** — `formatAr()` in `src/lib/api.js` is hardcoded `fr-FR`, so every amount in the app is
+"2 500 Ar" even in English. Change it to `formatAr(n, locale = "fr-FR")` and pass the active language at the call
+sites. **Known temporary inconsistency (introduced by T1.4, resolved here):** the payment-status screen
+(`components/store/PaymentStatus.js`) formats its total with `Intl.NumberFormat(lang)` → "2,500 Ar" in EN, while the
+cart and the order summary next to it still show "2 500 Ar" because they go through `formatAr`. The two disagree on the
+same screen until this task is done. `formatAr` was deliberately left untouched during T1.4 because that task's file
+list was `PaymentStatus.js` only.
 
 **T4.2 Catalogue duplicate** — `Catalog.js` (~l.183, 191, 194): "Les plus choisis" and "Packs UC" show the same 3 cards. Apply the `popularIds` dedupe that is already computed.
 
