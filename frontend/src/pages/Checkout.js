@@ -157,7 +157,7 @@ export default function Checkout() {
       <div className="flex items-center gap-3">
         <BackButton onClick={back} testId="checkout-back" />
         <div className="min-w-0">
-          <p className="eyebrow" data-testid="checkout-step-label">{t("checkout.stepOf", { n: step + 1 })}</p>
+          <p className="eyebrow" data-testid="checkout-step-label">{t("checkout.stepOf", { n: step + 1, total: screens.length })}</p>
           <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("checkout.title")}</h1>
           {game && <p className="mt-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground" data-testid="checkout-game">{t("store.gameLabel")} · {game.name}</p>}
         </div>
