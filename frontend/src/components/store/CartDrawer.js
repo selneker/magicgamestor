@@ -93,7 +93,11 @@ export function CartDrawer() {
         <button type="button" className="min-h-11 shrink-0 bg-primary px-4 text-sm font-bold text-[#0A0A0A]" onClick={() => { setOpen(false); navigate("/commande"); }}>{t("cart.checkout")}</button>
       </div>}
       <Sheet open={open} onOpenChange={setOpen}>
-      <SheetContent aria-describedby={undefined} className="flex w-full flex-col pb-safe sm:max-w-md" data-testid="cart-drawer">
+      {/* 28 px sur les deux coins gauches (le tiroir est une feuille laterale
+          droite : les coins droits sont contre l'ecran). `overflow-hidden` rogne
+          le contenu par les coins ; le defilement interne reste sur la liste
+          (`overflow-y-auto`), l'ombre et la croix ne sont pas coupees. */}
+      <SheetContent aria-describedby={undefined} className="flex w-full flex-col overflow-hidden rounded-l-[28px] pb-safe sm:max-w-md" data-testid="cart-drawer">
         <SheetHeader><SheetTitle className="font-display text-xl">{t("cart.title")}</SheetTitle>{cartGame && <p className="eyebrow" data-testid="cart-game">{t("store.gameLabel")} · {cartGame.name}</p>}</SheetHeader>
         {items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center" data-testid="cart-empty">
