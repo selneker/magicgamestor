@@ -62,7 +62,9 @@
     "zod": "3.24.4"
   },
   "scripts": {
+    "prestart": "node scripts/check-backend-url.mjs --warn",
     "start": "craco start",
+    "prebuild": "node scripts/check-backend-url.mjs --strict",
     "build": "craco build",
     "test": "craco test",
     "test:ci": "craco test --watchAll=false"

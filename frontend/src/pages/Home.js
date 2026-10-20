@@ -15,6 +15,15 @@ import { usePageMeta } from "@/lib/catalog";
 
 const rise = (i = 0) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.06 * i, duration: 0.45, ease: "easeOut" } });
 
+// Une charge utile qui n'est pas un tableau (page HTML renvoyee par un proxy,
+// objet d'erreur, ...) ne doit pas faire planter le rendu : on la remplace par
+// un tableau vide et on le signale dans la console avec l'endpoint concerne.
+const asList = (endpoint, payload) => {
+  if (Array.isArray(payload)) return payload;
+  console.warn(`[MagicGameStore] ${endpoint} a renvoye une charge utile non-tableau (${typeof payload}) : liste ignoree.`);
+  return [];
+};
+
 export function GameLogo({ game, className = "h-14 w-14" }) {
   const [broken, setBroken] = useState(false);
   return (
@@ -224,8 +233,11 @@ export default function Home() {
       api.get("/products", { params: { type: "prime,prime_plus" } }),
       api.get("/products", { params: { type: "evo" } }),
     ]).then(([popularResponse, primeResponse, evoResponse]) => {
+      const popular = asList("/products?popular=true", popularResponse.data);
+      const prime = asList("/products?type=prime,prime_plus", primeResponse.data);
+      const evo = asList("/products?type=evo", evoResponse.data);
       const unique = new Map();
-      [...popularResponse.data, ...primeResponse.data, ...evoResponse.data].forEach((product) => unique.set(product.id, product));
+      [...popular, ...prime, ...evo].forEach((product) => unique.set(product.id, product));
       const all = [...unique.values()];
       const selected = [
         ...all.filter((product) => Number(product.uc_amount) > 0).slice(0, 2),
@@ -233,14 +245,20 @@ export default function Home() {
         ...all.filter((product) => product.type === "evo").slice(0, 1),
       ];
       setProducts([...new Map(selected.map((product) => [product.id, product])).values()].slice(0, 4));
-      setSubs(primeResponse.data.slice(0, 8));
+      setSubs(prime.slice(0, 8));
     }).catch(() => { setProducts([]); setSubs([]); });
-    api.get("/events").then((r) => setEvents(r.data.slice(0, 1))).catch(() => {});
+    api.get("/events").then((r) => setEvents(asList("/events", r.data).slice(0, 1))).catch(() => {});
   }, []);
   const shopUrl = games.length === 1 ? `/boutique?game=${games[0].id}` : "/boutique";
   const subsUrl = `${shopUrl}${shopUrl.includes("?") ? "&" : "?"}type=prime,prime_plus`;
   const popularIds = new Set((products || []).map((product) => product.id));
-  const visibleSubs = subs?.filter((product, index, list) => !popularIds.has(product.id) && list.findIndex((item) => item.id === product.id) === index);
+  // `subs === null` = chargement en cours : on garde `undefined` pour que la
+  // section affiche ses skeletons et non le message "aucune offre".
+  const visibleSubs = subs === null
+    ? undefined
+    : Array.isArray(subs)
+      ? subs.filter((product, index, list) => !popularIds.has(product.id) && list.findIndex((item) => item.id === product.id) === index)
+      : [];
 
   return (
     <div className="pb-28">

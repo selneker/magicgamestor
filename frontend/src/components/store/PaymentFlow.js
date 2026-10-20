@@ -17,7 +17,7 @@ export const USSD = {
   mvola: (phone, amount) => `#111*1*2*${phone}*${amount}*1*0#`,
   orange: (phone, amount) => `#144*1*1*${phone}*${phone}*${amount}*1#`,
 };
-const pretty = (p) => p.replace(/(\d{3})(\d{2})(\d{3})(\d{2})/, "$1 $2 $3 $4");
+export const pretty = (p) => p.replace(/(\d{3})(\d{2})(\d{3})(\d{2})/, "$1 $2 $3 $4");
 
 export function paymentFee(config, method, subtotal) {
   if (!method || method === "binance") return 0;
