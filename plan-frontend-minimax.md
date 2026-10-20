@@ -27,33 +27,58 @@ Merge only after manual validation on a real phone.
 | T1.5 Build without backend URL | **done** | `8d70c0c` + `48a4e3d` + `6a87334` | Build fails without the var (production only); Error Boundary FR/EN; `Home.js` survives a non-array payload |
 | T1.6 Mémoiser le contrat d'identité | **done** | `f50db6c` | Without the `useMemo`, a game with no `identity_fields` left the customer **blocked at checkout step 1**. Before/after measured on the same build |
 | T1.7 Garde-fou global sur les réponses `/api` | todo | | described below, not implemented |
-| T2.4 Script d'audit de contraste | à faire | | baseline mesurée : **90 échecs** (voir ci-dessous) |
+| T2.4 Script d'audit de contraste | **fait** | `7bc393a` | baseline mesurée : **106 échecs** (voir ci-dessous) |
+| T2.5 Bouton désactivé « Vérifier l'ID » | todo | | à faire après T2.3, commit séparé |
 | T2 → T5 | todo | | |
 
 ### T2.4 — mesure de départ (2026-10-20, avant toute modification)
 
-Audit automatisé (Chromium) des pages **accueil**, **catalogue** et **checkout**, en **390 px** et **1440 px**, en
-**clair** et **sombre** — 12 combinaisons, page parcourue en entier (chaque élément n'est mesuré que lorsqu'il
-est à l'écran).
+`yarn audit:contrast` (`frontend/scripts/audit-contrast.mjs`) sert le bundle compile, injecte des données
+simulées et mesure le contraste **réellement peint** de chaque texte visible. Pages auditées : accueil,
+catalogue, les 4 étapes du checkout (dont l'écran USSD pour MVola **et** Orange), l'écran de statut de
+paiement, la fiche produit, /compte, /suivi et la fidélité. 390 px et 1440 px, clair et sombre.
 
 | Page | 390 px clair | 390 px sombre | 1440 px clair | 1440 px sombre |
 |---|---|---|---|---|
 | accueil | 2 | 23 | 1 | 22 |
 | catalogue | 1 | 19 | 0 | 18 |
-| checkout | 1 | 1 | 1 | 1 |
-| **total** | **4** | **43** | **2** | **41** |
+| checkout-1-verification | 0 | 0 | 0 | 0 |
+| checkout-2-methode | 0 | 0 | 0 | 0 |
+| checkout-3-ussd-mvola | 1 | 1 | 1 | 1 |
+| checkout-3-ussd-orange | 1 | 1 | 1 | 1 |
+| checkout-4-reference | 0 | 0 | 0 | 0 |
+| statut-paiement | 0 | 0 | 0 | 0 |
+| fiche-produit | 0 | 3 | 0 | 3 |
+| compte | 0 | 2 | 0 | 2 |
+| suivi | 1 | 1 | 0 | 0 |
+| fidelite | 0 | 0 | 0 | 0 |
+| **total** | **6** | **50** | **2** | **48** |
 
-**TOTAL : 90 échecs** (6 en clair, 84 en sombre). Cible : 0.
+**TOTAL : 106 échecs** (8 en clair, 98 en sombre). Cible : 0.
 
-Les deux premières causes, qui couvrent la quasi-totalité des échecs :
+Les causes, par nombre d'occurrences :
 
-| Cause | Occurrences | Exemple | Cause |
+| Cause | Nb | Exemple | Tâche |
 |---|---|---|---|
-| Carte produit : texte crème sur fond néon | 56 | « 660 UC » 1,04:1 | `bg-neo` est un hex fixe, le texte hérite de `text-foreground` qui bascule en crème en mode sombre → **T2.1** |
-| Panneau d'accent : `bg-foreground` bascule en crème en sombre | ~10 | « Jeux disponibles » 1:1 | `.panel-black` n'est pas une surface encre fixe → **T2.2** |
-| Barre panier : `text-primary` remappé en couleur de texte | 4 | « 2 500 Ar » 1:1 (clair) | le remappage de `index.css:209` → **T2.2** |
-| Libellé « Moyens de paiement » dans un panneau encre | 4 | 1:1 | `text-primary` sur `bg-foreground` → **T2.2** |
-| Bouton désactivé « Vérifier l'ID » | 4 | 1,12:1 | texte crème à 50 % d'opacité sur blanc — **exonéré par la WCAG (contrôle désactivé)**, à arbitrer |
+| Carte produit : texte crème sur fond néon | 68 | « 660 UC » **1,04:1** | **T2.1** |
+| Bouton « Payer via USSD » : blanc sur vert MVola | 8 | **3,19:1** | **T2.3** |
+| Panneau d'accent : `bg-foreground` bascule en crème | 6 | « Jeux disponibles » **1:1** | **T2.2** |
+| Barre panier : `text-primary` remappé en couleur de texte | 6 | « 2 500 Ar » **1:1** (clair) | **T2.2** |
+| « Choisissez un pack » : crème sur néon | 6 | **1,07:1** | **T2.1** |
+| « Moyens de paiement » dans un panneau encre | 4 | **1:1** | **T2.2** |
+| Lien destructif en rouge sur fond sombre | 4 | « Déconnexion » **3,06:1**, « Supprimer mon compte » **2,73:1** | à voir |
+| Bouton désactivé « Vérifier l'ID » | 0 * | crème à 50 % d'opacité sur blanc, **1,12:1** | **T2.5** |
+
+\* Le bouton désactivé n'apparaît pas dans la mesure : son état désactivé est rendu avec
+`disabled:opacity-50`, que l'audit ne voit pas comme un texte opaque. **T2.5** le traite séparément, comme
+convenu.
+
+**Trois choses apprises sur la mesure** (à ne pas refaire) :
+- le fond doit être déterminé par **hit-test**, pas par remontée d'ancêtres : le fond peut venir d'un élément
+  positionné en absolu qui n'est pas un ancêtre du texte (pastille néon de la barre de navigation) ;
+- un élément qui peint **lui-même** un fond opaque : ce fond est le bon, sans hit-test ;
+- un texte **masqué par un calque flottant** (barre panier, en-tête sticky) est une occlusion, pas un contraste :
+  il faut l'ignorer, sinon la mesure compte des éléments invisibles.
 
 ### T1.5 implementation notes (2026-10-20)
 
