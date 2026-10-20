@@ -69,7 +69,7 @@ function ManualPay({ config, summary, reference, onPaid }) {
   // announced to screen readers.
   const copyCode = async () => {
     const copied = await copyToClipboard(code);
-    if (copied) toast.success(t("checkout.copied"));
+    if (copied) toast.success(t("checkout.ussdCopied"));
     else toast.error(t("common.error"));
   };
 
@@ -95,7 +95,10 @@ function ManualPay({ config, summary, reference, onPaid }) {
                 className="h-11 rounded-full px-4 text-sm font-bold">
                 <Copy className="h-4 w-4" aria-hidden="true" />{t("checkout.copy")}
               </Button>
-              <a href={`tel:*${code.slice(1)}`} data-testid="ussd-button" className="flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-full font-semibold text-white transition-opacity hover:opacity-90" style={{ background: provider === "mvola" ? "var(--mvola)" : "var(--orange)" }}>
+              {/* The trailing # of a USSD code is a fragment delimiter if left raw:
+                  the browser would drop it and dial an unterminated sequence.
+                  Percent-encode the whole sequence so the OS decodes it as typed. */}
+              <a href={`tel:*${encodeURIComponent(code.slice(1))}`} data-testid="ussd-button" className="flex h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-full font-semibold text-white transition-opacity hover:opacity-90" style={{ background: provider === "mvola" ? "var(--mvola)" : "var(--orange)" }}>
                 <Smartphone className="h-4 w-4 shrink-0" aria-hidden="true" />{t("checkout.ussd")}
               </a>
             </div>
