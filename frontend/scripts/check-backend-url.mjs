@@ -13,8 +13,10 @@
  * domaine". Seule l'ABSENCE de la variable est un defaut de build.
  *
  * Modes :
- *   --strict  echoue (code 1) : utilise par `prebuild`.
- *   --warn    avertit sans bloquer (code 0) : utilise par `prestart`.
+ *   --strict      echoue (code 1) : utilise par `prebuild`.
+ *   --warn        avertit sans bloquer (code 0) : utilise par `prestart`.
+ *   --development liste les fichiers .env de developpement (serveur de dev).
+ *                 Sans ce drapeau, la liste de PRODUCTION est utilisee.
  *
  * Ordre de lecture, aligne sur CRA (react-scripts/config/env.js:26-34) :
  *   1. process.env (l'environnement de build de l'hote prime toujours)
@@ -35,7 +37,15 @@ const FILES = {
   production: [".env.production.local", ".env.local", ".env.production", ".env"],
   development: [".env.development.local", ".env.local", ".env.development", ".env"],
 };
-const mode = process.env.NODE_ENV === "production" ? "production" : "development";
+// Le mode est decide par l'appelant, PAS par process.env.NODE_ENV : yarn lance
+// le pre-hook dans un processus separe, ou NODE_ENV est undefined, et c'est
+// react-scripts qui positionne NODE_ENV dans le SIEN. Deduire le mode de
+// NODE_ENV faisait utiliser la liste de developpement a un build de
+// production : un .env.production etait ignore (build bloque a tort) et un
+// .env.development etait pris en compte alors que CRA l'ignore (le build
+// laissait passer le bundle casse). Production par defaut, --development pour
+// le serveur de dev.
+const mode = process.argv.includes("--development") ? "development" : "production";
 
 /**
  * Cherche la variable dans un fichier .env, avec la semantique de dotenv :
