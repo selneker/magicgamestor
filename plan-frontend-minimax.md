@@ -40,6 +40,7 @@ Merge only after manual validation on a real phone.
 | T2.10 (suite) | **découpé** | | les badges admin → **T2.12** (tâche admin) ; la pastille du chat → **T5.7** |
 | T2.11 Rayon des popups du checkout | **fait** | `2c8822c` + `603f2fd` | dialogue 28 px sur 4 coins, tiroir 28 px sur 2 coins gauches ; le `!` est une rustine pour T5.2 |
 | T2.12 Les pages admin | todo | | hors audit : 5 tuiles colorées, badges MVola/Orange, `text-rose-600`… |
+| T2.13 Corrections de revue | **fait** | `af61cf3` + `d80aa3f` + `b201ebe` + `dd09da6` | offset d'anneau, chemins du script de captures, branche morte, indice a 80 % |
 | T2 → T5 | todo | | |
 
 ### T2.4 — mesure de départ (2026-10-20, avant toute modification)
@@ -629,8 +630,17 @@ Goal: zero contrast failures, in light and dark.
   block, order-independent). **The tests are discriminating: on the previous implementation 6 of the 8 fail**
   (the 2 that pass are the unchanged « active » cases). `yarn build`, `yarn test:ci` (7 suites / 31 tests)
   green, contrast audit unchanged at **14 failures**.
-- Note: the « ID invalide » message was already unreachable (the native `disabled` blocked the click); the
-  behaviour is unchanged.
+- **Suggestion de la revue (2026-10-20) :** le survol de la variante **non-checkout** (page fidélité) a
+  changé — l'ancien `hover:bg-slate-700` (brut, non remappé, donc un bleu-gris sur un bouton noir) est
+  devenu `hover:opacity-90`, comme la variante checkout. Le résultat est plus cohérent, mais c'est un
+  changement d'état de survol non annoncé : à acter ici ou à revenir à `hover:bg-slate-700`.
+- Note (corrigée le 2026-10-20 après la revue) : le message « ID invalide » **reste affiché** quand l'API
+  répond `{ valid: false }` (identifiant inconnu) — `PubgIdVerify.js:38` et `IdentityFieldsVerify.js:66`.
+  Ce qui a changé, c'est le contrôle de format côté client : il est devenu **inatteignable** (la garde
+  `inert` couvre la même condition), donc un identifiant mal saisi ne déclenche plus de requête **et**
+  n'affiche plus de message. Le chemin auto-déclenché (effet `autoTrigger`) pouvait, lui, afficher le
+  message avant la garde ; il ne le peut plus. La ligne morte a été supprimée en **T2.13** ; l'affichage est
+  conservé. Le texte d'aide « 9 à 13 chiffres » est prévu en Phase 4 (**T4.6**).
 - Validate: the button is `aria-disabled`, the **click** and the **Enter key** trigger nothing (no request, no
   state change), and the disabled state is at ≥ 3:1.
 
@@ -740,6 +750,26 @@ quand les rayons seront unifiés — d'ici là, `ui/dialog.jsx` et `ui/sheet.jsx
 Captures dans `audit-shots/` : `t211-avant-*` et `t211-apres-*` (1 article, comparaison directe) +
 `t211-apres-12articles-*` (défilement interne).
 
+**T2.13 — Corrections de revue** — **DONE (`af61cf3`, `d80aa3f`, `b201ebe`, `dd09da6`, 2026-10-20)**
+
+Revue de la branche `phase-2-sombre` (verdict : *Request Changes*, aucun bloquant). Un commit par point :
+
+1. **`af61cf3`** — `components/layout/GameSelector.js:70` : `ring-offset-[hsl(var(--foreground))]` →
+   `ring-offset-ink`. L'offset suivait l'ancien fond `bg-foreground` du panneau ; T2.2 l'a rendu noir
+   (`bg-ink`), donc l'offset devenait crème en sombre (halo crème autour de l'anneau néon sur fond noir).
+   Mesure (box-shadow calculé) : offset `rgb(17,17,17)` en clair **et** en sombre, identique au fond du
+   panneau ; avant : `rgb(10,10,10)` en clair et `rgb(243,242,237)` en sombre.
+2. **`d80aa3f`** — `frontend/scripts/shots-phase2.mjs` : les 3 chemins absolus personnels sont remplacés
+   par `process.env.CHROMIUM_PATH` (message d'erreur explicite + sortie 1 si absent ou invalide, comme
+   `audit-contrast.mjs`) et des chemins relatifs au script (`fileURLToPath(new URL(...))`).
+3. **`b201ebe`** — `PubgIdVerify.js` / `IdentityFieldsVerify.js` : suppression de la **seule** ligne morte
+   (le contrôle de format côté client, rendu inatteignable par la garde `inert`). L'**affichage** du message
+   « ID invalide » est **conservé** : le statut est toujours posé par la réponse de l'API (`valid: false`,
+   identifiant inconnu) — voir la note corrigée de T2.5.
+4. **`dd09da6`** — l'indice « Vérifiez que cet ID… » passe de `text-foreground/75` à
+   `text-foreground/80` : 10,94:1 en clair et **5,46:1** en sombre (au lieu de 9,08 et 5,03) — la marge
+   sur le seuil de 4,5 passe de 0,24 à 0,96.
+
 **T2.12 — Les pages admin** (hors audit)
 - `PAGES` ne contient que les pages client : `/admin` et ses sous-pages ne sont **ni mesurées ni corrigées**.
 - Éléments relevés : les 5 tuiles de stats colorées du tableau de bord (`text-primary`, `text-amber-600`,
@@ -792,11 +822,33 @@ Captures dans `audit-shots/` : `t211-avant-*` et `t211-apres-*` (1 article, comp
 
 **T3.5 Page skeleton** — skip link "Aller au contenu", `<main id="main">`, focus moved to `<main>` on route change.
 
+**T3.7 Focus ring lisible sur les deux surfaces** (ajoutée le 2026-10-20, issue de la revue)
+- Problem: `index.css:94` pose `outline: 2px solid hsl(var(--primary))` pour **tous** les éléments
+  `:focus-visible`. Le néon sur une surface claire est à **1,03:1** : l'anneau de focus est invisible en mode
+  clair pour un utilisateur clavier. Concretement, le bouton « Vérifier l'ID » inactif (`bg-muted` en clair)
+  hérite de cet anneau.
+- Do: un jeton d'anneau lisible (≥ 3:1) sur les deux types de surface, et l'appliquer à l'anneau global.
+  Les surfaces d'encre (néon) et les surfaces claires ont chacune besoin d'une couleur d'anneau différente :
+  prévoir un jeton par surface, ou un anneau à double contraste (couleur + liseré).
+- Validate : l'anneau de focus est mesuré ≥ 3:1 sur le fond crème **et** sur le fond encre, dans les deux
+  thèmes ; le focus clavier est visible sur le bouton de vérification inactif en mode clair.
+- Attention : `StepPay.js` et `ProductCard.js` posent déjà un `outline-ink` local (l'anneau global ne leur
+  suffit pas) — à conserver.
+
 **T3.6 Local fonts** — `public/index.html` (~l.30) loads Google Fonts. Install `@fontsource-variable/bricolage-grotesque` and `@fontsource-variable/onest`, import them, drop the Google link, add a `size-adjust` fallback. Check that `public/sw.js` caches the fonts.
 
 ### Phase 4 — Content and states (1–2 days)
 
 **T4.1 Missing translations** — `ProductCard.js` (~l.27-29, 58-59, 63, 110, 113, 116): "Prime+", "Évolutif", "UC", "mois", "Populaire", "Elite Pack", "Abonnement", "Indisponible", "Retirer du panier", "au panier". FR and EN for every key. **The chat files are out of scope for this task** (`Chat.js`, `ChatWorkspace.js`, `ChatThread.js`, ~28 strings) — the 4 chat files are still hardcoded French, but the floating chat they belong to is not mounted (see T5.7); revisit them only if the chat is actually wired into the app.
+
+**T4.6 Help text for the ID when the button is inactive** (ajoutée le 2026-10-20, issue de la revue)
+- Since T2.5/T2.13, a malformed ID makes the button inert: no request, and **no message** (the « ID
+  invalid » message is now only shown when the API answers `valid: false`).
+- Do: show a helper text under the field — « 9 à 13 chiffres » / « 9 to 13 digits » — when the button is
+  inactive because the format is wrong (not while a verification is running). Keys FR + EN via `t()`.
+- Files: `components/store/PubgIdVerify.js`, `components/store/checkout/IdentityFieldsVerify.js`,
+  `src/i18n/translations.js`.
+- Validate: the helper appears for a malformed ID and disappears for a valid one, in FR and EN.
 
 **T4.5 Locale-aware amounts** — `formatAr()` in `src/lib/api.js` is hardcoded `fr-FR`, so every amount in the app is
 "2 500 Ar" even in English. Change it to `formatAr(n, locale = "fr-FR")` and pass the active language at the call
@@ -827,7 +879,14 @@ list was `PaymentStatus.js` only.
 
 **T5.6 Hardcoded colours** — the 71 `text-[#0A0A0A]` → `text-primary-foreground`. Unify the 5 dark greys. Align the theme colour between `ThemeToggle.js` (~l.13) and `public/index.html` (~l.14).
 
-**T5.7 Delete the confirmed dead chat components** — `components/chat/FloatingChat.js` and `components/chat/ChatLink.js`. **Confirmed dead (2026-10-20):** each is referenced only by its own definition, there is no `import()` and no `React.lazy` anywhere in `src/`, the `/chat` route renders `pages/Chat.js` → `ChatWorkspace` and `/admin/messages` → `pages/admin/AdminChat.js` → `ChatWorkspace`, and the built bundle contains 0 occurrences of their strings (CRA tree-shook them out). **Do not delete them before this task is picked up** — until then they stay untouched.
+**T5.7 Delete the confirmed dead components** — `components/chat/FloatingChat.js` and `components/chat/ChatLink.js`.
+- **Ajouté le 2026-10-20 (revue) : `components/ui/badge.jsx`, `components/ui/alert.jsx` et
+  `components/ui/toast.jsx` sont eux aussi du code mort** — aucun import dans `src/` (`grep -rn
+  "components/ui/badge\|components/ui/alert\"" src/` → vide) ; l'app monte le Toaster **sonner**
+  (`App.js:3,94`), pas `components/ui/toaster.jsx`, donc `ui/toast.jsx` n'est jamais rendu. Conséquence
+  relevée pendant la revue de T2.7 : leurs variantes destructives utilisent l'ancien rouge
+  (`hover:bg-destructive/80`, `border-destructive/50`) et ne sont donc pas concernées par le déplacement des
+  jetons destructifs de `.dark`. **Confirmed dead (2026-10-20):** each is referenced only by its own definition, there is no `import()` and no `React.lazy` anywhere in `src/`, the `/chat` route renders `pages/Chat.js` → `ChatWorkspace` and `/admin/messages` → `pages/admin/AdminChat.js` → `ChatWorkspace`, and the built bundle contains 0 occurrences of their strings (CRA tree-shook them out). **Do not delete them before this task is picked up** — until then they stay untouched.
 
 ---
 
