@@ -1,18 +1,61 @@
 /**
  * Captures de reference de la phase 2 (etat final) : carte produit, panneaux
  * d'encre, barre panier, selecteur de jeu, page points.
- * Sortie : <repo>/audit-shots/
- * Usage : node shots-phase2.mjs [dossier]
+ * Sortie : <repo>/audit-shots/ (par defaut)
+ * Usage : CHROMIUM_PATH=/chemin/vers/chromium node scripts/shots-phase2.mjs [dossier]
  */
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { existsSync, statSync, mkdirSync } from "node:fs";
-import { extname, join } from "node:path";
+import { extname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
 
-const EXE = "/home/selneker/.hermes/tools/chromium-1208/chrome-linux64/chrome";
-const BUILD = "/home/selneker/magicgamestor/frontend/build";
-const OUT = process.argv[2] || "/home/selneker/magicgamestor/audit-shots";
+const FRONTEND = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
+const REPO = resolve(FRONTEND, "..");
+const BUILD = join(FRONTEND, "build");
+const CHROMIUM = process.env.CHROMIUM_PATH;
+
+if (!CHROMIUM) {
+  console.error(
+    [
+      "",
+      "[erreur] CHROMIUM_PATH n'est pas definie.",
+      "",
+      "Ce script a besoin d'un Chromium deja installe sur la machine ; il ne",
+      "telecharge pas de navigateur. Renseignez le chemin de l'executable :",
+      "",
+      "  CHROMIUM_PATH=/usr/bin/chromium node scripts/shots-phase2.mjs",
+      "",
+      "Chromium se trouve souvent dans /usr/bin/chromium, /usr/bin/chromium-",
+      "browser, /usr/bin/google-chrome ou /snap/bin/chromium.",
+      "",
+    ].join("\n"),
+  );
+  process.exit(1);
+}
+
+if (!existsSync(CHROMIUM)) {
+  console.error(`[erreur] CHROMIUM_PATH ne pointe sur aucun fichier : ${CHROMIUM}`);
+  process.exit(1);
+}
+
+if (!existsSync(join(BUILD, "index.html"))) {
+  console.error(
+    [
+      "",
+      `[erreur] ${BUILD}/index.html est introuvable.`,
+      "",
+      "Le script capture le bundle compile. Lancez d'abord :",
+      "",
+      "  yarn build",
+      "",
+    ].join("\n"),
+  );
+  process.exit(1);
+}
+
+const OUT = process.argv[2] || join(REPO, "audit-shots");
 mkdirSync(OUT, { recursive: true });
 
 const GAMES = [{ id: "pubg-mobile", name: "PUBG Mobile", slug: "pubg-mobile", active: true, sort_order: 0,
@@ -54,7 +97,7 @@ const server = await new Promise((res) => {
 });
 const base = `http://127.0.0.1:${server.port}`;
 
-const browser = await chromium.launch({ executablePath: EXE, args: ["--no-sandbox"] });
+const browser = await chromium.launch({ executablePath: CHROMIUM, args: ["--no-sandbox"] });
 
 for (const [w, h, label] of [[390, 844, "390px"], [1440, 900, "1440px"]]) {
   for (const theme of ["light", "dark"]) {
