@@ -38,7 +38,7 @@ Merge only after manual validation on a real phone.
 | T2.9 Puce de choix du fournisseur | **fait** | `b3079c2` | texte encre sur la couleur de marque : 5,9:1 / 7,2:1 |
 | T2.10 Icône de statut de paiement | **fait** | `f36db2a` | l'icône prend l'avant-plan du thème : 17,3:1 / 9,8:1 |
 | T2.10 (suite) | **découpé** | | les badges admin → **T2.12** (tâche admin) ; la pastille du chat → **T5.7** |
-| T2.11 Rayon des popups du checkout | **à choisir** | | 3 popups clients : tiroir panier 0 px, dialogue évo 14 px, sélecteur 28 px (déjà bon) |
+| T2.11 Rayon des popups du checkout | **fait** | `2c8822c` + `603f2fd` | dialogue 28 px sur 4 coins, tiroir 28 px sur 2 coins gauches ; le `!` est une rustine pour T5.2 |
 | T2.12 Les pages admin | todo | | hors audit : 5 tuiles colorées, badges MVola/Orange, `text-rose-600`… |
 | T2 → T5 | todo | | |
 
@@ -684,7 +684,7 @@ L'audit ne voit que ce qu'il mesure : **le texte**, sur les pages listées. Les 
   **1,08:1**) → **T5.7** (ChatWorkspace est monté sur /chat : ce n'est pas du code mort, mais la correction est
   routée vers T5.7).
 
-**T2.11 — Les coins arrondis des popups du checkout** (2026-10-20) — *à choisir*
+**T2.11 — Les coins arrondis des popups du checkout** — **DONE (`2c8822c`, `603f2fd`, 2026-10-20)**
 - Cible : des coins cohérents avec la carte produit (`rounded-[28px]`, mesuré **28 px** sur les 4 coins).
 - Les 3 popups du parcours **client**, et leur **rayon calculé** (mesuré dans le navigateur, pas lu dans les
   classes) :
@@ -705,7 +705,40 @@ L'audit ne voit que ce qu'il mesure : **le texte**, sur les pages listées. Les 
     fermeture ni l'ombre — mesuré : la croix est à 16 px (tiroir) / 17 px (dialogue) du bord, son anneau de
     focus s'étend à 4 px, donc il reste à l'intérieur d'un rayon de 28 px ; l'ombre n'est jamais rognée par
     l'`overflow` de l'élément lui-même.
-  - **Reste à choisir lequel** (le dialogue et le tiroir sont tous deux à l'écart de la cible).
+  - **Appliqué aux deux** : le dialogue (« pack évolutif ») passe à **28 px sur les 4 coins**, le tiroir panier
+    à **28 px sur les 2 coins gauches** (c'est une feuille latérale droite : les coins droits sont contre
+    l'écran). Le sélecteur de jeu est **inchangé** (déjà 28 px).
+
+**T2.11 — ce qui a été mesuré (avant / après), et la rustine `!`**
+
+| Popup | Fichier | Coin | Avant (390 / 1440) | Après (390 / 1440) |
+|---|---|---|---|---|
+| Dialogue évo | `pages/PackEvolutif.js:97` | 4 coins | 14 px / 14 px | **28 px / 28 px** |
+| Tiroir panier | `components/store/CartDrawer.js:96` | haut-gauche | 0 px / 0 px | **28 px / 28 px** |
+| Tiroir panier | idem | bas-gauche | 0 px / 0 px | **28 px / 28 px** |
+| Tiroir panier | idem | haut-droit / bas-droit | 0 px / 0 px | **0 px / 0 px** (inchangés) |
+
+**La rustine `!` est temporaire.** `ui/dialog.jsx:34` impose `sm:rounded-lg` (12 px) sur toutes les
+fenêtres, et `index.css:178` remappe `rounded-3xl` en 14 px `!important`. Il faut donc
+`!rounded-[28px]` (la classe n'est pas remappée, le `!` passe devant `sm:rounded-lg`). **À retirer en T5.2**,
+quand les rayons seront unifiés — d'ici là, `ui/dialog.jsx` et `ui/sheet.jsx` ne sont **pas** modifiés.
+
+**`overflow-hidden` : ce qui a été vérifié (rects avant / après)**
+- **Défilement interne du tiroir** : la liste garde `overflow-y: auto` ; avec 12 articles,
+  `scrollHeight 1052` > `clientHeight 591` → le défilement fonctionne toujours (le conteneur est rogné,
+  pas la liste).
+- **Ombre** : inchangée (`rgba(0,0,0,.1) 0 10px 15px -3px` + `rgba(0,0,0,.1) 0 4px 6px -4px`) — l'overflow d'un
+  élément ne rogne jamais sa propre ombre.
+- **Croix de fermeture** : tiroir à 16 px du bord (coin droit droit → jamais rogné), dialogue à 17 px
+  (le coin arrondi de 28 px a un centre à 28 px : le point de la croix est à 15,6 px de ce centre, donc
+  à l'intérieur).
+- **Bouton « Commander »** : 25 px du bord gauche, 8 px du bas → visible, non rogné.
+- **Contenu du dialogue** : 25 px des bords → non rogné.
+- **Rects des conteneurs** : inchangés (tiroir `390×844` en mobile, `448×900` en 1440 px ; dialogue
+  `390×350` en mobile, `448×350` en 1440 px).
+
+Captures dans `audit-shots/` : `t211-avant-*` et `t211-apres-*` (1 article, comparaison directe) +
+`t211-apres-12articles-*` (défilement interne).
 
 **T2.12 — Les pages admin** (hors audit)
 - `PAGES` ne contient que les pages client : `/admin` et ses sous-pages ne sont **ni mesurées ni corrigées**.
