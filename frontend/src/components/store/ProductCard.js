@@ -88,7 +88,7 @@ export function ProductCard({ product, index = 0, badge }) {
   return (
     <article data-testid={`product-card-${product.slug}`} className={`group relative flex min-w-0 min-h-[260px] flex-col rounded-[28px] border-2 border-ink bg-neo p-3 sm:p-5 shadow-none transition duration-200 ease-out hover:shadow-[8px_8px_0_#111111] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
       <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-[28px]" aria-label={product.name || product.slug || "Produit"} />
-      <div className="relative z-10 flex h-full flex-col">
+      <div className="relative z-10 flex h-full flex-col text-ink">
         <div className="flex items-start justify-between gap-1.5 sm:gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-3">
             <span data-testid={`card-type-${product.slug}`} className="rounded-full border border-ink bg-white/40 px-2.5 py-1 font-body text-[8px] font-bold uppercase leading-none tracking-wider backdrop-blur">{typeLabel(product, game, lang)}</span>
@@ -105,7 +105,7 @@ export function ProductCard({ product, index = 0, badge }) {
           </p>
         ) : null}
 
-        <div className={`mt-auto flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border-2 border-ink sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-white py-1 pl-2 pr-1 sm:pl-3" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
+        <div className={`mt-auto flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border-2 border-ink sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-white py-1 pl-2 pr-1 text-foreground sm:pl-3" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
           {!available ? (
             <span className="font-body text-sm font-bold uppercase tracking-wide">Indisponible</span>
           ) : qty > 0 ? (
@@ -120,7 +120,7 @@ export function ProductCard({ product, index = 0, badge }) {
             </>
           ) : (
             <>
-              <div className="flex min-w-0 flex-1 items-center gap-1"><span className="min-w-0 truncate font-display text-base font-extrabold leading-none min-[400px]:text-lg sm:text-2xl">{formatAr(product.price)}</span>{showDiscount ? <span className="shrink-0 rounded-full border border-ink bg-neo px-1.5 py-0.5 font-body text-[9px] font-bold leading-3 sm:px-2 sm:text-[11px] sm:leading-4">-{discount}%</span> : null}</div>
+              <div className="flex min-w-0 flex-1 items-center gap-1"><span className="min-w-0 truncate font-display text-base font-extrabold leading-none min-[400px]:text-lg sm:text-2xl">{formatAr(product.price)}</span>{showDiscount ? <span className="shrink-0 rounded-full border border-ink bg-neo px-1.5 py-0.5 text-ink font-body text-[9px] font-bold leading-3 sm:px-2 sm:text-[11px] sm:leading-4">-{discount}%</span> : null}</div>
               <button type="button" aria-label={`Ajouter au panier : ${product.name || product.slug}`} onClick={handleAdd} className={`grid aspect-square h-10 w-10 shrink-0 place-items-center !rounded-full border-2 border-ink bg-ink text-neo transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
                 <Icon name={actionIconName} />
               </button>
