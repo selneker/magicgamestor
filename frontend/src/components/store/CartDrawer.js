@@ -10,6 +10,11 @@ import { useChat } from "@/context/ChatContext";
 import { showsCartBar } from "@/lib/bottomChrome";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+// Fallback used when ResizeObserver is unavailable: a bit more than the bar's
+// measured height (~101 px at 390 px) so the reserved space never lets the bar
+// cover the footer's last row.
+const BAR_FALLBACK_HEIGHT = 112;
+
 export function CartDrawer() {
   const { items, open, setOpen, setQty, remove, total, count, gameId } = useCart();
   const { games, open: selectorOpen } = useGames();
@@ -51,6 +56,13 @@ export function CartDrawer() {
   useLayoutEffect(() => {
     const el = barRef.current;
     if (!el) return;
+    // ResizeObserver is missing on old Android WebViews (Chrome < 64). Without this
+    // guard the constructor throws inside the layout effect: React unmounts the
+    // tree and the ErrorBoundary replaces the whole shop with the error screen.
+    if (typeof ResizeObserver === "undefined") {
+      setBarHeight(BAR_FALLBACK_HEIGHT);
+      return;
+    }
     const ro = new ResizeObserver(() => setBarHeight(el.offsetHeight));
     ro.observe(el);
     return () => ro.disconnect();
