@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Gamepad2, X } from "lucide-react";
 import { useGames } from "@/context/GameContext";
 import { useLang } from "@/context/LanguageContext";
+import { hidesBottomChrome } from "@/lib/bottomChrome";
 
 // Fixed 🎮 button rendered next to the mobile bottom navigation. It is not a
 // floating-action-button bound to content, it never scrolls with the page and
@@ -12,7 +13,7 @@ export function GameButton() {
   const { setOpen, open, selected } = useGames();
   const { t } = useLang();
 
-  if (pathname.startsWith("/admin") || pathname.startsWith("/compte") || pathname.startsWith("/privacy") || pathname.startsWith("/terms") || pathname.startsWith("/commande")) return null;
+  if (hidesBottomChrome(pathname)) return null;
 
   return (
     <div

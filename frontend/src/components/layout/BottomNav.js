@@ -4,6 +4,7 @@ import { MessageCircle, Receipt, Sparkles, Store } from "lucide-react";
 import { useLang } from "@/context/LanguageContext";
 import { GameButton } from "@/components/layout/GameButton";
 import { GameSelector } from "@/components/layout/GameSelector";
+import { hidesBottomChrome } from "@/lib/bottomChrome";
 
 export function BottomNav() {
   const { pathname } = useLocation();
@@ -42,7 +43,7 @@ export function BottomNav() {
     },
   ];
 
-  if (pathname.startsWith("/admin") || pathname.startsWith("/compte") || pathname.startsWith("/privacy") || pathname.startsWith("/terms") || pathname.startsWith("/commande")) return null;
+  if (hidesBottomChrome(pathname)) return null;
 
   return (
     <>
