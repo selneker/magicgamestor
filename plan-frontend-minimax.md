@@ -27,7 +27,33 @@ Merge only after manual validation on a real phone.
 | T1.5 Build without backend URL | **done** | `8d70c0c` + `48a4e3d` + `6a87334` | Build fails without the var (production only); Error Boundary FR/EN; `Home.js` survives a non-array payload |
 | T1.6 Mémoiser le contrat d'identité | **done** | `f50db6c` | Without the `useMemo`, a game with no `identity_fields` left the customer **blocked at checkout step 1**. Before/after measured on the same build |
 | T1.7 Garde-fou global sur les réponses `/api` | todo | | described below, not implemented |
+| T2.4 Script d'audit de contraste | à faire | | baseline mesurée : **90 échecs** (voir ci-dessous) |
 | T2 → T5 | todo | | |
+
+### T2.4 — mesure de départ (2026-10-20, avant toute modification)
+
+Audit automatisé (Chromium) des pages **accueil**, **catalogue** et **checkout**, en **390 px** et **1440 px**, en
+**clair** et **sombre** — 12 combinaisons, page parcourue en entier (chaque élément n'est mesuré que lorsqu'il
+est à l'écran).
+
+| Page | 390 px clair | 390 px sombre | 1440 px clair | 1440 px sombre |
+|---|---|---|---|---|
+| accueil | 2 | 23 | 1 | 22 |
+| catalogue | 1 | 19 | 0 | 18 |
+| checkout | 1 | 1 | 1 | 1 |
+| **total** | **4** | **43** | **2** | **41** |
+
+**TOTAL : 90 échecs** (6 en clair, 84 en sombre). Cible : 0.
+
+Les deux premières causes, qui couvrent la quasi-totalité des échecs :
+
+| Cause | Occurrences | Exemple | Cause |
+|---|---|---|---|
+| Carte produit : texte crème sur fond néon | 56 | « 660 UC » 1,04:1 | `bg-neo` est un hex fixe, le texte hérite de `text-foreground` qui bascule en crème en mode sombre → **T2.1** |
+| Panneau d'accent : `bg-foreground` bascule en crème en sombre | ~10 | « Jeux disponibles » 1:1 | `.panel-black` n'est pas une surface encre fixe → **T2.2** |
+| Barre panier : `text-primary` remappé en couleur de texte | 4 | « 2 500 Ar » 1:1 (clair) | le remappage de `index.css:209` → **T2.2** |
+| Libellé « Moyens de paiement » dans un panneau encre | 4 | 1:1 | `text-primary` sur `bg-foreground` → **T2.2** |
+| Bouton désactivé « Vérifier l'ID » | 4 | 1,12:1 | texte crème à 50 % d'opacité sur blanc — **exonéré par la WCAG (contrôle désactivé)**, à arbitrer |
 
 ### T1.5 implementation notes (2026-10-20)
 
