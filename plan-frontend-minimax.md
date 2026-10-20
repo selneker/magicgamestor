@@ -31,7 +31,7 @@ Merge only after manual validation on a real phone.
 | T2.4 Script d'audit de contraste | **fait** | `7bc393a` + `68416e0` + `7da61e1` | baseline re-mesurée : **101 échecs** ; exclusions et limites listées en tête de script |
 | T2.2 Surfaces d'encre et barre panier | **fait** | `aa831e9` | 16 échecs + les 2 de `/suivi` ramenés à **0**. Audit : 30 → 14. Inventaire complet dans le plan |
 | T2.3 Plaque blanche du logo | **fait** | `694ae49` | disque néon + bord encre pour le bouton de jeu ; plus aucun blanc en dur dans `GameButton.js` |
-| T2.5 Bouton désactivé « Vérifier l'ID » | todo | | à faire après T2.3, commit séparé |
+| T2.5 Bouton désactivé « Vérifier l'ID » | **fait** | `f584111` + `8525054` + `87650b1` | `aria-disabled` + gestionnaire inerte, fond atténué ≥ 3:1 ; 8 tests (clic, Entrée, chargement, contraste) |
 | T2.6 Bouton « Payer via USSD » | todo | | blanc sur vert MVola (3,19:1) et sur orange (2,63:1) — 8 échecs |
 | T2.7 Liens destructifs en sombre | todo | | « Déconnexion » 3,06:1, « Supprimer mon compte » 2,73:1 |
 | T2.8 Indice de vérification sur panneau néon | todo | | « Vérifiez que cet ID… » 3,87:1 en sombre — trouvé en couvrant l'étape 1 du checkout |
@@ -520,13 +520,27 @@ Goal: zero contrast failures, in light and dark.
 - Validate: 0 failures across the 4 combinations. The command is `yarn audit:contrast` (not wired into
   `build` / `test` / `prestart`).
 
-**T2.5 Disabled « Vérifier l'ID » button**
-- File: `frontend/src/components/store/PubgIdVerify.js` (~l.42-44, the `btn` class and the `verify` handler).
+**T2.5 Disabled « Vérifier l'ID » button** — **DONE (`f584111`, `8525054`, `87650b1`, 2026-10-20)**
+- Files: `components/store/PubgIdVerify.js` (checkout PUBG), `components/store/checkout/IdentityFieldsVerify.js` (the **generic twin**, used by `StepVerify.js:77` for games with dynamic fields), and the two test files.
 - Problem: the disabled state is `disabled:opacity-50` — cream at 50 % opacity on the ink button, 1.12:1 as
   painted. The audit cannot see it (element opacity is not composited), so it is measured apart.
-- Do: muted background + **ink** text at **≥ 3:1**, no opacity trick, no shadow, `cursor-not-allowed`,
-  `aria-disabled`. **The handler must do nothing when the button is disabled** (no verification, no
-  submission) — with `aria-disabled` the button stays focusable, so the guard is in the handler.
+- Do: no native `disabled` attribute any more — **`aria-disabled`** (the button stays focusable, so the
+  customer can reach it and understand it is unavailable) + **`aria-busy`**, and **the handler makes the
+  guard** (`if (inert) return;`: no verification, no submission). Inactive state: muted background `bg-muted`
+  + theme foreground (**16:1 in light, 9,6:1 in dark**), `cursor-not-allowed`, **no hover and no press
+  effect**. During a verification the button keeps its active surface (the « en cours » stays readable) but
+  stays inert: no double request.
+- The checkout has **no `<form>`** (the container is a `<div data-testid="checkout-form">`) and the button is
+  a `type="button"`: Enter in the ID field submits nothing. The test asserts both.
+- Validate: 8 tests (`PubgIdVerify.test.js` 6 + `IdentityFieldsVerify.test.js` 2) — click and Enter on the
+  inactive button trigger **no request and no state change**; Enter in the ID field triggers **no request and
+  no submission**; the loading state is inert with `aria-busy` and no double request; the active state still
+  verifies; the inactive contrast is ≥ 3:1 computed from the **token values read in `index.css`** (by theme
+  block, order-independent). **The tests are discriminating: on the previous implementation 6 of the 8 fail**
+  (the 2 that pass are the unchanged « active » cases). `yarn build`, `yarn test:ci` (7 suites / 31 tests)
+  green, contrast audit unchanged at **14 failures**.
+- Note: the « ID invalide » message was already unreachable (the native `disabled` blocked the click); the
+  behaviour is unchanged.
 - Validate: the button is `aria-disabled`, the **click** and the **Enter key** trigger nothing (no request, no
   state change), and the disabled state is at ≥ 3:1.
 
