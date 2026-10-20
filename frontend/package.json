@@ -66,6 +66,7 @@
     "start": "craco start",
     "prebuild": "node scripts/check-backend-url.mjs --strict",
     "build": "craco build",
+    "audit:contrast": "node scripts/audit-contrast.mjs",
     "test": "craco test",
     "test:ci": "craco test --watchAll=false"
   },
@@ -96,6 +97,7 @@
     "eslint-plugin-react": "7.37.4",
     "eslint-plugin-react-hooks": "5.2.0",
     "globals": "15.15.0",
+    "playwright-core": "1.64.1",
     "postcss": "8.5.28",
     "tailwindcss": "3.4.17"
   },
