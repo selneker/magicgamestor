@@ -82,7 +82,10 @@ export function CartDrawer() {
           style={{ height: `max(0px, calc(${barHeight}px + max(0.75rem, env(safe-area-inset-bottom, 0px)) - 2.5rem))` }}
         />
       )}
-      {renderBar && <div ref={barRef} className="fixed inset-x-3 bottom-[calc(4rem+max(0.75rem,env(safe-area-inset-bottom))+0.5rem)] z-[45] flex items-center gap-3 border-2 border-foreground bg-foreground p-2 text-background shadow-[4px_4px_0_hsl(var(--primary))] md:hidden" data-testid="mobile-cart-bar">
+      {/* env() avec un repli : sans lui, un navigateur qui ne connait pas
+          env() invaliderait toute la declaration `bottom` et la barre fixe
+          retomberait a sa position statique. */}
+      {renderBar && <div ref={barRef} className="fixed inset-x-3 bottom-[calc(4rem+max(0.75rem,env(safe-area-inset-bottom,0px))+0.5rem)] z-[45] flex items-center gap-3 border-2 border-foreground bg-foreground p-2 text-background shadow-[4px_4px_0_hsl(var(--primary))] md:hidden" data-testid="mobile-cart-bar">
         <button type="button" className="min-h-11 min-w-0 flex-1 px-2 text-left" onClick={() => setOpen(true)}><span className="block text-sm font-semibold">{count} {count === 1 ? t("cart.item") : t("cart.items")}</span><span className="num block text-lg text-primary">{formatAr(total)}</span><span className="block text-xs leading-snug text-background">{t("cart.paymentFeeHint")}</span></button>
         <button type="button" className="min-h-11 shrink-0 bg-primary px-4 text-sm font-bold text-[#0A0A0A]" onClick={() => { setOpen(false); navigate("/commande"); }}>{t("cart.checkout")}</button>
       </div>}
