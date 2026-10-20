@@ -27,8 +27,14 @@ Merge only after manual validation on a real phone.
 | T1.5 Build without backend URL | **done** | `8d70c0c` + `48a4e3d` + `6a87334` | Build fails without the var (production only); Error Boundary FR/EN; `Home.js` survives a non-array payload |
 | T1.6 Mémoiser le contrat d'identité | **done** | `f50db6c` | Without the `useMemo`, a game with no `identity_fields` left the customer **blocked at checkout step 1**. Before/after measured on the same build |
 | T1.7 Garde-fou global sur les réponses `/api` | todo | | described below, not implemented |
-| T2.4 Script d'audit de contraste | **fait** | `7bc393a` + `68416e0` | baseline mesurée : **100 échecs** (voir ci-dessous) |
+| T2.1 Texte fixe sur les surfaces néon | **fait** | `d5e7e78` | 72 échecs de carte produit ramenés à **0** sur les 4 combinaisons. Audit : 101 → 30 |
+| T2.4 Script d'audit de contraste | **fait** | `7bc393a` + `68416e0` + `7da61e1` | baseline re-mesurée : **101 échecs** ; exclusions et limites listées en tête de script |
+| T2.2 Panneaux d'encre et barre panier | todo | | 16 échecs : `.panel-black` crème en sombre, `text-primary` remappé |
+| T2.3 Plaque blanche du logo | todo | | `GameButton.js`, `backgroundColor: "#FFFFFF"` |
 | T2.5 Bouton désactivé « Vérifier l'ID » | todo | | à faire après T2.3, commit séparé |
+| T2.6 Bouton « Payer via USSD » | todo | | blanc sur vert MVola (3,19:1) et sur orange (2,63:1) — 8 échecs |
+| T2.7 Liens destructifs en sombre | todo | | « Déconnexion » 3,06:1, « Supprimer mon compte » 2,73:1 |
+| T2.8 Indice de vérification sur panneau néon | todo | | « Vérifiez que cet ID… » 3,87:1 en sombre — trouvé en couvrant l'étape 1 du checkout |
 | T2 → T5 | todo | | |
 
 ### T2.4 — mesure de départ (2026-10-20, avant toute modification)
@@ -52,21 +58,26 @@ paiement, la fiche produit, /compte, /suivi et la fidélité. 390 px et 1440 px,
 | compte | 0 | 2 | 0 | 2 |
 | suivi | 1 | 1 | 0 | 0 |
 | fidelite | 0 | 0 | 0 | 0 |
-| **total** | **5** | **47** | **2** | **46** |
+| **total** | **6** | **47** | **4** | **44** |
 
-**TOTAL : 100 échecs** (7 en clair, 93 en sombre). Cible : 0.
+**TOTAL : 101 échecs** (10 en clair, 91 en sombre). Cible : 0.
+
+> La première mesure annonçait 100. La re-mesure sur le même commit et le même bundle donne **101** :
+> l'échec supplémentaire est le bouton « J'ai payé — saisir ma référence », mesuré **pendant sa transition**
+> de couleur (le script vient de le cliquer). Il ne s'est pas reproduit aux runs suivants : c'est une limite
+> de la mesure, pas un défaut de contraste. Les totaux par colonne ci-dessus sont ceux de la re-mesure.
 
 Les causes, par nombre d'occurrences :
 
 | Cause | Nb | Exemple | Tâche |
 |---|---|---|---|
 | Carte produit : texte crème sur fond néon | 68 | « 660 UC » **1,04:1**, badge de type **1:1**, chiffre **1,04:1**, badge « Populaire » **1,29:1** | **T2.1** |
-| Bouton « Payer via USSD » : blanc sur vert MVola | 8 | **3,19:1** | **T2.3** |
+| Bouton « Payer via USSD » : blanc sur vert MVola | 8 | **3,19:1** | **T2.6** |
 | Panneau d'accent : `bg-foreground` bascule en crème | 6 | « Jeux disponibles » **1:1** | **T2.2** |
 | Barre panier : `text-primary` remappé en couleur de texte | 6 | « 2 500 Ar » **1:1** (clair) | **T2.2** |
 | « Moyens de paiement » dans un panneau encre | 4 | **1:1** | **T2.2** |
 | Badge de réduction néon dans la barre de prix | 4 | « 15 » **1,04:1** | **T2.1** |
-| Lien destructif en rouge sur fond sombre | 4 | « Déconnexion » **3,06:1**, « Supprimer mon compte » **2,73:1** | à voir |
+| Lien destructif en rouge sur fond sombre | 4 | « Déconnexion » **3,06:1**, « Supprimer mon compte » **2,73:1** | **T2.7** |
 | Bouton désactivé « Vérifier l'ID » | 0 * | crème à 50 % d'opacité sur blanc, **1,12:1** | **T2.5** |
 
 \* Le bouton désactivé n'apparaît pas dans la mesure : son état désactivé est rendu avec
@@ -81,6 +92,74 @@ convenu.
   il faut l'ignorer, sinon la mesure compte des éléments invisibles ;
 - la sonde doit partir des **glyphes** (Range sur le nœud de texte), pas du bord gauche de l'élément : sinon
   on mesure le badge qui précède le texte.
+
+### T2.4 — l'auditeur : exclusions et limites (`7da61e1`, 2026-10-20)
+
+Le script **ne doit jamais être assoupli pour atteindre 0**. Toutes les exclusions de mesure sont listées
+**en tête de `frontend/scripts/audit-contrast.mjs`**, chacune avec sa raison :
+
+| # | Exclusion | Raison |
+|---|---|---|
+| 1 | texte invisible (`display:none`, `visibility:hidden`, `opacity:0`) | rien n'est peint à l'écran |
+| 2 | classe `sr-only` | texte réservé aux lecteurs d'écran |
+| 3 | texte hors de la fenêtre | il sera mesuré au défilement (la boucle couvre toute la hauteur) |
+| 4 | rectangle de glyphe < 4 × 4 px | ponctuation ou artefact de rendu |
+| 5 | texte masqué par un calque flottant | occlusion, pas contraste : le fond visible est celui du calque |
+| 6 | élément déplacé entre la mesure et le hit-test | la position mesurée n'est plus valide |
+| 7 | composant inactif (`disabled`, `aria-disabled`) | WCAG 1.4.3 exempte les composants inactifs ; le bouton « Vérifier l'ID » désactivé est traité à part (**T2.5**, seuil ≥ 3:1 mesuré par un test dédié) |
+
+**Ce que l'auditeur ne mesure pas** (noté en tête de script) : les bordures et séparateurs (WCAG 1.4.11,
+3:1), les icônes porteuses de sens (3:1), les éléments non textuels, les fonds image ou dégradés, les
+filtres CSS (`grayscale` de la carte « Indisponible »), l'**opacité** d'un élément (un texte atténué par
+`disabled:opacity-50` est mesuré avec sa couleur pleine), le texte multi-lignes, les largeurs autres que
+390/1440 px, le thème « système », et les pages hors de la liste `PAGES`.
+
+**Couverture corrigée** : l'étape 1 du checkout est désormais mesurée dans ses deux états —
+`checkout-1-verification-initiale` (champ vide, bouton « Vérifier l'ID » désactivé) et
+`checkout-1-verification` (après vérification). L'ancien script cliquait « Continuer » dans les deux cas :
+il mesurait l'**étape 2** sous le nom « checkout-1-verification ». **L'écran de vérification n'était jamais
+audité** — c'est cette couverture qui a révélé l'échec de **T2.8**.
+Deux variantes de carte manquaient aussi (carte « Indisponible », carte « Pack UC » non populaire) : elles
+sont dans les données simulées de l'audit depuis `7da61e1`.
+Une page qui ne se charge pas est désormais **signalée** (« NON CHARGÉE ») et fait sortir le script en
+erreur : une page absente ne peut pas passer pour conforme.
+
+### T2.4 — état après T2.1 (2026-10-20)
+
+| Page | 390 px clair | 390 px sombre | 1440 px clair | 1440 px sombre |
+|---|---|---|---|---|
+| accueil | 2 | 5 | 1 | 4 |
+| catalogue | 1 | 1 | 0 | 0 |
+| checkout-1-verification-initiale | 0 | 0 | 0 | 0 |
+| checkout-1-verification | 0 | 1 | 0 | 1 |
+| checkout-2-methode | 0 | 0 | 0 | 0 |
+| checkout-3-ussd-mvola | 1 | 1 | 1 | 1 |
+| checkout-3-ussd-orange | 1 | 1 | 1 | 1 |
+| checkout-4-reference | 0 | 0 | 0 | 0 |
+| statut-paiement | 0 | 0 | 0 | 0 |
+| fiche-produit | 0 | 0 | 0 | 0 |
+| compte | 0 | 2 | 0 | 2 |
+| suivi | 1 | 1 | 0 | 0 |
+| fidelite | 0 | 0 | 0 | 0 |
+| **total** | **6** | **12** | **3** | **9** |
+
+**TOTAL : 30 échecs.** Les **72 échecs de carte produit sont tombés** : il n'en reste **aucun** sur les
+4 combinaisons.
+
+| Cause | Nb | Exemple | Tâche |
+|---|---|---|---|
+| Bouton « Payer via USSD » : blanc sur vert MVola / orange | 8 | **3,19:1** (MVola), 2,63:1 (Orange) | **T2.6** |
+| Barre panier : `text-primary` remappé en couleur de texte | 6 | « 2 500 Ar » **1:1** (clair) | **T2.2** |
+| Panneau d'accent : `bg-foreground` bascule en crème | 6 | « Jeux disponibles » **1:1** (sombre) | **T2.2** |
+| « Moyens de paiement » dans un panneau encre | 4 | **1:1** | **T2.2** |
+| Lien destructif en rouge sur fond sombre | 4 | « Déconnexion » **3,06:1**, « Supprimer mon compte » **2,73:1** | **T2.7** |
+| Indice « Vérifiez que cet ID… » sur un panneau teinté néon | 2 | **3,87:1** (sombre) | **T2.8** |
+
+**Les 2 échecs de `/suivi`** (1 en clair, 1 en sombre, 0 à 1440 px) sont le **montant de la barre panier**
+(« 2 500 Ar », classe `.num.block.text-lg.text-primary`) : `text-primary` est remappé en couleur de texte
+(`index.css:209`), donc le total s'affiche en encre **sur l'encre** de la barre (1:1) en clair, et en néon
+sur crème en sombre. À 1440 px la barre panier n'existe plus (`md:hidden`), d'où 0 échec. → **T2.2**, même
+cause que les 6 échecs de barre panier. Ce n'est pas un défaut propre à `/suivi`.
 
 ### T1.5 implementation notes (2026-10-20)
 
@@ -102,6 +181,26 @@ Three commits, as agreed:
 
 Verified in the browser on the real defect (HTML payload on `/api/products`): the error screen appears in FR and EN,
 light and dark; **no stack trace on screen**; the error and its stack in the console; the "Recharger" button reloads.
+
+### PR de la phase 1 — texte à coller (branche `fix/phase-1-review` vs `feat/all_fixing`)
+
+> Titre : `fix(phase-1): parcours de paiement mobile et garde d'erreur globale`
+>
+> - **T1.1** Barre panier mobile : au-dessus de la navigation, masquée sur la fiche produit, pendant la
+>   saisie clavier et sous une surcouche.
+> - **T1.2** Compteur d'étapes : « Étape 1 / 4 » → « Étape 4 / 4 », avec des étapes nommées.
+> - **T1.3** Instructions USSD : code, montant et numéro marchand affichés, copie du code, lien `tel:`
+>   encodé.
+> - **T1.4** Statut de paiement : fond d'icône valide, montant selon la langue, région `role="status"`
+>   unique.
+> - **T1.5** Build en échec explicite si `REACT_APP_BACKEND_URL` manque, **Garde d'erreur globale
+>   (Error Boundary)** en FR/EN, accueil qui survit à une charge utile non-tableau.
+> - **T1.6** Contrat d'identité du jeu mémoïsé.
+> - **T1.8** Tests du script de contrôle d'environnement, repli si `ResizeObserver` manque, repli
+>   `env()` pour la barre panier.
+>
+> La branche est prête mais **pas poussée** : `git push origin fix/phase-1-review`, puis
+> https://github.com/selneker/magicgamestor/compare/feat/all_fixing...fix/phase-1-review
 
 ### T1.7 — Global guard on `/api` responses (to study, **not implemented**)
 
@@ -274,27 +373,78 @@ Goal: a customer can add to cart, pay, and track their order on mobile.
 
 Goal: zero contrast failures, in light and dark.
 
-**T2.1 Fixed foreground token for neon surfaces**
-- Files: `index.css` (token definitions), `ProductCard.js` (~l.89 and every text on `bg-neo`).
-- Problem: fixed neon background `#C5FE02` + `text-foreground`, which becomes cream in dark mode → 1.04:1.
-- Do: create `--neo-card-fg` (fixed dark ink, identical in both themes) and use it for the title, the figure, the unit, the "Populaire" badge and the type badge.
-- Validate: product cards readable in both themes, ≥ 4.5:1 for normal text.
+**T2.1 Fixed foreground for neon surfaces** — **DONE (`d5e7e78`, 2026-10-20)**
+- File: `ProductCard.js` only (`index.css` untouched).
+- Problem: fixed neon background `#D4FF00` (`bg-neo`) + inherited `text-foreground`, which becomes cream in dark mode → 1.04:1.
+- Do: **a fixed surface needs a fixed foreground.** The card's content wrapper gets `text-ink`
+  (`#111111` — the Tailwind token already used by `border-ink` / `bg-ink` in that file); the price pill gets
+  `text-foreground` (it is the only child that paints a *theme* surface: `bg-white` → `hsl(var(--card))`);
+  the discount badge (`bg-neo`) gets `text-ink`.
+- The `--neo-card-fg` token planned here was **not created**: the Tailwind token `ink` (`#111111`,
+  `tailwind.config.js:30`) already **is** that token — same value in both themes — and the file already uses
+  `border-ink` / `bg-ink` / `text-ink/70`. A new CSS variable would have been a duplicate. (`--neo-text` in
+  `index.css` carries the same value and is still unused.)
+- Validate: **72 product-card failures → 0** on the 4 combinations. Variants checked: UC popular with and
+  without the discount badge, « Pack UC », « Prime+ », « Prime », « Évolutif » (Elite Pack), « Indisponible »,
+  card already in the cart (quantity pill) and hover state. Captures before/after at 390 px, light and dark.
 
 **T2.2 Black panels turn cream**
-- Files: `index.css` (`.panel-black`, `.text-primary`, remap block ~l.175-222), `Home.js` (~l.66, 69, 80, 85, 89, 293).
-- Problem: `.panel-black` = `bg-foreground`, so it is cream in dark mode. `.dark .text-primary` becomes neon on cream → 1.06:1.
+- Files: `index.css` (`.panel-black`, `.text-primary`, remap block ~l.175-222), `Home.js` (~l.66, 69, 80, 85, 89, 293), **`CartDrawer.js`** (the cart bar total — the follow-up noted under T1.1).
+- Problem: `.panel-black` = `bg-foreground`, so it is cream in dark mode. `.dark .text-primary` becomes neon on cream → 1.06:1. And in light mode `text-primary` is remapped to the body colour, so on an ink panel it is ink on ink → 1:1.
 - Do: `.panel-black` becomes a **fixed** ink surface (black in both themes) with fixed cream text. Neon is used **only** on ink surfaces, via an explicit class (e.g. `text-neo-on-ink`).
 - **Do not make `.text-primary` neon everywhere** — neon on a cream background is unreadable.
-- Validate: "JEUX DISPONIBLES", "COMMENT ÇA MARCHE", "Ouvrir le chat" and the "02" card stay black in dark mode with readable text.
+- Validate: "JEUX DISPONIBLES", "COMMENT ÇA MARCHE", "Ouvrir le chat" and the "02" card stay black in dark mode with readable text; the cart bar total (« 2 500 Ar ») is readable in both themes.
 
 **T2.3 White logo plate**
 - File: `GameButton.js` (~l.32, `backgroundColor: "#FFFFFF"`).
 - Do: theme-dependent background via a token — no white box on the black nav in dark mode.
 
-**T2.4 Automated contrast audit**
-- New file: `frontend/scripts/audit-contrast.mjs` (Playwright or Puppeteer — add as a devDependency only after agreement).
-- Do: load the key pages (home, catalogue, checkout) at 390 px and 1440 px, in light and dark themes; list text elements below 4.5:1 (3:1 for large text); exit non-zero if any are found.
-- Validate: 0 failures across the 4 combinations. Add the command to the README.
+**T2.4 Automated contrast audit** — **DONE (`7bc393a`, `68416e0`, `7da61e1`)**
+- New file: `frontend/scripts/audit-contrast.mjs` (`playwright-core` devDependency, Chromium via `CHROMIUM_PATH`).
+- Do: load the key pages (home, catalogue, checkout, product, account, order tracking, loyalty) at 390 px and
+  1440 px, in light and dark themes; list text elements below 4.5:1 (3:1 for large text); exit non-zero if any
+  are found.
+- Validate: 0 failures across the 4 combinations. The command is `yarn audit:contrast` (not wired into
+  `build` / `test` / `prestart`).
+
+**T2.5 Disabled « Vérifier l'ID » button**
+- File: `frontend/src/components/store/PubgIdVerify.js` (~l.42-44, the `btn` class and the `verify` handler).
+- Problem: the disabled state is `disabled:opacity-50` — cream at 50 % opacity on the ink button, 1.12:1 as
+  painted. The audit cannot see it (element opacity is not composited), so it is measured apart.
+- Do: muted background + **ink** text at **≥ 3:1**, no opacity trick, no shadow, `cursor-not-allowed`,
+  `aria-disabled`. **The handler must do nothing when the button is disabled** (no verification, no
+  submission) — with `aria-disabled` the button stays focusable, so the guard is in the handler.
+- Validate: the button is `aria-disabled`, the **click** and the **Enter key** trigger nothing (no request, no
+  state change), and the disabled state is at ≥ 3:1.
+
+**T2.6 « Payer via USSD » button — white on the brand green** (hole found on 2026-10-20)
+- File: `frontend/src/components/store/checkout/StepPay.js` (~l.101, the `<a data-testid="ussd-button">`).
+- Problem: `text-white` on `var(--mvola)` (`#00A651`) = **3,19:1**, and on `var(--orange)` (`#FF7900`) =
+  **2,63:1**. 8 failures, on the MVola **and** the Orange screen, in the 4 combinations.
+- Do: **do not change the brand colour.** Two routes: (a) ink text (`#111111`) on the unchanged brand
+  colour — 5,9:1 on MVola, 7,2:1 on Orange; (b) a darker tone reserved for that button
+  (`--mvola-strong` / `--orange-strong`) keeping white text. **The approach is announced before coding.**
+- Validate: « Payer via USSD » is at ≥ 4.5:1 in light and dark, for MVola **and** Orange; the brand colour
+  itself is unchanged.
+
+**T2.7 Destructive links in dark mode** (hole found on 2026-10-20)
+- Files: `index.css` (the `--destructive` / `--destructive-foreground` pair in `.dark`), `pages/Account.js`
+  (~l.63 « Déconnexion », ~l.247 « Supprimer mon compte », ~l.280).
+- Problem: in dark mode `--destructive` = `6 70% 50%` → « Déconnexion » **3,06:1** and « Supprimer mon
+  compte » **2,73:1** on `#2B2B2B`.
+- Do: fix the **token** in `.dark` — no local hex in the component. A lighter red reads as text on a dark
+  background, but the destructive *button* (`bg-destructive` + `--destructive-foreground`) must keep a
+  readable pairing, so the two tokens move together.
+- Validate: « Déconnexion » and « Supprimer mon compte » at ≥ 4.5:1 in dark mode, and the delete-confirmation
+  button (red background) still at ≥ 4.5:1.
+
+**T2.8 « Vérifiez que cet ID… » on the tinted neon panel** (hole found on 2026-10-20)
+- File: `frontend/src/components/store/PubgIdVerify.js` (~l.67, the `pubg-verify-confirm` paragraph).
+- Problem: `text-muted-foreground` on `bg-primary/15` → **3,87:1** in dark mode (2 failures). Found only
+  because the audit now measures the verification screen (see the auditor section above).
+- Do: a foreground that holds on the neon-tinted panel, in both themes.
+- Validate: ≥ 4.5:1 in light and dark, on the verified panel.
+
 
 ### Phase 3 — Accessibility and fonts (2 days)
 
