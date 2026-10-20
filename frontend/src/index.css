@@ -7,7 +7,12 @@
         --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
         --font-body: 'Onest', system-ui, sans-serif;
         /* Neo Brutalism — light */
-        --background: 48 20% 94%;      /* #F4F3EE */
+        /* Creme fixe : la valeur du theme clair, figee dans les deux themes.
+           Utilisee par les surfaces d'encre (panneaux, barre panier, selecteur
+           de jeu) et par leur texte : une surface d'encre reste noire et son
+           texte creme, quelle que soit la theme. */
+        --cream: 48 20% 94%;          /* #F4F3EE */
+        --background: var(--cream);   /* #F4F3EE */
         --foreground: 0 0% 4%;         /* #0A0A0A */
         --card: 0 0% 100%;
         --card-foreground: 0 0% 4%;
@@ -54,7 +59,12 @@
         --muted-foreground: 60 4% 68%;
         --accent: 72 99% 50%;
         --accent-foreground: 0 0% 4%;
-        --destructive: 6 70% 50%;
+        --destructive: 6 90% 70%;          /* #F77B6E */
+        /* Le rouge est utilise comme fond (bouton, pastille, icone) ET comme
+           couleur de texte. En sombre il faut donc un rouge clair, avec un
+           texte encre pose dessus : 5,4:1 comme texte sur le fond de page,
+           4,8:1 sur une carte, 7,6:1 comme fond. */
+        --destructive-foreground: 0 0% 4%;
         --border: 48 12% 82%;
         --input: 48 12% 82%;
         --ring: 72 99% 50%;
@@ -91,13 +101,18 @@
     .brutal-card:hover { transform: translate(-2px, -2px); box-shadow: 7px 7px 0 hsl(var(--foreground) / .3); border-color: hsl(var(--foreground) / .72); }
     .dark .brutal-card:hover { box-shadow: 7px 7px 0 hsl(var(--primary) / .65); border-color: hsl(var(--primary) / .7); }
     .panel-soft { border: 1px solid var(--rule); background: hsl(var(--card)); border-radius: var(--radius); }
-    .panel-black { @apply bg-foreground text-background; border-radius: var(--radius); }
+    /* Surface d'encre : NOIRE dans les deux themes (jamais creme), texte creme
+       fixe. Le noir vient du jeton Tailwind `ink` (#111111) — pas d'une
+       variable dupliquee. */
+    .panel-black { @apply bg-ink; color: hsl(var(--cream)); border-radius: var(--radius); }
+    /* Le neon n'est pose QUE sur une surface d'encre (jamais sur le creme). */
+    .text-neo-on-ink { color: hsl(var(--primary)); }
     .panel-neon { background: hsl(var(--primary)); color: #0A0A0A; border: 1px solid var(--rule-strong); border-radius: var(--radius); }
     .eyebrow { @apply text-[11px] font-medium tracking-[0.08em] text-muted-foreground; }
     /* Loyalty balance surface — stable dark card in both themes so the neon figure stays readable */
-    .panel-points { background: #1F1F1F; color: #F4F3EE; border: 1px solid var(--rule-strong); border-radius: var(--radius); }
+    .panel-points { background: #1F1F1F; color: hsl(var(--cream)); border: 1px solid var(--rule-strong); border-radius: var(--radius); }
     .dark .panel-points { background: #232323; border-color: hsl(72 99% 50% / .55); box-shadow: inset 0 0 0 1px hsl(72 99% 50% / .1); }
-    .eyebrow-invert { @apply text-[11px] font-medium uppercase tracking-[0.2em]; color: hsl(48 20% 94% / .85); }
+    .eyebrow-invert { @apply text-[11px] font-medium uppercase tracking-[0.2em]; color: hsl(var(--cream) / .85); }
     .rule-t { border-top: 1px solid var(--rule); }
     .num { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
     .hover-slide { @apply transition-[transform,background-color,color,box-shadow] duration-200 ease-out; }

@@ -94,7 +94,10 @@ export default function PackEvolutif({ embedded = false, products = null }) {
       <p className="mt-8 border border-foreground bg-muted/40 p-4 text-xs text-muted-foreground" data-testid="evo-hint">{t("evo.hint")}</p>
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent aria-describedby={undefined} className="rounded-3xl sm:max-w-md" data-testid="evo-dialog">
+        {/* 28 px comme la carte produit. `rounded-3xl` est remappe a 14 px par
+            index.css, et `ui/dialog.jsx` impose `sm:rounded-lg` : le `!` est une
+            rustine a retirer en T5.2 (quand les rayons seront unifies). */}
+        <DialogContent aria-describedby={undefined} className="!rounded-[28px] overflow-hidden sm:max-w-md" data-testid="evo-dialog">
           <DialogHeader><DialogTitle className="font-display">{selected && (lang === "en" && selected.name_en ? selected.name_en : selected.name)}</DialogTitle></DialogHeader>
           {selected && (
             <div className="space-y-4">

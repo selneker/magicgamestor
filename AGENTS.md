@@ -76,9 +76,23 @@ Two operational facts to check before starting:
 cd frontend && yarn start        # craco start
 yarn test:ci                     # craco test --watchAll=false
 yarn build                       # craco build
+yarn audit:contrast              # audit WCAG du bundle (phase 2) — voir « Audit de contraste »
 ```
 
 **Use yarn**, not npm: `yarn.lock` + `packageManager: yarn@1.22.22` are pinned, there is no `package-lock.json`.
+
+### Audit de contraste (phase 2)
+
+`yarn audit:contrast` (`frontend/scripts/audit-contrast.mjs`) mesure le contraste **réellement peint** de chaque
+texte visible sur les pages clés, à 390 px et 1440 px, en clair et en sombre. Il sort en erreur tant qu'un échec
+subsiste.
+
+- Il a besoin d'un **Chromium déjà installé** : `CHROMIUM_PATH=/chemin/vers/chromium yarn audit:contrast`. Sans la
+  variable, le script s'arrête avec un message. Il ne télécharge rien.
+- Il audite le **bundle compilé** : lancer `yarn build` avant.
+- **Ne jamais l'assouplir pour atteindre 0.** Toutes les exclusions de mesure sont listées en tête du script, avec
+  leur raison ; les limites de la mesure y sont également notées. Toute nouvelle exclusion doit y être ajoutée.
+- `playwright-core` est une devDependency ; le script n'est **pas** branché sur `build`, `test` ou `prestart`.
 
 Alias `@` → `src` (webpack alias `craco.config.js:106-108`, mirrored in `jsconfig.json` and jest `moduleNameMapper`).
 
@@ -161,7 +175,7 @@ Consequences an agent will otherwise get wrong:
 
 | Written in markup | Actually renders as |
 |---|---|
-| `text-primary` | body-text colour, **not** neon (`.dark` → neon) — 17 uses |
+| `text-primary` | body-text colour, **not** neon (`.dark` → neon) — 19 uses |
 | `border-foreground` / `border-slate-900` / `border-black` | `var(--rule)`, a soft ~1.4:1 hairline, **not black** — 77 uses |
 | `rounded-full` | 10px — except `span.rounded-full` and `h-1/h-2/h-3/w-1..w-3` → 9999px |
 | `rounded-none` | 8px · `rounded-2xl/3xl` → 14px · `rounded-xl/lg` → 12px |
@@ -194,14 +208,31 @@ vars, but `display` and `body` put the **literal family name first** (`['"Bricol
 — keep that ordering or the fonts break. `font-mono` maps to `var(--font-body)` and is **not** monospace.
 Adding a family = HTML head **and** `:root`.
 
-### `ProductCard` is the one real brutalist surface — and the one bug
+### `ProductCard` is the one real brutalist surface — fixed in T2.1
 
 `src/components/store/ProductCard.js:89` = `bg-neo` (static hex `#D4FF00`) + `border-ink` + `rounded-[28px]`, the only
-component still carrying the hard border. But it pairs that static background with theme-relative `text-foreground`,
-which flips to cream in dark mode → **product names and figures land at 1.04:1 and are unreadable**. Static colour +
-theme-relative token is the bug. Any colour change here must keep the foreground static.
-(The same inversion hits `.panel-black` = `bg-foreground` + `text-background`, so "black accent panels" become cream
-in dark mode, and the neon `text-primary` inside them disappears at 1.06:1.)
+component still carrying the hard border. It used to pair that static background with a theme-relative
+`text-foreground`, which flips to cream in dark mode → **product names and figures landed at 1.04:1**. Fixed on
+2026-10-20 (`d5e7e78`): the card's content wrapper now pins `text-ink`, the price pill — the only child that paints
+a *theme* surface (`bg-white` → `hsl(var(--card))`) — keeps `text-foreground`, and the discount badge (`bg-neo`) pins
+`text-ink`. **Static colour + theme-relative token is the bug**: any colour change on a fixed surface must keep its
+foreground static.
+(The same inversion still hits `.panel-black` = `bg-foreground` + `text-background`, so "black accent panels" become
+cream in dark mode, and the neon `text-primary` inside them disappears at 1.06:1 → **T2.2**.)
+
+### Ink surfaces are ink in both themes (fixed in T2.2)
+
+`.panel-black`, the cart bar, the « 02 » card and the game selector are **fixed ink** surfaces —
+`bg-ink` (the Tailwind `ink` token, `#111111`) with **fixed cream** text (`--cream`, the light theme's
+`48 20% 94%`, promoted to a token and never overridden in `.dark`). The neon is allowed **only** there,
+via `.text-neo-on-ink`; neon on cream is unreadable.
+
+The trap: `text-background/xx` means the **dark** theme's colour, so on an ink surface it must become
+`text-[color:hsl(var(--cream)/.7)]` — and `text-primary` is the *body* colour in light and neon in dark,
+so it must become `text-neo-on-ink` (on ink) or `text-foreground` (elsewhere, in **T5.4**). The other
+inverted surfaces (`Header.js` points pill, `Account.js`, `AdminBottomNav.js`, `button.jsx`…) pair
+`bg-foreground` with `text-background` and are self-consistent: their contrast does not depend on the
+theme.
 
 ---
 

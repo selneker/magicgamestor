@@ -57,10 +57,12 @@ export function PaymentStatus({ order, onRetry, onCompleted }) {
   return (
     <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} className="mx-auto max-w-md rounded-[22px] border-2 border-[color:var(--rule)] bg-card p-8 text-center" data-testid="payment-status">
       {state === "pending" && (
-        <div className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-full" style={{ color }}>
+        <div className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-full text-foreground">
           {/* Tinted disc as a separate layer with opacity rather than color-mix():
               the production browserslist still targets Chrome 109 and UC 15.5,
-              which do not support color-mix(). */}
+              which do not support color-mix(). The disc keeps the provider
+              colour; the glyph takes the theme foreground, because the brand
+              colour on a 12 % tint was 2,79:1 in light mode. */}
           <span aria-hidden="true" className="absolute inset-0 rounded-full" style={{ background: color, opacity: 0.12 }} />
           <Smartphone className="h-9 w-9 animate-pulse" />
         </div>

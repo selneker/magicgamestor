@@ -8,6 +8,11 @@ import { hidesBottomChrome } from "@/lib/bottomChrome";
 // Fixed 🎮 button rendered next to the mobile bottom navigation. It is not a
 // floating-action-button bound to content, it never scrolls with the page and
 // it owns its own stacking layer so it stays sharp above the selector backdrop.
+//
+// The disc is the brand neon on an ink border (like the active pill of the
+// nav), with an ink glyph: no hardcoded colour, and nothing white on the black
+// nav. The soft shadow is theme-relative and therefore useless on the dark
+// nav — it is dropped there (`dark:shadow-none`).
 export function GameButton() {
   const { pathname } = useLocation();
   const { setOpen, open, selected } = useGames();
@@ -29,11 +34,7 @@ export function GameButton() {
         data-testid="game-button"
         data-open={open ? "true" : "false"}
         initial={false}
-        animate={{
-          backgroundColor: "#FFFFFF",
-        }}
-        transition={{ duration: 0.24, ease: "easeOut" }}
-        className="nav-pill pointer-events-auto relative flex h-[60px] w-[60px] shrink-0 items-center justify-center overflow-hidden border border-[color:var(--rule-strong)] text-[#0A0A0A] shadow-[0_6px_18px_hsl(0_0%_0%_/_.28)] active:scale-[0.96]"
+        className="nav-pill pointer-events-auto relative flex h-[60px] w-[60px] shrink-0 items-center justify-center overflow-hidden border-2 border-ink bg-primary text-primary-foreground shadow-[0_6px_18px_hsl(var(--foreground)_/_.28)] dark:shadow-none active:scale-[0.96]"
       >
         <AnimatePresence initial={false} mode="popLayout">
           {open ? (

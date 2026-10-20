@@ -75,12 +75,12 @@ function Hero({ games, shopUrl }) {
       <motion.div {...rise(1)} className="panel-black flex flex-col justify-between gap-6 p-6 sm:p-8 lg:col-span-4" data-testid="hero-games-card">
         <div className="flex items-start justify-between gap-3">
           <p className="eyebrow-invert">{t("store.gamesTitle")}</p>
-          <span className="num text-5xl leading-none text-primary" data-testid="hero-games-count">{games.length}</span>
+          <span className="num text-5xl leading-none text-neo-on-ink" data-testid="hero-games-count">{games.length}</span>
         </div>
-        <p className="max-w-xs text-sm text-background/70">{t("store.gamesSub")}</p>
+        <p className="max-w-xs text-sm text-[color:hsl(var(--cream)/.7)]">{t("store.gamesSub")}</p>
         <div className="flex flex-wrap gap-2">
           {games.map((g) => (
-            <Link key={g.id} to={`/boutique?game=${g.id}`} className="group flex items-center gap-2 rounded-full border border-background/25 py-1 pl-1 pr-3 transition-colors hover:bg-primary hover:text-[#0A0A0A]" data-testid={`hero-game-${g.id}`}>
+            <Link key={g.id} to={`/boutique?game=${g.id}`} className="group flex items-center gap-2 rounded-full border border-[color:hsl(var(--cream)/.25)] py-1 pl-1 pr-3 transition-colors hover:bg-primary hover:text-[#0A0A0A]" data-testid={`hero-game-${g.id}`}>
               <GameLogo game={g} className="h-8 w-8 rounded-full" /><span className="text-xs font-semibold">{g.name}</span>
             </Link>
           ))}
@@ -91,11 +91,11 @@ function Hero({ games, shopUrl }) {
           <p className="eyebrow-invert">{t("store.stepsTitle")}</p>
           <ol className="mt-3 grid gap-2">
             {[[t("store.step1"), Gamepad2], [t("store.step2"), ShieldCheck], [t("store.step3"), Receipt]].map(([label, Icon], i) => (
-              <li key={label} className="flex items-center gap-2 text-xs text-background/85"><span className="flex h-7 w-7 shrink-0 items-center justify-center border border-primary bg-primary font-display text-sm font-bold text-[#0A0A0A]">{i + 1}</span><span>{label}</span><Icon className="ml-auto h-3.5 w-3.5 text-primary" aria-hidden="true" /></li>
+              <li key={label} className="flex items-center gap-2 text-xs text-[color:hsl(var(--cream)/.85)]"><span className="flex h-7 w-7 shrink-0 items-center justify-center border border-primary bg-primary font-display text-sm font-bold text-[#0A0A0A]">{i + 1}</span><span>{label}</span><Icon className="ml-auto h-3.5 w-3.5 text-neo-on-ink" aria-hidden="true" /></li>
             ))}
           </ol>
         </div>
-        <div className="border-t border-background/20 pt-4"><div className="flex items-center gap-2 text-primary"><Wallet className="h-4 w-4" aria-hidden="true" /><p className="text-[10px] font-semibold uppercase tracking-[0.18em]">{t("store.payTitle")}</p></div><div className="mt-2 flex flex-wrap gap-1.5">{["MVola", "Orange Money", "Binance USDT"].map((m) => <span key={m} className="border border-background/30 px-2.5 py-0.5 text-[11px] font-semibold text-background">{m}</span>)}</div></div>
+        <div className="border-t border-[color:hsl(var(--cream)/.2)] pt-4"><div className="flex items-center gap-2 text-neo-on-ink"><Wallet className="h-4 w-4" aria-hidden="true" /><p className="text-[10px] font-semibold uppercase tracking-[0.18em]">{t("store.payTitle")}</p></div><div className="mt-2 flex flex-wrap gap-1.5">{["MVola", "Orange Money", "Binance USDT"].map((m) => <span key={m} className="border border-[color:hsl(var(--cream)/.3)] px-2.5 py-0.5 text-[11px] font-semibold text-[color:hsl(var(--cream))]">{m}</span>)}</div></div>
         <Link to="/chat" className="inline-flex min-h-11 items-center justify-center gap-2 border-2 border-primary bg-primary px-4 text-xs font-bold text-[#0A0A0A] transition-transform hover:-translate-y-0.5" data-testid="hero-support-link"><MessageCircle className="h-4 w-4" aria-hidden="true" />{t("store.supportCta")}</Link>
       </motion.div>
     </section>
@@ -110,10 +110,10 @@ function Steps() {
       <SectionHead eyebrow="01 — 03" title={t("store.stepsTitle")} />
       <ol className="mt-6 grid gap-3 md:grid-cols-3">
         {steps.map(([title, desc], i) => (
-          <li key={title} className={`rounded-[16px] border p-6 sm:p-8 ${i === 1 ? "bg-foreground text-background" : "bg-card"}`}>
-            <span className={`num text-4xl ${i === 1 ? "text-primary" : "text-muted-foreground"}`}>0{i + 1}</span>
+          <li key={title} className={`rounded-[16px] border p-6 sm:p-8 ${i === 1 ? "bg-ink text-[color:hsl(var(--cream))]" : "bg-card"}`}>
+            <span className={`num text-4xl ${i === 1 ? "text-neo-on-ink" : "text-muted-foreground"}`}>0{i + 1}</span>
             <h3 className="mt-6 font-display text-xl font-bold">{title}</h3>
-            <p className={`mt-2 text-sm leading-relaxed ${i === 1 ? "text-background/70" : "text-muted-foreground"}`}>{desc}</p>
+            <p className={`mt-2 text-sm leading-relaxed ${i === 1 ? "text-[color:hsl(var(--cream)/.7)]" : "text-muted-foreground"}`}>{desc}</p>
           </li>
         ))}
       </ol>
@@ -309,7 +309,7 @@ export default function Home() {
           <p className="mt-3 max-w-md text-sm text-muted-foreground">{t("store.step2d")}</p>
         </div>
         <div className="panel-black flex flex-col justify-between gap-6 p-6 sm:p-10">
-          <div><p className="eyebrow-invert">{t("store.supportTitle")}</p><p className="mt-3 text-sm text-background/75">{t("store.supportSub")}</p></div>
+          <div><p className="eyebrow-invert">{t("store.supportTitle")}</p><p className="mt-3 text-sm text-[color:hsl(var(--cream)/.75)]">{t("store.supportSub")}</p></div>
           <Button asChild className="h-12 w-fit px-6" data-testid="home-support-cta"><Link to="/chat"><MessageCircle className="mr-2 h-4 w-4" />{t("store.supportCta")}</Link></Button>
         </div>
       </section>

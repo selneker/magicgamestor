@@ -14,9 +14,19 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
     setState({ status: "idle" }); onVerified(null);
   }, [pubgId, onVerified]);
 
+  // L'identifiant doit etre exploitable, et une seule verification a la fois.
+  const valid = /^\d{9,13}$/.test((pubgId || "").trim());
+  const busy = state.status === "loading";
+  // Inactif = identifiant inexploitable OU verification en cours : dans les deux
+  // cas le bouton ne declenche RIEN (pas de requete, pas de soumission).
+  // On passe par `aria-disabled` et non l'attribut `disabled` natif : le bouton
+  // reste focusable, donc le client peut le atteindre et comprendre qu'il est
+  // indisponible — c'est le gestionnaire qui fait la garde.
+  const inert = busy || !valid;
+
   const verify = async () => {
+    if (inert) return;
     const id = (pubgId || "").trim();
-    if (!/^\d{9,13}$/.test(id)) return setState({ status: "invalid" });
     setState({ status: "loading" });
     try {
       const { data } = await api.post("/fazercards/pubg/validate-id", { player_id: id });
@@ -24,6 +34,9 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
         setState({ status: "valid", name: data.player_name });
         onVerified({ name: data.player_name || null });
       } else {
+        // L'API a repondu « identifiant inconnu » : c'est le seul chemin qui
+        // affiche le message « ID invalide ». Le controle du format est fait
+        // plus haut (inert) : un ID mal saisi ne declenche aucune requete.
         setState({ status: "invalid" });
       }
     } catch (e) {
@@ -39,14 +52,24 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoTrigger]);
 
-  const btn = checkout
-    ? "mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-4 text-sm font-bold text-background transition-opacity hover:opacity-90 disabled:opacity-50"
-    : "inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-700 disabled:opacity-50";
+  // Etat actif : fond encre + texte creme (lisible dans les deux themes).
+  // Etat inactif : fond attenue + avant-plan du theme (16:1 en clair, 9,6:1 en
+  // sombre) et AUCUN effet au survol ni a l'appui. Pendant une verification,
+  // le bouton garde son fond actif (le « en cours » reste lisible) mais reste
+  // inerte : pas de double requete.
+  const base = checkout
+    ? "mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-bold transition-opacity"
+    : "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-opacity";
+  const skin = !valid
+    ? "bg-muted text-foreground cursor-not-allowed"
+    : busy
+      ? "bg-foreground text-background cursor-not-allowed"
+      : "bg-foreground text-background hover:opacity-90";
 
   return (
     <div className="mt-2">
       {!(checkout && state.status === "valid") && (
-        <button type="button" data-testid="pubg-verify-btn" onClick={verify} disabled={state.status === "loading" || !/^[0-9]{9,13}$/.test((pubgId || "").trim())} className={btn}>
+        <button type="button" data-testid="pubg-verify-btn" onClick={verify} aria-disabled={inert} aria-busy={busy} className={`${base} ${skin}`}>
           {state.status === "loading" ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" data-testid="pubg-verify-loading" />{t("checkout.verifying")}</>) : t("checkout.verify")}
         </button>
       )}
@@ -63,7 +86,7 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
         <div className="mt-3 rounded-[18px] border-2 border-foreground bg-primary/15 p-4" data-testid="pubg-verify-valid">
           <p className="flex items-center gap-2 font-display text-lg font-bold"><CheckCircle2 className="h-5 w-5 text-emerald-600" />{t("checkout.verified")}</p>
           <p className="mt-1.5 pl-7 text-base font-bold" data-testid="pubg-verify-player-name">Pseudo: {state.name || "—"}</p>
-          <p className="mt-2 text-xs text-muted-foreground" data-testid="pubg-verify-confirm">{t("checkout.verifyConfirm")}</p>
+          <p className="mt-2 text-xs text-foreground/80" data-testid="pubg-verify-confirm">{t("checkout.verifyConfirm")}</p>
         </div>
       )}
       {state.status === "invalid" && (
