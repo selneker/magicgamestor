@@ -34,9 +34,12 @@ Merge only after manual validation on a real phone.
 | T2.5 Bouton désactivé « Vérifier l'ID » | **fait** | `f584111` + `8525054` + `87650b1` | `aria-disabled` + gestionnaire inerte, fond atténué ≥ 3:1 ; 8 tests (clic, Entrée, chargement, contraste) |
 | T2.6 Bouton « Payer via USSD » | **fait** | `d7f3207` | texte encre sur la couleur de marque inchangee : 5,9:1 / 7,2:1. Audit : 14 → 6 |
 | T2.7 Liens destructifs en sombre | **fait** | `8728d7b` | `--destructive` + `--destructive-foreground` déplacés en `.dark` : 3,06 → 5,40:1 et 2,73 → 4,82:1. Audit : 6 → 2 |
-| T2.8 Indice de vérification sur panneau néon | todo | | « Vérifiez que cet ID… » 3,87:1 en sombre — trouvé en couvrant l'étape 1 du checkout |
-| T2.9 Puce de choix du fournisseur | todo | | blanc sur la couleur de marque : 3,19:1 / 2,63:1 — invisible pour l'audit |
-| T2.10 Couleur de marque en texte ou icône ailleurs | todo | | icône de statut 2,79:1, badges admin 2,63 à 4,81:1, pastille du chat 1,08:1 |
+| T2.8 Indice de vérification sur panneau néon | **fait** | `5828422` | `text-foreground/75` : 3,87 → 4,74:1 en sombre |
+| T2.9 Puce de choix du fournisseur | **fait** | `b3079c2` | texte encre sur la couleur de marque : 5,9:1 / 7,2:1 |
+| T2.10 Icône de statut de paiement | **fait** | `f36db2a` | l'icône prend l'avant-plan du thème : 17,3:1 / 9,8:1 |
+| T2.10 (suite) | **découpé** | | les badges admin → **T2.12** (tâche admin) ; la pastille du chat → **T5.7** |
+| T2.11 Rayon des popups du checkout | **à choisir** | | 3 popups clients : tiroir panier 0 px, dialogue évo 14 px, sélecteur 28 px (déjà bon) |
+| T2.12 Les pages admin | todo | | hors audit : 5 tuiles colorées, badges MVola/Orange, `text-rose-600`… |
 | T2 → T5 | todo | | |
 
 ### T2.4 — mesure de départ (2026-10-20, avant toute modification)
@@ -318,6 +321,44 @@ cause que les 6 échecs de barre panier. Ce n'est pas un défaut propre à `/sui
 
 **TOTAL : 2 échecs** (101 → 30 → 14 → 6 → 2). Il ne reste que l'indice « Vérifiez que cet ID… »
 (2 × 3,87:1, sombre) → **T2.8**. Les 4 échecs destructifs et les 8 de l'USSD sont tombés.
+
+### Phase 2 — clôture (2026-10-20)
+
+**Objectif atteint : 0 échec** sur les 12 pages auditées, dans les 4 combinaisons (390 px / 1440 px × clair /
+sombre). Les captures de référence sont dans `audit-shots/` (hors dépôt, régénérables avec
+`node frontend/scripts/shots-phase2.mjs`).
+
+| Page | 390 px clair | 390 px sombre | 1440 px clair | 1440 px sombre |
+|---|---|---|---|---|
+| accueil | 0 | 0 | 0 | 0 |
+| catalogue | 0 | 0 | 0 | 0 |
+| checkout-1-verification-initiale | 0 | 0 | 0 | 0 |
+| checkout-1-verification | 0 | 0 | 0 | 0 |
+| checkout-2-methode | 0 | 0 | 0 | 0 |
+| checkout-3-ussd-mvola | 0 | 0 | 0 | 0 |
+| checkout-3-ussd-orange | 0 | 0 | 0 | 0 |
+| checkout-4-reference | 0 | 0 | 0 | 0 |
+| statut-paiement | 0 | 0 | 0 | 0 |
+| fiche-produit | 0 | 0 | 0 | 0 |
+| compte | 0 | 0 | 0 | 0 |
+| suivi | 0 | 0 | 0 | 0 |
+| fidelite | 0 | 0 | 0 | 0 |
+| **total** | **0** | **0** | **0** | **0** |
+
+Trajectoire : **101 → 30 (T2.1) → 14 (T2.2) → 6 (T2.6) → 2 (T2.7) → 0 (T2.8, T2.9, T2.10)**.
+
+**Ce que l'audit ne voit pas** — il ne mesure que le **texte** des **pages listées dans `PAGES`** :
+
+| Élément | Mesure | Tâche |
+|---|---|---|
+| Les **icônes** (WCAG 1.4.11, 3:1) | l'icône de statut était à 2,79:1 | **T2.10** (corrigé) |
+| Les **bordures** (3:1) | jamais mesurées | limite documentée |
+| Les **pages admin** | jamais mesurées | **T2.12** |
+| La **page /chat** | hors `PAGES` | la pastille « non lus » (1,08:1) → **T5.7** |
+| L'**opacité d'un élément** | l'audit compose l'alpha de la *couleur*, pas l'`opacity` de l'élément | limite documentée (T2.5 traite le cas à part) |
+| Les **fondus d'opacité de survol** | idem : `hover:opacity-90` n'est pas composé | mesuré à la main dans les rapports |
+| Les **états désactivés** | exclus (exclusion n° 7, WCAG 1.4.3) | T2.5, seuil ≥ 3:1 vérifié par un test |
+| Les **pages non listées** (`/privacy`, `/legal`, `/support`, `/events`, `/chat`…) | jamais mesurées | à voir |
 
 ### T1.5 implementation notes (2026-10-20)
 
@@ -621,19 +662,59 @@ L'audit ne voit que ce qu'il mesure : **le texte**, sur les pages listées. Les 
 > - `ChatWorkspace.js:53` : blanc sur néon est un défaut de la même famille que T2.2 (le néon ne porte que de
 >   l'encre, ou alors il faut un fond sombre sous le texte).
 
-**T2.9 — La puce de choix du fournisseur** (mêmes couleurs, même cause que T2.6)
+**T2.9 — La puce de choix du fournisseur** — **DONE (`b3079c2`, 2026-10-20)**
 - File: `components/store/PaymentFlow.js` (~l.191, `ManualPanel`).
-- Do: texte encre sur la couleur de marque, comme T2.6. Attention : la puce **non** sélectionnée
-  (`bg-card text-muted-foreground`) est déjà conforme.
-- Validate: la puce sélectionnée MVola et Orange à ≥ 4,5:1 dans les deux thèmes.
+- Fix: texte **encre** sur la couleur de marque inchangée, comme T2.6 → **5,91:1** sur le vert MVola,
+  **7,18:1** sur l'orange (étaient 3,19 et 2,63). La puce **non** sélectionnée (`bg-card` +
+  `muted-foreground`, 5,86:1) est déjà conforme et n'est pas touchée.
 
-**T2.10 — La couleur de marque (ou le néon) en texte ou en icône ailleurs**
-- Files: `components/store/PaymentStatus.js` (~l.42, l'icône), `pages/admin/AdminDashboard.js` (~l.51-52,
-  les badges), `components/chat/ChatWorkspace.js` (~l.53, la pastille).
-- Do: les badges et l'icône doivent rester identifiables sur leur surface (3:1 pour l'icône, 4,5:1 pour le
-  texte) — donc un ton plus sombre pour le texte de la marque sur fond clair, et l'encre sur le néon pour la
-  pastille. Au passage, corriger le `bg-[var(--mvola)]/10` qui ne rend rien (une variable canal, pas un hex).
-- Validate: chaque élément mesuré à ≥ 4,5:1 (texte) ou ≥ 3:1 (icône), dans les deux thèmes.
+**T2.10 — L'icône de statut de paiement** — **DONE (`f36db2a`, 2026-10-20)**
+- File: `components/store/PaymentStatus.js` (~l.60).
+- Problem: the icon wore the provider colour on its own 12 %-tinted disc → **2,79:1** in light (the
+  non-text bar asks 3:1).
+- Fix: the icon takes the **theme foreground**, the disc keeps the provider tint (the MVola/Orange identity
+  stays readable). Measured: **17,3:1** in light, **9,77:1** in dark.
+
+**T2.10 (suite) — découpée le 2026-10-20**
+- **Les badges admin** (`pages/admin/AdminDashboard.js:51-52`, `text-[var(--mvola)]` / `text-[var(--orange)]` sur
+  fond de carte : **3,19:1** en clair, 3,95 et 4,81 en sombre) → **T2.12**, avec la tâche admin. Au passage :
+  `bg-[var(--mvola)]/10` **ne rend rien** (Tailwind ne peut pas appliquer un modificateur d'alpha à une variable
+  qui contient un hex) → le fond teinté prévu est absent.
+- **La pastille « non lus » du chat** (`components/chat/ChatWorkspace.js:53`, `bg-primary text-white` =
+  **1,08:1**) → **T5.7** (ChatWorkspace est monté sur /chat : ce n'est pas du code mort, mais la correction est
+  routée vers T5.7).
+
+**T2.11 — Les coins arrondis des popups du checkout** (2026-10-20) — *à choisir*
+- Cible : des coins cohérents avec la carte produit (`rounded-[28px]`, mesuré **28 px** sur les 4 coins).
+- Les 3 popups du parcours **client**, et leur **rayon calculé** (mesuré dans le navigateur, pas lu dans les
+  classes) :
+
+  | Popup | Fichier | Type | Rayon calculé 390 px | Rayon calculé 1440 px |
+  |---|---|---|---|---|
+  | Tiroir panier | `components/store/CartDrawer.js:96` | `Sheet` (latéral droit, pleine hauteur) | **0 px** (4 coins) | **0 px** (4 coins) |
+  | Dialogue « pack évolutif » | `pages/PackEvolutif.js:97` | `Dialog` (fenêtre centrée) | **14 px** (4 coins) | **14 px** (4 coins) |
+  | Sélecteur de jeu | `components/layout/GameSelector.js:51` | panneau artisanal | **28 px** ✓ | (déclencheur `md:hidden`, non atteignable) |
+
+  - Les 14 px du dialogue viennent du **remappage** : `rounded-3xl` → `border-radius: 14px !important`
+    (`index.css:178`). La classe à utiliser est donc `rounded-[28px]` (absente du remappage) — et
+    `sm:rounded-[28px]` en plus, car `ui/dialog.jsx:34` impose `sm:rounded-lg` (12 px) qui l'emporterait
+    sur la classe de base à ≥ 640 px.
+  - `ui/dialog.jsx` et `ui/sheet.jsx` **ne sont pas modifiés** (l'unification de tous les popups est en T5.2) :
+    le rayon se règle dans le `className` du composant appelant. Aucun des deux n'impose un rayon qui l'empêche.
+  - Le contenu doit être rogné par les coins (`overflow-hidden`) **sans** couper l'anneau de focus, la croix de
+    fermeture ni l'ombre — mesuré : la croix est à 16 px (tiroir) / 17 px (dialogue) du bord, son anneau de
+    focus s'étend à 4 px, donc il reste à l'intérieur d'un rayon de 28 px ; l'ombre n'est jamais rognée par
+    l'`overflow` de l'élément lui-même.
+  - **Reste à choisir lequel** (le dialogue et le tiroir sont tous deux à l'écart de la cible).
+
+**T2.12 — Les pages admin** (hors audit)
+- `PAGES` ne contient que les pages client : `/admin` et ses sous-pages ne sont **ni mesurées ni corrigées**.
+- Éléments relevés : les 5 tuiles de stats colorées du tableau de bord (`text-primary`, `text-amber-600`,
+  `text-emerald-600`, `text-violet-600`), les badges MVola / Orange (T2.10), les `text-rose-600` / `hover:text-rose-600`
+  des boutons d'action, `bg-rose-500 text-white` des pastilles de ton.
+- Do: ajouter les pages admin à `PAGES` (avec un rôle administrateur dans le mock) puis corriger les familles
+  qui fuient du remappage.
+- Validate: l'audit passe de 0 à N sur les pages admin, puis N → 0.
 
 **T2.7 Destructive links in dark mode** — **DONE (`8728d7b`, 2026-10-20)**
 - Files: `index.css` **only** (the `.dark` block) — the 19 usages all go through the tokens, no component changes.
@@ -657,8 +738,9 @@ L'audit ne voit que ce qu'il mesure : **le texte**, sur les pages listées. Les 
 - Validate: `yarn build`, `yarn test:ci` (7 suites / 31 tests), contrast audit **6 → 2**, no new failure. Captures in `/tmp/opencode/shots/t27-*.png` (the visual judgement is for a human: the coral `#F77B6E` replaces `#D93826` on the dark theme — **if that reads too soft, the fallback is two tokens**: one for the red-as-text and one for the red-as-background).
 - Out of scope, listed for **T5.4**: `toast.jsx:62` uses hardcoded reds (`text-red-300`, `group-[.destructive]:hover:text-red-50`, `focus:ring-red-400`, `focus:ring-offset-red-600`) that do not follow the token; same family as `text-red-600` / `text-rose-600` in the forms and the admin.
 
-**T2.8 « Vérifiez que cet ID… » on the tinted neon panel** (hole found on 2026-10-20)
-- File: `frontend/src/components/store/PubgIdVerify.js` (~l.67, the `pubg-verify-confirm` paragraph).
+**T2.8 « Vérifiez que cet ID… » on the tinted neon panel** — **DONE (`5828422`, 2026-10-20)**
+- Files: `components/store/PubgIdVerify.js` (the `pubg-verify-confirm` paragraph) and `components/store/checkout/IdentityFieldsVerify.js` (the same hint on the same panel, in the generic multi-game component).
+- Fix: `text-muted-foreground` → **`text-foreground/75`** (the theme foreground, as the subtitles of the ink panels already do at /70, /75, /85). Measured: **4,74:1** in dark (was 3,87), ~9:1 in light. The visual hierarchy is kept (12 px against the 18 px bold title).
 - Problem: `text-muted-foreground` on `bg-primary/15` → **3,87:1** in dark mode (2 failures). Found only
   because the audit now measures the verification screen (see the auditor section above).
 - Do: a foreground that holds on the neon-tinted panel, in both themes.
@@ -706,6 +788,7 @@ list was `PaymentStatus.js` only.
 **T5.3 Type scale** — remove 8 px and 9 px, raise 10 px to 11 px, route the 44 `text-[11px]` declarations through `.eyebrow`.
 
 **T5.4 Remap table** — (`index.css` ~l.175-222, outside `@layer`). Remove it progressively (one class family per commit) and replace usages with tokens (`--warning`, `--success`, `--danger`, `--info`, elevations). Leaking families: `rose`, `amber`, `emerald`, `sky`, `slate`.
+- **À traiter dans T5.4** : le survol du bouton rouge en **thème clair** est à **4,06:1** (fond rouge à 90 % d'opacité, texte blanc à 90 %) — un état préexistant, non modifié par T2.7 ; les rouges en dur de `toast.jsx:62` (`text-red-300`, `hover:text-red-50`, `focus:ring-red-400`) ; `text-red-600` / `text-rose-600` dans les formulaires et l'admin ; `bg-[var(--mvola)]/10` qui ne rend rien (un modificateur d'alpha sur une variable hex).
 
 **T5.5 Borders** — the brutalist identity must NOT go everywhere. 2 px ink border only on actionable elements: product cards, primary buttons, one or two key panels. Other surfaces keep thin but **visible** rules (≥ 3:1). Replace the `border-foreground` remap (~15% opacity) with an explicit `--rule` token.
 
