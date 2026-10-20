@@ -1,23 +1,28 @@
 import { Check } from "lucide-react";
 import { useLang } from "@/context/LanguageContext";
 
-const STAGES = ["account", "payment", "delivery"];
-const stageForStep = (step) => step === 0 ? 0 : step < 3 ? 1 : 2;
+// One entry per checkout screen. The order must match the screens array in
+// pages/Checkout.js: verification, payment method, payment, manual reference.
+const STEPS = ["stepVerify", "stepMethod", "stepPay", "stepConfirm"];
 
 export function CheckoutSteps({ step }) {
   const { t } = useLang();
-  const active = stageForStep(step);
+  const active = Math.min(Math.max(step, 0), STEPS.length - 1);
   return (
-    <ol className="mt-4 grid grid-cols-3 gap-2" data-testid="checkout-steps" aria-label={t("checkout.progressLabel")}>
-      {STAGES.map((key, i) => {
+    <ol className="mt-4 grid grid-cols-4 gap-2" data-testid="checkout-steps" aria-label={t("checkout.progressLabel")}>
+      {STEPS.map((key, i) => {
         const complete = i < active;
         const current = i === active;
-        return <li key={key} data-testid={`checkout-stage-${i + 1}`} aria-current={current ? "step" : undefined}>
-          <button type="button" disabled={!complete} className="flex min-h-11 w-full items-center gap-2 text-left disabled:cursor-default">
-            <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold ${complete || current ? "border-foreground bg-primary text-[#0A0A0A]" : "border-muted bg-muted text-muted-foreground"}`}>{complete ? <Check className="h-4 w-4" aria-hidden="true" /> : i + 1}</span>
-            <span className={`truncate text-xs font-semibold ${current ? "text-foreground" : "text-muted-foreground"}`}>{t(`checkout.stage${key[0].toUpperCase()}${key.slice(1)}`)}</span>
-          </button>
-        </li>;
+        return (
+          <li key={key} data-testid={`checkout-stage-${i + 1}`} aria-current={current ? "step" : undefined}>
+            {/* Not a button: the steps are not clickable, and a focusable control
+                that does nothing is a keyboard trap. */}
+            <div className="flex min-h-11 w-full flex-col items-center gap-1.5 text-center">
+              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold ${complete || current ? "border-foreground bg-primary text-[#0A0A0A]" : "border-muted bg-muted text-muted-foreground"}`} aria-hidden="true">{complete ? <Check className="h-4 w-4" /> : i + 1}</span>
+              <span className={`text-[11px] font-semibold leading-tight ${current ? "text-foreground" : "text-muted-foreground"}`}>{t(`checkout.${key}`)}</span>
+            </div>
+          </li>
+        );
       })}
     </ol>
   );

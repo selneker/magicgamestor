@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -6,16 +6,86 @@ import { useCart } from "@/context/CartContext";
 import { useLang } from "@/context/LanguageContext";
 import { formatAr } from "@/lib/api";
 import { useGames } from "@/context/GameContext";
+import { useChat } from "@/context/ChatContext";
+import { showsCartBar } from "@/lib/bottomChrome";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+
+// Fallback used when ResizeObserver is unavailable: a bit more than the bar's
+// measured height (~101 px at 390 px) so the reserved space never lets the bar
+// cover the footer's last row.
+const BAR_FALLBACK_HEIGHT = 112;
 
 export function CartDrawer() {
   const { items, open, setOpen, setQty, remove, total, count, gameId } = useCart();
-  const { games } = useGames();
+  const { games, open: selectorOpen } = useGames();
+  const { panelOpen } = useChat();
+  const { pathname } = useLocation();
   const cartGame = games.find((g) => g.id === gameId);
   const { t, lang } = useLang();
   const navigate = useNavigate();
+
+  // The mobile bar only exists where the bottom nav exists, never on a product
+  // page (own buy bar) and never while an overlay is open.
+  const barSlot = showsCartBar({ pathname, hasItems: items.length > 0, drawerOpen: open, panelOpen, selectorOpen });
+
+  // When the on-screen keyboard opens, the layout viewport shrinks and a
+  // bottom-anchored bar rises with it — on some browsers it would then cover the
+  // field being typed into. Hide the bar while a text field has focus.
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    const isTextField = (el) =>
+      el instanceof HTMLElement &&
+      ((el.tagName === "INPUT" && !["checkbox", "radio", "button", "submit", "reset", "range", "color", "file"].includes(el.type)) ||
+        el.tagName === "TEXTAREA" || el.isContentEditable);
+    const onFocusIn = (e) => { if (isTextField(e.target)) setTyping(true); };
+    const onFocusOut = (e) => { if (!e.relatedTarget) setTyping(false); };
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+    };
+  }, []);
+
+  const renderBar = barSlot && !typing;
+
+  // The bar is fixed, so the page must reserve room for it. Its height depends on
+  // how the fee hint wraps, so it is measured rather than guessed.
+  const barRef = useRef(null);
+  const [barHeight, setBarHeight] = useState(0);
+  useLayoutEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    // ResizeObserver is missing on old Android WebViews (Chrome < 64). Without this
+    // guard the constructor throws inside the layout effect: React unmounts the
+    // tree and the ErrorBoundary replaces the whole shop with the error screen.
+    if (typeof ResizeObserver === "undefined") {
+      setBarHeight(BAR_FALLBACK_HEIGHT);
+      return;
+    }
+    const ro = new ResizeObserver(() => setBarHeight(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [renderBar]);
+  useEffect(() => { if (!barSlot) setBarHeight(0); }, [barSlot]);
+
   return (
     <>
-      {items.length > 0 && <div className="fixed inset-x-3 bottom-3 z-30 flex items-center gap-3 border-2 border-foreground bg-foreground p-2 text-background shadow-[4px_4px_0_hsl(var(--primary))] md:hidden" style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }} data-testid="mobile-cart-bar">
+      {/* Spacer so the bar never covers the footer's last row. It stays in place
+          while the bar is hidden for the keyboard, so nothing shifts. 2.5rem = the
+          footer's own pb-28 (7rem) minus the bar's 4.5rem bottom offset. */}
+      {barSlot && (
+        <div
+          className="md:hidden"
+          aria-hidden="true"
+          data-testid="cart-bar-spacer"
+          style={{ height: `max(0px, calc(${barHeight}px + max(0.75rem, env(safe-area-inset-bottom, 0px)) - 2.5rem))` }}
+        />
+      )}
+      {/* env() avec un repli : sans lui, un navigateur qui ne connait pas
+          env() invaliderait toute la declaration `bottom` et la barre fixe
+          retomberait a sa position statique. */}
+      {renderBar && <div ref={barRef} className="fixed inset-x-3 bottom-[calc(4rem+max(0.75rem,env(safe-area-inset-bottom,0px))+0.5rem)] z-[45] flex items-center gap-3 border-2 border-foreground bg-foreground p-2 text-background shadow-[4px_4px_0_hsl(var(--primary))] md:hidden" data-testid="mobile-cart-bar">
         <button type="button" className="min-h-11 min-w-0 flex-1 px-2 text-left" onClick={() => setOpen(true)}><span className="block text-sm font-semibold">{count} {count === 1 ? t("cart.item") : t("cart.items")}</span><span className="num block text-lg text-primary">{formatAr(total)}</span><span className="block text-xs leading-snug text-background">{t("cart.paymentFeeHint")}</span></button>
         <button type="button" className="min-h-11 shrink-0 bg-primary px-4 text-sm font-bold text-[#0A0A0A]" onClick={() => { setOpen(false); navigate("/commande"); }}>{t("cart.checkout")}</button>
       </div>}
