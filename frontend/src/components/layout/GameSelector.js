@@ -67,7 +67,7 @@ export function GameSelector() {
                         isActive ? "bg-[color:hsl(var(--cream)/.1)]" : "hover:bg-[color:hsl(var(--cream)/.05)]"
                       }`}
                     >
-                      <span className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-[#0A0A0A] ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-[hsl(var(--foreground))]" : ""}`}>
+                      <span className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-[#0A0A0A] ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-ink" : ""}`}>
                         {g.icon_url && !broken[g.id] ? (
                           <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy"
                             onError={() => setBroken((b) => ({ ...b, [g.id]: true }))} />
