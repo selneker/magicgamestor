@@ -32,9 +32,11 @@ Merge only after manual validation on a real phone.
 | T2.2 Surfaces d'encre et barre panier | **fait** | `aa831e9` | 16 échecs + les 2 de `/suivi` ramenés à **0**. Audit : 30 → 14. Inventaire complet dans le plan |
 | T2.3 Plaque blanche du logo | **fait** | `694ae49` | disque néon + bord encre pour le bouton de jeu ; plus aucun blanc en dur dans `GameButton.js` |
 | T2.5 Bouton désactivé « Vérifier l'ID » | **fait** | `f584111` + `8525054` + `87650b1` | `aria-disabled` + gestionnaire inerte, fond atténué ≥ 3:1 ; 8 tests (clic, Entrée, chargement, contraste) |
-| T2.6 Bouton « Payer via USSD » | todo | | blanc sur vert MVola (3,19:1) et sur orange (2,63:1) — 8 échecs |
+| T2.6 Bouton « Payer via USSD » | **fait** | `d7f3207` | texte encre sur la couleur de marque inchangee : 5,9:1 / 7,2:1. Audit : 14 → 6 |
 | T2.7 Liens destructifs en sombre | todo | | « Déconnexion » 3,06:1, « Supprimer mon compte » 2,73:1 |
 | T2.8 Indice de vérification sur panneau néon | todo | | « Vérifiez que cet ID… » 3,87:1 en sombre — trouvé en couvrant l'étape 1 du checkout |
+| T2.9 Puce de choix du fournisseur | todo | | blanc sur la couleur de marque : 3,19:1 / 2,63:1 — invisible pour l'audit |
+| T2.10 Couleur de marque en texte ou icône ailleurs | todo | | icône de statut 2,79:1, badges admin 2,63 à 4,81:1, pastille du chat 1,08:1 |
 | T2 → T5 | todo | | |
 
 ### T2.4 — mesure de départ (2026-10-20, avant toute modification)
@@ -269,6 +271,31 @@ cause que les 6 échecs de barre panier. Ce n'est pas un défaut propre à `/sui
 | Bouton « Payer via USSD » : blanc sur vert MVola / orange | 8 | **3,19:1** (MVola), 2,63:1 (Orange) | **T2.6** |
 | Lien destructif en rouge sur fond sombre | 4 | « Déconnexion » **3,06:1**, « Supprimer mon compte » **2,73:1** | **T2.7** |
 | Indice « Vérifiez que cet ID… » sur un panneau teinté néon | 2 | **3,87:1** (sombre) | **T2.8** |
+
+### T2.4 — état après T2.6 (2026-10-20)
+
+| Page | 390 px clair | 390 px sombre | 1440 px clair | 1440 px sombre |
+|---|---|---|---|---|
+| accueil | 0 | 0 | 0 | 0 |
+| catalogue | 0 | 0 | 0 | 0 |
+| checkout-1-verification-initiale | 0 | 0 | 0 | 0 |
+| checkout-1-verification | 0 | 1 | 0 | 1 |
+| checkout-2-methode | 0 | 0 | 0 | 0 |
+| checkout-3-ussd-mvola | 0 | 0 | 0 | 0 |
+| checkout-3-ussd-orange | 0 | 0 | 0 | 0 |
+| checkout-4-reference | 0 | 0 | 0 | 0 |
+| statut-paiement | 0 | 0 | 0 | 0 |
+| fiche-produit | 0 | 0 | 0 | 0 |
+| compte | 0 | 2 | 0 | 2 |
+| suivi | 0 | 0 | 0 | 0 |
+| fidelite | 0 | 0 | 0 | 0 |
+| **total** | **0** | **3** | **0** | **3** |
+
+**TOTAL : 6 échecs.** Les 8 de T2.6 sont tombés, **aucun nouvel échec**. Il reste 2 × T2.8 et 4 × T2.7.
+
+> Point de vérification : l'écran « statut de paiement » **est** bien atteint par le parcours de l'audit
+> (le mock doit renvoyer une commande pour `POST /orders`, sinon le parcours plante sur la garde d'erreur
+> globale et la page est comptée 0 échec sans avoir été mesurée).
 
 ### T1.5 implementation notes (2026-10-20)
 
@@ -544,15 +571,47 @@ Goal: zero contrast failures, in light and dark.
 - Validate: the button is `aria-disabled`, the **click** and the **Enter key** trigger nothing (no request, no
   state change), and the disabled state is at ≥ 3:1.
 
-**T2.6 « Payer via USSD » button — white on the brand green** (hole found on 2026-10-20)
-- File: `frontend/src/components/store/checkout/StepPay.js` (~l.101, the `<a data-testid="ussd-button">`).
-- Problem: `text-white` on `var(--mvola)` (`#00A651`) = **3,19:1**, and on `var(--orange)` (`#FF7900`) =
-  **2,63:1**. 8 failures, on the MVola **and** the Orange screen, in the 4 combinations.
-- Do: **do not change the brand colour.** Two routes: (a) ink text (`#111111`) on the unchanged brand
-  colour — 5,9:1 on MVola, 7,2:1 on Orange; (b) a darker tone reserved for that button
-  (`--mvola-strong` / `--orange-strong`) keeping white text. **The approach is announced before coding.**
-- Validate: « Payer via USSD » is at ≥ 4.5:1 in light and dark, for MVola **and** Orange; the brand colour
-  itself is unchanged.
+**T2.6 « Payer via USSD » button — white on the brand green** — **DONE (`d7f3207`, 2026-10-20)**
+- File: `components/store/checkout/StepPay.js` only (the `<a data-testid="ussd-button">`).
+- Problem: `text-white` on `var(--mvola)` (`#00A651`) = **3,19:1**, and on `var(--orange)` (`#FF7900`) = **2,63:1**. 8 failures, on the MVola **and** the Orange screen, in the 4 combinations.
+- Do: **the brand colour does not move** — the text becomes ink (the Tailwind `ink` token): **5,91:1** on the green, **7,18:1** on the orange. The lucide icon follows `currentColor`, so it turns ink too. The focus ring becomes `outline-ink` (3 px): the global neon ring was invisible on both colours (2,67:1 and 2,2:1).
+- Validate: 390 px, MVola and Orange, light and dark — text 5,91 / 7,18, icon ink, hover ≈ 5,0 / 6,0 (the element opacity is not composed by the measurement), focus: ink ring, `:focus-visible` true, 5,91 / 7,18 against the button and 18:1 against the card. `yarn build`, `yarn test:ci` (7 suites / 31 tests) green, contrast audit **14 → 6**, no new failure.
+
+### T2.6 — inventaire des autres usages blanc / couleur de marque (2026-10-20)
+
+L'audit ne voit que ce qu'il mesure : **le texte**, sur les pages listées. Les usages ci-dessous
+**n'apparaissent donc pas** dans la mesure, mais ont été mesurés à la main dans le navigateur.
+
+| Fichier | Élément | Couleurs | Contraste mesuré | Visible par l'audit ? | Tâche |
+|---|---|---|---|---|---|
+| `PaymentFlow.js:191` | puce de choix du fournisseur (sélectionnée) | blanc sur la couleur de marque | **3,19:1** (MVola) · **2,63:1** (Orange) | non (l'audit ne clique pas la puce) | **T2.9** |
+| `PaymentMethodPicker.js:61,77` | même puce + bouton de méthode | blanc sur la couleur de marque | 3,19 / 2,63 | — | **code mort** (jamais importé) → T5.7 |
+| `PaymentStatus.js:42` | icône du disque « en attente » | la couleur de marque sur son disque à 12 % | **2,79:1** (clair) · 3,43:1 (sombre) | non (l'auditeur ne mesure pas les icônes) | **T2.10** |
+| `AdminDashboard.js:51` | badge « MVola n » | vert sur fond de carte | **3,19:1** (clair) · 3,95:1 (sombre) | non (pages admin) | **T2.10** |
+| `AdminDashboard.js:52` | badge « Orange n » | orange sur fond de carte | **2,63:1** (clair) · 4,81:1 (sombre) | non (pages admin) | **T2.10** |
+| `ChatWorkspace.js:53` | pastille « non lus » | blanc sur néon | **1,08:1** | non (page /chat hors `PAGES`) | **T2.10** |
+| `OrderTrack.js:136` | bouton « Reprendre le paiement » | encre sur la couleur de marque | 5,91 / 7,18 | non | ✓ conforme |
+
+> Deux bugs au passage, relevés pendant la mesure :
+> - `AdminDashboard.js:51-52` : `bg-[var(--mvola)]/10` **ne rend rien** — Tailwind ne peut pas appliquer un
+>   modificateur d'alpha à une variable qui contient un hex (`rgb(#00A651 / .1)` est invalide), donc le fond
+>   teinté prévu est absent (le fond mesuré est `rgba(0,0,0,0)`).
+> - `ChatWorkspace.js:53` : blanc sur néon est un défaut de la même famille que T2.2 (le néon ne porte que de
+>   l'encre, ou alors il faut un fond sombre sous le texte).
+
+**T2.9 — La puce de choix du fournisseur** (mêmes couleurs, même cause que T2.6)
+- File: `components/store/PaymentFlow.js` (~l.191, `ManualPanel`).
+- Do: texte encre sur la couleur de marque, comme T2.6. Attention : la puce **non** sélectionnée
+  (`bg-card text-muted-foreground`) est déjà conforme.
+- Validate: la puce sélectionnée MVola et Orange à ≥ 4,5:1 dans les deux thèmes.
+
+**T2.10 — La couleur de marque (ou le néon) en texte ou en icône ailleurs**
+- Files: `components/store/PaymentStatus.js` (~l.42, l'icône), `pages/admin/AdminDashboard.js` (~l.51-52,
+  les badges), `components/chat/ChatWorkspace.js` (~l.53, la pastille).
+- Do: les badges et l'icône doivent rester identifiables sur leur surface (3:1 pour l'icône, 4,5:1 pour le
+  texte) — donc un ton plus sombre pour le texte de la marque sur fond clair, et l'encre sur le néon pour la
+  pastille. Au passage, corriger le `bg-[var(--mvola)]/10` qui ne rend rien (une variable canal, pas un hex).
+- Validate: chaque élément mesuré à ≥ 4,5:1 (texte) ou ≥ 3:1 (icône), dans les deux thèmes.
 
 **T2.7 Destructive links in dark mode** (hole found on 2026-10-20)
 - Files: `index.css` (the `--destructive` / `--destructive-foreground` pair in `.dark`), `pages/Account.js`
