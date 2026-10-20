@@ -20,8 +20,8 @@ Merge only after manual validation on a real phone.
 
 | Task | Status | Commit | Notes |
 |---|---|---|---|
-| T1.1 Mobile cart bar | **done** | `450af04` | CTA coverage 89% → 0% (measured). `Layout.js` added to the file list — see note below |
-| T1.2 Step counter "Étape 4 / 3" | todo | | |
+| T1.1 Mobile cart bar | **done** | `450af04` + `572bb11` | CTA coverage 89% → 0% (measured). Follow-up commit fixed z-index, nav-less routes, product page and the virtual keyboard |
+| T1.2 Step counter "Étape 4 / 3" | **done** | `2dfd7a6` | 4 named steps, total derived from `screens.length`, vertical layout. Walked 1/4 → 4/4 in FR and EN |
 | T1.3 USSD instructions | todo | | |
 | T1.4 Payment status | todo | | |
 | T1.5 Build without backend URL | todo | | |
@@ -29,12 +29,34 @@ Merge only after manual validation on a real phone.
 
 **T1.1 deviation (approved by the user):** the plan listed only `CartDrawer.js`, `BottomNav.js` and
 `GameButton.js`. `Layout.js` was needed to reserve the extra bottom space, otherwise the cart bar would
-cover the footer's last row. `BottomNav.js` and `GameButton.js` turned out to need **no change** — once the
-bar sits above the nav band there is no geometric overlap with either.
+cover the footer's last row. `BottomNav.js` and `GameButton.js` turned out to need **no change** for the
+overlap itself — but the route predicate they each duplicated was extracted to `src/lib/bottomChrome.js`
+so the cart bar, the nav and the FAB can never disagree about which chrome is on screen.
+
+**T1.1 follow-up (`572bb11`)** — found by review, all four fixed and measured in the browser:
+- `z-[60]` was above the cart drawer (Sheet, z-50) and the chat panel (z-50) → now `z-[45]`, above the nav
+  (z-40) but below every overlay.
+- The bar floated 84 px above the bottom on routes with no nav (`/commande`, `/compte`, `/admin`).
+- On a product page it collided with `Product.js`'s own sticky buy bar → the cart bar is hidden on `/produit`.
+- With the on-screen keyboard the layout viewport shrinks and the bar rose over the field being typed into
+  (catalogue search, login e-mail) → the bar is hidden while a text field has focus.
 
 **T1.1 known follow-ups (not fixed here, they belong to later tasks):**
 - The cart bar total uses `text-primary` on `bg-foreground` → invisible in dark mode (1.06:1). → **T2.2**
 - `border-foreground` on the cart bar is remapped to a 15%-opacity hairline → **T5.5**
+
+**Dead components found while testing:** `components/chat/FloatingChat.js` and `components/chat/ChatLink.js`
+are never imported anywhere — the floating chat FAB does not exist in the running app. `ChatWorkspace` and
+`ChatThread` are used (by `/chat` and the admin chat page). The `panelOpen` guard added to the cart bar is
+correct but currently has nothing to hide.
+
+**Latent fragility found while driving the checkout:** `Checkout.js` does
+`const identitySpec = game?.identity_fields || []` — when a game has no `identity_fields` this creates a
+**new array on every render**, which makes `handleVerified` a new function, which re-triggers
+`PubgIdVerify`'s reset effect (`useEffect(..., [pubgId, onVerified])`) and wipes the verification result.
+Not a live bug today because `GET /api/games` always injects the resolved contract
+(`backend/routers/games.py:27`), but the frontend has no equivalent fallback to the backend's
+`identity_spec()`. Worth a defensive `useMemo` on `identitySpec` if a game without fields ever ships.
 
 ### Reconciliation notes (verified against the current tree)
 
