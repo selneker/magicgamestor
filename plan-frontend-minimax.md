@@ -22,11 +22,29 @@ Merge only after manual validation on a real phone.
 |---|---|---|---|
 | T1.1 Mobile cart bar | **done** | `450af04` + `572bb11` | CTA coverage 89% → 0% (measured across the full button width). Follow-up commit fixed z-index, nav-less routes, product page and the virtual keyboard |
 | T1.2 Step counter "Étape 4 / 3" | **done** | `2dfd7a6` | 4 named steps, total derived from `screens.length`, vertical layout. Walked 1/4 → 4/4 in FR and EN |
-| T1.3 USSD instructions | **done** | `0131ea6` | Code, amount and merchant number are all rendered. Verified in the 4 combinations FR/EN × MVola/Orange at 390px |
-| T1.4 Payment status | todo | | |
+| T1.3 USSD instructions | **done** | `0131ea6` + `651dac8` | Code, amount and merchant number are all rendered. Verified in the 4 combinations FR/EN × MVola/Orange at 390px. Follow-up fixed the `tel:` encoding and the copy message |
+| T1.4 Payment status | **done** | `8522e20` | Icon disc via opacity overlay (not `color-mix()`), locale-aware amount, single `role="status"` region that never re-announces on poll |
 | T1.5 Build without backend URL | todo | | |
 | T1.6 Mémoiser le contrat d'identité | todo | | added 2026-10-20, own commit, after T1.5 |
 | T2 → T5 | todo | | |
+
+**T1.4 implementation notes (2026-10-20):**
+- **Icon disc:** an absolutely-positioned overlay with `background: var(--mvola)` and `opacity: 0.12`. `color-mix()`
+  was ruled out: the resolved production browserslist (`npx browserslist --env=production`, 39 targets) still
+  contains **`chrome 109`** and **`and_uc 15.5`**, and `color-mix()` needs Chrome 111+. `opacity` is CSS 1 and works
+  everywhere, including UC 15.5.
+- **Amount:** `Intl.NumberFormat(lang)` + " Ar" → "2 500 Ar" (FR) / "2,500 Ar" (EN). `formatAr()` in
+  `src/lib/api.js` is still hardcoded `fr-FR` for its ~10 other call sites — **left untouched** because T1.4's file
+  list is `PaymentStatus.js` only. Generalising `formatAr(n, locale)` is a one-line, backward-compatible change if
+  you want the whole app locale-aware.
+- **Status announcement:** the `role="status" aria-live="polite"` heading is rendered **outside** the state
+  branches so it stays the same DOM node; its text is derived from `state`. Measured: 0 text mutations across
+  3 polls (9 s), exactly 1 mutation on the pending → completed transition, on the same node. It is the only live
+  region in the component.
+
+**T1.3 implementation notes (2026-10-20):** the `tel:` link needs the USSD terminator encoded — a raw `#` opens
+the fragment and the browser drops it from the path, so the dialled sequence lost its terminator. The code is now
+`encodeURIComponent`-encoded and the transmitted string matches the displayed code exactly.
 
 **T1.1 validation criterion (revised 2026-10-20):** measure the **coverage of the "Commander" button across its
 whole width** (walk the button's x-axis and check that every point hits the button), **not** `elementFromPoint` at
