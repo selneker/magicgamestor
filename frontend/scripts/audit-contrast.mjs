@@ -230,7 +230,14 @@ const AUDIT = () => {
     const el = n.parentElement;
     if (!el || seen.has(el)) continue;
     seen.add(el);
-    const r = el.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    // Le rectangle du NOEUD DE TEXTE, pas celui de l'element : un element peut
+    // contenir un badge colore avant son texte (le point sonde tomberait alors
+    // sur le badge, pas sur les glyphes).
+    const range = document.createRange();
+    range.selectNodeContents(n);
+    const boxes = [...range.getClientRects()].filter((b) => b.width > 1 && b.height > 1);
+    const r = boxes[0] || elRect;
     if (r.width < 4 || r.height < 4) continue;
     if (r.bottom < 0 || r.top > innerHeight) continue;
     if (r.left < 0 || r.right > innerWidth) continue;
@@ -246,9 +253,11 @@ const AUDIT = () => {
     const top = document.elementFromPoint(x, y);
     if (top && top !== el && !el.contains(top) && !top.contains(el)) continue;
     // L'element a pu bouger entre la mesure et le hit-test (ecran en sortie
-    // d'animation) : dans ce cas la position mesuree n'est plus valide.
+    // d'animation) : dans ce cas la position mesuree n'est plus valide. On
+    // compare le meme rectangle avant et apres, pas le rectangle de l'element
+    // avec celui des glyphes (ils sont differents par construction).
     const after = el.getBoundingClientRect();
-    if (Math.round(after.top) !== Math.round(r.top) || Math.round(after.left) !== Math.round(r.left)) continue;
+    if (Math.round(after.top) !== Math.round(elRect.top) || Math.round(after.left) !== Math.round(elRect.left)) continue;
     const bg = paintedBg(x, y, el);
     const f = fg.a < 1 ? over(fg, bg) : fg;
     const L1 = lum(f.r, f.g, f.b), L2 = lum(bg.r, bg.g, bg.b);
