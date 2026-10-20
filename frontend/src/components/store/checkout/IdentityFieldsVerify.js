@@ -46,8 +46,14 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
     [spec, values]
   );
   const complete = spec.length > 0 && Object.keys(errors).length === 0;
+  // Meme contrat que le bouton PUBG : inactif = champs inexploitables OU
+  // verification en cours. `aria-disabled` plutot que `disabled` : le bouton
+  // reste focusable, le gestionnaire fait la garde.
+  const busy = state.status === "loading";
+  const inert = busy || !complete;
 
   const verify = async () => {
+    if (inert) return;
     if (!complete) return setState({ status: "invalid" });
     setState({ status: "loading" });
     try {
@@ -71,9 +77,16 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoTrigger]);
 
-  const btn = checkout
-    ? "mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-4 text-sm font-bold text-background transition-opacity hover:opacity-90 disabled:opacity-50"
-    : "inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-700 disabled:opacity-50";
+  // Etat actif : fond encre + texte creme. Etat inactif : fond attenue +
+  // avant-plan du theme, sans aucun effet au survol ni a l'appui.
+  const base = checkout
+    ? "mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-bold transition-opacity"
+    : "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-opacity";
+  const skin = !complete
+    ? "bg-muted text-foreground cursor-not-allowed"
+    : busy
+      ? "bg-foreground text-background cursor-not-allowed"
+      : "bg-foreground text-background hover:opacity-90";
 
   return (
     <div className="mt-2 space-y-3">
@@ -93,7 +106,7 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         </div>
       ))}
       {!(checkout && state.status === "valid") && (
-        <button type="button" data-testid="identity-verify-btn" onClick={verify} disabled={state.status === "loading" || !complete} className={btn}>
+        <button type="button" data-testid="identity-verify-btn" onClick={verify} aria-disabled={inert} aria-busy={busy} className={`${base} ${skin}`}>
           {state.status === "loading" ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" data-testid="identity-verify-loading" />{t("checkout.verifying")}</>) : t("checkout.verify")}
         </button>
       )}
