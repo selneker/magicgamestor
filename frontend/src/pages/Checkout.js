@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
@@ -60,7 +60,15 @@ export default function Checkout() {
   // The order's game is the CART's game (a cart holds one game), never a stale header selection.
   const gameId = order?.game_id || cartGameId || gameSel?.selectedId || "pubg-mobile";
   const game = (gameSel?.games || []).find((g) => g.id === gameId);
-  const identitySpec = game?.identity_fields || [];
+  // Mémoïsé : sans cela, `game?.identity_fields || []` crée un NOUVEAU tableau à
+  // chaque rendu quand le jeu n'a pas de identity_fields. `spec` changeait donc
+  // d'identité, `handleVerified` aussi, et l'effet de réinitialisation de
+  // PubgIdVerify (useEffect sur [pubgId, onVerified]) se re-déclenchait : le
+  // résultat de la vérification était effacé et le client ne pouvait pas
+  // sortir de l'étape 1. Le backend injecte toujours le contrat résolu
+  // (GET /api/games), mais le front n'avait pas de repli équivalent à
+  // identity_spec() : on fige donc la référence.
+  const identitySpec = useMemo(() => game?.identity_fields || [], [game]);
   // Changing game invalidates any identity typed or verified for the previous game.
   useEffect(() => {
     setVerifiedState(null); setIdentity(null); setIdentityValues({});
