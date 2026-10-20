@@ -188,7 +188,7 @@ function ManualPanel({ reference, setReference, config, copy }) {
       <p className="text-sm font-semibold">{t("checkout.chooseOperator")}</p>
       <div className="flex gap-2">
         {PROVIDERS.map((p) => (
-          <button key={p.key} type="button" data-testid={`manual-provider-${p.key}`} aria-pressed={provider === p.key} onClick={() => setReference({ ...reference, provider: p.key })} className={`rounded-full px-4 py-1.5 text-xs font-bold transition-opacity ${provider === p.key ? "text-white" : "border bg-card text-muted-foreground hover:opacity-80"}`} style={provider === p.key ? { background: p.color } : undefined}>{p.label}</button>
+          <button key={p.key} type="button" data-testid={`manual-provider-${p.key}`} aria-pressed={provider === p.key} onClick={() => setReference({ ...reference, provider: p.key })} className={`rounded-full px-4 py-1.5 text-xs font-bold transition-opacity ${provider === p.key ? "text-ink" : "border bg-card text-muted-foreground hover:opacity-80"}`} style={provider === p.key ? { background: p.color } : undefined}>{p.label}</button>
         ))}
       </div>
       {merchant && (
