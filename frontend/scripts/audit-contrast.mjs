@@ -17,6 +17,68 @@
  * cause, et un code de sortie non nul s'il reste des echecs.
  */
 
+/* ---------------------------------------------------------------- exclusions
+ *
+ * Regles d'exclusion de la mesure. Chaque exclusion est VOLONTAIRE et listee
+ * ici avec sa raison. Une exclusion non listee = une mesure bouche : si le
+ * script ne peut pas mesurer un texte, il doit le dire.
+ *
+ * 1. Texte invisible (display:none, visibility:hidden, opacity:0)
+ *    -> rien n'est peint a l'ecran : il n'y a pas de contraste a mesurer.
+ * 2. Texte en classe `sr-only` (reserve aux lecteurs d'ecran)
+ *    -> meme raison : le texte n'est pas visible.
+ * 3. Texte situe hors de la fenetre (au-dessus / en dessous)
+ *    -> il sera mesure quand la page defile jusqu'a lui ; la boucle de
+ *       defilement couvre toute la hauteur du document.
+ * 4. Rectangle de glyphe < 4 x 4 px
+ *    -> ponctuation ou artefact de rendu, pas un texte lisible.
+ * 5. Texte occulte par un calque flottant devant lui (barre panier, en-tete
+ *    sticky, feuille de modale)
+ *    -> c'est une OCCLUSION, pas un contraste : le fond reellement visible
+ *       est celui du calque, pas celui du texte. Le texte est ignore, il
+ *       n'est pas declare conforme.
+ * 6. Element deplace entre la mesure et le hit-test (animation en cours)
+ *    -> la position mesuree n'est plus valide, la mesure serait fausse.
+ * 7. Composant INACTIF (`disabled` ou `aria-disabled="true"`)
+ *    -> WCAG 1.4.3 exempte les composants inactifs du contraste de texte, et
+ *       l'etat attenue (`disabled:opacity-50`) n'est pas mesurable ici :
+ *       l'opacite d'un element n'est pas composee dans la mesure. Le bouton
+ *       « Verifier l'ID » desactive est donc traite a part (T2.5), avec son
+ *       propre seuil (>= 3:1) verifie par un test dedie.
+ *
+ * AUCUN SEUIL N'EST ASSOUPPLI. 4.5:1 (3:1 pour le texte grand) est applique
+ * tel quel, et le script sort en erreur tant qu'un echec subsiste. Les
+ * exclusions ci-dessus ne portent que sur des elements qui ne sont pas
+ * peints, ou sur des composants que la norme exempte : elles ne peuvent pas
+ * masquer un contraste reellement trop faible.
+ */
+
+/* ------------------------------------------------------------------ limites
+ *
+ * Ce que cet audit NE mesure PAS (a completer par une tache dediee si un
+ * de ces points doit devenir bloquant) :
+ *
+ * - Les BORDURES, separateurs et traits. WCAG 1.4.11 leur demande 3:1 ;
+ *  ce script ne les mesure pas du tout.
+ * - Les ICONES et images porteuses de sens (WCAG 1.4.11, 3:1) : seules les
+ *  icones qui enchappent a un texte visible sont traitees comme texte.
+ * - Les ELEMENTS NON TEXTUELS : fond de carte, trait de focus, anneau de
+ *  selection, etats survole/actif.
+ * - Les FONDS IMAGE OU DEGRADES : le fond mesure est la couleur unie
+ *  (`background-color`) sous le texte, pas l'image. Un texte pose sur une
+ *  photo est donc mesure sur une couleur qui n'est pas celle peinte.
+ * - Les FILTRES CSS : la couleur lue dans les styles calcules est celle
+ *  d'AVANT filtre (ex. `grayscale` sur la carte « Indisponible »). Le couple
+ *  mesure n'est donc pas exactement le couple peint.
+ * - Le texte multi-lignes : seul le premier rectangle de glyphe est sonde.
+ * - L'OPACITE d'un element (`opacity-*`, `disabled:opacity-50`) : elle n'est
+ *   pas composee dans la mesure. Un texte attenue par l'opacite de son
+ *   conteneur est mesure avec sa couleur pleine sur son fond non attenue.
+ * - Les largeurs de fenetre autres que 390 px et 1440 px, et le theme
+ *  « systeme » (seuls « light » et « dark » forces sont mesures).
+ * - Les pages absentes de la liste PAGES ci-dessous.
+ */
+
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
@@ -87,9 +149,9 @@ const GAMES = [
   },
 ];
 
-const product = (id, name, slug, price, type, uc, months, popular, old) => ({
+const product = (id, name, slug, price, type, uc, months, popular, old, purchasable = true) => ({
   id, name, slug, price, game_id: "pubg-mobile", type, uc_amount: uc, duration_months: months,
-  popular, purchasable: true, old_price: old || null, description: name,
+  popular, purchasable, old_price: old || null, description: name,
 });
 
 const PRODUCTS = [
@@ -99,6 +161,11 @@ const PRODUCTS = [
   product("p4", "Pack evolutif", "pack-evolutif", 19000, "evo", null, null, false),
   product("p5", "6600 UC", "6600-uc", 22000, "uc", 6600, null, true, 26000),
   product("p6", "Prime 7 jours", "prime-7", 2500, "prime", null, 7, false),
+  // Variante « Indisponible » (carte grise, barre de prix sans fond) et
+  // variante « Pack UC » sans remise : toutes les colonnes de la carte
+  // produit doivent etre mesurees, pas seulement les deux premieres.
+  product("p7", "330 UC", "330-uc", 1200, "uc", 330, null, false, null, false),
+  product("p8", "3300 UC", "3300-uc", 12000, "uc", 3300, null, false),
 ];
 
 const EVENTS = [
@@ -148,6 +215,7 @@ const mockApi = (pathname) => {
 const PAGES = [
   { name: "accueil", path: "/" },
   { name: "catalogue", path: "/boutique?game=pubg-mobile" },
+  { name: "checkout-1-verification-initiale", path: "/commande", step: "init" },
   { name: "checkout-1-verification", path: "/commande", step: 1 },
   { name: "checkout-2-methode", path: "/commande", step: 2 },
   { name: "checkout-3-ussd-mvola", path: "/commande", step: 3, provider: "mvola" },
@@ -244,6 +312,8 @@ const AUDIT = () => {
     const cs = getComputedStyle(el);
     if (cs.visibility === "hidden" || cs.display === "none" || +cs.opacity === 0) continue;
     if (el.classList.contains("sr-only")) continue;
+    // Composant inactif : exclu (raison en tete de fichier, exclusion 7).
+    if (el.closest("[disabled],[aria-disabled='true']")) continue;
     const fg = parse(cs.color);
     if (!fg) continue;
     const x = Math.min(Math.max(Math.round(r.left + 3), 0), innerWidth - 1);
@@ -324,8 +394,16 @@ const fill = async (pg, selector, value) => {
 
 // Amene le checkout a l'ecran demande.
 const driveCheckout = async (pg, step) => {
+  // Etat INITIAL de l'ecran de verification : champ vide, donc bouton
+  // « Verifier l'ID » desactive. C'est l'etat que voit le client a son
+  // arrivee sur le checkout : il doit etre mesure tel quel.
+  if (step === "init") return true;
   await fill(pg, '[data-testid="pubg-id-input"]', "52328390220");
   await click(pg, '[data-testid="pubg-verify-btn"]', 1200);
+  // L'ecran de verification (etape 1) se mesure APRES la verification : c'est
+  // l'etat ou le bouton « Verifier l'ID » passe en desactive. On s'arrete donc
+  // ici, sans cliquer « Continuer » — sinon on mesurerait l'ecran suivant.
+  if (step === 1) return true;
   const cont = await pg.$('[data-testid="checkout-verify-continue"]');
   if (!cont) return false;
   await cont.click();
@@ -362,6 +440,7 @@ const run = async () => {
   const browser = await chromium.launch({ executablePath: CHROMIUM, args: ["--no-sandbox"] });
   const summary = [];
   const details = [];
+  const broken = [];
   let total = 0;
 
   for (const vp of VIEWPORTS) {
@@ -396,13 +475,22 @@ const run = async () => {
           return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockApi(p)) });
         });
         try {
-          await pg.goto(base + page.path, { waitUntil: "domcontentloaded", timeout: 20000 });
-        } catch { /* page indisponible */ }
+          await pg.goto(base + page.path, { waitUntil: "domcontentloaded", timeout: 30000 });
+          await pg.waitForSelector("body", { timeout: 15000 });
+        } catch { /* page indisponible : signale plus bas */ }
         await pg.waitForTimeout(2000);
         if (page.step) await driveCheckout(pg, page.step);
 
         // Parcourir toute la page : chaque element n'est mesure que visible.
-        const height = await pg.evaluate(() => document.body.scrollHeight);
+        const height = await pg.evaluate(() => (document.body ? document.body.scrollHeight : 0));
+        if (!height) {
+          // Page non chargee : elle n'est PAS comptee comme conforme. On la
+          // signale et le script sort en erreur.
+          broken.push(`${page.name} (${vp.label}, ${theme})`);
+          summary.push({ page: page.name, viewport: vp.label, theme, failures: null });
+          await ctx.close();
+          continue;
+        }
         const step = Math.floor(vp.height * 0.8);
         const found = new Map();
         for (let y = 0; y < height; y += step) {
@@ -416,7 +504,7 @@ const run = async () => {
         const res = [...found.values()];
         total += res.length;
         summary.push({ page: page.name, viewport: vp.label, theme, failures: res.length });
-        for (const f of res) details.push({ ...f, page: page.name });
+        for (const f of res) details.push({ ...f, page: page.name, viewport: vp.label, theme });
         await ctx.close();
       }
     }
@@ -434,28 +522,37 @@ const run = async () => {
     for (const vp of VIEWPORTS) {
       for (const theme of THEMES) {
         const s = summary.find((x) => x.page === name && x.viewport === vp.label && x.theme === theme);
-        cells.push(String(s ? s.failures : "?").padEnd(14));
+        cells.push(String(s ? (s.failures === null ? "NON CHARGEE" : s.failures) : "?").padEnd(14));
       }
     }
     console.log(name.padEnd(26) + cells.join(""));
   }
   console.log(`\n  TOTAL : ${total} echecs`);
+  if (broken.length) {
+    console.log(`\n  PAGES NON CHARGEES : ${broken.length} (a corriger, ce n'est pas un succes)`);
+    for (const b of broken) console.log(`   - ${b}`);
+  }
 
   if (details.length) {
     console.log("\n================ PAR COMPOSANT ================");
     const byCls = new Map();
     for (const f of details) {
       const k = f.cls.slice(0, 72);
-      if (!byCls.has(k)) byCls.set(k, { n: 0, sample: f });
-      byCls.get(k).n++;
+      if (!byCls.has(k)) byCls.set(k, { n: 0, sample: f, combos: new Set() });
+      const e = byCls.get(k);
+      e.n++;
+      // La ou la classe echoue : permet de verifier « 0 sur les 4
+      // combinaisons » pour une famille de classes donnee.
+      e.combos.add(`${f.page} ${f.viewport} ${f.theme}`);
     }
     for (const [k, v] of [...byCls.entries()].sort((a, b) => b[1].n - a[1].n)) {
       console.log(`  ${String(v.n).padStart(3)}x  ${v.sample.ratio} (min ${v.sample.need}) ${String(v.sample.size).padStart(4)}px  "${v.sample.text}"  ${v.sample.color} sur ${v.sample.bg}`);
       console.log(`        .${k}`);
       if (v.sample.topHit) console.log(`        hit: ${v.sample.topHit} at ${JSON.stringify(v.sample.at)}`);
+      console.log(`        ou: ${[...v.combos].join(" | ")}`);
     }
   }
-  process.exit(total > 0 ? 1 : 0);
+  process.exit(total > 0 || broken.length ? 1 : 0);
 };
 
 run().catch((err) => {
