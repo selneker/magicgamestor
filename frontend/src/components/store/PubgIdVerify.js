@@ -27,7 +27,6 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
   const verify = async () => {
     if (inert) return;
     const id = (pubgId || "").trim();
-    if (!/^\d{9,13}$/.test(id)) return setState({ status: "invalid" });
     setState({ status: "loading" });
     try {
       const { data } = await api.post("/fazercards/pubg/validate-id", { player_id: id });
@@ -35,6 +34,9 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
         setState({ status: "valid", name: data.player_name });
         onVerified({ name: data.player_name || null });
       } else {
+        // L'API a repondu « identifiant inconnu » : c'est le seul chemin qui
+        // affiche le message « ID invalide ». Le controle du format est fait
+        // plus haut (inert) : un ID mal saisi ne declenche aucune requete.
         setState({ status: "invalid" });
       }
     } catch (e) {

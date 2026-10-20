@@ -54,7 +54,6 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
 
   const verify = async () => {
     if (inert) return;
-    if (!complete) return setState({ status: "invalid" });
     setState({ status: "loading" });
     try {
       const fields = Object.fromEntries(spec.map((f) => [f.key, (valuesRef.current[f.key] || "").trim()]));
@@ -63,6 +62,9 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         setState({ status: "valid", name: data.player_name });
         onVerified({ name: data.player_name || null, fields });
       } else {
+        // L'API a repondu « identifiant inconnu » : c'est le seul chemin qui
+        // affiche le message « ID invalide ». Les champs mal remplis sont
+        // refuses plus haut (inert) : aucune requete n'est partie.
         setState({ status: "invalid" });
       }
     } catch (e) {
