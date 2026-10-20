@@ -16,6 +16,26 @@ See `AGENTS.md` § "Working rules". They are the authority; this section is only
 Estimated 8–10 working days in short sessions. **One phase = one git branch** (`phase-1-paiement`, …).
 Merge only after manual validation on a real phone.
 
+### Progress
+
+| Task | Status | Commit | Notes |
+|---|---|---|---|
+| T1.1 Mobile cart bar | **done** | `450af04` | CTA coverage 89% → 0% (measured). `Layout.js` added to the file list — see note below |
+| T1.2 Step counter "Étape 4 / 3" | todo | | |
+| T1.3 USSD instructions | todo | | |
+| T1.4 Payment status | todo | | |
+| T1.5 Build without backend URL | todo | | |
+| T2 → T5 | todo | | |
+
+**T1.1 deviation (approved by the user):** the plan listed only `CartDrawer.js`, `BottomNav.js` and
+`GameButton.js`. `Layout.js` was needed to reserve the extra bottom space, otherwise the cart bar would
+cover the footer's last row. `BottomNav.js` and `GameButton.js` turned out to need **no change** — once the
+bar sits above the nav band there is no geometric overlap with either.
+
+**T1.1 known follow-ups (not fixed here, they belong to later tasks):**
+- The cart bar total uses `text-primary` on `bg-foreground` → invisible in dark mode (1.06:1). → **T2.2**
+- `border-foreground` on the cart bar is remapped to a 15%-opacity hairline → **T5.5**
+
 ### Reconciliation notes (verified against the current tree)
 
 | Plan said | Reality | Use |
