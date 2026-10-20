@@ -22,10 +22,36 @@ Merge only after manual validation on a real phone.
 |---|---|---|---|
 | T1.1 Mobile cart bar | **done** | `450af04` + `572bb11` | CTA coverage 89% → 0% (measured). Follow-up commit fixed z-index, nav-less routes, product page and the virtual keyboard |
 | T1.2 Step counter "Étape 4 / 3" | **done** | `2dfd7a6` | 4 named steps, total derived from `screens.length`, vertical layout. Walked 1/4 → 4/4 in FR and EN |
-| T1.3 USSD instructions | todo | | |
+| T1.3 USSD instructions | todo | | inventory done, awaiting approval — see note below |
 | T1.4 Payment status | todo | | |
 | T1.5 Build without backend URL | todo | | |
+| T1.6 Mémoiser le contrat d'identité | todo | | added 2026-10-20, own commit, after T1.5 |
 | T2 → T5 | todo | | |
+
+**T1.3 inventory (2026-10-20)** — everything needed is already available, nothing is missing:
+
+| Value | Source | Evidence |
+|---|---|---|
+| Merchant number | API | `GET /api/payments/config` → `providers.{mvola,orange}.merchant` — `backend/routers/payments.py:176-177`. Read at `PaymentFlow.js:184`, `StepPay.js:34` |
+| Amount | API (derived) | `summary.subtotal + summary.fee` — `StepPay.js:35`; subtotal from the order lines, fee from the same config (`payment_fees`) |
+| USSD code | **Frontend template** | `PaymentFlow.js:16-19` — `USSD.mvola = (phone, amount) => \`#111*1*2*${phone}*${amount}*1*0#\``, `USSD.orange = (phone, amount) => \`#144*1*1*${phone}*${phone}*${amount}*1#\``. The **backend has no USSD template at all** — grep for `111*1*2` / `144*1*1` in `backend/**/*.py` returns nothing |
+
+The code is already computed at `StepPay.js:36` and consumed by the `tel:` link at `StepPay.js:45` — it is
+simply never displayed. **No value has to be invented.**
+
+Translation keys currently **unused** (0 references): `ussdTitle`, `ussdAmount`, `ussdNumber`, `ussdCode`,
+`ussdSteps`, `ussdNote`, `ussdNext`. Already used: `ussd`, `ussdName`, `ussdNumberShort`, `manualHowto`,
+`manualPayTitle`, `manualPaid`, `manualSub`.
+None of the unused keys expects a `{placeholder}` — they are labels and literal sentences. `ussdSteps` is an
+**array of 5 strings**, so `t()` returns it as-is (`LanguageContext` only interpolates when the value is a string).
+
+**T1.6 — Mémoiser le contrat d'identité.** `Checkout.js:63` does
+`const identitySpec = game?.identity_fields || []`. When a game has no `identity_fields` this creates a **new
+array on every render**, so `spec` changes identity, so `handleVerified` changes identity, so the reset effect in
+`PubgIdVerify` (`useEffect(..., [pubgId, onVerified])`, `PubgIdVerify.js:14-15`) re-fires and wipes the
+verification result. Not a live bug today — `GET /api/games` always injects the resolved contract
+(`backend/routers/games.py:27`, backend `identity_spec()`) — but the frontend has no equivalent fallback to the
+backend's `identity_spec()`. Fix with a `useMemo` on `identitySpec`, in its own commit, after T1.5.
 
 **T1.1 deviation (approved by the user):** the plan listed only `CartDrawer.js`, `BottomNav.js` and
 `GameButton.js`. `Layout.js` was needed to reserve the extra bottom space, otherwise the cart bar would
