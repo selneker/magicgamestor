@@ -1,0 +1,172 @@
+import React, { act } from "react";
+import { createRoot } from "react-dom/client";
+import { api } from "@/lib/api";
+import { setMockLang } from "@/context/LanguageContext";
+import { IdentityFieldsVerify } from "./IdentityFieldsVerify";
+
+// Les messages sont resolus contre le VRAI dictionnaire (FR et EN) : le test
+// verifie les chaines reelles, pas des cles.
+jest.mock("@/context/LanguageContext", () => {
+  const { translations } = require("@/i18n/translations");
+  const state = { lang: "fr" };
+  const t = (path, vars) => {
+    const value =
+      path.split(".").reduce((acc, k) => (acc && acc[k] !== undefined ? acc[k] : undefined), translations[state.lang]) ?? path;
+    return vars && typeof value === "string"
+      ? value.replace(/\{(\w+)\}/g, (_, k) => (vars[k] !== undefined ? vars[k] : `{${k}}`))
+      : value;
+  };
+  return { useLang: () => ({ t, lang: state.lang }), setMockLang: (l) => { state.lang = l; } };
+});
+
+var mockGames = [
+  { id: "pubg-mobile", name: "PUBG Mobile", slug: "pubg-mobile", active: true },
+  { id: "mobile-legends", name: "Mobile Legends", slug: "mobile-legends", active: true },
+];
+jest.mock("@/context/GameContext", () => ({ useGames: () => ({ games: mockGames }) }));
+
+jest.mock("@/lib/api", () => ({ api: { post: jest.fn() }, errorMessage: (e, fallback) => fallback }));
+
+const ML_SPEC = [
+  { key: "player_id", label: "ID joueur", label_en: "Player ID", pattern: "^[0-9]{9,13}$", min_length: 9, max_length: 13, required: true },
+  { key: "zone_id", label: "Zone ID", label_en: "Zone ID", pattern: "^[0-9]{3,5}$", min_length: 3, max_length: 5, required: true },
+];
+const ML_VALUES = { player_id: "123456789", zone_id: "123" };
+
+async function mount(props = {}) {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(
+      <IdentityFieldsVerify
+        spec={ML_SPEC}
+        gameId="mobile-legends"
+        values={ML_VALUES}
+        setValues={jest.fn()}
+        onVerified={jest.fn()}
+        checkout
+        {...props}
+      />,
+    );
+  });
+  return { container, root };
+}
+const unmount = async (container, root) => {
+  await act(async () => root.unmount());
+  container.remove();
+};
+const btnOf = (c) => c.querySelector('[data-testid="identity-verify-btn"]');
+const invalidOf = (c) => c.querySelector('[data-testid="identity-verify-invalid"]');
+const errorOf = (c) => c.querySelector('[data-testid="identity-verify-error"]');
+
+beforeEach(() => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  api.post.mockReset();
+  setMockLang("fr");
+});
+afterEach(() => { delete global.IS_REACT_ACT_ENVIRONMENT; });
+
+test("Mobile Legends + invalid_id : message du jeu, jamais « PUBG »", async () => {
+  api.post.mockResolvedValue({ data: { valid: false, code: "invalid_id", message: "invalid id" } });
+  const { container, root } = await mount();
+  try {
+    await act(async () => { btnOf(container).click(); });
+    const text = invalidOf(container).textContent;
+    expect(text).toContain("Mobile Legends");
+    expect(text).not.toContain("PUBG");
+    expect(text).not.toBe("ID PUBG Mobile invalide");
+  } finally { await unmount(container, root); }
+});
+
+test("Le message invalide est traduit (FR et EN) et nomme le jeu", async () => {
+  api.post.mockResolvedValue({ data: { valid: false, code: "invalid_id" } });
+  for (const lang of ["fr", "en"]) {
+    setMockLang(lang);
+    const { container, root } = await mount();
+    try {
+      await act(async () => { btnOf(container).click(); });
+      const text = invalidOf(container).textContent;
+      expect(text).toContain("Mobile Legends");
+      expect(text).not.toContain("PUBG");
+      expect(text).toContain(lang === "fr" ? "invalide pour" : "Invalid ID or Zone ID for");
+    } finally { await unmount(container, root); }
+  }
+});
+
+test("missing_field : on demande de renseigner les champs (jamais « ID invalide »)", async () => {
+  api.post.mockResolvedValue({ data: { valid: false, code: "missing_field" } });
+  const { container, root } = await mount();
+  try {
+    await act(async () => { btnOf(container).click(); });
+    const text = invalidOf(container).textContent;
+    expect(text).toContain("Renseignez tous les champs");
+    expect(text).not.toContain("invalide");
+  } finally { await unmount(container, root); }
+});
+
+test("Chaque panne a son message et n'affiche jamais « ID invalide »", async () => {
+  const pannes = [
+    { status: 503, code: "unsupported_game", attendu: "Vérification indisponible pour ce jeu" },
+    { status: 502, code: "provider_unavailable", attendu: "Service momentanément indisponible, réessayez" },
+    { status: 504, code: "provider_unavailable", attendu: "Service momentanément indisponible, réessayez" },
+    { status: 429, code: "rate_limited", attendu: "Trop de requêtes, patientez" },
+  ];
+  for (const panne of pannes) {
+    api.post.mockRejectedValue({ response: { status: panne.status, data: { detail: "upstream failure", code: panne.code } } });
+    const { container, root } = await mount();
+    try {
+      await act(async () => { btnOf(container).click(); });
+      expect(invalidOf(container)).toBeNull();
+      const text = errorOf(container).textContent;
+      expect(text).toContain(panne.attendu);
+      expect(text).not.toMatch(/invalide/i);
+    } finally { await unmount(container, root); }
+  }
+});
+
+test("Reponse sans code (backend ancien) : message neutre avec le nom du jeu", async () => {
+  api.post.mockResolvedValue({ data: { valid: false } });
+  const { container, root } = await mount();
+  try {
+    await act(async () => { btnOf(container).click(); });
+    const text = invalidOf(container).textContent;
+    expect(text).toContain("Mobile Legends");
+    expect(text).not.toContain("PUBG");
+  } finally { await unmount(container, root); }
+});
+
+test("Le parcours generique n'utilise plus le libelle PUBG « ID PUBG Mobile invalide »", async () => {
+  api.post.mockResolvedValue({ data: { valid: false, code: "invalid_id" } });
+  const { container, root } = await mount({ gameId: "pubg-mobile" });
+  try {
+    await act(async () => { btnOf(container).click(); });
+    const text = invalidOf(container).textContent;
+    // Le nom du jeu, mais pas l'ancien libelle fige.
+    expect(text).toContain("PUBG Mobile");
+    expect(text).not.toBe("ID PUBG Mobile invalide");
+  } finally { await unmount(container, root); }
+});
+
+test("Succes : le compte est affiche comme avant", async () => {
+  const onVerified = jest.fn();
+  api.post.mockResolvedValue({ data: { valid: true, player_name: "TestPlayer" } });
+  const { container, root } = await mount({ onVerified });
+  try {
+    await act(async () => { btnOf(container).click(); });
+    expect(container.querySelector('[data-testid="identity-verify-valid"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="identity-verify-player-name"]').textContent).toContain("TestPlayer");
+    expect(onVerified).toHaveBeenCalledWith(expect.objectContaining({ name: "TestPlayer" }));
+    expect(invalidOf(container)).toBeNull();
+  } finally { await unmount(container, root); }
+});
+
+test("Garde inerte : champs incomplets -> aria-disabled et aucune requete", async () => {
+  const { container, root } = await mount({ values: { player_id: "123456789", zone_id: "" } });
+  try {
+    const btn = btnOf(container);
+    expect(btn.getAttribute("aria-disabled")).toBe("true");
+    await act(async () => { btn.click(); });
+    expect(api.post).not.toHaveBeenCalled();
+  } finally { await unmount(container, root); }
+});
