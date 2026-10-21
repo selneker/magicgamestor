@@ -1,4 +1,4 @@
-import React, { act } from "react";
+import React, { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -51,6 +51,18 @@ const contrast = (a, b) => {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 };
+
+// Le composant a besoin que le CHAMP change vraiment : on monte un petit
+// conteneur qui tient l'ID dans un state.
+function Harness({ pubgId, onVerified }) {
+  const [id, setId] = useState(pubgId);
+  return (
+    <>
+      <button type="button" data-testid="harness-change" onClick={() => setId("111111111")}>change</button>
+      <PubgIdVerify pubgId={id} onVerified={onVerified} checkout />
+    </>
+  );
+}
 
 async function mount(props = {}) {
   const container = document.createElement("div");
@@ -215,4 +227,29 @@ test("Forme inattendue (HTML, {}, null) : etat erreur, jamais « ID invalide »"
       expect(warnSpy).toHaveBeenCalled();
     } finally { await unmount(container, root); }
   }
+});
+
+test("Reponse arrivee apres une modification du champ : ignoree", async () => {
+  let resolve;
+  api.post.mockImplementation(() => new Promise((r) => { resolve = r; }));
+  const onVerified = jest.fn();
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => { root.render(<Harness pubgId={VALID_ID} onVerified={onVerified} />); });
+  try {
+    await act(async () => { btnOf(container).click(); });
+    expect(api.post).toHaveBeenCalledTimes(1);
+
+    // Le joueur modifie le champ PENDANT que la requete est en vol.
+    await act(async () => { container.querySelector('[data-testid="harness-change"]').click(); });
+
+    // La reponse, arrivee trop tard, ne doit rien poser.
+    await act(async () => { resolve({ data: { valid: true, player_name: "Test" } }); });
+
+    expect(container.querySelector('[data-testid="pubg-verify-valid"]')).toBeNull();
+    expect(invalidOf(container)).toBeNull();
+    expect(errorOf(container)).toBeNull();
+    expect(onVerified).not.toHaveBeenCalledWith(expect.objectContaining({ name: "Test" }));
+  } finally { await unmount(container, root); }
 });

@@ -8,9 +8,13 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
   const { t } = useLang();
   const [state, setState] = useState(initial ? { status: "valid", name: initial.name } : { status: "idle" });
   const first = useRef(!!initial);
-
+  // Numero de requete : une reponse qui n'est pas celle de la derniere requete,
+  // ou qui arrive apres une modification du champ, est ignoree (ni setState ni
+  // onVerified). Le chemin auto-declenche (autoTrigger) passe par verify().
+  const reqId = useRef(0);
   useEffect(() => {
     if (first.current) { first.current = false; return; }
+    reqId.current++; // la reponse en vol ne vaut plus rien
     setState({ status: "idle" }); onVerified(null);
   }, [pubgId, onVerified]);
 
@@ -27,9 +31,11 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
   const verify = async () => {
     if (inert) return;
     const id = (pubgId || "").trim();
+    const myReq = ++reqId.current;
     setState({ status: "loading" });
     try {
       const { data } = await api.post("/fazercards/pubg/validate-id", { player_id: id });
+      if (reqId.current !== myReq) return; // reponse obsolete : ignoree
       if (data && data.valid === true) {
         setState({ status: "valid", name: data.player_name });
         onVerified({ name: data.player_name || null });
@@ -46,6 +52,7 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
         setState({ status: "error", kind: "provider_unavailable", message: "" });
       }
     } catch (e) {
+      if (reqId.current !== myReq) return; // reponse obsolete : ignoree
       const code = e?.response?.status;
       const kind = !e?.response || code === 504 || code === 429 ? "temporary" : "provider";
       setState({ status: "error", kind, message: errorMessage(e, t("checkout.verifyError")) });
