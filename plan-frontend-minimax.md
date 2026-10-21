@@ -27,7 +27,7 @@ Merge only after manual validation on a real phone.
 | T1.5 Build without backend URL | **done** | `8d70c0c` + `48a4e3d` + `6a87334` | Build fails without the var (production only); Error Boundary FR/EN; `Home.js` survives a non-array payload |
 | T1.6 Mémoiser le contrat d'identité | **done** | `f50db6c` | Without the `useMemo`, a game with no `identity_fields` left the customer **blocked at checkout step 1**. Before/after measured on the same build |
 | T1.7 Garde-fou global sur les réponses `/api` | todo | | described below, not implemented |
-| T2.1 Texte fixe sur les surfaces néon | **fait** | `d5e7e78` | 72 échecs de carte produit ramenés à **0** sur les 4 combinaisons. Audit : 101 → 30 |
+| T2.1 Texte fixe sur les surfaces néon | **fait** | `d5e7e78` | 72 échecs de carte produit ramenés à **0** sur les 4 combinaisons. Audit : 101 → 30. ⚠ annulé à la fusion de #43 dans `main` : voir « Régression de contraste à la fusion de la PR #43 » |
 | T2.4 Script d'audit de contraste | **fait** | `7bc393a` + `68416e0` + `7da61e1` | baseline re-mesurée : **101 échecs** ; exclusions et limites listées en tête de script |
 | T2.2 Surfaces d'encre et barre panier | **fait** | `aa831e9` | 16 échecs + les 2 de `/suivi` ramenés à **0**. Audit : 30 → 14. Inventaire complet dans le plan |
 | T2.3 Plaque blanche du logo | **fait** | `694ae49` | disque néon + bord encre pour le bouton de jeu ; plus aucun blanc en dur dans `GameButton.js` |
@@ -360,6 +360,37 @@ Trajectoire : **101 → 30 (T2.1) → 14 (T2.2) → 6 (T2.6) → 2 (T2.7) → 0 
 | Les **fondus d'opacité de survol** | idem : `hover:opacity-90` n'est pas composé | mesuré à la main dans les rapports |
 | Les **états désactivés** | exclus (exclusion n° 7, WCAG 1.4.3) | T2.5, seuil ≥ 3:1 vérifié par un test |
 | Les **pages non listées** (`/privacy`, `/legal`, `/support`, `/events`, `/chat`…) | jamais mesurées | à voir |
+
+### Régression de contraste à la fusion de la PR #43 dans `main` (2026-10-21)
+
+Le « 0 échec » de la Phase 2 était réel **sur `phase-2-sombre`** — mais il n'a pas survécu à la fusion.
+Un audit de `main` après la fusion a trouvé **24 échecs** : le prix des cartes produit, en mode sombre, en
+crème sur blanc (**1,12:1**).
+
+Trois faits, vérifiés par `git log -S` :
+
+| Fait | Commit / PR | Date |
+|---|---|---|
+| La règle « Neon product cards » force `.bg-white` à `#FFFFFF` dans les cartes produit en mode sombre → la pastille de prix peint un **fond blanc fixe** | `6b35f8f` — **PR #35** (`feat/composition-all-games`) | 2026-10-18 |
+| T2.1 pose `text-foreground` sur la pastille de prix, parce que sur `phase-2-sombre` `bg-white` était remappé en `hsl(var(--card))` (surface thématique) | `d5e7e78` — **PR #43** (`phase-2-sombre`) | 2026-10-20 |
+| Le défaut apparaît à la **fusion de la PR #43 dans `main`**, qui réunit les deux — **pas** à la PR #45 | `108e90b` (merge PR #43) | 2026-10-20 |
+
+Chacun des deux changements était conforme **tout seul** ; leur conjonction ne l'est pas :
+
+| État | fond de la pastille (sombre) | texte | contraste |
+|---|---|---|---|
+| `phase-2-sombre` (T2.1 sans la PR #35) | `#333333` (thématique) | crème | 11,27:1 ✓ |
+| `main` avant la PR #43 (PR #35 sans T2.1) | `#FFFFFF` (fixe) | encre héritée `#111111` | 18,88:1 ✓ |
+| `main` après la fusion (les deux) | `#FFFFFF` (fixe) | crème `text-foreground` | **1,12:1** ✗ |
+
+**Leçon : une surface qui devient fixe (fond) impose un avant-plan fixe.** Le correctif est de changer la
+couleur, pas le fond : `ProductCard.js:108`, `text-foreground` → `text-ink` (branche `fix/price-contrast`).
+Le bloc « Neon product cards » (`frontend/src/index.css:234-238`) n'est **pas** touché ici : il sera
+remplacé par des jetons (T5), pas recoloré au cas par cas.
+
+**Règle permanente** : après chaque fusion vers `main`, relancer `yarn audit:contrast` sur `main` avant
+tout déploiement. Une branche peut être à 0 échec et `main` ne pas l'être : l'audit se fait sur le
+résultat de la fusion, pas sur la branche d'origine.
 
 ### T1.5 implementation notes (2026-10-20)
 
@@ -940,3 +971,6 @@ Also list any out-of-scope change. Do not modify any file.
 - Validate on a real phone after each phase, not just the build.
 - If a task fails twice, split it into two smaller ones instead of re-explaining.
 - A stronger model (Claude Code) can run the end-of-phase review — the author does not review their own work well.
+- **After every merge into `main`, re-run `yarn audit:contrast` on `main` before deploying.** A branch can be
+  at 0 failure and `main` not be: the audit is run on the result of the merge, not on the branch it came from
+  (see « Régression de contraste à la fusion de la PR #43 dans `main` »).
