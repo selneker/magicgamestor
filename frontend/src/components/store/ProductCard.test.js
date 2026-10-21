@@ -190,6 +190,6 @@ test("Carte disponible : le prix est pose sur un fond fixe -> texte d'encre fixe
     expect(pastille).toBeTruthy();
     expect(pastille.className).toContain("text-ink");
     expect(pastille.className).not.toContain("text-foreground");
-    expect(pastille.className).toContain("border-[1.5px]");
+    expect(pastille.className).toContain("border-2");
   } finally { await unmountCard(container, root); }
 });
