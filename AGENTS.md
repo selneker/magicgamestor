@@ -30,6 +30,11 @@ Many customers are on a 390 px screen on a slow network.
 10. **One commit per task**, message format `fix(zone): short description` — matches the repo history exactly
     (`fix(cart): …`, `fix(boutique): …`, `fix(frontend): …`).
 11. **If a spec is ambiguous, or you cannot find what is described, stop and ask.** Do not guess.
+12. **After every merge into `main`, re-run `yarn audit:contrast` on `main` before deploying.** A branch can be
+    at 0 failure and `main` not be: the audit runs on the **result of the merge**, not on the branch it came
+    from. (PR #43 was at 0 on its own branch; merging it into `main`, which already carried the PR #35 rule
+    `.dark article[data-testid^="product-card-"] .bg-white { background-color: #FFFFFF; }`, put the product
+    card's price at 1,12:1 — cream on white — in dark mode: 24 failures.)
 
 ### End-of-task report (short)
 
@@ -90,6 +95,9 @@ subsiste.
 - Il a besoin d'un **Chromium déjà installé** : `CHROMIUM_PATH=/chemin/vers/chromium yarn audit:contrast`. Sans la
   variable, le script s'arrête avec un message. Il ne télécharge rien.
 - Il audite le **bundle compilé** : lancer `yarn build` avant.
+- **Après chaque fusion vers `main`, le relancer sur `main`** (règle permanente n° 12) : une branche peut être
+  à 0 échec et `main` ne pas l'être — c'est ce qui est arrivé à la fusion de la PR #43 (24 échecs réintroduits
+  sur le prix des cartes produit, crème sur blanc en sombre).
 - **Ne jamais l'assouplir pour atteindre 0.** Toutes les exclusions de mesure sont listées en tête du script, avec
   leur raison ; les limites de la mesure y sont également notées. Toute nouvelle exclusion doit y être ajoutée.
 - `playwright-core` est une devDependency ; le script n'est **pas** branché sur `build`, `test` ou `prestart`.
