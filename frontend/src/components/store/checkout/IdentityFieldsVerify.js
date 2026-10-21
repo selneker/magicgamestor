@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
-import { api, errorMessage } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useGames } from "@/context/GameContext";
 import { Input } from "@/components/ui/input";
@@ -83,16 +83,22 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
       const status = e?.response?.status;
       const code = e?.response?.data?.code;
       // Une panne n'est JAMAIS un « ID invalide » : chaque code du backend a son
-      // etat d'erreur et son message traduit. Les reponses sans code gardent le
-      // comportement existant (temporaire / fournisseur).
+      // etat d'erreur et son message traduit.
       const kind =
         code === "unsupported_game" ? "unsupported_game"
         : code === "provider_unavailable" ? "provider_unavailable"
         : code === "rate_limited" ? "rate_limited"
         : !e?.response || status === 504 || status === 429 ? "temporary"
         : "provider";
-      const known = kind === "unsupported_game" || kind === "provider_unavailable" || kind === "rate_limited";
-      setState({ status: "error", kind, message: known ? "" : errorMessage(e, t("checkout.verifyError")) });
+      // Le detail de l'API n'est jamais affiche tel quel : il peut etre en
+      // anglais (« field required », « Network Error ») ou contenir des infos
+      // techniques. Il part en console, l'ecran garde un message traduit.
+      console.warn("[identity-verify] verification impossible", {
+        status: status ?? 0,
+        code: code ?? null,
+        detail: e?.response?.data?.detail ?? e?.message ?? null,
+      });
+      setState({ status: "error", kind });
     }
   };
 
@@ -174,10 +180,7 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
       {state.status === "error" && (
         <div role="alert" className="flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700" data-testid="identity-verify-error">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <div>
-            {checkout && <p className="font-bold" data-testid={`identity-verify-error-${state.kind}`}>{errorTitle}</p>}
-            {state.message && <p>{state.message}</p>}
-          </div>
+          <p className="font-bold" data-testid={`identity-verify-error-${state.kind}`}>{errorTitle}</p>
         </div>
       )}
     </div>

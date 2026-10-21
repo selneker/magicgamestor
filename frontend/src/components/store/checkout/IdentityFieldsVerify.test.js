@@ -26,7 +26,17 @@ var mockGames = [
 ];
 jest.mock("@/context/GameContext", () => ({ useGames: () => ({ games: mockGames }) }));
 
-jest.mock("@/lib/api", () => ({ api: { post: jest.fn() }, errorMessage: (e, fallback) => fallback }));
+// `errorMessage` reproduit le comportement reel (renvoie le `detail` de l'API)
+// : le test prouve que le composant ne l'affiche pas.
+jest.mock("@/lib/api", () => ({
+  api: { post: jest.fn() },
+  errorMessage: (e, fallback) => {
+    const d = e?.response?.data?.detail;
+    if (typeof d === "string") return d;
+    if (Array.isArray(d)) return d.map((x) => x?.msg || String(x)).join(" ");
+    return fallback;
+  },
+}));
 
 const PUBG_SPEC = [{ key: "player_id", label: "ID", pattern: "^[0-9]{9,13}$", min_length: 9, max_length: 13, required: true }];
 const ML_SPEC = [
@@ -327,3 +337,28 @@ test("Les messages sont annonces : alert pour les echecs, status pour le succes"
     expect(elOf(succes.container, "identity-verify-valid").getAttribute("role")).toBe("status");
   } finally { await unmount(succes.container, succes.root); }
 });
+
+// --- Detail brut de l'API (S1) -----------------------------------------------
+
+test("Erreur sans code connu : message generique traduit, aucun detail brut affiche", async () => {
+  const cas = [
+    { nom: "422", erreur: { response: { status: 422, data: { detail: [{ loc: ["body", "fields"], msg: "field required" }] } } }, interdit: ["field required"] },
+    { nom: "404", erreur: { response: { status: 404, data: { detail: "jeu inconnu" } } }, interdit: ["jeu inconnu"] },
+    { nom: "500", erreur: { response: { status: 500, data: { detail: "boom" } } }, interdit: ["boom"] },
+    { nom: "reseau", erreur: { message: "Network Error" }, interdit: ["Network Error"] },
+  ];
+  for (const c of cas) {
+    api.post.mockRejectedValue(c.erreur);
+    const { container, root } = await mount();
+    try {
+      await verifier(container);
+      const text = texteDe(container, "identity-verify-error");
+      expect(text).toBeTruthy();
+      for (const interdit of c.interdit) expect(text).not.toContain(interdit);
+      // Un message traduit du dictionnaire, pas une chaine technique.
+      expect(["Erreur fournisseur", "Problème temporaire de l'API"]).toContain(text);
+      expect(warnSpy).toHaveBeenCalled();
+    } finally { await unmount(container, root); }
+  }
+});
+
