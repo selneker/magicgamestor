@@ -112,12 +112,19 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
       ? "bg-foreground text-background cursor-not-allowed"
       : "bg-foreground text-background hover:opacity-90";
 
+  // Libelles des champs reellement demandes par ce jeu : le message ne cite
+  // que des champs qui existent (Free Fire n'a pas de zone).
+  const labels = useMemo(() => {
+    const list = spec.map((f) => (lang === "en" && f.label_en) || f.label || f.key);
+    return list.join(` ${t("checkout.verifyOr")} `);
+  }, [spec, lang, t]);
+
   // Message « identifiant refuse » : le nom du jeu quand il est connu, sinon
   // une formulation neutre. Jamais le libelle PUBG.
   const invalidMessage =
     state.code === "missing_field" ? t("checkout.verifyMissingField")
-    : gameName ? t("checkout.verifyInvalidForGame", { game: gameName })
-    : t("checkout.verifyInvalidGeneric");
+    : gameName ? t("checkout.verifyInvalidForGame", { labels, game: gameName })
+    : t("checkout.verifyInvalidGeneric", { labels });
 
   // Message d'erreur : une panne a son propre libelle, jamais « ID invalide ».
   const errorTitle =

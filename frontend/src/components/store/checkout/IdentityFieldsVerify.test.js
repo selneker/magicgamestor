@@ -22,6 +22,7 @@ jest.mock("@/context/LanguageContext", () => {
 var mockGames = [
   { id: "pubg-mobile", name: "PUBG Mobile", slug: "pubg-mobile", active: true },
   { id: "mobile-legends", name: "Mobile Legends", slug: "mobile-legends", active: true },
+  { id: "free-fire", name: "Free Fire", slug: "free-fire", active: true },
 ];
 jest.mock("@/context/GameContext", () => ({ useGames: () => ({ games: mockGames }) }));
 
@@ -33,6 +34,7 @@ const ML_SPEC = [
   { key: "zone_id", label: "Zone ID", label_en: "Zone ID", pattern: "^[0-9]{3,5}$", min_length: 3, max_length: 5, required: true },
 ];
 const ML_VALUES = { player_id: "123456789", zone_id: "123" };
+const FREE_FIRE_SPEC = [{ key: "player_id", label: "ID joueur", label_en: "Player ID", pattern: "^[0-9]{9,13}$", min_length: 9, max_length: 13, required: true }];
 
 // --- Montage factorise -------------------------------------------------------
 
@@ -262,5 +264,41 @@ test("Code inconnu avec valid:false : invalide, avec le nom du jeu", async () =>
     const text = texteDe(container, "identity-verify-invalid");
     expect(text).toContain("Mobile Legends");
     expect(text).not.toMatch(/invalide.*invalide/i);
+  } finally { await unmount(container, root); }
+});
+
+// --- Libelles du spec (A3) ----------------------------------------------------
+
+test("Un seul champ : le message ne cite que ce champ (Free Fire, sans zone)", async () => {
+  api.post.mockResolvedValue({ data: { valid: false, code: "invalid_id" } });
+  const { container, root } = await mount({ spec: FREE_FIRE_SPEC, gameId: "free-fire", values: { player_id: "123456789" } });
+  try {
+    await verifier(container);
+    const text = texteDe(container, "identity-verify-invalid");
+    expect(text).toContain("ID joueur");
+    expect(text).toContain("Free Fire");
+    expect(text).not.toMatch(/zone/i);
+  } finally { await unmount(container, root); }
+});
+
+test("Plusieurs champs : les libelles sont reunis par « ou »", async () => {
+  api.post.mockResolvedValue({ data: { valid: false, code: "invalid_id" } });
+  const { container, root } = await mount();
+  try {
+    await verifier(container);
+    const text = texteDe(container, "identity-verify-invalid");
+    expect(text).toContain("ID joueur ou Zone ID");
+    expect(text).toContain("Mobile Legends");
+  } finally { await unmount(container, root); }
+});
+
+test("Nom du jeu inconnu : le message reste neutre, sans « pour ... »", async () => {
+  api.post.mockResolvedValue({ data: { valid: false, code: "invalid_id" } });
+  const { container, root } = await mount({ gameId: "jeu-inconnu" });
+  try {
+    await verifier(container);
+    const text = texteDe(container, "identity-verify-invalid");
+    expect(text).toBe("ID joueur ou Zone ID invalide");
+    expect(text).not.toContain("pour");
   } finally { await unmount(container, root); }
 });
