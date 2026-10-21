@@ -182,6 +182,10 @@ const PRODUCTS = [
   product("p7", "330 UC", "330-uc", 1200, "uc", 330, null, false, null, false),
   product("p8", "3300 UC", "3300-uc", 12000, "uc", 3300, null, false),
   product("m1", "660 UC", "660-uc-ml", 2500, "uc", 660, null, true, null, true, "mobile-legends"),
+  // Variantes de la carte produit : chacune doit etre mesuree dans son etat
+  // (pas de remise / avec remise / Prime / Prime+ / Evolutif / Populaire).
+  product("p9", "120 UC", "120-uc", 900, "uc", 120, null, false),
+  product("p10", "60 UC", "60-uc", 700, "uc", 60, null, true, 900),
 ];
 
 const EVENTS = [
