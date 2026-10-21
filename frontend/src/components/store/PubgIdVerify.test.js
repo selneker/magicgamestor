@@ -253,3 +253,25 @@ test("Reponse arrivee apres une modification du champ : ignoree", async () => {
     expect(onVerified).not.toHaveBeenCalledWith(expect.objectContaining({ name: "Test" }));
   } finally { await unmount(container, root); }
 });
+
+test("Erreur : message generique traduit, aucun detail technique affiche", async () => {
+  const cas = [
+    { nom: "422", erreur: { response: { status: 422, data: { detail: [{ loc: ["body"], msg: "field required" }] } } }, attendu: "checkout.errProvider", interdit: ["field required"] },
+    { nom: "404", erreur: { response: { status: 404, data: { detail: "jeu inconnu" } } }, attendu: "checkout.errProvider", interdit: ["jeu inconnu"] },
+    { nom: "500", erreur: { response: { status: 500, data: { detail: "boom" } } }, attendu: "checkout.errProvider", interdit: ["boom"] },
+    { nom: "reseau", erreur: { message: "Network Error" }, attendu: "checkout.errTemporary", interdit: ["Network Error"] },
+  ];
+  for (const c of cas) {
+    api.post.mockRejectedValue(c.erreur);
+    const { container, root } = await mount({ pubgId: VALID_ID });
+    try {
+      await act(async () => { btnOf(container).click(); });
+      const text = errorOf(container).textContent;
+      // Un message traduit du dictionnaire...
+      expect(text).toContain(c.attendu);
+      // ...et jamais le detail brut de l'API.
+      for (const interdit of c.interdit) expect(text).not.toContain(interdit);
+      expect(warnSpy).toHaveBeenCalled();
+    } finally { await unmount(container, root); }
+  }
+});

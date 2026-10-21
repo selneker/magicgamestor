@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
-import { api, errorMessage } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 
 // `checkout` = 4-step checkout presentation (same FazerCards call, same states).
@@ -53,9 +53,16 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
       }
     } catch (e) {
       if (reqId.current !== myReq) return; // reponse obsolete : ignoree
-      const code = e?.response?.status;
-      const kind = !e?.response || code === 504 || code === 429 ? "temporary" : "provider";
-      setState({ status: "error", kind, message: errorMessage(e, t("checkout.verifyError")) });
+      const status = e?.response?.status;
+      const kind = !e?.response || status === 504 || status === 429 ? "temporary" : "provider";
+      // Le detail de l'API n'est jamais affiche tel quel : il peut etre en
+      // anglais (« field required », « Network Error ») ou contenir des infos
+      // techniques. Il part en console, l'ecran garde un message traduit.
+      console.warn("[pubg-verify] verification impossible", {
+        status: status ?? 0,
+        detail: e?.response?.data?.detail ?? e?.message ?? null,
+      });
+      setState({ status: "error", kind, message: "" });
     }
   };
 
