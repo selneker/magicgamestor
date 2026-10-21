@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
+import { useGames } from "@/context/GameContext";
 import { Input } from "@/components/ui/input";
 
 // Vérification d'identité GÉNÉRIQUE (multi-jeux).
@@ -28,6 +29,10 @@ export const fieldError = localError;
 
 export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onVerified, autoTrigger = 0, checkout = false, initial = null }) => {
   const { t, lang } = useLang();
+  const { games } = useGames();
+  // Nom du jeu tel que le backend le publie (Mobile Legends, ...) : les messages
+  // restent generiques, jamais « ID PUBG Mobile invalide ».
+  const gameName = games.find((g) => g.id === gameId)?.name || "";
   const [state, setState] = useState(initial ? { status: "valid", name: initial.name } : { status: "idle" });
   const first = useRef(!!initial);
   const valuesRef = useRef(values);
@@ -62,15 +67,26 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         setState({ status: "valid", name: data.player_name });
         onVerified({ name: data.player_name || null, fields });
       } else {
-        // L'API a repondu « identifiant inconnu » : c'est le seul chemin qui
-        // affiche le message « ID invalide ». Les champs mal remplis sont
-        // refuses plus haut (inert) : aucune requete n'est partie.
-        setState({ status: "invalid" });
+        // 200 { valid:false, code: "invalid_id" | "missing_field" }. Le message
+        // vient de la traduction (jamais du champ `message` de l'API, qui peut
+        // etre en anglais) ; une reponse sans code (backend ancien) retombe
+        // sur le message neutre.
+        setState({ status: "invalid", code: data.code });
       }
     } catch (e) {
-      const code = e?.response?.status;
-      const kind = !e?.response || code === 504 || code === 429 ? "temporary" : "provider";
-      setState({ status: "error", kind, message: errorMessage(e, t("checkout.verifyError")) });
+      const status = e?.response?.status;
+      const code = e?.response?.data?.code;
+      // Une panne n'est JAMAIS un « ID invalide » : chaque code du backend a son
+      // etat d'erreur et son message traduit. Les reponses sans code gardent le
+      // comportement existant (temporaire / fournisseur).
+      const kind =
+        code === "unsupported_game" ? "unsupported_game"
+        : code === "provider_unavailable" ? "provider_unavailable"
+        : code === "rate_limited" ? "rate_limited"
+        : !e?.response || status === 504 || status === 429 ? "temporary"
+        : "provider";
+      const known = kind === "unsupported_game" || kind === "provider_unavailable" || kind === "rate_limited";
+      setState({ status: "error", kind, message: known ? "" : errorMessage(e, t("checkout.verifyError")) });
     }
   };
 
@@ -89,6 +105,21 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
     : busy
       ? "bg-foreground text-background cursor-not-allowed"
       : "bg-foreground text-background hover:opacity-90";
+
+  // Message « identifiant refuse » : le nom du jeu quand il est connu, sinon
+  // une formulation neutre. Jamais le libelle PUBG.
+  const invalidMessage =
+    state.code === "missing_field" ? t("checkout.verifyMissingField")
+    : gameName ? t("checkout.verifyInvalidForGame", { game: gameName })
+    : t("checkout.verifyInvalidGeneric");
+
+  // Message d'erreur : une panne a son propre libelle, jamais « ID invalide ».
+  const errorTitle =
+    state.kind === "unsupported_game" ? t("checkout.verifyUnsupportedGame")
+    : state.kind === "provider_unavailable" ? t("checkout.verifyProviderUnavailable")
+    : state.kind === "rate_limited" ? t("checkout.verifyRateLimited")
+    : state.kind === "temporary" ? t("checkout.errTemporary")
+    : t("checkout.errProvider");
 
   return (
     <div className="mt-2 space-y-3">
@@ -121,15 +152,15 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
       )}
       {state.status === "invalid" && (
         <p className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-600" data-testid="identity-verify-invalid">
-          <XCircle className="h-4 w-4" />{t("checkout.verifyInvalid")}
+          <XCircle className="h-4 w-4" />{invalidMessage}
         </p>
       )}
       {state.status === "error" && (
         <div className="flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700" data-testid="identity-verify-error">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
-            {checkout && <p className="font-bold" data-testid={`identity-verify-error-${state.kind}`}>{state.kind === "temporary" ? t("checkout.errTemporary") : t("checkout.errProvider")}</p>}
-            <p>{state.message}</p>
+            {checkout && <p className="font-bold" data-testid={`identity-verify-error-${state.kind}`}>{errorTitle}</p>}
+            {state.message && <p>{state.message}</p>}
           </div>
         </div>
       )}
