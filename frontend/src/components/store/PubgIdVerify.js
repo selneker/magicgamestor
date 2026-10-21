@@ -30,14 +30,20 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
     setState({ status: "loading" });
     try {
       const { data } = await api.post("/fazercards/pubg/validate-id", { player_id: id });
-      if (data.valid) {
+      if (data && data.valid === true) {
         setState({ status: "valid", name: data.player_name });
         onVerified({ name: data.player_name || null });
-      } else {
+      } else if (data && data.valid === false) {
         // L'API a repondu « identifiant inconnu » : c'est le seul chemin qui
         // affiche le message « ID invalide ». Le controle du format est fait
         // plus haut (inert) : un ID mal saisi ne declenche aucune requete.
         setState({ status: "invalid" });
+      } else {
+        // Ni `true` ni `false` : la reponse n'a pas la forme attendue (HTML
+        // d'une passerelle, objet vide, null...). C'est une panne du service,
+        // JAMAIS un « ID invalide ».
+        console.warn("[pubg-verify] reponse inattendue du backend", data);
+        setState({ status: "error", kind: "provider_unavailable", message: "" });
       }
     } catch (e) {
       const code = e?.response?.status;
@@ -95,11 +101,15 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
         </p>
       )}
       {state.status === "error" && (
-        <div className="mt-2 flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700" data-testid="pubg-verify-error">
+        <div role="alert" className="mt-2 flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700" data-testid="pubg-verify-error">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
-            {checkout && <p className="font-bold" data-testid={`pubg-verify-error-${state.kind}`}>{state.kind === "temporary" ? t("checkout.errTemporary") : t("checkout.errProvider")}</p>}
-            <p>{state.message}</p>
+            <p className="font-bold" data-testid={`pubg-verify-error-${state.kind}`}>
+              {state.kind === "temporary" ? t("checkout.errTemporary")
+                : state.kind === "provider_unavailable" ? t("checkout.verifyProviderUnavailable")
+                : t("checkout.errProvider")}
+            </p>
+            {state.message && <p>{state.message}</p>}
           </div>
         </div>
       )}

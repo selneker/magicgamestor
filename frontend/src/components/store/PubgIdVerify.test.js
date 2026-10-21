@@ -5,7 +5,17 @@ import { join } from "path";
 import { PubgIdVerify } from "./PubgIdVerify";
 import { api } from "@/lib/api";
 
-jest.mock("@/lib/api", () => ({ api: { post: jest.fn() }, errorMessage: () => "erreur" }));
+// `errorMessage` reproduit le comportement REEL (renvoie le `detail` de l'API) :
+// le test prouve que le composant ne l'affiche pas.
+jest.mock("@/lib/api", () => ({
+  api: { post: jest.fn() },
+  errorMessage: (e, fallback) => {
+    const d = e?.response?.data?.detail;
+    if (typeof d === "string") return d;
+    if (Array.isArray(d)) return d.map((x) => x?.msg || String(x)).join(" ");
+    return fallback;
+  },
+}));
 jest.mock("@/context/LanguageContext", () => ({ useLang: () => ({ t: (key) => key }) }));
 
 const VALID_ID = "52328390220";
@@ -56,12 +66,20 @@ const unmount = async (container, root) => {
   container.remove();
 };
 const btnOf = (container) => container.querySelector('[data-testid="pubg-verify-btn"]');
+const errorOf = (container) => container.querySelector('[data-testid="pubg-verify-error"]');
+const invalidOf = (container) => container.querySelector('[data-testid="pubg-verify-invalid"]');
+
+let warnSpy;
 
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   api.post.mockReset();
+  warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
 });
-afterEach(() => { delete global.IS_REACT_ACT_ENVIRONMENT; });
+afterEach(() => {
+  delete global.IS_REACT_ACT_ENVIRONMENT;
+  warnSpy.mockRestore();
+});
 
 test("Etat inactif : aria-disabled (pas disabled), fond attenue, sans effet au survol, contraste >= 3:1", async () => {
   const { container, root } = await mount({ pubgId: "" });
@@ -164,4 +182,37 @@ test("Etat actif : le clic declenche bien la verification", async () => {
     expect(api.post).toHaveBeenCalledTimes(1);
     expect(api.post).toHaveBeenCalledWith("/fazercards/pubg/validate-id", { player_id: VALID_ID });
   } finally { await unmount(container, root); }
+});
+
+test("Forme attendue : valid:false affiche le libelle PUBG historique", async () => {
+  api.post.mockResolvedValue({ data: { valid: false, message: "ID PUBG Mobile invalide" } });
+  const { container, root } = await mount({ pubgId: VALID_ID });
+  try {
+    await act(async () => { btnOf(container).click(); });
+    expect(invalidOf(container)).not.toBeNull();
+    // Le libelle historique reste celui de `checkout.verifyInvalid`.
+    expect(invalidOf(container).textContent).toContain("checkout.verifyInvalid");
+    expect(errorOf(container)).toBeNull();
+  } finally { await unmount(container, root); }
+});
+
+test("Forme inattendue (HTML, {}, null) : etat erreur, jamais « ID invalide »", async () => {
+  const cas = [
+    { nom: "HTML", data: "<html>oops</html>" },
+    { nom: "objet vide", data: {} },
+    { nom: "null", data: null },
+  ];
+  for (const c of cas) {
+    api.post.mockResolvedValue({ data: c.data });
+    const { container, root } = await mount({ pubgId: VALID_ID });
+    try {
+      await act(async () => { btnOf(container).click(); });
+      expect(invalidOf(container)).toBeNull();
+      expect(errorOf(container)).not.toBeNull();
+      // Le message de panne, jamais le libelle « ID invalide ».
+      expect(errorOf(container).textContent).toContain("checkout.verifyProviderUnavailable");
+      expect(container.textContent).not.toContain("checkout.verifyInvalid");
+      expect(warnSpy).toHaveBeenCalled();
+    } finally { await unmount(container, root); }
+  }
 });
