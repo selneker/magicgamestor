@@ -1,4 +1,4 @@
-import React, { act } from "react";
+import React, { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { api } from "@/lib/api";
 import { setMockLang } from "@/context/LanguageContext";
@@ -380,5 +380,55 @@ test("Erreur sans code connu : message generique traduit, aucun detail brut affi
       expect(warnSpy).toHaveBeenCalled();
     } finally { await unmount(container, root); }
   }
+});
+
+// --- Reponse tardive (S3) ----------------------------------------------------
+
+// Le composant a besoin de valeurs reellement modifiees : on monte un
+// petit composant conteneur qui tient les valeurs dans un state.
+function Harness({ spec, gameId, initialValues, onVerified }) {
+  const [values, setValues] = useState(initialValues);
+  return (
+    <IdentityFieldsVerify
+      spec={spec}
+      gameId={gameId}
+      values={values}
+      setValues={setValues}
+      onVerified={onVerified}
+      checkout
+    />
+  );
+}
+
+test("Reponse arrivee apres une modification des champs : ignoree", async () => {
+  let resolvePost;
+  api.post.mockReturnValue(new Promise((res) => { resolvePost = res; }));
+  const onVerified = jest.fn();
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(<Harness spec={ML_SPEC} gameId="mobile-legends" initialValues={ML_VALUES} onVerified={onVerified} />);
+  });
+  try {
+    await verifier(container);
+    expect(api.post).toHaveBeenCalledTimes(1);
+
+    // Le joueur modifie un champ pendant que la requete est en vol.
+    const input = container.querySelector('[data-testid="identity-field-player_id"]');
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+    await act(async () => {
+      setter.call(input, "987654321");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    // La reponse (tardive) arrive enfin.
+    await act(async () => { resolvePost({ data: { valid: false, code: "invalid_id" } }); });
+
+    expect(invalidOf(container)).toBeNull();
+    expect(errorOf(container)).toBeNull();
+    expect(elOf(container, "identity-verify-valid")).toBeNull();
+    expect(onVerified).not.toHaveBeenCalledWith(expect.objectContaining({ fields: expect.anything() }));
+  } finally { await unmount(container, root); }
 });
 

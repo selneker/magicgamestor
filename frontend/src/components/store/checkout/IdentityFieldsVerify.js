@@ -38,10 +38,14 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
   const valuesRef = useRef(values);
   valuesRef.current = values;
   const valuesKey = JSON.stringify(values);
+  // Numéro de requête : une réponse qui n'est pas celle de la dernière requête,
+  // ou qui arrive après une modification des champs, est ignorée.
+  const reqId = useRef(0);
 
   // Un champ modifié invalide la vérification précédente : rien n'est mémorisé comme définitif.
   useEffect(() => {
     if (first.current) { first.current = false; return; }
+    reqId.current++; // la réponse en vol ne vaut plus rien
     setState({ status: "idle" });
     onVerified(null);
   }, [valuesKey, onVerified]);
@@ -59,10 +63,12 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
 
   const verify = async () => {
     if (inert) return;
+    const myReq = ++reqId.current;
     setState({ status: "loading" });
     try {
       const fields = Object.fromEntries(spec.map((f) => [f.key, (valuesRef.current[f.key] || "").trim()]));
       const { data } = await api.post("/fazercards/validate-id", { game_id: gameId, fields });
+      if (reqId.current !== myReq) return; // réponse obsolète : ignorée
       if (data && data.valid === true) {
         setState({ status: "valid", name: data.player_name });
         onVerified({ name: data.player_name || null, fields });
@@ -77,9 +83,10 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         // d'une passerelle, objet vide, null...). C'est une panne du service,
         // JAMAIS un « ID invalide ».
         console.warn("[identity-verify] reponse inattendue du backend", data);
-        setState({ status: "error", kind: "provider_unavailable", message: "" });
+        setState({ status: "error", kind: "provider_unavailable" });
       }
     } catch (e) {
+      if (reqId.current !== myReq) return; // réponse obsolète : ignorée
       const status = e?.response?.status;
       const code = e?.response?.data?.code;
       // Une panne n'est JAMAIS un « ID invalide » : chaque code du backend a son
