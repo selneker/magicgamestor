@@ -13,15 +13,6 @@ TIMEOUT_S = 20
 DISCOVERY_TTL_S = 600
 PROVIDER_ERROR = "Service de vérification momentanément indisponible. Réessayez plus tard."
 
-
-class IdentityValidationHTTPException(HTTPException):
-    """HTTPException portant un code machine stable pour le contrat de validation d'identité."""
-
-    def __init__(self, status_code: int, detail: str, code: str):
-        super().__init__(status_code=status_code, detail=detail)
-        self.code = code
-
-
 _discovery_cache = {"data": None, "at": 0.0}
 
 
@@ -33,11 +24,7 @@ def _config() -> tuple[str, dict]:
     base = os.environ.get("FAZERCARDS_API_BASE", "https://api.fzr.cards/api/v2").rstrip("/")
     key = os.environ.get("FAZERCARDS_API_KEY")
     if not key:
-        raise IdentityValidationHTTPException(
-            status_code=503,
-            detail="Vérification d'ID indisponible (service non configuré).",
-            code="provider_unavailable",
-        )
+        raise HTTPException(status_code=503, detail="Vérification d'ID indisponible (service non configuré).")
     return base, {"X-API-Key": key}
 
 
@@ -50,43 +37,27 @@ async def _request(method: str, path: str, **kwargs) -> dict:
                 r = await client.request(method, f"{base}{path}", headers=headers, **kwargs)
         except httpx.TimeoutException:
             if attempt == 2:
-                raise IdentityValidationHTTPException(
-                    status_code=504,
-                    detail="La vérification a expiré. Réessayez.",
-                    code="provider_unavailable",
-                )
+                raise HTTPException(status_code=504, detail="La vérification a expiré. Réessayez.")
             continue
         except httpx.HTTPError:
             if attempt == 2:
-                raise IdentityValidationHTTPException(
-                    status_code=502, detail=PROVIDER_ERROR, code="provider_unavailable")
+                raise HTTPException(status_code=502, detail=PROVIDER_ERROR)
             continue
         if r.status_code >= 500 and attempt == 1:
             continue
         break
     if r.status_code in (401, 403):
-        raise IdentityValidationHTTPException(
-            status_code=502,
-            detail="Vérification refusée par le fournisseur (configuration du service).",
-            code="provider_unavailable",
-        )
+        raise HTTPException(status_code=502, detail="Vérification refusée par le fournisseur (configuration du service).")
     if r.status_code == 429:
-        raise IdentityValidationHTTPException(
-            status_code=429,
-            detail="Trop de vérifications. Réessayez dans un instant.",
-            code="rate_limited",
-        )
+        raise HTTPException(status_code=429, detail="Trop de vérifications. Réessayez dans un instant.")
     if r.is_error:
-        raise IdentityValidationHTTPException(
-            status_code=502, detail=PROVIDER_ERROR, code="provider_unavailable")
+        raise HTTPException(status_code=502, detail=PROVIDER_ERROR)
     try:
         data = r.json()
     except ValueError:
-        raise IdentityValidationHTTPException(
-            status_code=502, detail=PROVIDER_ERROR, code="provider_unavailable")
+        raise HTTPException(status_code=502, detail=PROVIDER_ERROR)
     if not isinstance(data, dict) or data.get("ok") is not True:
-        raise IdentityValidationHTTPException(
-            status_code=502, detail=PROVIDER_ERROR, code="provider_unavailable")
+        raise HTTPException(status_code=502, detail=PROVIDER_ERROR)
     return data
 
 
@@ -105,11 +76,7 @@ async def pubg_validation_target() -> tuple[str, str]:
                 _discovery_cache["data"] = (category_id, field_key)
                 _discovery_cache["at"] = now
                 return category_id, field_key
-    raise IdentityValidationHTTPException(
-        status_code=503,
-        detail="La validation PUBG Mobile n'est pas disponible chez le fournisseur.",
-        code="provider_unavailable",
-    )
+    raise HTTPException(status_code=503, detail="La validation PUBG Mobile n'est pas disponible chez le fournisseur.")
 
 
 _game_discovery_cache: dict = {}  # game_id -> (category_id, field_key, at)
@@ -139,11 +106,9 @@ async def validation_target(game_id: str | None) -> tuple[str, str]:
                                                      "fazercards_validation_category": 1})
     category_id = (game or {}).get("fazercards_validation_category")
     if not category_id:
-        raise IdentityValidationHTTPException(
+        raise HTTPException(
             status_code=503,
-            detail="La validation d'identité n'est pas disponible pour ce jeu chez le fournisseur.",
-            code="unsupported_game",
-        )
+            detail="La validation d'identité n'est pas disponible pour ce jeu chez le fournisseur.")
     data = await _request("GET", "/topups/validate-id")
     keys: list[str] = []
     for item in data.get("items", []):
@@ -152,11 +117,9 @@ async def validation_target(game_id: str | None) -> tuple[str, str]:
             break
     field_key = "player_id" if "player_id" in keys else (keys[0] if keys else None)
     if not field_key:
-        raise IdentityValidationHTTPException(
+        raise HTTPException(
             status_code=503,
-            detail="La validation d'identité n'est pas disponible pour ce jeu chez le fournisseur.",
-            code="unsupported_game",
-        )
+            detail="La validation d'identité n'est pas disponible pour ce jeu chez le fournisseur.")
     _game_discovery_cache[game_id] = (category_id, field_key, now)
     return category_id, field_key
 
@@ -171,23 +134,16 @@ async def validate_identity(fields: dict, game_id: str | None = None) -> dict:
     category_id, field_key = await validation_target(game_id)
     send = {k: v for k, v in (fields or {}).items() if v}
     if not send:
-        raise IdentityValidationHTTPException(
-            status_code=400,
-            detail="Aucun champ d'identité fourni.",
-            code="missing_field",
-        )
+        raise HTTPException(status_code=400, detail="Aucun champ d'identité fourni.")
     if field_key not in send:
-        raise IdentityValidationHTTPException(
+        raise HTTPException(
             status_code=503,
             detail=("Les champs d'identité déclarés pour ce jeu ne correspondent pas à ceux attendus "
-                    "par le fournisseur : corrigez-les dans Admin -> Jeux."),
-            code="unsupported_game",
-        )
+                    "par le fournisseur : corrigez-les dans Admin -> Jeux."))
     data = await _request("POST", "/topups/validate-id",
                           json={"category_id": category_id, "fields": send})
     if "valid" not in data:
-        raise IdentityValidationHTTPException(
-            status_code=502, detail=PROVIDER_ERROR, code="provider_unavailable")
+        raise HTTPException(status_code=502, detail=PROVIDER_ERROR)
     if not data["valid"]:
         return {"valid": False}
     return {"valid": True, "player_name": data.get("player_name"), "region": data.get("region")}
