@@ -157,19 +157,22 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         </button>
       )}
       {state.status === "valid" && checkout && (
-        <div className="rounded-[18px] border-2 border-foreground bg-primary/15 p-4" data-testid="identity-verify-valid">
+        <div role="status" className="rounded-[18px] border-2 border-foreground bg-primary/15 p-4" data-testid="identity-verify-valid">
           <p className="flex items-center gap-2 font-display text-lg font-bold"><CheckCircle2 className="h-5 w-5 text-emerald-600" />{t("checkout.verified")}</p>
           <p className="mt-1.5 pl-7 text-base font-bold" data-testid="identity-verify-player-name">Pseudo: {state.name || "—"}</p>
           <p className="mt-2 text-xs text-foreground/80" data-testid="identity-verify-confirm">{t("checkout.verifyConfirm")}</p>
         </div>
       )}
       {state.status === "invalid" && (
-        <p className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-600" data-testid="identity-verify-invalid">
+        // Fond ET texte viennent du meme couple de jetons (--destructive /
+        // --destructive-foreground) : ils bougent ensemble dans les deux
+        // themes, le contraste reste >= 4,5:1 partout.
+        <p role="alert" className="flex items-center gap-1.5 rounded-xl border border-destructive bg-destructive p-3 text-sm font-semibold text-destructive-foreground" data-testid="identity-verify-invalid">
           <XCircle className="h-4 w-4" />{invalidMessage}
         </p>
       )}
       {state.status === "error" && (
-        <div className="flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700" data-testid="identity-verify-error">
+        <div role="alert" className="flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700" data-testid="identity-verify-error">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
             {checkout && <p className="font-bold" data-testid={`identity-verify-error-${state.kind}`}>{errorTitle}</p>}

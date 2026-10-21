@@ -302,3 +302,28 @@ test("Nom du jeu inconnu : le message reste neutre, sans « pour ... »", async 
     expect(text).not.toContain("pour");
   } finally { await unmount(container, root); }
 });
+
+// --- Annonce aux lecteurs d'ecran (A1) ---------------------------------------
+
+test("Les messages sont annonces : alert pour les echecs, status pour le succes", async () => {
+  api.post.mockResolvedValue({ data: { valid: false, code: "invalid_id" } });
+  const { container, root } = await mount();
+  try {
+    await verifier(container);
+    expect(elOf(container, "identity-verify-invalid").getAttribute("role")).toBe("alert");
+  } finally { await unmount(container, root); }
+
+  api.post.mockRejectedValue({ response: { status: 503, data: { code: "unsupported_game" } } });
+  const echec = await mount();
+  try {
+    await verifier(echec.container);
+    expect(elOf(echec.container, "identity-verify-error").getAttribute("role")).toBe("alert");
+  } finally { await unmount(echec.container, echec.root); }
+
+  api.post.mockResolvedValue({ data: { valid: true, player_name: "TestPlayer" } });
+  const succes = await mount();
+  try {
+    await verifier(succes.container);
+    expect(elOf(succes.container, "identity-verify-valid").getAttribute("role")).toBe("status");
+  } finally { await unmount(succes.container, succes.root); }
+});
