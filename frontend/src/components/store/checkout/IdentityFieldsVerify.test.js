@@ -338,6 +338,26 @@ test("Les messages sont annonces : alert pour les echecs, status pour le succes"
   } finally { await unmount(succes.container, succes.root); }
 });
 
+// --- Message de confirmation (S2) -------------------------------------------
+
+test("Confirmation : le nom du jeu remplace PUBG, le texte PUBG reste identique", async () => {
+  api.post.mockResolvedValue({ data: { valid: true, player_name: "TestPlayer" } });
+  const ml = await mount();
+  try {
+    await verifier(ml.container);
+    const text = texteDe(ml.container, "identity-verify-confirm");
+    expect(text).toContain("Mobile Legends");
+    expect(text).not.toContain("PUBG");
+    expect(text).toContain("ID joueur");
+  } finally { await unmount(ml.container, ml.root); }
+
+  const pubg = await mount({ spec: PUBG_SPEC, gameId: "pubg-mobile", values: { player_id: "52328390220" } });
+  try {
+    await verifier(pubg.container);
+    expect(texteDe(pubg.container, "identity-verify-confirm")).toBe("Vérifiez que cet ID correspond bien à votre compte PUBG Mobile.");
+  } finally { await unmount(pubg.container, pubg.root); }
+});
+
 // --- Detail brut de l'API (S1) -----------------------------------------------
 
 test("Erreur sans code connu : message generique traduit, aucun detail brut affiche", async () => {

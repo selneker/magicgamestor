@@ -125,6 +125,11 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
     return list.join(` ${t("checkout.verifyOr")} `);
   }, [spec, lang, t]);
 
+  // Libelle du champ principal : celui que le joueur identifie comme son
+  // compte (le backend garantit qu'un champ est `primary`).
+  const primary = spec.find((f) => f.primary) || spec[0];
+  const primaryLabel = primary ? (lang === "en" && primary.label_en) || primary.label || primary.key : "";
+
   // Message « identifiant refuse » : le nom du jeu quand il est connu, sinon
   // une formulation neutre. Jamais le libelle PUBG.
   const invalidMessage =
@@ -166,7 +171,11 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         <div role="status" className="rounded-[18px] border-2 border-foreground bg-primary/15 p-4" data-testid="identity-verify-valid">
           <p className="flex items-center gap-2 font-display text-lg font-bold"><CheckCircle2 className="h-5 w-5 text-emerald-600" />{t("checkout.verified")}</p>
           <p className="mt-1.5 pl-7 text-base font-bold" data-testid="identity-verify-player-name">Pseudo: {state.name || "—"}</p>
-          <p className="mt-2 text-xs text-foreground/80" data-testid="identity-verify-confirm">{t("checkout.verifyConfirm")}</p>
+          <p className="mt-2 text-xs text-foreground/80" data-testid="identity-verify-confirm">
+            {gameName
+              ? t("checkout.verifyConfirmForGame", { label: primaryLabel, game: gameName })
+              : t("checkout.verifyConfirmGeneric", { label: primaryLabel })}
+          </p>
         </div>
       )}
       {state.status === "invalid" && (
