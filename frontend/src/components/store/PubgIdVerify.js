@@ -94,7 +94,7 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
         </button>
       )}
       {state.status === "valid" && !checkout && (
-        <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm" data-testid="pubg-verify-valid">
+        <div role="status" className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm" data-testid="pubg-verify-valid">
           <p className="flex items-center gap-1.5 font-semibold text-emerald-700">
             <CheckCircle2 className="h-4 w-4" />{t("checkout.verified")}
             {state.name && <span className="font-bold" data-testid="pubg-verify-player-name">· {state.name}</span>}
@@ -103,14 +103,17 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
         </div>
       )}
       {state.status === "valid" && checkout && (
-        <div className="mt-3 rounded-[18px] border-2 border-foreground bg-primary/15 p-4" data-testid="pubg-verify-valid">
+        <div role="status" className="mt-3 rounded-[18px] border-2 border-foreground bg-primary/15 p-4" data-testid="pubg-verify-valid">
           <p className="flex items-center gap-2 font-display text-lg font-bold"><CheckCircle2 className="h-5 w-5 text-emerald-600" />{t("checkout.verified")}</p>
           <p className="mt-1.5 pl-7 text-base font-bold" data-testid="pubg-verify-player-name">Pseudo: {state.name || "—"}</p>
           <p className="mt-2 text-xs text-foreground/80" data-testid="pubg-verify-confirm">{t("checkout.verifyConfirm")}</p>
         </div>
       )}
       {state.status === "invalid" && (
-        <p className="mt-2 flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-600" data-testid="pubg-verify-invalid">
+        // Fond ET texte viennent du meme couple de jetons (--destructive /
+        // --destructive-foreground) : ils bougent ensemble dans les deux
+        // themes, le contraste reste >= 4,5:1 partout.
+        <p role="alert" className="mt-2 flex items-center gap-1.5 rounded-xl border border-destructive bg-destructive p-3 text-sm font-semibold text-destructive-foreground" data-testid="pubg-verify-invalid">
           <XCircle className="h-4 w-4" />{t("checkout.verifyInvalid")}
         </p>
       )}

@@ -275,3 +275,45 @@ test("Erreur : message generique traduit, aucun detail technique affiche", async
     } finally { await unmount(container, root); }
   }
 });
+
+test("Panneau invalide : fond et texte du meme couple de jetons, contraste >= 4,5:1 dans les deux themes", async () => {
+  api.post.mockResolvedValue({ data: { valid: false, message: "ID PUBG Mobile invalide" } });
+  const { container, root } = await mount({ pubgId: VALID_ID });
+  try {
+    await act(async () => { btnOf(container).click(); });
+    const el = invalidOf(container);
+    expect(el.className).toContain("bg-destructive");
+    expect(el.className).toContain("text-destructive-foreground");
+    // Plus de rouge fige sur un fond fige : c'est ce qui vautait 4,41:1.
+    expect(el.className).not.toContain("bg-red-50");
+    expect(el.className).not.toContain("text-red-600");
+    // Le couple mesure DANS index.css, par bloc de theme.
+    const clair = contrast(hslToRgb(token(themeBlock(":root"), "destructive-foreground")), hslToRgb(token(themeBlock(":root"), "destructive")));
+    const sombre = contrast(hslToRgb(token(themeBlock(".dark"), "destructive-foreground")), hslToRgb(token(themeBlock(".dark"), "destructive")));
+    expect(clair).toBeGreaterThanOrEqual(4.5);
+    expect(sombre).toBeGreaterThanOrEqual(4.5);
+  } finally { await unmount(container, root); }
+});
+
+test("Annonce : alert sur invalide et erreur, status sur le compte verifie", async () => {
+  api.post.mockResolvedValue({ data: { valid: false } });
+  const invalide = await mount({ pubgId: VALID_ID });
+  try {
+    await act(async () => { btnOf(invalide.container).click(); });
+    expect(invalidOf(invalide.container).getAttribute("role")).toBe("alert");
+  } finally { await unmount(invalide.container, invalide.root); }
+
+  api.post.mockRejectedValue({ response: { status: 500, data: { detail: "boom" } } });
+  const echec = await mount({ pubgId: VALID_ID });
+  try {
+    await act(async () => { btnOf(echec.container).click(); });
+    expect(errorOf(echec.container).getAttribute("role")).toBe("alert");
+  } finally { await unmount(echec.container, echec.root); }
+
+  api.post.mockResolvedValue({ data: { valid: true, player_name: "Test" } });
+  const succes = await mount({ pubgId: VALID_ID });
+  try {
+    await act(async () => { btnOf(succes.container).click(); });
+    expect(succes.container.querySelector('[data-testid="pubg-verify-valid"]').getAttribute("role")).toBe("status");
+  } finally { await unmount(succes.container, succes.root); }
+});
