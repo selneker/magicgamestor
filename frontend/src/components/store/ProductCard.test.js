@@ -154,3 +154,19 @@ test("CODM : badges « CP » et « Pack CP » (monnaie du jeu, pas UC)", async (
     expect(container.textContent).not.toMatch(/\bUC\b/);
   } finally { await unmountCard(container, root); }
 });
+
+// La pastille de prix peint un fond blanc FIXE (en sombre, `.bg-white` est
+// force a #FFFFFF par la regle « Neon product cards » d'index.css) : son texte
+// doit etre une encre fixe, sinon il suit le theme et devient creme sur blanc
+// (1,12:1). Le test verrouille le couple fond/avant-plan.
+test("Carte disponible : le prix est pose sur un fond fixe -> texte d'encre fixe", async () => {
+  const { container, root } = await mountCard(PUBG);
+  try {
+    const prix = [...container.querySelectorAll("span")].find((s) => s.textContent.trim() === "900 Ar");
+    expect(prix).toBeTruthy();
+    const pastille = prix.closest("div.bg-white");
+    expect(pastille).toBeTruthy();
+    expect(pastille.className).toContain("text-ink");
+    expect(pastille.className).not.toContain("text-foreground");
+  } finally { await unmountCard(container, root); }
+});
