@@ -263,6 +263,18 @@ const PAGES = [
     validate: { html: true } },
   { name: "verif-succes", path: "/commande", step: "verify", game: "mobile-legends",
     validate: { valid: true, player_name: "TestPlayer" } },
+  // Etats de la verification PUBG Mobile (parcours historique), au checkout et
+  // sur la page fidelite : meme composant, deux presentations (bouton h-12 ou
+  // py-1.5 text-xs).
+  { name: "pubg-invalide", path: "/commande", step: "pubg", pubgVerify: { valid: false } },
+  { name: "pubg-503", path: "/commande", step: "pubg", pubgVerify: { status: 503 } },
+  { name: "pubg-html", path: "/commande", step: "pubg", pubgVerify: { html: true } },
+  { name: "fidelite-pubg-invalide", path: "/compte/points", step: "pubg-fidelite", loggedIn: true,
+    pubgVerify: { valid: false } },
+  { name: "fidelite-pubg-503", path: "/compte/points", step: "pubg-fidelite", loggedIn: true,
+    pubgVerify: { status: 503 } },
+  { name: "fidelite-pubg-html", path: "/compte/points", step: "pubg-fidelite", loggedIn: true,
+    pubgVerify: { html: true } },
 ];
 
 const VIEWPORTS = [
@@ -444,6 +456,19 @@ const driveCheckout = async (pg, step) => {
     await click(pg, '[data-testid="identity-verify-btn"]', 1200);
     return true;
   }
+  // Verification PUBG Mobile : on remplit l'ID puis on declenche. L'ecran
+  // mesure est l'etat affiche APRES la reponse simulee.
+  if (step === "pubg") {
+    await fill(pg, '[data-testid="pubg-id-input"]', "52328390220");
+    await click(pg, '[data-testid="pubg-verify-btn"]', 1200);
+    return true;
+  }
+  // Meme verification, sur la page fidelite (presentation reduite).
+  if (step === "pubg-fidelite") {
+    await fill(pg, '[data-testid="reward-pubg-input"]', "52328390220");
+    await click(pg, '[data-testid="pubg-verify-btn"]', 1200);
+    return true;
+  }
   await fill(pg, '[data-testid="pubg-id-input"]', "52328390220");
   await click(pg, '[data-testid="pubg-verify-btn"]', 1200);
   // L'ecran de verification (etape 1) se mesure APRES la verification : c'est
@@ -518,6 +543,24 @@ const run = async () => {
               contentType: "application/json",
               body: JSON.stringify(page.loggedIn ? USER : {}),
             });
+          }
+          // Verification PUBG Mobile (parcours historique) : le meme contrat
+          // que la multi-jeux, sur l'endpoint /fazercards/pubg/validate-id.
+          // ATTENTION : cette route contient aussi « validate-id » -> elle doit
+          // passer AVANT celle du multi-jeux.
+          if (p.includes("/fazercards/pubg/validate-id")) {
+            const v = page.pubgVerify || { valid: true, player_name: "TestPlayer" };
+            if (v.html) {
+              return route.fulfill({ status: 200, contentType: "text/html", body: "<html><body>passerelle</body></html>" });
+            }
+            if (v.status) {
+              return route.fulfill({
+                status: v.status,
+                contentType: "application/json",
+                body: JSON.stringify({ detail: "upstream failure" }),
+              });
+            }
+            return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(v) });
           }
           // Reponse de verification simulee : c'est elle qui decide de l'etat
           // affiche (invalide, panne, compte verifie, reponse non-JSON).
