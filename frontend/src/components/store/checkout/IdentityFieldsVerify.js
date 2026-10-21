@@ -63,15 +63,21 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
     try {
       const fields = Object.fromEntries(spec.map((f) => [f.key, (valuesRef.current[f.key] || "").trim()]));
       const { data } = await api.post("/fazercards/validate-id", { game_id: gameId, fields });
-      if (data.valid) {
+      if (data && data.valid === true) {
         setState({ status: "valid", name: data.player_name });
         onVerified({ name: data.player_name || null, fields });
-      } else {
+      } else if (data && data.valid === false) {
         // 200 { valid:false, code: "invalid_id" | "missing_field" }. Le message
         // vient de la traduction (jamais du champ `message` de l'API, qui peut
         // etre en anglais) ; une reponse sans code (backend ancien) retombe
         // sur le message neutre.
         setState({ status: "invalid", code: data.code });
+      } else {
+        // Ni `true` ni `false` : la reponse n'a pas la forme attendue (HTML
+        // d'une passerelle, objet vide, null...). C'est une panne du service,
+        // JAMAIS un « ID invalide ».
+        console.warn("[identity-verify] reponse inattendue du backend", data);
+        setState({ status: "error", kind: "provider_unavailable", message: "" });
       }
     } catch (e) {
       const status = e?.response?.status;

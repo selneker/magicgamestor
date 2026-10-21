@@ -71,12 +71,18 @@ const verifier = async (container) => {
   await act(async () => { btnOf(container).click(); });
 };
 
+let warnSpy;
+
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   api.post.mockReset();
   setMockLang("fr");
+  warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
 });
-afterEach(() => { delete global.IS_REACT_ACT_ENVIRONMENT; });
+afterEach(() => {
+  delete global.IS_REACT_ACT_ENVIRONMENT;
+  warnSpy.mockRestore();
+});
 
 // --- Parcours PUBG (contrat de la garde inerte, Phase 2) ----------------------
 
@@ -211,5 +217,50 @@ test("Garde inerte : champs incomplets -> aria-disabled et aucune requete", asyn
     expect(btnOf(container).getAttribute("aria-disabled")).toBe("true");
     await verifier(container);
     expect(api.post).not.toHaveBeenCalled();
+  } finally { await unmount(container, root); }
+});
+
+// --- Forme de la reponse (B2) ------------------------------------------------
+
+test("Reponse non JSON (HTML) : etat erreur, jamais « ID invalide »", async () => {
+  api.post.mockResolvedValue({ data: "<html>oops</html>" });
+  const { container, root } = await mount();
+  try {
+    await verifier(container);
+    expect(invalidOf(container)).toBeNull();
+    expect(texteDe(container, "identity-verify-error")).toContain("Service momentanément indisponible, réessayez");
+    expect(warnSpy).toHaveBeenCalled();
+  } finally { await unmount(container, root); }
+});
+
+test("Reponse {} : etat erreur, jamais « ID invalide »", async () => {
+  api.post.mockResolvedValue({ data: {} });
+  const { container, root } = await mount();
+  try {
+    await verifier(container);
+    expect(invalidOf(container)).toBeNull();
+    expect(texteDe(container, "identity-verify-error")).toContain("Service momentanément indisponible, réessayez");
+  } finally { await unmount(container, root); }
+});
+
+test("Reponse null : etat erreur, jamais « ID invalide »", async () => {
+  api.post.mockResolvedValue({ data: null });
+  const { container, root } = await mount();
+  try {
+    await verifier(container);
+    expect(invalidOf(container)).toBeNull();
+    expect(texteDe(container, "identity-verify-error")).toContain("Service momentanément indisponible, réessayez");
+  } finally { await unmount(container, root); }
+});
+
+test("Code inconnu avec valid:false : invalide, avec le nom du jeu", async () => {
+  api.post.mockResolvedValue({ data: { valid: false, code: "mystery_code" } });
+  const { container, root } = await mount();
+  try {
+    await verifier(container);
+    expect(errorOf(container)).toBeNull();
+    const text = texteDe(container, "identity-verify-invalid");
+    expect(text).toContain("Mobile Legends");
+    expect(text).not.toMatch(/invalide.*invalide/i);
   } finally { await unmount(container, root); }
 });
