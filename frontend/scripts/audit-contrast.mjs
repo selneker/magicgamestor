@@ -147,10 +147,25 @@ const GAMES = [
         pattern: "^[0-9]{9,13}$", min_length: 9, max_length: 13, required: true, primary: true },
     ],
   },
+  // Jeu multi-champs : sert a mesurer les messages du parcours generique
+  // (identifiant refuse, panne, compte verifie) avec de vrais libelles de
+  // champs — le message ne doit citer que les champs demandes par le jeu.
+  {
+    id: "mobile-legends", name: "Mobile Legends", slug: "mobile-legends", active: true, sort_order: 1,
+    description: "UC", currency_label: "UC",
+    icon_url: "https://customer-assets-0z36b82j.emergentagent.net/job_games-nav-polish/artifacts/ih6044zb_pubgm_app-icon_512x512%281%29.e9f7efc0.png",
+    product_types: [{ key: "uc", label: "UC", label_en: "UC" }],
+    identity_fields: [
+      { key: "player_id", label: "ID joueur", label_en: "Player ID",
+        pattern: "^[0-9]{9,13}$", min_length: 9, max_length: 13, required: true, primary: true },
+      { key: "zone_id", label: "Zone ID", label_en: "Zone ID",
+        pattern: "^[0-9]{3,5}$", min_length: 3, max_length: 5, required: true },
+    ],
+  },
 ];
 
-const product = (id, name, slug, price, type, uc, months, popular, old, purchasable = true) => ({
-  id, name, slug, price, game_id: "pubg-mobile", type, uc_amount: uc, duration_months: months,
+const product = (id, name, slug, price, type, uc, months, popular, old, purchasable = true, game_id = "pubg-mobile") => ({
+  id, name, slug, price, game_id, type, uc_amount: uc, duration_months: months,
   popular, purchasable, old_price: old || null, description: name,
 });
 
@@ -166,6 +181,7 @@ const PRODUCTS = [
   // produit doivent etre mesurees, pas seulement les deux premieres.
   product("p7", "330 UC", "330-uc", 1200, "uc", 330, null, false, null, false),
   product("p8", "3300 UC", "3300-uc", 12000, "uc", 3300, null, false),
+  product("m1", "660 UC", "660-uc-ml", 2500, "uc", 660, null, true, null, true, "mobile-legends"),
 ];
 
 const EVENTS = [
@@ -192,7 +208,6 @@ const ORDER = {
 const USER = { user_id: "u1", email: "client@exemple.test", name: "Client", roles: [], permissions: [] };
 
 const mockApi = (pathname) => {
-  if (pathname.includes("validate-id")) return { valid: true, player_name: "TestPlayer" };
   if (pathname.endsWith("/games")) return GAMES;
   if (pathname.includes("/payments/config")) return PAYMENT_CONFIG;
   if (pathname.includes("/payments/initiate")) return { simulated: true, payment_url: null, attempt: 1 };
@@ -210,7 +225,12 @@ const mockApi = (pathname) => {
 };
 
 /* ------------------------------------------------------------------ pages */
-/* Liste des pages auditees. Ajouter une page = ajouter une entree ici. */
+/* Liste des pages auditees. Ajouter une page = ajouter une entree ici.
+ *
+ * `game` : le jeu selectionne (par defaut PUBG Mobile).
+ * `validate` : la reponse simulee de /fazercards/validate-id, pour mesurer
+ * l'etat affiche apres la verification (identifiant refuse, panne, compte
+ * verifie, reponse non-JSON). Sans `validate`, l'API repond « valide ». */
 
 const PAGES = [
   { name: "accueil", path: "/" },
@@ -226,6 +246,19 @@ const PAGES = [
   { name: "compte", path: "/compte", loggedIn: true },
   { name: "suivi", path: "/suivi", loggedIn: true },
   { name: "fidelite", path: "/compte/points", loggedIn: true },
+  // Etats du parcours d'identite multi-jeux (messages de verification).
+  { name: "verif-invalide", path: "/commande", step: "verify", game: "mobile-legends",
+    validate: { valid: false, code: "invalid_id" } },
+  { name: "verif-champ-manquant", path: "/commande", step: "verify", game: "mobile-legends",
+    validate: { valid: false, code: "missing_field" } },
+  { name: "verif-503", path: "/commande", step: "verify", game: "mobile-legends",
+    validate: { status: 503, code: "unsupported_game" } },
+  { name: "verif-429", path: "/commande", step: "verify", game: "mobile-legends",
+    validate: { status: 429, code: "rate_limited" } },
+  { name: "verif-html", path: "/commande", step: "verify", game: "mobile-legends",
+    validate: { html: true } },
+  { name: "verif-succes", path: "/commande", step: "verify", game: "mobile-legends",
+    validate: { valid: true, player_name: "TestPlayer" } },
 ];
 
 const VIEWPORTS = [
@@ -398,6 +431,15 @@ const driveCheckout = async (pg, step) => {
   // « Verifier l'ID » desactive. C'est l'etat que voit le client a son
   // arrivee sur le checkout : il doit etre mesure tel quel.
   if (step === "init") return true;
+  // Parcours multi-jeux : on remplit les champs d'identite du jeu puis on
+  // lance la verification. L'ecran mesure est l'etat affiche APRES la
+  // reponse simulee (identifiant refuse, panne, compte verifie...).
+  if (step === "verify") {
+    await fill(pg, '[data-testid="identity-field-player_id"]', "52328390220");
+    await fill(pg, '[data-testid="identity-field-zone_id"]', "123");
+    await click(pg, '[data-testid="identity-verify-btn"]', 1200);
+    return true;
+  }
   await fill(pg, '[data-testid="pubg-id-input"]', "52328390220");
   await click(pg, '[data-testid="pubg-verify-btn"]', 1200);
   // L'ecran de verification (etape 1) se mesure APRES la verification : c'est
@@ -452,14 +494,15 @@ const run = async () => {
           hasTouch: vp.mobile,
         });
         const pg = await ctx.newPage();
+        const game = page.game || "pubg-mobile";
         const cart = JSON.stringify([
-          { id: "p1", slug: "660-uc", name: "660 UC", price: 2500, qty: 1, type: "uc", game_id: "pubg-mobile" },
+          { id: game === "pubg-mobile" ? "p1" : "m1", slug: "660-uc", name: "660 UC", price: 2500, qty: 1, type: "uc", game_id: game },
         ]);
         await pg.addInitScript(
           `try{
             localStorage.setItem('mgs-theme','${theme}');
             localStorage.setItem('mgs_lang','fr');
-            localStorage.setItem('mgs_selected_game','pubg-mobile');
+            localStorage.setItem('mgs_selected_game','${game}');
             localStorage.setItem('mgs_cart', ${JSON.stringify(cart)});
           }catch(e){}`,
         );
@@ -471,6 +514,22 @@ const run = async () => {
               contentType: "application/json",
               body: JSON.stringify(page.loggedIn ? USER : {}),
             });
+          }
+          // Reponse de verification simulee : c'est elle qui decide de l'etat
+          // affiche (invalide, panne, compte verifie, reponse non-JSON).
+          if (p.includes("validate-id")) {
+            const v = page.validate || { valid: true, player_name: "TestPlayer" };
+            if (v.html) {
+              return route.fulfill({ status: 200, contentType: "text/html", body: "<html><body>passerelle</body></html>" });
+            }
+            if (v.status) {
+              return route.fulfill({
+                status: v.status,
+                contentType: "application/json",
+                body: JSON.stringify({ detail: "upstream", code: v.code }),
+              });
+            }
+            return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(v) });
           }
           return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockApi(p)) });
         });
