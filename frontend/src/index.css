@@ -43,6 +43,14 @@
         --neo-card-bg: #D4FF00;
         --neo-text: #111111;
         --neo-border: #111111;
+        /* Carte produit : surfaces ET avant-plans FIXES (un texte qui suit le
+           theme ne doit jamais etre pose sur une surface fixe). Seul le theme
+           change la couleur de l'ombre et de l'anneau de focus. */
+        --card-surface: hsl(var(--cream));   /* #F4F3EE, creme figee */
+        --card-pill-bg: #FFFFFF;            /* pastille de prix : blanc fige */
+        --card-badge-bg: var(--neo-card-bg); /* badge : le meme neon que bg-neo */
+        --card-shadow: var(--neo-border);   /* ombre dure : encre en clair */
+        --card-focus: var(--neo-border);    /* anneau de focus : encre en clair */
     }
     .dark {
         --background: 0 0% 17%;        /* #2B2B2B */
@@ -75,6 +83,10 @@
         --neo-card-bg: #D4FF00;
         --neo-text: #111111;
         --neo-border: #111111;
+        /* Seules l'ombre et l'anneau de focus changent : la carte reste creme,
+           ses avant-plans restent de l'encre, la pastille reste blanche. */
+        --card-shadow: var(--neo-card-bg);  /* ombre dure : neon en sombre */
+        --card-focus: var(--neo-card-bg);   /* focus : visible sur la page sombre */
     }
     * { border-color: var(--rule); }
     html { scroll-behavior: smooth; overflow-x: hidden; }
@@ -231,11 +243,10 @@
 [data-testid="product-visual"] { background-image: none !important; background-color: hsl(var(--muted)); }
 .text-slate-900\/10 { color: hsl(var(--foreground) / .08); }
 .dark .text-slate-900\/10 { color: hsl(var(--foreground) / .12); }
-/* Neon product cards — pin their ink so text on #D4FF00 stays readable in dark mode. */
-article[data-testid^="product-card-"] { color: var(--neo-text); }
-.dark article[data-testid^="product-card-"] { color: var(--neo-text); }
-.dark article[data-testid^="product-card-"] .bg-white { background-color: #FFFFFF; }
-.dark article[data-testid^="product-card-"]:hover { box-shadow: 8px 8px 0 hsl(var(--primary) / .55); }
+/* Les cartes produit n'ont plus besoin d'un bloc CSS propre : leurs surfaces,
+   leurs avant-plans, leur ombre et leur anneau de focus viennent des jetons
+   --card-* (voir :root et .dark). Plus aucune regle
+   `.dark article[data-testid^="product-card-"]` ne surcharge un jeton. */
 .recharts-default-tooltip { background-color: hsl(var(--popover)) !important; border-color: hsl(var(--foreground)) !important; border-radius: 0 !important; color: hsl(var(--popover-foreground)); }
 .recharts-cartesian-axis-tick text { fill: hsl(var(--muted-foreground)); }
 

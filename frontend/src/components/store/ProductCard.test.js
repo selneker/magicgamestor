@@ -25,6 +25,7 @@ const PRIME = { id: "pubg-prime", slug: "pubg-prime", name: "Prime", type: "prim
 const CODM = { id: "codm-80", slug: "codm-80-cp", name: "80 CP", type: "cp", price: 700,
                game_id: "codm", uc_amount: 80, purchasable: true };
 const FF_OFF = { ...FF, id: "ff-off", slug: "ff-off", name: "Pack épuisé", purchasable: false };
+const PUBG_POP = { ...PUBG, id: "pubg-60-uc-pop", slug: "pubg-60-uc-pop", name: "60 UC", popular: true };
 
 function ItemsProbe() {
   const { items, setQty } = useCart();
@@ -129,29 +130,50 @@ test("Parcours panier : setQty met à jour la carte (même source de vérité)",
   } finally { await unmountCard(container, root); }
 });
 
-test("Free Fire : badges « Diamants » et « Pack Diamants », jamais UC", async () => {
+test("Free Fire : aucun badge de type ni de categorie sur la carte", async () => {
   const { container, root } = await mountCard(FF);
   try {
-    expect(container.querySelector('[data-testid="card-type-ff-310-diamants"]').textContent).toBe("Diamants");
-    expect(container.querySelector('[data-testid="card-context-ff-310-diamants"]').textContent).toBe("Pack Diamants");
+    // Les badges de type (« UC », « Diamants », « CP »...) et de categorie
+    // (« Pack UC », « Abonnement », « Elite Pack ») sont retires : la carte
+    // n'affiche plus que « Populaire », la remise et « Indisponible ».
+    expect(container.querySelector('[data-testid="card-type-ff-310-diamonds"]')).toBeNull();
+    expect(container.querySelector('[data-testid="card-context-ff-310-diamonds"]')).toBeNull();
     expect(container.textContent).not.toMatch(/\bUC\b/);
+    // « Diamants » ne subsiste que dans le NOM du produit, jamais dans un badge.
+    expect(container.querySelector('[data-testid^="card-type-"]')).toBeNull();
   } finally { await unmountCard(container, root); }
 });
 
-test("PUBG Mobile : badges « UC » et « Pack UC » inchangés", async () => {
+test("PUBG Mobile : aucun badge de type ni de categorie, la carte reste lisible", async () => {
   const { container, root } = await mountCard(PUBG);
   try {
-    expect(container.querySelector('[data-testid="card-type-pubg-60-uc"]').textContent).toBe("UC");
-    expect(container.querySelector('[data-testid="card-context-pubg-60-uc"]').textContent).toBe("Pack UC");
+    expect(container.querySelector('[data-testid="card-type-pubg-60-uc"]')).toBeNull();
+    expect(container.querySelector('[data-testid="card-context-pubg-60-uc"]')).toBeNull();
+    // Le contenu utile reste : nom, figure, unite et prix.
+    expect(container.textContent).toContain("60 UC");
+    expect(container.textContent).toContain("900 Ar");
   } finally { await unmountCard(container, root); }
 });
 
-test("CODM : badges « CP » et « Pack CP » (monnaie du jeu, pas UC)", async () => {
+test("CODM : aucun badge de type ni de categorie", async () => {
   const { container, root } = await mountCard(CODM);
   try {
-    expect(container.querySelector('[data-testid="card-type-codm-80-cp"]').textContent).toBe("CP");
-    expect(container.querySelector('[data-testid="card-context-codm-80-cp"]').textContent).toBe("Pack CP");
+    expect(container.querySelector('[data-testid="card-type-codm-80-cp"]')).toBeNull();
+    expect(container.querySelector('[data-testid="card-context-codm-80-cp"]')).toBeNull();
     expect(container.textContent).not.toMatch(/\bUC\b/);
+  } finally { await unmountCard(container, root); }
+});
+
+test("Produit Populaire : le badge « Populaire » (flamme) reste affiche", async () => {
+  const { container, root } = await mountCard(PUBG_POP);
+  try {
+    const badge = container.querySelector('[data-testid="card-context-pubg-60-uc-pop"]');
+    expect(badge).not.toBeNull();
+    expect(badge.textContent).toContain("Populaire");
+    expect(badge.querySelector("svg")).not.toBeNull();
+    // Fond neon + texte encre : deux surfaces fixes, qui ne suivent pas le theme.
+    expect(badge.className).toContain("bg-[color:var(--card-badge-bg)]");
+    expect(badge.className).toContain("text-ink");
   } finally { await unmountCard(container, root); }
 });
 
@@ -164,9 +186,10 @@ test("Carte disponible : le prix est pose sur un fond fixe -> texte d'encre fixe
   try {
     const prix = [...container.querySelectorAll("span")].find((s) => s.textContent.trim() === "900 Ar");
     expect(prix).toBeTruthy();
-    const pastille = prix.closest("div.bg-white");
+    const pastille = prix.closest("div[class*='card-pill-bg']");
     expect(pastille).toBeTruthy();
     expect(pastille.className).toContain("text-ink");
     expect(pastille.className).not.toContain("text-foreground");
+    expect(pastille.className).toContain("border-2");
   } finally { await unmountCard(container, root); }
 });
