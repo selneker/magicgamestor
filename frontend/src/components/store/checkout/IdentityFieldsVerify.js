@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
+import { useGames } from "@/context/GameContext";
 import { Input } from "@/components/ui/input";
 
 // Vérification d'identité GÉNÉRIQUE (multi-jeux).
@@ -28,6 +29,10 @@ export const fieldError = localError;
 
 export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onVerified, autoTrigger = 0, checkout = false, initial = null }) => {
   const { t, lang } = useLang();
+  const { games } = useGames();
+  // Nom du jeu tel que le backend le publie (Mobile Legends, ...) : les messages
+  // restent generiques, jamais « ID PUBG Mobile invalide ».
+  const gameName = games.find((g) => g.id === gameId)?.name || "";
   const [state, setState] = useState(initial ? { status: "valid", name: initial.name } : { status: "idle" });
   const first = useRef(!!initial);
   const valuesRef = useRef(values);
@@ -46,9 +51,14 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
     [spec, values]
   );
   const complete = spec.length > 0 && Object.keys(errors).length === 0;
+  // Garde inerte : champs incomplets OU verification en cours -> le bouton ne
+  // declenche rien (aucune requete, aucune soumission). `aria-disabled` plutot
+  // que `disabled` : le bouton reste focusable, le gestionnaire fait la garde.
+  const busy = state.status === "loading";
+  const inert = busy || !complete;
 
   const verify = async () => {
-    if (!complete) return setState({ status: "invalid" });
+    if (inert) return;
     setState({ status: "loading" });
     try {
       const fields = Object.fromEntries(spec.map((f) => [f.key, (valuesRef.current[f.key] || "").trim()]));
@@ -57,12 +67,26 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         setState({ status: "valid", name: data.player_name });
         onVerified({ name: data.player_name || null, fields });
       } else {
-        setState({ status: "invalid" });
+        // 200 { valid:false, code: "invalid_id" | "missing_field" }. Le message
+        // vient de la traduction (jamais du champ `message` de l'API, qui peut
+        // etre en anglais) ; une reponse sans code (backend ancien) retombe
+        // sur le message neutre.
+        setState({ status: "invalid", code: data.code });
       }
     } catch (e) {
-      const code = e?.response?.status;
-      const kind = !e?.response || code === 504 || code === 429 ? "temporary" : "provider";
-      setState({ status: "error", kind, message: errorMessage(e, t("checkout.verifyError")) });
+      const status = e?.response?.status;
+      const code = e?.response?.data?.code;
+      // Une panne n'est JAMAIS un « ID invalide » : chaque code du backend a son
+      // etat d'erreur et son message traduit. Les reponses sans code gardent le
+      // comportement existant (temporaire / fournisseur).
+      const kind =
+        code === "unsupported_game" ? "unsupported_game"
+        : code === "provider_unavailable" ? "provider_unavailable"
+        : code === "rate_limited" ? "rate_limited"
+        : !e?.response || status === 504 || status === 429 ? "temporary"
+        : "provider";
+      const known = kind === "unsupported_game" || kind === "provider_unavailable" || kind === "rate_limited";
+      setState({ status: "error", kind, message: known ? "" : errorMessage(e, t("checkout.verifyError")) });
     }
   };
 
@@ -71,9 +95,33 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoTrigger]);
 
-  const btn = checkout
-    ? "mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-4 text-sm font-bold text-background transition-opacity hover:opacity-90 disabled:opacity-50"
-    : "inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-700 disabled:opacity-50";
+  // Etat actif : fond encre + texte creme. Etat inactif : fond attenue +
+  // avant-plan du theme, sans aucun effet au survol ni a l'appui. Pendant une
+  // verification, le bouton garde son fond actif (le « en cours » reste
+  // lisible) mais reste inerte : pas de double requete.
+  const base = checkout
+    ? "mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-bold transition-opacity"
+    : "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-opacity";
+  const skin = !complete
+    ? "bg-muted text-foreground cursor-not-allowed"
+    : busy
+      ? "bg-foreground text-background cursor-not-allowed"
+      : "bg-foreground text-background hover:opacity-90";
+
+  // Message « identifiant refuse » : le nom du jeu quand il est connu, sinon
+  // une formulation neutre. Jamais le libelle PUBG.
+  const invalidMessage =
+    state.code === "missing_field" ? t("checkout.verifyMissingField")
+    : gameName ? t("checkout.verifyInvalidForGame", { game: gameName })
+    : t("checkout.verifyInvalidGeneric");
+
+  // Message d'erreur : une panne a son propre libelle, jamais « ID invalide ».
+  const errorTitle =
+    state.kind === "unsupported_game" ? t("checkout.verifyUnsupportedGame")
+    : state.kind === "provider_unavailable" ? t("checkout.verifyProviderUnavailable")
+    : state.kind === "rate_limited" ? t("checkout.verifyRateLimited")
+    : state.kind === "temporary" ? t("checkout.errTemporary")
+    : t("checkout.errProvider");
 
   return (
     <div className="mt-2 space-y-3">
@@ -93,7 +141,7 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         </div>
       ))}
       {!(checkout && state.status === "valid") && (
-        <button type="button" data-testid="identity-verify-btn" onClick={verify} disabled={state.status === "loading" || !complete} className={btn}>
+        <button type="button" data-testid="identity-verify-btn" onClick={verify} aria-disabled={inert} aria-busy={busy} className={`${base} ${skin}`}>
           {state.status === "loading" ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" data-testid="identity-verify-loading" />{t("checkout.verifying")}</>) : t("checkout.verify")}
         </button>
       )}
@@ -101,20 +149,20 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         <div className="rounded-[18px] border-2 border-foreground bg-primary/15 p-4" data-testid="identity-verify-valid">
           <p className="flex items-center gap-2 font-display text-lg font-bold"><CheckCircle2 className="h-5 w-5 text-emerald-600" />{t("checkout.verified")}</p>
           <p className="mt-1.5 pl-7 text-base font-bold" data-testid="identity-verify-player-name">Pseudo: {state.name || "—"}</p>
-          <p className="mt-2 text-xs text-muted-foreground" data-testid="identity-verify-confirm">{t("checkout.verifyConfirm")}</p>
+          <p className="mt-2 text-xs text-foreground/80" data-testid="identity-verify-confirm">{t("checkout.verifyConfirm")}</p>
         </div>
       )}
       {state.status === "invalid" && (
         <p className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-600" data-testid="identity-verify-invalid">
-          <XCircle className="h-4 w-4" />{t("checkout.verifyInvalid")}
+          <XCircle className="h-4 w-4" />{invalidMessage}
         </p>
       )}
       {state.status === "error" && (
         <div className="flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700" data-testid="identity-verify-error">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
-            {checkout && <p className="font-bold" data-testid={`identity-verify-error-${state.kind}`}>{state.kind === "temporary" ? t("checkout.errTemporary") : t("checkout.errProvider")}</p>}
-            <p>{state.message}</p>
+            {checkout && <p className="font-bold" data-testid={`identity-verify-error-${state.kind}`}>{errorTitle}</p>}
+            {state.message && <p>{state.message}</p>}
           </div>
         </div>
       )}
