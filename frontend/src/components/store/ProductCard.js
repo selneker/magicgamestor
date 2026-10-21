@@ -61,6 +61,9 @@ export function ProductCard({ product, index = 0, badge }) {
   const context = badge || (product.popular ? "popular" : product.type === "evo" ? "evo" : "offer");
   const contextIcon = context === "popular" ? "flame" : context === "evo" ? "crown" : product.type === "prime" || product.type === "prime_plus" ? "bolt" : "cart";
   const contextLabel = context === "popular" ? "Populaire" : context === "evo" ? "Elite Pack" : product.type === "prime_plus" ? "Abonnement" : product.type === "prime" ? "Abonnement" : `Pack ${currencyLabel}`;
+  // Seuls les badges de type / de categorie sont retires : la carte n'affiche
+  // plus que « Populaire » (flamme), la remise et « Indisponible ».
+  const showPopular = context === "popular";
   const focus = "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-ink";
   const actionIconName = product.type === "uc" ? "plus" : product.type === "evo" ? "cart" : "arrow";
 
@@ -86,13 +89,14 @@ export function ProductCard({ product, index = 0, badge }) {
   };
 
   return (
-    <article data-testid={`product-card-${product.slug}`} className={`group relative flex min-w-0 min-h-[260px] flex-col rounded-[28px] border-2 border-ink bg-neo p-3 sm:p-5 shadow-none transition duration-200 ease-out hover:shadow-[8px_8px_0_#111111] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
-      <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-[28px]" aria-label={product.name || product.slug || "Produit"} />
+    <article data-testid={`product-card-${product.slug}`} className={`group relative flex min-w-0 min-h-[260px] flex-col rounded-[28px] border-2 border-ink bg-[color:var(--card-surface)] p-3 sm:p-5 shadow-none transition duration-200 ease-out hover:shadow-[8px_8px_0_var(--card-shadow)] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
+      <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-[28px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[color:var(--card-focus)]" aria-label={product.name || product.slug || "Produit"} />
       <div className="relative z-10 flex h-full flex-col text-ink">
         <div className="flex items-start justify-between gap-1.5 sm:gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-3">
-            <span data-testid={`card-type-${product.slug}`} className="rounded-full border border-ink bg-white/40 px-2.5 py-1 font-body text-[8px] font-bold uppercase leading-none tracking-wider backdrop-blur">{typeLabel(product, game, lang)}</span>
-            <span data-testid={`card-context-${product.slug}`} className="inline-flex items-center gap-1.5 rounded-full bg-ink/10 px-3 py-1 font-body text-[10px] font-bold uppercase leading-none tracking-wider backdrop-blur"><Icon name={contextIcon} className="h-3 w-3" />{contextLabel}</span>
+            {showPopular && (
+              <span data-testid={`card-context-${product.slug}`} className="inline-flex items-center gap-1.5 rounded-full border border-ink bg-[color:var(--card-badge-bg)] px-3 py-1 font-body text-[10px] font-bold uppercase leading-none tracking-wider text-ink"><Icon name={contextIcon} className="h-3 w-3" />{contextLabel}</span>
+            )}
           </div>
           <button type="button" aria-label={`${favorites.includes(product.id) ? t("product.removeFavorite") : t("product.addFavorite")} : ${product.name || product.slug}`} aria-pressed={favorites.includes(product.id)} onClick={handleToggleFavorite} className={`grid aspect-square h-8 w-8 shrink-0 place-items-center !rounded-full border border-ink bg-ink text-white transition duration-150 hover:scale-105 hover:bg-red-500 active:scale-95 aria-[pressed=true]:bg-red-500 aria-[pressed=true]:[&_svg]:fill-white ${focus}`}><Icon name="heart" /></button>
         </div>
@@ -105,11 +109,10 @@ export function ProductCard({ product, index = 0, badge }) {
           </p>
         ) : null}
 
-        {/* La pastille de prix peint un fond blanc FIXE : en mode sombre,
-            `.bg-white` est force a #FFFFFF (index.css, regle « Neon product cards »).
-            Son texte doit donc etre une encre fixe (`text-ink`), sinon il suit le
+        {/* La pastille de prix peint un fond blanc FIXE (`--card-pill-bg`) : son
+            texte doit donc etre une encre fixe (`text-ink`), sinon il suit le
             theme et tombe a 1,12:1 sur le blanc en mode sombre. */}
-        <div className={`mt-auto flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border-2 border-ink sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-white py-1 pl-2 pr-1 text-ink sm:pl-3" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
+        <div className={`mt-auto flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border-[1.5px] border-ink sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-[color:var(--card-pill-bg)] py-1 pl-2 pr-1 text-ink sm:pl-3" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
           {!available ? (
             <span className="font-body text-sm font-bold uppercase tracking-wide">Indisponible</span>
           ) : qty > 0 ? (
