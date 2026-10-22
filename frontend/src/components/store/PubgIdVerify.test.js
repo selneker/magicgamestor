@@ -1,11 +1,21 @@
-import React, { act } from "react";
+import React, { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { PubgIdVerify } from "./PubgIdVerify";
 import { api } from "@/lib/api";
 
-jest.mock("@/lib/api", () => ({ api: { post: jest.fn() }, errorMessage: () => "erreur" }));
+// `errorMessage` reproduit le comportement REEL (renvoie le `detail` de l'API) :
+// le test prouve que le composant ne l'affiche pas.
+jest.mock("@/lib/api", () => ({
+  api: { post: jest.fn() },
+  errorMessage: (e, fallback) => {
+    const d = e?.response?.data?.detail;
+    if (typeof d === "string") return d;
+    if (Array.isArray(d)) return d.map((x) => x?.msg || String(x)).join(" ");
+    return fallback;
+  },
+}));
 jest.mock("@/context/LanguageContext", () => ({ useLang: () => ({ t: (key) => key }) }));
 
 const VALID_ID = "52328390220";
@@ -42,6 +52,18 @@ const contrast = (a, b) => {
   return (hi + 0.05) / (lo + 0.05);
 };
 
+// Le composant a besoin que le CHAMP change vraiment : on monte un petit
+// conteneur qui tient l'ID dans un state.
+function Harness({ pubgId, onVerified }) {
+  const [id, setId] = useState(pubgId);
+  return (
+    <>
+      <button type="button" data-testid="harness-change" onClick={() => setId("111111111")}>change</button>
+      <PubgIdVerify pubgId={id} onVerified={onVerified} checkout />
+    </>
+  );
+}
+
 async function mount(props = {}) {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -56,12 +78,20 @@ const unmount = async (container, root) => {
   container.remove();
 };
 const btnOf = (container) => container.querySelector('[data-testid="pubg-verify-btn"]');
+const errorOf = (container) => container.querySelector('[data-testid="pubg-verify-error"]');
+const invalidOf = (container) => container.querySelector('[data-testid="pubg-verify-invalid"]');
+
+let warnSpy;
 
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   api.post.mockReset();
+  warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
 });
-afterEach(() => { delete global.IS_REACT_ACT_ENVIRONMENT; });
+afterEach(() => {
+  delete global.IS_REACT_ACT_ENVIRONMENT;
+  warnSpy.mockRestore();
+});
 
 test("Etat inactif : aria-disabled (pas disabled), fond attenue, sans effet au survol, contraste >= 3:1", async () => {
   const { container, root } = await mount({ pubgId: "" });
@@ -164,4 +194,126 @@ test("Etat actif : le clic declenche bien la verification", async () => {
     expect(api.post).toHaveBeenCalledTimes(1);
     expect(api.post).toHaveBeenCalledWith("/fazercards/pubg/validate-id", { player_id: VALID_ID });
   } finally { await unmount(container, root); }
+});
+
+test("Forme attendue : valid:false affiche le libelle PUBG historique", async () => {
+  api.post.mockResolvedValue({ data: { valid: false, message: "ID PUBG Mobile invalide" } });
+  const { container, root } = await mount({ pubgId: VALID_ID });
+  try {
+    await act(async () => { btnOf(container).click(); });
+    expect(invalidOf(container)).not.toBeNull();
+    // Le libelle historique reste celui de `checkout.verifyInvalid`.
+    expect(invalidOf(container).textContent).toContain("checkout.verifyInvalid");
+    expect(errorOf(container)).toBeNull();
+  } finally { await unmount(container, root); }
+});
+
+test("Forme inattendue (HTML, {}, null) : etat erreur, jamais « ID invalide »", async () => {
+  const cas = [
+    { nom: "HTML", data: "<html>oops</html>" },
+    { nom: "objet vide", data: {} },
+    { nom: "null", data: null },
+  ];
+  for (const c of cas) {
+    api.post.mockResolvedValue({ data: c.data });
+    const { container, root } = await mount({ pubgId: VALID_ID });
+    try {
+      await act(async () => { btnOf(container).click(); });
+      expect(invalidOf(container)).toBeNull();
+      expect(errorOf(container)).not.toBeNull();
+      // Le message de panne, jamais le libelle « ID invalide ».
+      expect(errorOf(container).textContent).toContain("checkout.verifyProviderUnavailable");
+      expect(container.textContent).not.toContain("checkout.verifyInvalid");
+      expect(warnSpy).toHaveBeenCalled();
+    } finally { await unmount(container, root); }
+  }
+});
+
+test("Reponse arrivee apres une modification du champ : ignoree", async () => {
+  let resolve;
+  api.post.mockImplementation(() => new Promise((r) => { resolve = r; }));
+  const onVerified = jest.fn();
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => { root.render(<Harness pubgId={VALID_ID} onVerified={onVerified} />); });
+  try {
+    await act(async () => { btnOf(container).click(); });
+    expect(api.post).toHaveBeenCalledTimes(1);
+
+    // Le joueur modifie le champ PENDANT que la requete est en vol.
+    await act(async () => { container.querySelector('[data-testid="harness-change"]').click(); });
+
+    // La reponse, arrivee trop tard, ne doit rien poser.
+    await act(async () => { resolve({ data: { valid: true, player_name: "Test" } }); });
+
+    expect(container.querySelector('[data-testid="pubg-verify-valid"]')).toBeNull();
+    expect(invalidOf(container)).toBeNull();
+    expect(errorOf(container)).toBeNull();
+    expect(onVerified).not.toHaveBeenCalledWith(expect.objectContaining({ name: "Test" }));
+  } finally { await unmount(container, root); }
+});
+
+test("Erreur : message generique traduit, aucun detail technique affiche", async () => {
+  const cas = [
+    { nom: "422", erreur: { response: { status: 422, data: { detail: [{ loc: ["body"], msg: "field required" }] } } }, attendu: "checkout.errProvider", interdit: ["field required"] },
+    { nom: "404", erreur: { response: { status: 404, data: { detail: "jeu inconnu" } } }, attendu: "checkout.errProvider", interdit: ["jeu inconnu"] },
+    { nom: "500", erreur: { response: { status: 500, data: { detail: "boom" } } }, attendu: "checkout.errProvider", interdit: ["boom"] },
+    { nom: "reseau", erreur: { message: "Network Error" }, attendu: "checkout.errTemporary", interdit: ["Network Error"] },
+  ];
+  for (const c of cas) {
+    api.post.mockRejectedValue(c.erreur);
+    const { container, root } = await mount({ pubgId: VALID_ID });
+    try {
+      await act(async () => { btnOf(container).click(); });
+      const text = errorOf(container).textContent;
+      // Un message traduit du dictionnaire...
+      expect(text).toContain(c.attendu);
+      // ...et jamais le detail brut de l'API.
+      for (const interdit of c.interdit) expect(text).not.toContain(interdit);
+      expect(warnSpy).toHaveBeenCalled();
+    } finally { await unmount(container, root); }
+  }
+});
+
+test("Panneau invalide : fond et texte du meme couple de jetons, contraste >= 4,5:1 dans les deux themes", async () => {
+  api.post.mockResolvedValue({ data: { valid: false, message: "ID PUBG Mobile invalide" } });
+  const { container, root } = await mount({ pubgId: VALID_ID });
+  try {
+    await act(async () => { btnOf(container).click(); });
+    const el = invalidOf(container);
+    expect(el.className).toContain("bg-destructive");
+    expect(el.className).toContain("text-destructive-foreground");
+    // Plus de rouge fige sur un fond fige : c'est ce qui vautait 4,41:1.
+    expect(el.className).not.toContain("bg-red-50");
+    expect(el.className).not.toContain("text-red-600");
+    // Le couple mesure DANS index.css, par bloc de theme.
+    const clair = contrast(hslToRgb(token(themeBlock(":root"), "destructive-foreground")), hslToRgb(token(themeBlock(":root"), "destructive")));
+    const sombre = contrast(hslToRgb(token(themeBlock(".dark"), "destructive-foreground")), hslToRgb(token(themeBlock(".dark"), "destructive")));
+    expect(clair).toBeGreaterThanOrEqual(4.5);
+    expect(sombre).toBeGreaterThanOrEqual(4.5);
+  } finally { await unmount(container, root); }
+});
+
+test("Annonce : alert sur invalide et erreur, status sur le compte verifie", async () => {
+  api.post.mockResolvedValue({ data: { valid: false } });
+  const invalide = await mount({ pubgId: VALID_ID });
+  try {
+    await act(async () => { btnOf(invalide.container).click(); });
+    expect(invalidOf(invalide.container).getAttribute("role")).toBe("alert");
+  } finally { await unmount(invalide.container, invalide.root); }
+
+  api.post.mockRejectedValue({ response: { status: 500, data: { detail: "boom" } } });
+  const echec = await mount({ pubgId: VALID_ID });
+  try {
+    await act(async () => { btnOf(echec.container).click(); });
+    expect(errorOf(echec.container).getAttribute("role")).toBe("alert");
+  } finally { await unmount(echec.container, echec.root); }
+
+  api.post.mockResolvedValue({ data: { valid: true, player_name: "Test" } });
+  const succes = await mount({ pubgId: VALID_ID });
+  try {
+    await act(async () => { btnOf(succes.container).click(); });
+    expect(succes.container.querySelector('[data-testid="pubg-verify-valid"]').getAttribute("role")).toBe("status");
+  } finally { await unmount(succes.container, succes.root); }
 });

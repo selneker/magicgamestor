@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
-import { api, errorMessage } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 
 // `checkout` = 4-step checkout presentation (same FazerCards call, same states).
@@ -8,9 +8,13 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
   const { t } = useLang();
   const [state, setState] = useState(initial ? { status: "valid", name: initial.name } : { status: "idle" });
   const first = useRef(!!initial);
-
+  // Numero de requete : une reponse qui n'est pas celle de la derniere requete,
+  // ou qui arrive apres une modification du champ, est ignoree (ni setState ni
+  // onVerified). Le chemin auto-declenche (autoTrigger) passe par verify().
+  const reqId = useRef(0);
   useEffect(() => {
     if (first.current) { first.current = false; return; }
+    reqId.current++; // la reponse en vol ne vaut plus rien
     setState({ status: "idle" }); onVerified(null);
   }, [pubgId, onVerified]);
 
@@ -27,22 +31,38 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
   const verify = async () => {
     if (inert) return;
     const id = (pubgId || "").trim();
+    const myReq = ++reqId.current;
     setState({ status: "loading" });
     try {
       const { data } = await api.post("/fazercards/pubg/validate-id", { player_id: id });
-      if (data.valid) {
+      if (reqId.current !== myReq) return; // reponse obsolete : ignoree
+      if (data && data.valid === true) {
         setState({ status: "valid", name: data.player_name });
         onVerified({ name: data.player_name || null });
-      } else {
+      } else if (data && data.valid === false) {
         // L'API a repondu « identifiant inconnu » : c'est le seul chemin qui
         // affiche le message « ID invalide ». Le controle du format est fait
         // plus haut (inert) : un ID mal saisi ne declenche aucune requete.
         setState({ status: "invalid" });
+      } else {
+        // Ni `true` ni `false` : la reponse n'a pas la forme attendue (HTML
+        // d'une passerelle, objet vide, null...). C'est une panne du service,
+        // JAMAIS un « ID invalide ».
+        console.warn("[pubg-verify] reponse inattendue du backend", data);
+        setState({ status: "error", kind: "provider_unavailable", message: "" });
       }
     } catch (e) {
-      const code = e?.response?.status;
-      const kind = !e?.response || code === 504 || code === 429 ? "temporary" : "provider";
-      setState({ status: "error", kind, message: errorMessage(e, t("checkout.verifyError")) });
+      if (reqId.current !== myReq) return; // reponse obsolete : ignoree
+      const status = e?.response?.status;
+      const kind = !e?.response || status === 504 || status === 429 ? "temporary" : "provider";
+      // Le detail de l'API n'est jamais affiche tel quel : il peut etre en
+      // anglais (« field required », « Network Error ») ou contenir des infos
+      // techniques. Il part en console, l'ecran garde un message traduit.
+      console.warn("[pubg-verify] verification impossible", {
+        status: status ?? 0,
+        detail: e?.response?.data?.detail ?? e?.message ?? null,
+      });
+      setState({ status: "error", kind, message: "" });
     }
   };
 
@@ -74,7 +94,7 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
         </button>
       )}
       {state.status === "valid" && !checkout && (
-        <div className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm" data-testid="pubg-verify-valid">
+        <div role="status" className="mt-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm" data-testid="pubg-verify-valid">
           <p className="flex items-center gap-1.5 font-semibold text-emerald-700">
             <CheckCircle2 className="h-4 w-4" />{t("checkout.verified")}
             {state.name && <span className="font-bold" data-testid="pubg-verify-player-name">· {state.name}</span>}
@@ -83,23 +103,30 @@ export const PubgIdVerify = ({ pubgId, onVerified, autoTrigger = 0, checkout = f
         </div>
       )}
       {state.status === "valid" && checkout && (
-        <div className="mt-3 rounded-[18px] border-2 border-foreground bg-primary/15 p-4" data-testid="pubg-verify-valid">
+        <div role="status" className="mt-3 rounded-[18px] border-2 border-foreground bg-primary/15 p-4" data-testid="pubg-verify-valid">
           <p className="flex items-center gap-2 font-display text-lg font-bold"><CheckCircle2 className="h-5 w-5 text-emerald-600" />{t("checkout.verified")}</p>
           <p className="mt-1.5 pl-7 text-base font-bold" data-testid="pubg-verify-player-name">Pseudo: {state.name || "—"}</p>
           <p className="mt-2 text-xs text-foreground/80" data-testid="pubg-verify-confirm">{t("checkout.verifyConfirm")}</p>
         </div>
       )}
       {state.status === "invalid" && (
-        <p className="mt-2 flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-600" data-testid="pubg-verify-invalid">
+        // Fond ET texte viennent du meme couple de jetons (--destructive /
+        // --destructive-foreground) : ils bougent ensemble dans les deux
+        // themes, le contraste reste >= 4,5:1 partout.
+        <p role="alert" className="mt-2 flex items-center gap-1.5 rounded-xl border border-destructive bg-destructive p-3 text-sm font-semibold text-destructive-foreground" data-testid="pubg-verify-invalid">
           <XCircle className="h-4 w-4" />{t("checkout.verifyInvalid")}
         </p>
       )}
       {state.status === "error" && (
-        <div className="mt-2 flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700" data-testid="pubg-verify-error">
+        <div role="alert" className="mt-2 flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700" data-testid="pubg-verify-error">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
-            {checkout && <p className="font-bold" data-testid={`pubg-verify-error-${state.kind}`}>{state.kind === "temporary" ? t("checkout.errTemporary") : t("checkout.errProvider")}</p>}
-            <p>{state.message}</p>
+            <p className="font-bold" data-testid={`pubg-verify-error-${state.kind}`}>
+              {state.kind === "temporary" ? t("checkout.errTemporary")
+                : state.kind === "provider_unavailable" ? t("checkout.verifyProviderUnavailable")
+                : t("checkout.errProvider")}
+            </p>
+            {state.message && <p>{state.message}</p>}
           </div>
         </div>
       )}
