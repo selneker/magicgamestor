@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from core.audit import audit
@@ -65,6 +66,34 @@ async def _game_providers(game_ids: set[str]) -> dict[str, str]:
 
 def _provider_of(providers_by_id: dict[str, str], product: dict) -> str:
     return providers_by_id.get(product.get("game_id") or "", "fazercards")
+
+
+async def _game_id_of(order_id: str) -> str | None:
+    """`game_id` d'une commande, pour le contrat d'erreur. Ne lève jamais.
+
+    Appelée UNIQUEMENT sur le chemin d'erreur : l'erreur fournisseur d'origine prime, une
+    lecture de base qui échoue ne doit pas la remplacer par une autre exception.
+    """
+    try:
+        doc = await db.orders.find_one({"id": order_id}, {"_id": 0, "game_id": 1})
+    except Exception:  # base indisponible : le contrat reste servi, sans `game_id`
+        return None
+    return (doc or {}).get("game_id") or None
+
+
+def _provider_error_response(exc: providers.ProviderError, game_id: str | None) -> JSONResponse:
+    """Erreur fournisseur normalisée → JSON additif, JAMAIS un 500.
+
+    Contrat identique à `routers/fazercards.py` : `detail` (message neutre produit par
+    l'adapter, jamais un message brut du fournisseur), `code` stable, `game_id`. Un code
+    absent retombe sur `provider_unavailable`.
+    """
+    status = exc.status_code if 400 <= int(exc.status_code or 0) <= 599 else 502
+    return JSONResponse(status_code=status, content={
+        "detail": exc.message,
+        "code": exc.code or "provider_unavailable",
+        "game_id": game_id,
+    })
 
 
 async def _annotate_mappings(products: list[dict]) -> list[dict]:
@@ -302,12 +331,22 @@ async def fzr_uc_audit_apply(game: str | None = None, admin=Depends(require_perm
 # ---------- Fulfillment fournisseur ----------
 @router.get("/admin/orders/{order_id}/fazercards/preflight", dependencies=[Depends(require_permission("orders.manage"))])
 async def fzr_preflight(order_id: str):
-    return await fzr_fulfillment.preflight(order_id)
+    """Pré-commande en LECTURE SEULE. Une erreur fournisseur est traduite, jamais un 500."""
+    try:
+        return await fzr_fulfillment.preflight(order_id)
+    except providers.ProviderError as exc:
+        logger.warning("fzr preflight: erreur fournisseur code=%s http=%s", exc.code, exc.status_code)
+        return _provider_error_response(exc, await _game_id_of(order_id))
 
 
 @router.post("/admin/orders/{order_id}/fazercards/fulfill")
 async def fzr_fulfill(order_id: str, admin=Depends(require_permission("orders.manage"))):
-    return await fzr_fulfillment.fulfill_order(order_id, f"admin:{admin['user_id']}")
+    """Envoi fournisseur. Une erreur fournisseur est traduite, jamais un 500."""
+    try:
+        return await fzr_fulfillment.fulfill_order(order_id, f"admin:{admin['user_id']}")
+    except providers.ProviderError as exc:
+        logger.warning("fzr fulfill: erreur fournisseur code=%s http=%s", exc.code, exc.status_code)
+        return _provider_error_response(exc, await _game_id_of(order_id))
 
 
 @router.post("/admin/orders/{order_id}/fazercards/refresh-status")
