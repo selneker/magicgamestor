@@ -4,8 +4,13 @@ Tests PURS : `core.games.db` est remplacé par un double en mémoire (aucune Mon
 La branche FazerCards (document sans `provider`) doit rester strictement identique.
 """
 import asyncio
+from types import SimpleNamespace
+
+import pytest
+from fastapi import HTTPException
 
 from core import games
+from services import fzr_mapping
 
 ALUU_GAME = {
     "id": "free-fire", "provider": "aluu", "aluu_game_code": "ff",
@@ -70,7 +75,10 @@ class FakeDb:
 
 
 def install(monkeypatch, games_docs, products):
-    monkeypatch.setattr(games, "db", FakeDb(games_docs, products))
+    fake = FakeDb(games_docs, products)
+    monkeypatch.setattr(games, "db", fake)
+    monkeypatch.setattr(fzr_mapping, "db", fake)
+    return fake
 
 
 # --------------------------------------------------------------------------- fournisseur
@@ -184,3 +192,116 @@ def test_aluu_readiness_flags_an_incomplete_provider_configuration(monkeypatch):
 
     assert checks["provider_config"]["ok"] is False
     assert report["ready"] is False
+
+
+# --------------------------------------------------------------------------- fzr_mapping
+
+class FakeProvider:
+    def __init__(self, name):
+        self.name = name
+        self.calls = []
+
+    async def get_offers(self, category_id):
+        self.calls.append(category_id)
+        return {"category_id": category_id, "offers": [
+            {"offer_id": "60", "name": "60 Diamonds", "price_usd": 0.83}], "fields": []}
+
+
+def _patch_provider(monkeypatch, provider):
+    async def fake_provider_for_game(game_id, *, games=None):
+        return provider
+
+    monkeypatch.setattr(fzr_mapping.providers, "provider_for_game", fake_provider_for_game)
+    return provider
+
+
+def test_build_mapping_refuses_an_aluu_game_without_reading_any_catalogue(monkeypatch):
+    _patch_provider(monkeypatch, FakeProvider("aluu"))
+
+    async def forbidden(*_args, **_kwargs):  # pragma: no cover - ne doit jamais être appelé
+        raise AssertionError("aucun catalogue ne doit être lu pour un jeu ALUU")
+
+    monkeypatch.setattr(fzr_mapping, "offers_for_game", forbidden)
+
+    with pytest.raises(HTTPException) as exc:
+        run(fzr_mapping.build_mapping({"id": "p", "game_id": "free-fire"},
+                                      SimpleNamespace(category_id="ff", mode="direct")))
+
+    assert exc.value.status_code == 409
+    assert "ALUU" in exc.value.detail
+
+
+def test_apply_uc_audit_refuses_an_aluu_game(monkeypatch):
+    _patch_provider(monkeypatch, FakeProvider("aluu"))
+
+    with pytest.raises(HTTPException) as exc:
+        run(fzr_mapping.apply_uc_audit([], actor="admin:1", game_id="free-fire"))
+
+    assert exc.value.status_code == 409
+
+
+def test_audit_uc_products_ignores_an_aluu_game_without_querying_products(monkeypatch):
+    _patch_provider(monkeypatch, FakeProvider("aluu"))
+
+    async def forbidden(*_args, **_kwargs):  # pragma: no cover
+        raise AssertionError("aucun produit ne doit être lu pour un jeu ALUU")
+
+    monkeypatch.setattr(fzr_mapping.db, "products",
+                        SimpleNamespace(find=forbidden))
+
+    assert run(fzr_mapping.audit_uc_products([], game_id="free-fire")) == []
+
+
+def test_offers_for_game_keeps_the_fazercards_calls_unchanged(monkeypatch):
+    calls = []
+
+    async def fake_categories(game_id):
+        calls.append(("categories", game_id))
+        return [{"category_id": "cat-a"}]
+
+    async def fake_offers(category_id):
+        calls.append(("offers", category_id))
+        return {"category_id": category_id, "offers": []}
+
+    monkeypatch.setattr(fzr_mapping.fazercards, "game_categories", fake_categories)
+    monkeypatch.setattr(fzr_mapping.fazercards, "pubg_offers_fresh", fake_offers)
+
+    result = run(fzr_mapping.offers_for_game("pubg-mobile", "cat-a",
+                                             provider=FakeProvider("fazercards")))
+
+    assert calls == [("categories", "pubg-mobile"), ("offers", "cat-a")]
+    assert result == {"category_id": "cat-a", "offers": []}
+
+
+def test_offers_for_game_refuses_a_category_that_is_not_the_aluu_game_code(monkeypatch):
+    install(monkeypatch, [ALUU_GAME], [])
+    provider = FakeProvider("aluu")
+
+    with pytest.raises(HTTPException) as exc:
+        run(fzr_mapping.offers_for_game("free-fire", "pubgm", provider=provider))
+
+    assert exc.value.status_code == 409
+    assert provider.calls == []
+
+
+def test_offers_for_game_reads_the_aluu_game_code_catalogue(monkeypatch):
+    install(monkeypatch, [ALUU_GAME], [])
+    provider = FakeProvider("aluu")
+
+    result = run(fzr_mapping.offers_for_game("free-fire", "ff", provider=provider))
+
+    assert provider.calls == ["ff"]
+    assert result["category_id"] == "ff"
+
+
+def test_offers_for_game_without_game_id_keeps_the_historical_path(monkeypatch):
+    calls = []
+
+    async def fake_offers(category_id):
+        calls.append(category_id)
+        return {"category_id": category_id, "offers": []}
+
+    monkeypatch.setattr(fzr_mapping.fazercards, "pubg_offers_fresh", fake_offers)
+
+    assert run(fzr_mapping.offers_for_game(None, "any"))["category_id"] == "any"
+    assert calls == ["any"]
