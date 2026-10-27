@@ -936,3 +936,92 @@ def test_fazercards_webhook_never_updates_an_aluu_unit(world, monkeypatch):
                                                   provider_name="aluu")) == {"ok": True}
     assert w.order["fazercards"]["provider_status"] == "cancelled"
     assert [e for e in w.audit if e["action"] == "fzr.webhook_status"][0]["actor"] == "aluu"
+
+
+# --------------------------------------------------------------------- reprise et réconciliation
+
+def test_manual_action_required_is_cleared_after_a_successful_resend(world, monkeypatch):
+    """Refus (solde), puis reprise réussie : l'action manuelle est levée, la trace reste."""
+    calls = {"n": 0}
+
+    def create(**_kwargs):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise perr.ProviderInsufficientBalanceError(402, "Solde insuffisant.",
+                                                        "insufficient_balance")
+        return {"orderid": "ALUU-9", "status": "pending", "reference": "REF-9"}
+
+    w = world(orders=[make_order()], products=[product(aluu_mapping=ALUU_MAPPING)], create=create)
+    forbid_fazercards(monkeypatch, w)
+
+    with pytest.raises(HTTPException):
+        run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+    assert w.order["fazercards"]["manual_action_required"] is True
+
+    run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+
+    record = w.order["fazercards"]
+    assert record["status"] == "submitted"
+    assert record["manual_action_required"] is False
+    assert record["manual_action"] == "insufficient_balance"   # historique conservé
+    cleared = [e for e in w.audit if e["action"] == "fzr.manual_action_cleared"][0]
+    assert cleared["meta"]["manual_action"] == "insufficient_balance"
+    assert cleared["meta"]["provider_order_id"] == "MGS-1-1"
+
+
+def test_manual_action_required_stays_after_a_second_failure(world, monkeypatch):
+    """Deuxième refus : l'action manuelle reste demandée (aucune levée optimiste)."""
+    def create(**_kwargs):
+        raise perr.ProviderInsufficientBalanceError(402, "Solde insuffisant.",
+                                                    "insufficient_balance")
+
+    w = world(orders=[make_order()], products=[product(aluu_mapping=ALUU_MAPPING)], create=create)
+    forbid_fazercards(monkeypatch, w)
+
+    for _ in range(2):
+        with pytest.raises(HTTPException):
+            run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+
+    assert w.order["fazercards"]["manual_action_required"] is True
+    assert "fzr.manual_action_cleared" not in w.actions()
+
+
+def aluu_record(**overrides):
+    record = {"provider": "aluu", "status": "submitted", "provider_order_id": "MGS-1-1",
+              "provider_status": "pending", "created_at": "2026-10-27T10:00:00+00:00",
+              "updated_at": "2026-10-27T10:00:00+00:00"}
+    record.update(overrides)
+    return record
+
+
+def order_with_record(order_id, record):
+    order = make_order(items=[item("p-60", "60 Diamants")])
+    order["id"] = order_id
+    order["order_number"] = f"MGS-{order_id}"
+    order["fazercards"] = record
+    order["provider_order_ids"] = [record["provider_order_id"]]
+    return order
+
+
+def test_reconciliation_lists_only_non_final_aluu_units(world, monkeypatch):
+    """Vue admin : unités ALUU non finales seulement, sans aucun appel fournisseur."""
+    w = world(orders=[
+        order_with_record("ord-1", aluu_record()),
+        order_with_record("ord-2", aluu_record(provider_order_id="MGS-2-1",
+                                                provider_status="successful")),
+        order_with_record("ord-3", {"provider": "fazercards", "status": "submitted",
+                                    "provider_order_id": "FC-1", "provider_status": "processing"}),
+    ], products=[product(aluu_mapping=ALUU_MAPPING), product("p-60", fazercards_mapping=FC_MAPPING)])
+
+    result = run(fzr_fulfillment.non_final_units())
+
+    assert [row["order_id"] for row in result["units"]] == ["ord-1"]
+    assert result["count"] == 1 and result["game"] is None
+    row = result["units"][0]
+    assert row["provider_order_id"] == "MGS-1-1"
+    assert row["normalized_status"] == "processing"
+    assert row["polling_stopped"] is False
+    assert row["manual_action_required"] is False
+    # Lecture seule : ni création, ni interrogation, ni écriture.
+    assert w.aluu.created == [] and w.aluu.status_calls == []
+    assert w.order["fazercards"]["provider_status"] == "pending"

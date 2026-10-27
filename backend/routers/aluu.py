@@ -15,8 +15,9 @@ Références documentaires (doc ALUU) :
 import json
 import logging
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from core.security import require_permission
 from services import fzr_fulfillment, providers
 
 router = APIRouter(tags=["aluu"])
@@ -60,3 +61,15 @@ async def aluu_webhook(request: Request):
         status=event.status,
         event=event.event,
     )
+
+
+# --------------------------------------------------------------------------- réconciliation admin
+
+@router.get("/admin/aluu/units", dependencies=[Depends(require_permission("orders.manage"))])
+async def aluu_non_final_units(game: str | None = None, limit: int = 100):
+    """Unités ALUU non finales (réconciliation manuelle).
+
+    LECTURE SEULE : aucun appel fournisseur, aucun polling, aucun retry, aucune écriture.
+    Le rafraîchissement d'une unité reste une action admin explicite sur la commande.
+    """
+    return await fzr_fulfillment.non_final_units(game, limit)

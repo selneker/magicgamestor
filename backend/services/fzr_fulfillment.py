@@ -571,6 +571,13 @@ async def _fulfill_unit(order: dict, line: dict, actor: str, provider, *, curren
     provider_status = provider_order.status
     fields_sent = {"status": "submitted", "provider_order_id": provider_order.id,
                    "provider_status": provider_status}
+    # REPRISE RÉUSSIE : l'action manuelle demandée après un refus n'a plus lieu d'être. Elle
+    # repasse à `false` ; le libellé (`manual_action`) et la date restent sur l'unité comme
+    # historique, et la trace horodatée est écrite dans l'audit juste après.
+    recovered = bool(existing and existing.get("manual_action_required"))
+    if recovered:
+        fields_sent["manual_action_required"] = False
+        fields_sent["manual_action_cleared_at"] = _now()
     identifiers: list[str] = []
     if provider.name == "aluu":
         # `provider_order.id` EST le `partner_orderid` envoyé ; ALUU renvoie aussi son `orderid`
@@ -591,6 +598,12 @@ async def _fulfill_unit(order: dict, line: dict, actor: str, provider, *, curren
         "provider_order_id": provider_order.id, "offer_id": line["offer_id"], "line": idx, "component": cidx,
         "supplier_price_usd": line["price_usd"], "idempotency_key": line["idempotency_key"],
         "provider": provider.name})
+    if recovered:
+        await audit("fzr.manual_action_cleared", actor, order_id, {
+            "manual_action": existing.get("manual_action"),
+            "manual_action_at": existing.get("manual_action_at"),
+            "provider": provider.name, "provider_order_id": provider_order.id,
+            "line": idx, "component": cidx})
     if provider.normalize_status(provider_status) in PROVIDER_ALERT_NORMALIZED:
         await audit("fzr.provider_failed", actor, order_id, {"provider_status": provider_status, "line": idx, "component": cidx})
     await _sync_mgs_status(order_id, actor, current=current)
@@ -874,4 +887,67 @@ async def apply_provider_event(*, provider_name: str, provider_order_id: str | N
                 {"provider_order_id": order_key, "status": raw_status, "event": event,
                  "line": target["line_index"], "component": target["component_index"]})
     return {"ok": True}
+
+
+# --------------------------------------------------------------------------- réconciliation admin
+
+RECONCILIATION_LIMIT_MAX = 500
+
+
+async def non_final_units(game_id: str | None = None, limit: int = 100) -> dict:
+    """Unités ALUU non finales, pour la réconciliation manuelle. LECTURE SEULE.
+
+    Aucun appel fournisseur, aucun polling, aucune écriture : la vue se contente de lire les
+    records déjà présents sur les commandes. Une unité est retenue quand
+    1. son record appartient à ALUU (les unités FazerCards ne sont jamais listées),
+    2. elle a déjà un `provider_order_id` (une unité jamais soumise n'a rien à réconcilier),
+    3. son statut MGS normalisé n'est pas final (`completed` / `failed` / `refund`).
+
+    Le rafraîchissement reste l'action explicite de l'admin
+    (`POST /admin/orders/{id}/fazercards/refresh-status`) : cette vue ne le déclenche pas.
+    """
+    query: dict = {"provider_order_ids": {"$exists": True}}
+    if game_id:
+        query["game_id"] = game_id
+    capped = max(1, min(int(limit or 100), RECONCILIATION_LIMIT_MAX))
+    cursor = db.orders.find(query, PUBLIC).sort("updated_at", -1)
+    orders = await cursor.to_list(capped)
+    provider = providers.get_provider_by_name("aluu")
+    rows: list[dict] = []
+    for order in orders:
+        try:
+            units, _skipped = await _all_units(order)
+        except Exception as exc:  # configuration illisible : on n'invente aucune unité
+            logger.debug("fzr réconciliation: unités illisibles pour %s (%s)",
+                         order.get("id"), type(exc).__name__)
+            continue
+        for unit in units:
+            record = unit_record(order, unit)
+            if not record or _record_provider(record) != "aluu":
+                continue
+            if not record.get("provider_order_id"):
+                continue
+            normalized = provider.normalize_status(record.get("provider_status"))
+            if normalized in FINAL_STATUSES:
+                continue
+            rows.append({
+                "order_id": order.get("id"), "order_number": order.get("order_number"),
+                "order_status": order.get("status"), "game_id": order.get("game_id"),
+                "line_index": unit["line_index"], "component_index": unit["component_index"],
+                "quantity_index": unit.get("quantity_index", 0),
+                "provider_order_id": record.get("provider_order_id"),
+                "partner_order_id": record.get("partner_order_id"),
+                "aluu_order_id": record.get("aluu_order_id"),
+                "provider_status": record.get("provider_status"),
+                "normalized_status": normalized,
+                "unit_status": record.get("status"),
+                "polling_stopped": bool(record.get("polling_stopped")),
+                "manual_action_required": bool(record.get("manual_action_required")),
+                "manual_action": record.get("manual_action"),
+                "created_at": record.get("created_at"),
+                "updated_at": record.get("updated_at"),
+                "last_error": record.get("last_error"),
+            })
+    rows.sort(key=lambda row: row.get("updated_at") or "", reverse=True)
+    return {"units": rows[:capped], "count": len(rows), "game": game_id}
 
