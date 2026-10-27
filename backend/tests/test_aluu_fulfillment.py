@@ -142,6 +142,19 @@ class FakeCursor:
     def __init__(self, documents):
         self._documents = documents
 
+    def sort(self, *_args, **_kwargs):
+        return self
+
+    def __aiter__(self):
+        self._iterator = iter(self._documents)
+        return self
+
+    async def __anext__(self):
+        try:
+            return next(self._iterator)
+        except StopIteration:
+            raise StopAsyncIteration
+
     async def to_list(self, length=None):
         return list(self._documents)
 

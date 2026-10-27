@@ -10,13 +10,16 @@ from pydantic import BaseModel, Field
 
 from core.audit import audit
 from core.db import db
-from core.games import DEFAULT_GAME_ID
+from core.games import DEFAULT_GAME_ID, game_provider
 from core.security import require_admin, require_permission, require_super_admin
 from services import fazercards, fzr_fulfillment, fzr_mapping, providers
 
 router = APIRouter(tags=["fazercards-fulfillment"])
 logger = logging.getLogger("mgs.fzr")
 PUBLIC = {"_id": 0}
+# Champs nécessaires pour connaître le fournisseur d'un jeu (aucun champ d'identité joueur).
+GAME_PROVIDER_PROJECTION = {"_id": 0, "id": 1, "provider": 1, "aluu_game_code": 1,
+                            "aluu_check_endpoint": 1, "aluu_identity_map": 1}
 
 
 def _now() -> str:
@@ -42,6 +45,35 @@ class MappingIn(BaseModel):
 
 class CategoryAssignmentIn(BaseModel):
     category_ids: list[str] = Field(default_factory=list, max_length=500)
+
+
+async def _game_providers(game_ids: set[str]) -> dict[str, str]:
+    """Fournisseur de chaque jeu, lu sur le document `games`. Aucune exception possible : l'écran
+    admin doit s'afficher même si la configuration d'un jeu est invalide.
+
+    Document absent ou champ `provider` absent = FazerCards, exactement comme la résolution
+    réelle (`game_provider` ne bascule que sur `"aluu"` exact).
+    """
+    ids = sorted({gid for gid in game_ids if gid})
+    if not ids:
+        return {}
+    found: dict[str, str] = {}
+    async for doc in db.games.find({"id": {"$in": ids}}, GAME_PROVIDER_PROJECTION):
+        found[doc["id"]] = game_provider(doc)
+    return found
+
+
+def _provider_of(providers_by_id: dict[str, str], product: dict) -> str:
+    return providers_by_id.get(product.get("game_id") or "", "fazercards")
+
+
+async def _annotate_mappings(products: list[dict]) -> list[dict]:
+    """Ajoute `mapping_status` / `fulfillable` / `supplier_cost_usd` lus sur le champ du
+    FOURNISSEUR du jeu : `fazercards_mapping` (inchangé) ou `aluu_mapping`."""
+    providers_by_id = await _game_providers({p.get("game_id") for p in products})
+    for p in products:
+        p.update(fzr_mapping.mapping_view(p, _provider_of(providers_by_id, p)))
+    return products
 
 
 
@@ -177,12 +209,8 @@ async def fzr_mappings(game: str | None = None):
     products = [p async for p in db.products.find(query, {"_id": 0, "id": 1, "slug": 1, "name": 1, "type": 1,
                                                           "price": 1, "uc_amount": 1, "duration_months": 1,
                                                           "active": 1, "game_id": 1, "requires_mapping": 1,
-                                                          "fazercards_mapping": 1}).sort("sort_order", 1)]
-    for p in products:
-        mapping = p.get("fazercards_mapping")
-        p["mapping_status"] = fzr_mapping.mapping_status(mapping)
-        p["fulfillable"] = fzr_mapping.fulfillable(mapping)
-        p["supplier_cost_usd"] = fzr_mapping.supplier_cost_usd(mapping, p.get("game_id"))
+                                                          "fazercards_mapping": 1, "aluu_mapping": 1}).sort("sort_order", 1)]
+    await _annotate_mappings(products)
     return {"products": products, "game": game}
 
 
@@ -198,9 +226,10 @@ async def fzr_set_mapping(product_id: str, body: MappingIn, admin=Depends(requir
                  "offer_id": mapping.get("offer_id"),
                  "components": [{"offer_id": c["offer_id"], "quantity": c["quantity"]} for c in mapping.get("components", [])],
                  "confirmed": mapping["confirmed"]})
-    return {"product_id": product_id, "fazercards_mapping": mapping,
-            "mapping_status": fzr_mapping.mapping_status(mapping), "fulfillable": fzr_mapping.fulfillable(mapping),
-            "supplier_cost_usd": fzr_mapping.supplier_cost_usd(mapping)}
+    view = fzr_mapping.mapping_view(
+        {**product, "fazercards_mapping": mapping},
+        _provider_of(await _game_providers({product.get("game_id")}), product))
+    return {"product_id": product_id, "fazercards_mapping": mapping, **view}
 
 
 @router.delete("/admin/fazercards/products/{product_id}/mapping")
