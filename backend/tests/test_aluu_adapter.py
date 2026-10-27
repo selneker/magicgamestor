@@ -698,6 +698,17 @@ def test_parse_webhook_event_uses_orderid_as_partner_order_id():
     assert event.raw["data"]["provider_order_id"] == "PRV-0000000001"
 
 
+def test_parse_webhook_event_keeps_the_documented_event_name():
+    """Le webhook documenté porte `event` (`order.successful` / `order.failed`) : on le garde."""
+    event = provider().parse_webhook_event({
+        "success": False, "event": "order.failed",
+        "data": {"orderid": PARTNER_ID, "status": "error"}})
+
+    assert event.event == "order.failed"
+    assert event.status == "error"
+    assert event.event_id is None and event.previous_status is None
+
+
 # --------------------------------------------------------------------------- logs
 
 def test_logs_never_contain_player_id_or_api_key(monkeypatch, caplog):

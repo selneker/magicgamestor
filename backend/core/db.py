@@ -10,6 +10,26 @@ async def _drop_if_exists(collection, name: str):
         await collection.drop_index(name)
 
 
+# Clé unique de dédup des webhooks fournisseur (source de vérité : `ensure_indexes`).
+PROVIDER_EVENT_KEY: list[tuple[str, int]] = [("provider", 1), ("provider_order_id", 1), ("status", 1)]
+
+
+async def _drop_provider_event_indexes() -> None:
+    """Retire tout index de `provider_webhook_events` qui n'est pas la clé de dédup courante.
+
+    Idempotent et sans effet sur une collection absente. Nécessaire parce que l'index 4 champs
+    (`…, provider_updated_at`) a existé : le laisser en place ferait échouer l'insertion d'un
+    statut rejoué (doublon sur 3 champs) au lieu d'être dédupliqué proprement.
+    """
+    info = await db.provider_webhook_events.index_information()
+    for name, meta in info.items():
+        if name == "_id_":
+            continue
+        keys = [tuple(key) for key in meta.get("key") or []]
+        if keys != PROVIDER_EVENT_KEY or not meta.get("unique"):
+            await _drop_if_exists(db.provider_webhook_events, name)
+
+
 async def ensure_indexes():
     await db.users.create_index("email", unique=True)
     await db.users.create_index("user_id", unique=True)
@@ -73,11 +93,15 @@ async def ensure_indexes():
     await db.fzr_price_alerts.create_index([("acknowledged", 1), ("detected_at", -1)])
     await db.fzr_webhook_events.create_index("event_id", unique=True)
     await db.orders.create_index("fazercards.provider_order_id", sparse=True)
-    # ALUU : dédup des webhooks top-up sur (orderid, statut, `updated_at` fournisseur).
-    # Collection neuve et vide → l'index unique ne peut pas échouer sur des doublons existants.
+    # ALUU : dédup des webhooks top-up sur (fournisseur, commande fournisseur, statut).
+    # Aucun `provider_updated_at` : le webhook ALUU documenté n'en transporte pas, et un index
+    # unique qui inclut un champ toujours absent ne déduplique rien (tous les `null` sont
+    # égaux, donc une seule ligne possible). L'ancien index 4 champs est supprimé d'abord :
+    # `create_index` échouerait sur un index existant aux mêmes clés, et laisser les deux
+    # ferait échouer l'insertion d'un statut rejoué.
+    await _drop_provider_event_indexes()
     await db.provider_webhook_events.create_index(
-        [("provider", 1), ("provider_order_id", 1), ("status", 1), ("provider_updated_at", 1)],
-        unique=True)
+        [("provider", 1), ("provider_order_id", 1), ("status", 1)], unique=True)
     # ALUU : recherche d'une unité par l'un de ses identifiants fournisseur (jamais unique).
     await db.orders.create_index("provider_order_ids", sparse=True)
     await db.orders.create_index("aluu_order_id", sparse=True)

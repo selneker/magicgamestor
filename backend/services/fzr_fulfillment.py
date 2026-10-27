@@ -36,6 +36,8 @@ logger = logging.getLogger("mgs.fzr")
 PUBLIC = {"_id": 0}
 RETRYABLE = ("submit_timeout", "error")
 PROVIDER_ALERT_NORMALIZED = (OrderStatus.FAILED, OrderStatus.REFUND)
+# Statuts MGS qui closent une unité : plus aucun webhook ne peut les remplacer.
+FINAL_STATUSES = (OrderStatus.COMPLETED, OrderStatus.FAILED, OrderStatus.REFUND)
 MISSING_IDENTITY_DETAIL = "Champ d'identité requis manquant."
 
 
@@ -738,29 +740,65 @@ async def auto_fulfill(order: dict):
         logger.warning("fzr auto fulfillment error for %s (%s)", order.get("order_number"), type(exc).__name__)
 
 
+async def _target_unit(order: dict, provider_name: str | None,
+                       provider_order_id: str) -> tuple[dict | None, dict | None]:
+    """(unité, record) qui répond à un identifiant fournisseur, ou `(None, None)`.
+
+    `provider_name` restreint la recherche aux unités DE CE FOURNISSEUR : un identifiant est
+    propre au fournisseur qui l'a émis, et deux fournisseurs peuvent en principe en partager
+    un. Une unité dont le record appartient à l'autre fournisseur ne répond donc jamais.
+    """
+    units, _ = await _all_units(order)
+    candidates = [(u, unit_record(order, u)) for u in units]
+    if provider_name:
+        wanted = provider_name.strip().lower()
+        candidates = [(u, r) for u, r in candidates if r and _record_provider(r) == wanted]
+    for unit, record in candidates:
+        if _unit_matches(record, provider_order_id):
+            return unit, record
+    return None, None
+
+
 async def _apply_status_event(order: dict, unit: dict, provider_name: str, status: str,
-                              actor: str) -> None:
+                              actor: str) -> bool:
     """Applique un statut fournisseur à UNE unité (webhook ou rafraîchissement).
 
     Partagé avec le webhook ALUU (Lot 5) : le fournisseur vient du RECORD de l'unité, jamais de
     la configuration courante du jeu.
+
+    MONOTONIE : un statut MGS final (`completed` / `failed` / `refund`) déjà enregistré n'est
+    jamais remplacé par un autre statut. Un webhook tardif ou réordonné ne peut donc pas
+    « dé-livrer » une unité. Retourne `False` quand l'écriture a été refusée pour ce motif.
     """
     prov = providers.get_provider_by_name(provider_name)
+    record = unit_record(order, unit) or {}
+    current = prov.normalize_status(record.get("provider_status"))
+    incoming = prov.normalize_status(status)
+    if current in FINAL_STATUSES and incoming != current:
+        await audit("fzr.webhook_stale", actor, order["id"],
+                    {"provider": provider_name, "provider_order_id": record.get("provider_order_id"),
+                     "kept_status": record.get("provider_status"), "ignored_status": status,
+                     "line": unit["line_index"], "component": unit["component_index"]})
+        return False
     await _update_record(order["id"], unit["path"], {"provider_status": status})
     if prov.normalize_status(status) in PROVIDER_ALERT_NORMALIZED:
         await audit("fzr.provider_failed", actor, order["id"],
                     {"provider_status": status, "line": unit["line_index"],
                      "component": unit["component_index"]})
     await _sync_mgs_status(order["id"], actor)
+    return True
 
 
 async def apply_webhook_event(event: dict, *, provider_name: str | None = None) -> dict:
     """order.created / order.status_changed → synchronise l'unité concernée. Dédupliqué par event_id.
 
+    Chemin FAZERCARDS (inchangé) : la dédup s'appuie sur l'`event_id` fourni par FazerCards.
+    Le webhook ALUU n'en transporte pas : il passe par `apply_provider_event`.
+
     `provider_name` restreint la recherche d'unité au fournisseur qui a ÉMIS l'événement : un
     identifiant est propre à un fournisseur, et deux fournisseurs peuvent en principe en
-    partager un. La route FazerCards passe `"fazercards"` ; la route ALUU passera `"aluu"`
-    (lot 5). Absent = pas de filtre (compatibilité des appelants existants).
+    partager un. La route FazerCards passe `"fazercards"` ; la route ALUU passe `"aluu"`.
+    Absent = pas de filtre (compatibilité des appelants existants).
     """
     data = event.get("data") or {}
     provider_order_id = data.get("order_id")
@@ -778,13 +816,7 @@ async def apply_webhook_event(event: dict, *, provider_name: str | None = None) 
                                               {"aluu_order_id": provider_order_id}]}, PUBLIC)
     if not order:
         return {"ok": True, "ignored": True}
-    units, _ = await _all_units(order)
-    candidates = [(u, unit_record(order, u)) for u in units]
-    if provider_name:
-        # Seules les unités DU FOURNISSEUR de l'événement peuvent répondre à son identifiant.
-        wanted = provider_name.strip().lower()
-        candidates = [(u, r) for u, r in candidates if r and _record_provider(r) == wanted]
-    target = next((u for u, r in candidates if _unit_matches(r, provider_order_id)), None)
+    target, _record = await _target_unit(order, provider_name, provider_order_id)
     if target is None:
         return {"ok": True, "ignored": True}
     if event.get("event") == "order.status_changed" and data.get("status"):
@@ -795,3 +827,51 @@ async def apply_webhook_event(event: dict, *, provider_name: str | None = None) 
                     {"provider_order_id": provider_order_id, "status": provider_status,
                      "previous_status": data.get("previous_status"), "line": target["line_index"], "component": target["component_index"]})
     return {"ok": True}
+
+
+async def apply_provider_event(*, provider_name: str, provider_order_id: str | None,
+                               status: str | None, event: str | None = None,
+                               raw: dict | None = None) -> dict:
+    """Webhook ALUU (lot 5) — dédup sur `(provider, provider_order_id, status)` + monotonie.
+
+    Différences ASSUMÉES avec `apply_webhook_event` (chemin FazerCards, laissé intact) :
+    - **dédup** : un webhook ALUU ne porte ni `event_id` ni date de mise à jour fournisseur.
+      La seule information stable est le triplet `(fournisseur, commande, statut)` ; c'est lui
+      qui est inséré dans `provider_webhook_events` (index unique). Un rejeu du même statut est
+      donc un doublon, sans jamais réécrire l'unité.
+    - **monotonie** : un statut final déjà enregistré n'est jamais remplacé (voir
+      `_apply_status_event`).
+    - **double barrière fournisseur** : la route est dédiée à ALUU (barrière 1) et la recherche
+      d'unité filtre sur le fournisseur ENREGISTRÉ (barrière 2).
+
+    Aucun retry, aucun polling : l'événement est appliqué une fois puis acquitté (2xx), y
+    compris quand la commande est inconnue (la doc demande de ne pas compter sur un renvoi).
+    """
+    provider = (provider_name or "").strip().lower()
+    order_key = str(provider_order_id or "").strip()
+    raw_status = str(status or "").strip()
+    if not provider or not order_key or not raw_status:
+        return {"ok": True, "ignored": True}
+    try:
+        await db.provider_webhook_events.insert_one({
+            "provider": provider, "provider_order_id": order_key, "status": raw_status,
+            "event": event, "created_at": _now()})
+    except Exception:
+        return {"ok": True, "duplicate": True}
+    order = await db.orders.find_one({"$or": [{"fazercards.provider_order_id": order_key},
+                                              {"fazercards_provider_ids": order_key},
+                                              {"provider_order_ids": order_key},
+                                              {"aluu_order_id": order_key}]}, PUBLIC)
+    if not order:
+        return {"ok": True, "ignored": True}
+    target, _record = await _target_unit(order, provider, order_key)
+    if target is None:
+        return {"ok": True, "ignored": True}
+    applied = await _apply_status_event(order, target, provider, raw_status, f"webhook:{provider}")
+    if not applied:
+        return {"ok": True, "ignored": True}
+    await audit("fzr.webhook_status", provider, order["id"],
+                {"provider_order_id": order_key, "status": raw_status, "event": event,
+                 "line": target["line_index"], "component": target["component_index"]})
+    return {"ok": True}
+

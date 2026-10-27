@@ -533,14 +533,17 @@ class AluuProvider(Provider):
         Doc « Top-up webhooks », exemple receveur : « data.orderid is your partner_orderid ».
         `provider_order_id` porte donc le `partner_orderid` (identique à `ProviderOrder.id`),
         et non le `provider_order_id` ALUU (référence interne, conservée dans `raw`).
-        Un top-up webhook ne transporte ni identifiant d'événement ni nom d'événement :
-        `event_id` / `event` / `previous_status` restent `None`, la déduplication se fait
-        sur `(orderid, status, updatedAt)` du payload brut.
+        Un top-up webhook ne transporte ni identifiant d'événement ni statut précédent :
+        `event_id` / `previous_status` restent `None`. La déduplication se fait sur
+        `(fournisseur, orderid, statut)` — aucun horodatage de mise à jour n'est documenté.
+        `event` est le nom d'événement du payload (`order.successful` / `order.failed`),
+        purement informatif : le statut fait foi.
         """
         data = payload.get("data") if isinstance(payload, Mapping) else None
         data = data if isinstance(data, Mapping) else {}
+        name = payload.get("event") if isinstance(payload, Mapping) else None
         return ProviderWebhookEvent(
-            event_id=None, event=None,
+            event_id=None, event=str(name).strip() if isinstance(name, str) and name.strip() else None,
             provider_order_id=data.get("orderid"), status=data.get("status"),
             previous_status=None, raw=dict(payload) if isinstance(payload, Mapping) else {})
 
