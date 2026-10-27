@@ -329,6 +329,12 @@ def test_get_410_stops_polling(monkeypatch):
     # game-check : 400 ambigu → échec neutre, JAMAIS « ID invalide ».
     ("game-check", 400, {"success": False, "message": "Bad request"},
      {"valid": False, "player_name": None, "code": "verification_failed"}),
+    # game-check : 404 non documenté (la doc ne le définit que pour BGMI) → échec neutre.
+    ("game-check", 404, {"success": False, "message": "Not found"},
+     {"valid": False, "player_name": None, "code": "verification_failed"}),
+    # mlbb-check : 404 non documenté (la doc n'y décrit que le 400) → échec neutre.
+    ("mlbb-check", 404, {"success": False, "message": "Not found"},
+     {"valid": False, "player_name": None, "code": "verification_failed"}),
 ])
 def test_name_check_normalization(monkeypatch, endpoint, status, payload, expected):
     seen = {}

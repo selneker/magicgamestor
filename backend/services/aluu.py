@@ -576,8 +576,12 @@ async def name_check(endpoint: str, params: dict) -> dict:
         # accuse donc PAS le joueur : échec de vérification neutre, distinct de invalid_id.
         return _invalid_player("verification_failed")
     if reply.status == 404:
-        # Doc « BGMI » : 404 = joueur inconnu.
-        return _invalid_player()
+        if endpoint == "bgmi":
+            # Doc « BGMI — GET /api/check/bgmi » : 404 = joueur inconnu.
+            return _invalid_player()
+        # À CONFIRMER : la doc ne définit le 404 que pour BGMI. Pour `game-check`, on ne
+        # l'interprète donc PAS comme un joueur inconnu — même traitement neutre que le 400.
+        return _invalid_player("verification_failed")
     _raise_infra(reply)
 
     payload = reply.payload

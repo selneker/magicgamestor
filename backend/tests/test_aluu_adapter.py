@@ -96,12 +96,18 @@ def test_adapter_implements_provider_interface():
     ("successful", OrderStatus.COMPLETED),
     ("error", OrderStatus.FAILED),
     ("cancelled", OrderStatus.FAILED),
+    ("failed", OrderStatus.FAILED),   # à confirmer : seul l'exemple receveur webhook le cite
     ("SUCCESSFUL", OrderStatus.COMPLETED),
     ("something_new", OrderStatus.PROCESSING),
     (None, OrderStatus.PROCESSING),
 ])
 def test_normalize_status(raw, expected):
     assert provider().normalize_status(raw) == expected
+
+
+def test_normalize_status_failed_is_a_terminal_failure_not_processing():
+    """Dédié : `failed` ne doit jamais retomber sur le défaut prudent `processing`."""
+    assert provider().normalize_status("failed") == OrderStatus.FAILED
 
 
 # --------------------------------------------------------------------------- identité
@@ -164,6 +170,19 @@ def test_validate_identity_bgmi_404_is_invalid_player(monkeypatch):
         "battlegrounds-mobile-india", {"player_id": PLAYER_ID}))
 
     assert result.valid is False
+
+
+def test_validate_identity_game_check_404_never_means_invalid_player(monkeypatch):
+    """404 non documenté pour `game-check` : indisponibilité neutre, pas « ID invalide »."""
+    fake_api(monkeypatch, 404, {"success": False, "message": "Not found"})
+
+    with pytest.raises(perr.ProviderUnavailableError) as exc:
+        run(provider().validate_identity("pubg-mobile", {"player_id": PLAYER_ID}))
+
+    assert exc.value.status_code == 502
+    assert exc.value.code == "provider_unavailable"
+    assert "verification_failed" not in str(exc.value)
+    assert "verification_failed" not in (exc.value.code or "")
 
 
 def test_validate_identity_game_check_400_never_leaks_verification_failed(monkeypatch):
@@ -487,6 +506,7 @@ def test_get_order_normalizes_successful(monkeypatch):
 
 @pytest.mark.parametrize("status,expected", [("error", OrderStatus.FAILED),
                                              ("cancelled", OrderStatus.FAILED),
+                                             ("failed", OrderStatus.FAILED),
                                              ("anything", OrderStatus.PROCESSING)])
 def test_get_order_normalizes_statuses(monkeypatch, status, expected):
     fake_api(monkeypatch, 200, {"success": True, "data": {"orderid": PARTNER_ID, "status": status}})

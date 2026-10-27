@@ -42,6 +42,9 @@ _STATUS_MAP = {
     "successful": OrderStatus.COMPLETED,
     "error": OrderStatus.FAILED,
     "cancelled": OrderStatus.FAILED,
+    # À CONFIRMER : « failed » n'apparaît que dans l'exemple receveur webhook ; la section
+    # « Checking status » ne le liste pas. Traité comme `error`/`cancelled` en attendant.
+    "failed": OrderStatus.FAILED,
 }
 
 # Fenêtre anti-rejeu des webhooks (doc « Top-up webhooks » : rejeter au-delà de 5 minutes).
