@@ -259,7 +259,7 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
     if any(p.get("game_id", DEFAULT_GAME_ID) != body.game_id for p in products.values()):
         raise HTTPException(status_code=400, detail="Products do not belong to the selected game")
     for p in products.values():
-        blocked = purchase_blocked(p)
+        blocked = await purchase_blocked(p)
         if blocked:
             raise HTTPException(status_code=409, detail=blocked)
     items, total = [], 0

@@ -125,11 +125,86 @@ def supplier_cost_usd(mapping: dict | None, game_id: str | None = None):
     return mapping.get("price_usd_at_link")
 
 
-def purchase_blocked(product: dict) -> str | None:
-    """Produit exigeant un mapping fournisseur valide et confirmé avant toute vente."""
-    if product.get("requires_mapping") and not mapping_ok(product.get("fazercards_mapping")):
-        return f"« {product.get('name')} » n'est pas encore disponible : mapping fournisseur manquant ou non confirmé."
-    return None
+ALUU_MAPPING_FIELD = "aluu_mapping"
+FAZERCARDS_MAPPING_FIELD = "fazercards_mapping"
+
+
+def _is_aluu(provider: str | None) -> bool:
+    """Seul `provider: "aluu"` exact bascule la lecture. Tout le reste = FazerCards (compat)."""
+    return str(provider or "").strip().lower() == "aluu"
+
+
+def mapping_field_for(provider: str | None = None) -> str:
+    """Champ de mapping lu POUR CE FOURNISSEUR. Les deux champs ne sont jamais interchangeables."""
+    return ALUU_MAPPING_FIELD if _is_aluu(provider) else FAZERCARDS_MAPPING_FIELD
+
+
+def mapping_ok_for(mapping: dict | None, provider: str | None = None) -> bool:
+    """Mapping utilisable pour ce fournisseur.
+
+    FazerCards : `mapping_ok` historique, au bit près. ALUU : code jeu + pack confirmés
+    (`services.aluu_mapping.mapping_ok_aluu`, import différé — `aluu_mapping` importe ce module).
+    """
+    if _is_aluu(provider):
+        from services.aluu_mapping import mapping_ok_aluu
+        return mapping_ok_aluu(mapping)
+    return mapping_ok(mapping)
+
+
+def mapping_status_for(mapping: dict | None, provider: str | None = None) -> str:
+    """`mapping_status` du fournisseur du jeu, même vocabulaire que l'écran admin existant."""
+    if not _is_aluu(provider):
+        return mapping_status(mapping)
+    if not mapping:
+        return "missing"
+    if mapping.get("confirmed") is False:
+        return "unconfirmed"
+    if not mapping_ok_for(mapping, provider):
+        return "invalid"
+    return "direct"  # ALUU : une cible unique (code jeu + pack), jamais de composé
+
+
+def supplier_cost_for(mapping: dict | None, provider: str | None = None,
+                      game_id: str | None = None):
+    """Coût fournisseur du mapping du bon fournisseur. Aucune valeur inventée : None si absent."""
+    if not _is_aluu(provider):
+        return supplier_cost_usd(mapping, game_id)
+    return (mapping or {}).get("price_usd_at_link")
+
+
+def mapping_view(product: dict, provider: str | None = None) -> dict:
+    """Vue admin `mapping_status` / `fulfillable` / `supplier_cost_usd` pour le fournisseur du jeu."""
+    mapping = product.get(mapping_field_for(provider))
+    return {"mapping_status": mapping_status_for(mapping, provider),
+            "fulfillable": mapping_ok_for(mapping, provider),
+            "supplier_cost_usd": supplier_cost_for(mapping, provider, product.get("game_id"))}
+
+
+def _blocked_message(product: dict) -> str:
+    return (f"« {product.get('name')} » n'est pas encore disponible : "
+            "mapping fournisseur manquant ou non confirmé.")
+
+
+async def purchase_blocked(product: dict) -> str | None:
+    """Produit exigeant un mapping fournisseur valide et confirmé avant toute vente.
+
+    Le FOURNISSEUR du jeu décide du champ lu : FazerCards (document absent ou sans `provider`)
+    lit `fazercards_mapping` — décision et message identiques à avant ; un jeu ALUU lit
+    `aluu_mapping` (code jeu + pack confirmés). Un produit ALUU qui ne porte qu'un ancien
+    `fazercards_mapping` est donc BLOQUÉ, jamais vendu puis refusé à la livraison.
+
+    FAIL-CLOSED : toute erreur de résolution (configuration ALUU incomplète, fournisseur
+    inconnu, base indisponible) bloque l'achat avec le message habituel. Jamais un 500,
+    jamais « vendable par défaut ».
+    """
+    if not product.get("requires_mapping"):
+        return None
+    blocked = _blocked_message(product)
+    try:
+        provider = (await providers.provider_for_game(product.get("game_id"))).name
+    except Exception:  # ProviderError, erreur de base : on refuse la vente, on ne lève pas
+        return blocked
+    return None if mapping_ok_for(product.get(mapping_field_for(provider)), provider) else blocked
 
 
 async def offers_for_game(game_id: str | None, category_id: str, *, provider=None) -> dict:

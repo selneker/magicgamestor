@@ -285,13 +285,13 @@ def test_admin_mappings_filter_isolates_games():
 
 def test_active_product_without_valid_mapping_is_not_purchasable():
     """Un produit actif exigeant un mapping absent/non confirmé n'est pas achetable."""
-    assert fzr_mapping.purchase_blocked({"name": "X", "requires_mapping": True}) is not None
-    assert fzr_mapping.purchase_blocked(
-        {"name": "X", "requires_mapping": True, "fazercards_mapping": {"confirmed": False}}) is not None
-    assert fzr_mapping.purchase_blocked(
+    assert run(fzr_mapping.purchase_blocked({"name": "X", "requires_mapping": True})) is not None
+    assert run(fzr_mapping.purchase_blocked(
+        {"name": "X", "requires_mapping": True, "fazercards_mapping": {"confirmed": False}})) is not None
+    assert run(fzr_mapping.purchase_blocked(
         {"name": "X", "requires_mapping": True,
-         "fazercards_mapping": {"mode": "direct", "category_id": "c", "offer_id": "o", "confirmed": True}}) is None
-    assert fzr_mapping.purchase_blocked({"name": "X", "requires_mapping": False}) is None
+         "fazercards_mapping": {"mode": "direct", "category_id": "c", "offer_id": "o", "confirmed": True}})) is None
+    assert run(fzr_mapping.purchase_blocked({"name": "X", "requires_mapping": False})) is None
 
 
 def test_include_inactive_is_staff_only():
@@ -430,10 +430,10 @@ def test_purchase_blocking_protections_unchanged():
     assert fzr_mapping.mapping_ok(None) is False
     assert fzr_mapping.mapping_ok({"confirmed": False, "mode": "direct", "category_id": "c", "offer_id": "o"}) is False
     assert fzr_mapping.mapping_ok({"mode": "direct", "category_id": "c", "offer_id": "o"}) is True
-    assert fzr_mapping.purchase_blocked({"name": "X", "requires_mapping": True}) is not None
-    assert fzr_mapping.purchase_blocked(
+    assert run(fzr_mapping.purchase_blocked({"name": "X", "requires_mapping": True})) is not None
+    assert run(fzr_mapping.purchase_blocked(
         {"name": "X", "requires_mapping": True,
-         "fazercards_mapping": {"mode": "direct", "category_id": "c", "offer_id": "o", "confirmed": True}}) is None
+         "fazercards_mapping": {"mode": "direct", "category_id": "c", "offer_id": "o", "confirmed": True}})) is None
 def test_free_fire_currency_product_composition(monkeypatch):
     from types import SimpleNamespace
     """Testez la composition de produits de monnaie pour Free Fire."""
