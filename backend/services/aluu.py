@@ -316,7 +316,7 @@ async def _send(method: str, path: str, *, params: dict | None = None,
             if attempt < attempts:
                 continue
             if write:
-                raise ProviderTimeout()
+                raise ProviderTimeout() from None
             raise ProviderUnavailableError("Le fournisseur a expiré.", status_code=504,
                                            code="provider_timeout") from None
         except httpx.HTTPError:

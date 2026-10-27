@@ -31,7 +31,8 @@ from collections.abc import Callable, Iterable, Mapping
 from services import aluu
 from services.providers.base import (IdentityValidation, OrderStatus, Provider, ProviderOrder,
                                      ProviderWebhookEvent)
-from services.providers.errors import (ProviderError, ProviderOrderError, ProviderTimeout,
+from services.providers.errors import (ProviderError, ProviderInsufficientBalanceError,
+                                       ProviderOrderError, ProviderTimeout,
                                        ProviderUnavailableError, ProviderValidationError)
 
 logger = logging.getLogger("mgs.aluu.adapter")
@@ -80,6 +81,17 @@ _FIELD_LABELS = {
 _MISSING_CONFIG = "Jeu non configuré pour ALUU (configuration incomplète)."
 _UNSUPPORTED_IDENTITY = "La validation d'identité n'est pas disponible pour ce jeu chez le fournisseur."
 
+# Liste blanche des codes d'erreur que le domaine MGS expose (routeurs admin, frontend).
+# Un `code` du payload ALUU (`INVALID_PACK`, `PACK_NOT_VISIBLE`, `INSUFFICIENT_BALANCE`, …) n'y
+# figure jamais : il est ramené à `None`, et le consommateur retombe alors sur
+# `provider_unavailable`. La doc précise d'ailleurs « Other codes can appear » : aucune liste
+# exhaustive n'existe côté fournisseur, donc on n'expose que ce que MGS sait nommer.
+_MGS_ERROR_CODES = frozenset({
+    "duplicate_order_mismatch", "insufficient_balance", "invalid_order", "missing_field",
+    "order_not_found", "order_rejected", "pack_unavailable", "polling_stopped",
+    "provider_timeout", "provider_unavailable", "rate_limited", "unsupported_game",
+})
+
 _TIMESTAMP_RE = re.compile(r"^\d+$")
 
 GameConfigSource = Iterable[Mapping] | Mapping | Callable[[], object]
@@ -91,6 +103,16 @@ def _mask(value: str | None) -> str:
     if not text:
         return "-"
     return "***" if len(text) <= 4 else f"{text[:2]}***{text[-2:]}"
+
+
+def _mgs_code(code: str | None) -> str | None:
+    """Code d'erreur exposable au domaine MGS, ou `None` si le code vient d'ALUU.
+
+    Seul un code déjà nommé par MGS traverse l'adapter : un code ALUU inconnu devient `None`,
+    ce qui laisse le consommateur retomber sur `provider_unavailable`.
+    """
+    text = str(code or "").strip()
+    return text if text in _MGS_ERROR_CODES else None
 
 
 def _read_config(doc: dict | None, *, require_endpoint: bool) -> dict | None:
@@ -354,12 +376,16 @@ class AluuProvider(Provider):
             return self._duplicate_order(exc.existing_order, game_code, denom, userid, key)
         except ProviderTimeout:
             raise  # le retry doit réutiliser la même clé
+        except ProviderInsufficientBalanceError as exc:
+            # 402 : le code du payload ALUU ne sort jamais tel quel (liste blanche seulement).
+            raise ProviderInsufficientBalanceError(
+                exc.status_code, exc.message, _mgs_code(exc.code)) from None
         except aluu.AluuRateLimitedError as exc:
             raise ProviderError("Trop de requêtes vers le fournisseur. Réessayez dans un instant.",
                                 status_code=429, code="rate_limited") from None
         except (aluu.AluuInvalidOrderError, aluu.AluuPackUnavailableError,
                 aluu.AluuOrderFailedError) as exc:
-            raise ProviderOrderError(409, exc.message, exc.code) from None
+            raise ProviderOrderError(409, exc.message, _mgs_code(exc.code)) from None
 
         raw_status = str(data.get("status") or "pending")
         return ProviderOrder(id=key, status=raw_status,
@@ -396,7 +422,7 @@ class AluuProvider(Provider):
             data = await aluu.get_order(order_key)
         except aluu.AluuOrderNotFoundError as exc:
             raise ProviderOrderError(404, "Commande fournisseur introuvable.",
-                                     exc.code or "order_not_found") from None
+                                     _mgs_code(exc.code) or "order_not_found") from None
         except aluu.AluuPollingStoppedError:
             # 410 : ALUU demande d'arrêter d'interroger cet identifiant ; statut final conservé.
             raise ProviderError("Le fournisseur demande d'arrêter le suivi de cette commande.",
@@ -425,7 +451,10 @@ class AluuProvider(Provider):
             expected = aluu.webhook_signature(stamp, raw_body)
         except ProviderError:  # secret absent = rejet, jamais un 500
             return False
-        return hmac.compare_digest(signature, expected)
+        # Comparaison sur des OCTETS : `compare_digest` lève `TypeError` sur une `str`
+        # non-ASCII, or l'en-tête de signature est une entrée non fiable. Sur octets, une
+        # signature non-ASCII est simplement différente → `False`, jamais une exception.
+        return hmac.compare_digest(str(signature).encode(), expected.encode())
 
     def parse_webhook_event(self, payload: dict) -> ProviderWebhookEvent:
         """Payload webhook top-up ALUU → événement normalisé.

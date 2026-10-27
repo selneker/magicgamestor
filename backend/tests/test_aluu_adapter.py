@@ -449,12 +449,9 @@ def test_create_order_402_is_insufficient_balance(monkeypatch):
         run(provider().create_order("pubgm", "60", {"player_id": PLAYER_ID}, PARTNER_ID))
 
 
-@pytest.mark.parametrize("status,code", [(400, "INVALID_PACK"), (503, "pack_unavailable"),
-                                         (200, "order_rejected")])
+@pytest.mark.parametrize("status,code", [(503, "pack_unavailable"), (200, "order_rejected")])
 def test_create_order_rejections_are_provider_order_errors(monkeypatch, status, code):
     payload = {"success": False, "message": "Order failed"}
-    if status == 400:
-        payload["code"] = "INVALID_PACK"
     fake_api(monkeypatch, status, payload)
 
     with pytest.raises(perr.ProviderOrderError) as exc:
@@ -462,6 +459,28 @@ def test_create_order_rejections_are_provider_order_errors(monkeypatch, status, 
 
     assert exc.value.status_code == 409
     assert exc.value.code == code
+
+
+def test_create_order_never_forwards_a_raw_aluu_code(monkeypatch):
+    """Code ALUU inventé pour le test : il ne doit jamais ressortir de l'adapter."""
+    fake_api(monkeypatch, 400, {"success": False, "message": "Order failed",
+                                "code": "ALUU_TEST_ONLY_UNKNOWN_CODE"})
+
+    with pytest.raises(perr.ProviderOrderError) as exc:
+        run(provider().create_order("pubgm", "60", {"player_id": PLAYER_ID}, PARTNER_ID))
+
+    assert exc.value.status_code == 409
+    assert exc.value.code is None                       # plus aucun code ALUU
+    assert "ALUU_TEST_ONLY_UNKNOWN_CODE" not in str(exc.value.code)
+
+
+def test_create_order_402_never_forwards_a_raw_aluu_code(monkeypatch):
+    fake_api(monkeypatch, 402, {"success": False, "code": "ALUU_TEST_ONLY_INSUFFICIENT"})
+
+    with pytest.raises(perr.ProviderInsufficientBalanceError) as exc:
+        run(provider().create_order("pubgm", "60", {"player_id": PLAYER_ID}, PARTNER_ID))
+
+    assert exc.value.code is None
 
 
 def test_create_order_timeout_is_reported_once(monkeypatch):
@@ -528,6 +547,15 @@ def test_get_order_404_is_not_found(monkeypatch):
     assert exc.value.status_code == 404
 
 
+def test_get_order_404_never_forwards_a_raw_aluu_code(monkeypatch):
+    fake_api(monkeypatch, 404, {"success": False, "code": "ALUU_TEST_ONLY_UNKNOWN_404"})
+
+    with pytest.raises(perr.ProviderOrderError) as exc:
+        run(provider().get_order(PARTNER_ID))
+
+    assert exc.value.code == "order_not_found"   # code MGS, jamais celui d'ALUU
+
+
 # --------------------------------------------------------------------------- webhook
 
 def _sign(timestamp, raw):
@@ -560,6 +588,17 @@ def test_verify_webhook_signature_rejects_stale_bad_and_unsigned(monkeypatch):
 def test_verify_webhook_signature_without_secret_rejects(monkeypatch):
     raw = b'{"success":true}'
     assert provider().verify_webhook_signature(raw, "0" * 64, "1768472100") is False
+
+
+def test_verify_webhook_signature_with_non_ascii_header_is_false_not_an_exception(monkeypatch):
+    """En-tête non fiable : la comparaison se fait sur octets, donc `False` et jamais `TypeError`."""
+    monkeypatch.setenv("ALUU_WEBHOOK_SECRET", WEBHOOK_SECRET)
+    raw = b'{"success":true}'
+    stamp = "1768472100"
+    monkeypatch.setattr("services.providers.aluu_adapter.time.time", lambda: 1768472100)
+
+    assert provider().verify_webhook_signature(raw, "é" * 64, stamp) is False
+    assert provider().verify_webhook_signature(raw, "é" + "0" * 63, stamp) is False
 
 
 def test_parse_webhook_event_uses_orderid_as_partner_order_id():
