@@ -337,6 +337,35 @@ def count_resolutions(monkeypatch):
     return calls
 
 
+def switch_game(world, document):
+    """Bascule le document `games` (config admin) et vide le cache de résolution."""
+    world.db.games.documents[:] = [dict(document)]
+    providers.invalidate_provider_cache()
+
+
+def patch_fazercards(monkeypatch, provider):
+    """Remplace FazerCards par un double sans HTTP (aucun réseau, aucune catégorie inventée)."""
+    real_by_name = providers.get_provider_by_name
+
+    def by_name(name, **kwargs):
+        if str(name or "").strip().lower() == "fazercards":
+            return provider
+        return real_by_name(name, **kwargs)
+
+    async def fake_categories(game_id):
+        return [{"category_id": "free_fire", "name": "Free Fire"}]
+
+    async def fake_offers(category_id):
+        return {"category_id": category_id,
+                "offers": [{"offer_id": "60", "name": "60 UC", "price_usd": 0.9}],
+                "fields": [{"key": "player_id", "label": "Player ID", "type": "text"}]}
+
+    monkeypatch.setattr(providers, "get_provider", lambda *_a, **_k: provider)
+    monkeypatch.setattr(providers, "get_provider_by_name", by_name)
+    monkeypatch.setattr(fzr_mapping.fazercards, "game_categories", fake_categories)
+    monkeypatch.setattr(fzr_mapping.fazercards, "pubg_offers_fresh", fake_offers)
+
+
 # --------------------------------------------------------------------------- helpers purs
 
 @pytest.mark.parametrize("record,target,expected", [
@@ -597,6 +626,20 @@ class FakeFazercardsProvider(FazerCardsProvider):
                              normalized_status=self.normalize_status("completed"), raw={})
 
 
+class TimeoutOnceFazercardsProvider(FakeFazercardsProvider):
+    """FazerCards dont la PREMIÈRE création expire : le retry doit réutiliser la même clé."""
+
+    def __init__(self):
+        super().__init__()
+        self.timeouts = 0
+
+    async def create_order(self, category_id, offer_id, fields, idempotency_key):
+        if self.timeouts == 0:
+            self.timeouts += 1
+            raise perr.ProviderTimeout()
+        return await super().create_order(category_id, offer_id, fields, idempotency_key)
+
+
 def test_fazercards_order_keeps_its_historical_shape(world, monkeypatch):
     """Jeu sans `provider` : le chemin FazerCards ne reçoit AUCUN champ ALUU."""
     provider = FakeFazercardsProvider()
@@ -635,3 +678,261 @@ def test_fazercards_order_keeps_its_historical_shape(world, monkeypatch):
     run(fzr_fulfillment.refresh_status("ord-1", "admin:1"))
     assert provider.status_calls == ["FC-1"]
     assert w.order["status"] == "delivered"
+
+
+# ===================================================================== partie 1 : fournisseur PAR UNITÉ
+#
+# Ces tests fixent la règle : une unité qui a déjà un record garde SON fournisseur et SA cible,
+# quelle que soit la configuration actuelle du jeu ; une unité sans record suit la config actuelle.
+# Le piège `forbid_fazercards` lève si FazerCards est seulement INSTANCIÉ.
+
+MIXED_PACKS = [{"denom": "60", "name": "60 Diamonds", "price_usd": 0.83,
+                "requires_server_id": False, "requires_char_name": False},
+               {"denom": "120", "name": "120 Diamonds", "price_usd": 1.60,
+                "requires_server_id": True, "requires_char_name": False}]
+
+# Jeu rebasculé sur FazerCards MAIS dont la configuration ALUU est encore là (rollback admin).
+FAZER_GAME_WITH_ALUU_RESIDUE = {**ALUU_GAME, "provider": "fazercards"}
+
+
+def test_retry_after_a_switch_to_fazercards_stays_aluu(world, monkeypatch):
+    """BLOQUANT : la reprise ne relit pas la config actuelle et ne réoriente jamais vers FazerCards."""
+    attempts = []
+
+    def create(**kwargs):
+        attempts.append(kwargs)
+        if len(attempts) == 1:
+            raise perr.ProviderTimeout()
+        return {"orderid": "ALUU-2", "status": "pending", "reference": "REF-2"}
+
+    w = world(orders=[make_order()], products=[product(aluu_mapping=ALUU_MAPPING)], create=create)
+
+    with pytest.raises(HTTPException) as first:
+        run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+    assert first.value.status_code == 504
+    assert w.order["fazercards"]["status"] == "submit_timeout"
+    assert w.order["fazercards"]["provider"] == "aluu"
+    assert len(attempts) == 1
+
+    # Bascule réelle : le jeu est désormais FazerCards (champs ALUU résiduels conservés).
+    switch_game(w, FAZER_GAME_WITH_ALUU_RESIDUE)
+    assert run(providers.provider_for_game(GAME_ID)).name == "fazercards"
+    # FazerCards devient interdit : le moindre contact serait une preuve de réorientation.
+    forbid_fazercards(monkeypatch, w)
+    resolutions = count_resolutions(monkeypatch)
+
+    record = run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+
+    assert resolutions == []                       # la config actuelle n'est même pas lue
+    assert w.fazercards_calls == []                # le piège n'a pas été effleuré
+    assert [a["partner_orderid"] for a in attempts] == ["MGS-1-1", "MGS-1-1"]
+    assert [a["game_code"] for a in attempts] == ["ff", "ff"]
+    assert record["provider"] == "aluu"
+    assert record["partner_order_id"] == "MGS-1-1"
+    assert record["aluu_order_id"] == "ALUU-2"
+    assert w.order["fazercards"]["status"] == "submitted"
+
+
+def test_retry_after_a_switch_to_aluu_stays_fazercards(world, monkeypatch):
+    """L'inverse : une unité FazerCards ne part JAMAIS chez ALUU après la bascule."""
+    provider = TimeoutOnceFazercardsProvider()
+    w = world(orders=[make_order()], products=[product(fazercards_mapping=FC_MAPPING)],
+              games=[dict(FAZER_GAME)])
+    patch_fazercards(monkeypatch, provider)
+
+    with pytest.raises(HTTPException) as first:
+        run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+    assert first.value.status_code == 504
+    assert w.order["fazercards"]["provider"] == "fazercards"
+    assert w.order["fazercards"]["status"] == "submit_timeout"
+
+    switch_game(w, ALUU_GAME)
+    assert run(providers.provider_for_game(GAME_ID)).name == "aluu"
+
+    record = run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+
+    assert w.aluu.created == [] and w.aluu.name_checks == []
+    assert [c["key"] for c in provider.created] == ["MGS-1-1"]     # même Idempotency-Key
+    assert record["provider"] == "fazercards"
+    assert record["provider_order_id"] == "FC-1"
+    assert "aluu_order_id" not in record
+
+
+def test_retry_keeps_the_aluu_target_when_the_mapping_changed_under_it(world, monkeypatch):
+    """La CIBLE enregistrée (catégorie + offre) fait foi, pas le mapping courant du produit."""
+    attempts = []
+
+    def create(**kwargs):
+        attempts.append(kwargs)
+        raise perr.ProviderTimeout()
+
+    order = make_order()
+    order["fazercards"] = {"provider": "aluu", "status": "submit_timeout", "provider_order_id": None,
+                           "category_id": "ff", "offer_id": "60", "offer_name": "60 Diamonds",
+                           "product_name": "60 Diamants", "idempotency_key": "MGS-1-1",
+                           "created_at": "2026-10-01T00:00:00+00:00"}
+    w = world(orders=[order],
+              products=[product(aluu_mapping=ALUU_MAPPING_120)],  # mapping changé depuis
+              create=create)
+    forbid_fazercards(monkeypatch, w)
+
+    with pytest.raises(HTTPException):
+        run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+
+    assert [a["denom"] for a in attempts] == ["60"]
+    assert w.order["fazercards"]["created_at"] == "2026-10-01T00:00:00+00:00"
+
+
+def test_mixed_order_routes_the_new_unit_to_the_current_provider(world, monkeypatch):
+    """Unité 1 déjà créée en ALUU, unité 2 pas encore créée → unité 2 suit la config actuelle."""
+    provider = FakeFazercardsProvider()
+    w = world(orders=[make_order(items=[item("p-60", "60 Diamants"),
+                                        item("p-120", "120 Diamants")])],
+              products=[product(aluu_mapping=ALUU_MAPPING),
+                        product("p-120", uc_amount=120, fazercards_mapping=FC_MAPPING)],
+              games=[dict(ALUU_GAME)])
+    patch_fazercards(monkeypatch, provider)
+
+    first = run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+
+    assert provider.created == []                          # rien chez FazerCards tant qu'ALUU
+    assert [c["partner_orderid"] for c in w.aluu.created] == ["MGS-1-1"]
+    assert [entry["ok"] for entry in first["results"]] == [True]
+    assert "fazercards_lines" not in w.order
+
+    switch_game(w, dict(FAZER_GAME))
+    assert run(providers.provider_for_game(GAME_ID)).name == "fazercards"
+
+    second = run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+
+    assert [c["key"] for c in provider.created] == ["MGS-1-L2-1"]   # seule l'unité neuve
+    assert len(w.aluu.created) == 1
+    assert [entry["ok"] for entry in second["results"]] == [True]
+    stored = w.order
+    assert stored["fazercards"]["provider"] == "aluu"
+    assert stored["fazercards_lines"]["1"]["provider"] == "fazercards"
+
+
+def test_claim_never_erases_recorded_identifiers_or_the_manual_action(world, monkeypatch):
+    """Le claim de reprise FUSIONNE : aucun identifiant, aucune action manuelle n'est perdue."""
+    order = make_order(provider_order_ids=["MGS-1-1", "ALUU-OLD"])
+    order["fazercards"] = {
+        "provider": "aluu", "status": "submit_timeout", "provider_order_id": None,
+        "category_id": "ff", "offer_id": "60", "idempotency_key": "MGS-1-1",
+        "partner_order_id": "MGS-1-1", "aluu_order_id": "ALUU-OLD",
+        "manual_action_required": True, "manual_action": "provider_refused",
+        "created_at": "2026-10-01T00:00:00+00:00",
+    }
+
+    def create(**_kwargs):
+        raise perr.ProviderTimeout()
+
+    w = world(orders=[order], products=[product(aluu_mapping=ALUU_MAPPING)], create=create)
+    forbid_fazercards(monkeypatch, w)
+
+    with pytest.raises(HTTPException):
+        run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+
+    record = w.order["fazercards"]
+    assert record["provider"] == "aluu"
+    assert record["aluu_order_id"] == "ALUU-OLD"
+    assert record["manual_action"] == "provider_refused"
+    assert record["manual_action_required"] is True
+    assert record["created_at"] == "2026-10-01T00:00:00+00:00"
+    assert w.order["provider_order_ids"] == ["MGS-1-1", "ALUU-OLD"]
+    assert w.aluu.created[0]["partner_orderid"] == "MGS-1-1"
+
+
+def test_aluu_retry_without_any_aluu_configuration_fails_closed(world, monkeypatch):
+    """Champs ALUU effacés : la reprise échoue explicitement, elle ne bascule pas sur FazerCards."""
+    attempts = []
+
+    def create(**kwargs):
+        attempts.append(kwargs)
+        if len(attempts) == 1:
+            raise perr.ProviderTimeout()
+        return {"orderid": "ALUU-2", "status": "pending", "reference": "REF-2"}
+
+    w = world(orders=[make_order()], products=[product(aluu_mapping=ALUU_MAPPING)], create=create)
+    with pytest.raises(HTTPException):
+        run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+
+    switch_game(w, {"id": GAME_ID})          # plus aucune trace de configuration ALUU
+    assert run(providers.provider_for_game(GAME_ID)).name == "fazercards"
+    forbid_fazercards(monkeypatch, w)
+
+    with pytest.raises(perr.ProviderError) as exc:
+        run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+
+    assert exc.value.status_code == 503
+    assert exc.value.code == "unsupported_game"
+    assert w.fazercards_calls == []
+    assert len(attempts) == 1                                  # aucun second envoi
+    assert w.order["fazercards"]["provider"] == "aluu"          # jamais réorientée
+    assert w.order["fazercards"]["status"] == "submit_timeout"  # rien n'a été écrasé
+
+
+# --------------------------------------------------------------------- champs requis PAR OFFRE
+
+def test_preflight_checks_the_chosen_offer_fields_not_the_game_aggregate(world, monkeypatch):
+    """Un pack sans `serverid` passe même si un AUTRE pack du jeu l'exige."""
+    w = world(orders=[make_order()], products=[product(aluu_mapping=ALUU_MAPPING)],
+              packs=MIXED_PACKS)
+    forbid_fazercards(monkeypatch, w)
+
+    report = run(fzr_fulfillment.preflight("ord-1"))
+    assert [line["offer_id"] for line in report["lines"]] == ["60"]
+    assert report["skipped"] == []
+
+    record = run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+    assert record["provider"] == "aluu"
+    assert w.aluu.created[0]["server_id"] is None
+
+
+def test_preflight_refuses_when_the_chosen_offer_needs_serverid(world, monkeypatch):
+    """Le pack choisi exige `serverid` : refus AVANT tout envoi (identité incomplète)."""
+    w = world(orders=[make_order()], products=[product(aluu_mapping=ALUU_MAPPING_120)],
+              packs=MIXED_PACKS)
+    forbid_fazercards(monkeypatch, w)
+
+    with pytest.raises(HTTPException) as exc:
+        run(fzr_fulfillment.preflight("ord-1"))
+
+    assert exc.value.status_code == 409
+    assert exc.value.detail == fzr_fulfillment.MISSING_IDENTITY_DETAIL
+    assert w.aluu.created == []
+
+
+def test_get_offers_exposes_required_fields_per_offer(world, monkeypatch):
+    """`get_offers` publie les exigences PAR OFFRE, l'agrégat restant disponible."""
+    world(orders=[], products=[], packs=MIXED_PACKS)
+    result = run(providers.get_provider_by_name("aluu").get_offers("ff"))
+    by_id = {offer["offer_id"]: offer for offer in result["offers"]}
+
+    assert [f["key"] for f in by_id["60"]["fields"]] == ["userid"]
+    assert by_id["60"]["requires_server_id"] is False
+    assert by_id["60"]["requires_char_name"] is False
+    assert [f["key"] for f in by_id["120"]["fields"]] == ["userid", "serverid"]
+    assert by_id["120"]["requires_server_id"] is True
+    assert [f["key"] for f in result["fields"]] == ["userid", "serverid"]   # agrégat conservé
+
+
+# --------------------------------------------------------------------- webhook filtré par fournisseur
+
+def test_fazercards_webhook_never_updates_an_aluu_unit(world, monkeypatch):
+    """L'identifiant est propre au fournisseur : la route FC ne touche aucune unité ALUU."""
+    w = world(orders=[make_order()], products=[product(aluu_mapping=ALUU_MAPPING)])
+    forbid_fazercards(monkeypatch, w)
+    run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+
+    event = {"event": "order.status_changed", "event_id": "evt-3",
+             "data": {"order_id": "MGS-1-1", "status": "cancelled"}}
+
+    assert run(fzr_fulfillment.apply_webhook_event(dict(event), provider_name="fazercards")) == \
+        {"ok": True, "ignored": True}
+    assert w.order["fazercards"]["provider_status"] == "pending"
+
+    assert run(fzr_fulfillment.apply_webhook_event({**event, "event_id": "evt-4"},
+                                                  provider_name="aluu")) == {"ok": True}
+    assert w.order["fazercards"]["provider_status"] == "cancelled"
+    assert [e for e in w.audit if e["action"] == "fzr.webhook_status"][0]["actor"] == "aluu"

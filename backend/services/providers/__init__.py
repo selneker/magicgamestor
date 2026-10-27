@@ -92,10 +92,17 @@ def get_provider_by_name(name: str, *, games=None) -> Provider:
 # --------------------------------------------------------------------------- chargement config
 
 def _game_configs_loader(games) -> Callable[[], Awaitable[list[dict]]]:
-    """Loader de configuration ALUU adossé à une collection `games` (lecture seule)."""
+    """Loader de configuration ALUU adossé à une collection `games` (lecture seule).
+
+    Le filtre inclut les documents qui portent ENCORE des champs ALUU alors que le jeu est
+    repassé à un autre fournisseur : c'est la seule façon de reprendre une unité ALUU déjà
+    créée (`_read_config(..., require_provider=False)`). Aucun jeu n'est présumé ALUU pour
+    autant : la résolution d'un nouveau jeu exige `provider == "aluu"`.
+    """
 
     async def load() -> list[dict]:
-        cursor = games.find({"provider": "aluu"}, GAME_PROJECTION)
+        cursor = games.find({"$or": [{"provider": "aluu"},
+                                     {"aluu_game_code": {"$exists": True}}]}, GAME_PROJECTION)
         return await cursor.to_list(length=_ALUU_GAMES_LIMIT)
 
     return load
@@ -165,9 +172,10 @@ async def provider_for_game(game_id: str | None, *, games=None) -> Provider:
     collection = games if games is not None else _games_collection()
     doc = await collection.find_one({"id": gid}, GAME_PROJECTION)
     if doc is None:
-        # Document absent = défaut historique, jamais une supposition ALUU. On le trace une fois
-        # par lecture (donc au plus une fois par TTL de cache), sans aucun champ joueur.
-        logger.warning(
+        # Document absent = défaut historique, jamais une supposition ALUU. Trace en `debug` :
+        # ce cas est normal (jeux historiques sans document) et ne doit pas inonder les logs
+        # une fois par TTL de cache et par processus.
+        logger.debug(
             "providers: aucun document games pour le jeu %s — défaut %s appliqué "
             "(comportement historique)", gid, DEFAULT_PROVIDER)
     name = _provider_name_for_document(doc)

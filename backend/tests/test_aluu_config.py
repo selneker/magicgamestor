@@ -4,6 +4,7 @@ Tests PURS : aucun Mongo (collection `games` factice), aucun appel réseau réel
 (`httpx.MockTransport`), aucun secret de production, aucun identifiant joueur complet loggué.
 """
 import asyncio
+import logging
 import time
 
 import httpx
@@ -67,10 +68,24 @@ class FakeCollection:
 
     def find(self, query, projection=None):
         self.find_calls.append(dict(query))
-        wanted = {key: str(value).strip().lower() for key, value in query.items()}
-        return FakeCursor([doc for doc in self.docs
-                           if all(str(doc.get(key)).strip().lower() == value
-                                  for key, value in wanted.items())])
+        return FakeCursor([doc for doc in self.docs if self._matches(doc, query)])
+
+    @staticmethod
+    def _matches(doc: dict, query: dict) -> bool:
+        """Sous-ensemble du langage de requête Mongo réellement utilisé : égalité, `$exists`, `$or`."""
+        for key, expected in query.items():
+            if key == "$or":
+                if not any(FakeCollection._matches(doc, sub) for sub in expected):
+                    return False
+            elif isinstance(expected, dict) and "$exists" in expected:
+                if (key in doc) is not bool(expected["$exists"]):
+                    return False
+            elif expected is None:
+                if doc.get(key) is not None:
+                    return False
+            elif str(doc.get(key)).strip().lower() != str(expected).strip().lower():
+                return False
+        return True
 
 
 @pytest.fixture(autouse=True)
@@ -478,14 +493,17 @@ def test_legacy_pubg_route_aluu_error_is_a_plain_detail_and_never_falls_back(
 
 # --------------------------------------------------------------------- journal (doc absent)
 
-def test_missing_game_document_logs_a_warning_and_keeps_fazercards(caplog):
-    with caplog.at_level("WARNING", logger="services.providers"):
+def test_missing_game_document_logs_at_debug_and_keeps_fazercards(caplog):
+    """Document absent = cas normal : trace en `debug`, jamais une alerte."""
+    with caplog.at_level("DEBUG", logger="services.providers"):
         provider = run(providers.provider_for_game("jeu-inexistant", games=FakeCollection([])))
 
     messages = [record.getMessage() for record in caplog.records
                 if record.name == "services.providers"]
     assert provider.name == "fazercards"
     assert any("jeu-inexistant" in message and "fazercards" in message for message in messages)
+    assert all(record.levelno < logging.WARNING for record in caplog.records
+               if record.name == "services.providers")
     assert all(PLAYER_ID not in message for message in messages)
 
 

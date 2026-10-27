@@ -10,11 +10,15 @@ Chaque unité a son propre provider_order_id et sa propre Idempotency-Key STABLE
 - ligne directe idx>0  → record `order.fazercards_lines.{idx}`,        clé `{order}-L{idx+1}-1`
 - composant (idx, u)   → record `order.fazercards_components.{idx}.{u}`, clé `{order}-L{idx+1}-C{u+1}`
 
-FOURNISSEUR : il est résolu une seule fois par opération (`providers.provider_for_game`) et
-**enregistré sur chaque unité au moment de sa création** (`record["provider"]`). Ensuite, le
-rafraîchissement, le webhook et la synchronisation de statut lisent CE champ — jamais la
-configuration courante du jeu — pour qu'une bascule de fournisseur ne réoriente jamais une
-commande en vol. Aucun repli, aucun retry et aucune création ne changent de fournisseur.
+FOURNISSEUR : il est décidé **PAR UNITÉ**, jamais une fois pour toute la commande.
+- Une unité qui a déjà un record garde le fournisseur ET la cible (`category_id`, `offer_id`)
+  enregistrés à sa création, quelle que soit la configuration actuelle du jeu : une bascule de
+  fournisseur (ou un mapping modifié/supprimé depuis) ne réoriente JAMAIS une commande en vol,
+  et le claim de reprise n'efface aucun identifiant déjà écrit.
+- Une unité SANS record suit la configuration actuelle du jeu (`provider_for_game`).
+Ensuite, le rafraîchissement, le webhook et la synchronisation de statut lisent CE champ — jamais
+la configuration courante du jeu. Aucun repli, aucun retry et aucune création ne changent de
+fournisseur.
 """
 import logging
 import uuid
@@ -142,56 +146,66 @@ async def auto_enabled() -> bool:
     return bool(doc and doc.get("fzr_auto"))
 
 
-async def _units_for_line(order: dict, idx: int, item: dict, *, is_aluu: bool) -> tuple[list, dict | None]:
-    """Retourne (units, skip). qty = item.quantity : la structure fournisseur d'UNE unité produit
-    (directe → 1 ; composée → N composants) est répétée qty fois → N×qty unités indépendantes.
-    Le panier / prix / ligne client ne changent JAMAIS ; la composition n'est pas modifiée.
+class _CurrentProvider:
+    """Résolution PARESSEUSE du fournisseur de la configuration ACTUELLE du jeu.
 
-    Le champ de mapping lu dépend du FOURNISSEUR du jeu : `aluu_mapping` pour un jeu ALUU,
-    `fazercards_mapping` sinon (comportement historique, au bit près).
+    Elle n'est tentée que parce qu'une unité sans record peut devoir être créée (ou pour lire le
+    mapping courant). Une reprise composée uniquement d'unités déjà créées n'en DÉPEND pas : le
+    jeu a pu être basculé — ou sa configuration cassée — depuis la création, et la reprise doit
+    rester possible.
     """
-    field = "aluu_mapping" if is_aluu else "fazercards_mapping"
-    product = await db.products.find_one({"id": item["product_id"]}, {"_id": 0, field: 1})
-    mapping = (product or {}).get(field)
-    state = _mapping_state(mapping, is_aluu=is_aluu)
-    if state != "ok":
-        return [], {"index": idx, "product": item.get("name"),
-                    "reason": _missing_mapping_reason(state, is_aluu=is_aluu)}
-    on = order["order_number"]
-    qty = max(1, int(item.get("quantity", 1) or 1))
-    if is_aluu:
-        # Le mapping ALUU est toujours direct : `denom` et `game_code`, jamais de composition.
-        base = [{"component_index": None, "offer_id": mapping["denom"], "component_name": None}]
-    elif mapping.get("mode", "direct") == "direct":
-        base = [{"component_index": None, "offer_id": mapping["offer_id"], "component_name": None}]
-    else:
-        base, u = [], 0
-        for comp in mapping.get("components") or []:
-            for _ in range(int(comp.get("quantity", 1))):
-                base.append({"component_index": u, "offer_id": comp["offer_id"], "component_name": comp.get("offer_name")})
-                u += 1
-    units = []
-    for q in range(qty):
-        for b in base:
-            path, key = _unit_identity(on, idx, b["component_index"], q)
-            units.append({"line_index": idx, "component_index": b["component_index"], "quantity_index": q,
-                          "path": path, "idempotency_key": key,
-                          "category_id": mapping["game_code"] if is_aluu else mapping["category_id"],
-                          "offer_id": b["offer_id"],
-                          "product": item["name"], "component_name": b["component_name"]})
-    return units, None
+
+    def __init__(self, game_id: str | None, provider=None) -> None:
+        self._game_id = game_id
+        self._provider = provider
+        self._error: Exception | None = None
+        self._tried = provider is not None
+
+    async def get(self):
+        if not self._tried:
+            self._tried = True
+            try:
+                self._provider = await providers.provider_for_game(self._game_id)
+            except Exception as exc:  # configuration invalide, base indisponible…
+                self._error = exc
+        if self._error is not None:
+            raise self._error
+        return self._provider
 
 
-async def _all_units(order: dict, *, provider=None) -> tuple[list, list]:
-    provider = provider or await _order_provider(order)
-    is_aluu = provider.name == "aluu"
-    units, skipped = [], []
-    for idx, item in enumerate(order.get("items") or []):
-        line_units, skip = await _units_for_line(order, idx, item, is_aluu=is_aluu)
-        units += line_units
-        if skip:
-            skipped.append(skip)
-    return units, skipped
+def _as_index(value) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _records_for_line(order: dict, idx: int) -> dict[tuple[int | None, int], dict]:
+    """Records DÉJÀ créés d'une ligne, indexés par (component_index, quantity_index).
+
+    Lecture pure du document de commande : aucune base, aucun fournisseur. Un record porte
+    toujours un `status` ; c'est ce qui le distingue d'un nœud de composants/répétitions.
+    """
+    found: dict[tuple[int | None, int], dict] = {}
+
+    def add(component_index, quantity_index, record):
+        if isinstance(record, dict):
+            found[(component_index, quantity_index)] = record
+
+    if idx == 0:
+        add(None, 0, order.get("fazercards"))
+    add(None, 0, (order.get("fazercards_lines") or {}).get(str(idx)))
+    for key, record in ((order.get("fazercards_components") or {}).get(str(idx)) or {}).items():
+        add(_as_index(key), 0, record)
+    for key, node in ((order.get("fazercards_reps") or {}).get(str(idx)) or {}).items():
+        if not isinstance(node, dict):
+            continue
+        if isinstance(node.get("status"), str):  # record d'une répétition directe
+            add(None, _as_index(key), node)
+            continue
+        for component_key, record in node.items():
+            add(_as_index(component_key), _as_index(key), record)
+    return found
 
 
 def _recorded_provider(order: dict) -> str | None:
@@ -210,17 +224,152 @@ def _recorded_provider(order: dict) -> str | None:
                  ("fazercards", "fazercards_lines", "fazercards_components", "fazercards_reps")})
 
 
-async def _order_provider(order: dict, provider=None):
-    """Fournisseur d'une commande DÉJÀ envoyée : celui de ses unités, jamais la config courante.
+def _mapping_base(mapping: dict, *, is_aluu: bool) -> tuple[list[dict], str]:
+    """(unités de base d'UNE quantité, catégorie fournisseur) lues sur un mapping utilisable."""
+    if is_aluu:
+        # Le mapping ALUU est toujours direct : `denom` et `game_code`, jamais de composition.
+        return ([{"component_index": None, "offer_id": mapping["denom"], "component_name": None}],
+                mapping["game_code"])
+    if mapping.get("mode", "direct") == "direct":
+        return ([{"component_index": None, "offer_id": mapping["offer_id"], "component_name": None}],
+                mapping["category_id"])
+    base, u = [], 0
+    for comp in mapping.get("components") or []:
+        for _ in range(int(comp.get("quantity", 1))):
+            base.append({"component_index": u, "offer_id": comp["offer_id"],
+                         "component_name": comp.get("offer_name")})
+            u += 1
+    return base, mapping["category_id"]
 
-    Tant qu'aucune unité n'existe, la résolution par jeu s'applique (c'est la création qui va
-    enregistrer le fournisseur). Une fois une unité créée, relire le mapping sous un autre
-    fournisseur ferait perdre la trace des unités en vol.
+
+def _unit(order: dict, idx: int, component_index, quantity_index: int, *, record: dict | None,
+          provider_name: str, category_id, offer_id, component_name, product: str) -> dict:
+    """Une unité de fulfillment.
+
+    Si elle a un record, SA cible et SON fournisseur priment sur la configuration courante : le
+    jeu a pu être basculé et son mapping changé ou supprimé depuis sa création.
     """
-    recorded = _recorded_provider(order)
-    if recorded:
-        return providers.get_provider_by_name(recorded)
-    return provider or await providers.provider_for_game(order.get("game_id"))
+    path, key = _unit_identity(order["order_number"], idx, component_index, quantity_index)
+    if record:
+        provider_name = _record_provider(record)
+        category_id = record.get("category_id") or category_id
+        offer_id = record.get("offer_id") or offer_id
+        component_name = record.get("component_name") if "component_name" in record else component_name
+        product = record.get("product_name") or product
+    return {"line_index": idx, "component_index": component_index,
+            "quantity_index": quantity_index, "path": path, "idempotency_key": key,
+            "category_id": category_id, "offer_id": offer_id,
+            "product": product, "component_name": component_name,
+            "provider": provider_name, "retry": bool(record)}
+
+
+async def _product_mapping(item: dict, *, is_aluu: bool) -> dict | None:
+    """Mapping du produit pour UN fournisseur (`aluu_mapping` ou `fazercards_mapping`)."""
+    field = "aluu_mapping" if is_aluu else "fazercards_mapping"
+    product = await db.products.find_one({"id": item["product_id"]}, {"_id": 0, field: 1})
+    return (product or {}).get(field)
+
+
+async def _line_mapping(order: dict, idx: int, item: dict, *, records: dict,
+                        current: "_CurrentProvider") -> tuple[dict | None, bool, str, str]:
+    """(mapping, is_aluu, fournisseur du mapping, état) pour UNE ligne.
+
+    Priorité au fournisseur ENREGISTRÉ sur les records de la ligne : c'est la forme avec
+    laquelle elle a été décomposée, et la relire ne demande AUCUNE résolution de la
+    configuration actuelle — une reprise ne dépend donc ni d'un jeu basculé, ni d'une config
+    cassée. La configuration actuelle ne sert qu'aux lignes SANS record, ou quand le mapping du
+    fournisseur enregistré n'est plus utilisable (il ne reste alors que des unités neuves à créer).
+    """
+    names = sorted({_record_provider(record) for record in records.values()})
+    if len(names) == 1:
+        name = names[0]
+        is_aluu = name == "aluu"
+        mapping = await _product_mapping(item, is_aluu=is_aluu)
+        state = _mapping_state(mapping, is_aluu=is_aluu)
+        if state == "ok":
+            return mapping, is_aluu, name, state
+    provider = await current.get()  # peut lever : configuration actuelle invalide
+    is_aluu = provider.name == "aluu"
+    mapping = await _product_mapping(item, is_aluu=is_aluu)
+    return mapping, is_aluu, provider.name, _mapping_state(mapping, is_aluu=is_aluu)
+
+
+async def _units_for_line(order: dict, idx: int, item: dict, *,
+                          current: _CurrentProvider) -> tuple[list, dict | None]:
+    """Unités d'une ligne. Le FOURNISSEUR est décidé **par unité** :
+
+    - unité qui a déjà un record → fournisseur et cible enregistrés (aucune réorientation) ;
+    - unité sans record → configuration actuelle du jeu (voir `_line_mapping`).
+
+    Les positions viennent du mapping du fournisseur enregistré ou, à défaut, du mapping
+    courant ; à défaut de tout mapping utilisable, des seuls records déjà créés. Aucune position
+    inventée, aucune unité en vol réorientée.
+    """
+    records = _records_for_line(order, idx)
+    qty = max(1, int(item.get("quantity", 1) or 1))
+    product_name = item.get("name")
+    units: list[dict] = []
+    seen: set[tuple[int | None, int]] = set()
+
+    try:
+        mapping, is_aluu, provider_name, state = await _line_mapping(
+            order, idx, item, records=records, current=current)
+    except Exception as exc:  # configuration actuelle illisible : seules les unités existantes
+        if not records:
+            raise
+        logger.debug("fzr: configuration illisible pour la reprise de %s (%s)",
+                     order.get("order_number"), type(exc).__name__)
+        mapping, is_aluu, provider_name, state = None, False, "", "missing"
+
+    if state == "ok":
+        base, category_id = _mapping_base(mapping, is_aluu=is_aluu)
+        for q in range(qty):
+            for component in base:
+                cidx = component["component_index"]
+                seen.add((cidx, q))
+                units.append(_unit(order, idx, cidx, q, record=records.get((cidx, q)),
+                                   provider_name=provider_name, category_id=category_id,
+                                   offer_id=component["offer_id"],
+                                   component_name=component["component_name"],
+                                   product=product_name))
+
+    # Positions enregistrées que le mapping lu ne produit plus (autre fournisseur, mapping
+    # modifié ou supprimé) : elles restent envoyables avec LEUR fournisseur et LEUR cible.
+    for (cidx, q), record in records.items():
+        if (cidx, q) in seen:
+            continue
+        units.append(_unit(order, idx, cidx, q, record=record, provider_name="",
+                           category_id=None, offer_id=None, component_name=None,
+                           product=product_name))
+
+    skip = None
+    if state != "ok":
+        # Aucun mapping utilisable : la ligne n'est complète que si toutes les positions
+        # CONNUES (celles des records) ont un record. Les positions qu'un mapping perdu ne
+        # décrit plus ne sont pas devinables — aucune unité n'est inventée pour autant.
+        components = {cidx for cidx, _q in records} or {None}
+        if len(records) < len(components) * qty:
+            skip = {"index": idx, "product": product_name,
+                    "reason": _missing_mapping_reason(state, is_aluu=is_aluu)}
+    return units, skip
+
+
+async def _all_units(order: dict, *, provider=None,
+                     current: _CurrentProvider | None = None) -> tuple[list, list]:
+    """Toutes les unités de la commande, chacune avec SON fournisseur (voir `_units_for_line`).
+
+    `current` (ou `provider`) porte la configuration ACTUELLE, partagée par préflight et
+    création. La résolution reste PARESSEUSE : une ligne dont toutes les unités sont déjà
+    enregistrées la lit sur son propre fournisseur, sans jamais toucher à la config du jeu.
+    """
+    current = current or _CurrentProvider(order.get("game_id"), provider)
+    units, skipped = [], []
+    for idx, item in enumerate(order.get("items") or []):
+        line_units, skip = await _units_for_line(order, idx, item, current=current)
+        units += line_units
+        if skip:
+            skipped.append(skip)
+    return units, skipped
 
 
 def _is_legacy_single(order: dict, units: list) -> bool:
@@ -233,18 +382,20 @@ async def eligible_lines(order: dict) -> list:
     return [u for u in units if _sendable(unit_record(order, u))]
 
 
-async def preflight(order_id: str, *, provider=None) -> dict:
+async def preflight(order_id: str, *, provider=None,
+                    current: _CurrentProvider | None = None) -> dict:
     """Rapport pré-commande : toutes les vérifications par unité, AUCUNE commande créée.
 
-    Le FOURNISSEUR est résolu une seule fois (`provider_for_game`) et utilisé pour la validation
-    d'identité, le catalogue et la vérification des champs requis : c'est exactement celui que la
-    création de commande utilisera ensuite (`fulfill_order` passe la même instance).
+    Le FOURNISSEUR est décidé **par unité** (voir `_units_for_line`) : une unité déjà créée garde
+    son fournisseur et sa cible enregistrés, une unité nouvelle suit la configuration actuelle.
+    `current` porte la résolution de la configuration actuelle, partagée avec `fulfill_order`
+    pour qu'elle n'ait lieu qu'une fois par opération.
     """
     order = await db.orders.find_one({"id": order_id}, PUBLIC)
     if not order:
         raise HTTPException(status_code=404, detail="Commande introuvable")
-    provider = provider or await providers.provider_for_game(order.get("game_id"))
-    units, skipped = await _all_units(order, provider=provider)
+    current = current or _CurrentProvider(order.get("game_id"), provider)
+    units, skipped = await _all_units(order, current=current)
     records = [unit_record(order, u) for u in units]
     sent_ids = [r["provider_order_id"] for r in records if r and r.get("provider_order_id")]
     pending = [u for u, r in zip(units, records) if _sendable(r)]
@@ -257,7 +408,16 @@ async def preflight(order_id: str, *, provider=None) -> dict:
         detail = skipped[0]["reason"] if single and skipped else \
             "Aucune ligne éligible : " + "; ".join(f"{s['product']} — {s['reason']}" for s in skipped)
         raise HTTPException(status_code=409, detail=detail or "Aucune ligne éligible.")
-    validation = await provider.validate_identity(
+    instances: dict[str, object] = {}
+
+    def instance(name: str):
+        prov = instances.get(name)
+        if prov is None:
+            prov = instances[name] = providers.get_provider_by_name(name)
+        return prov
+
+    first = pending[0]
+    validation = await instance(first["provider"]).validate_identity(
         order.get("game_id"), _identity_fields(order))  # 502/504 si service indisponible
     if not validation.valid:
         # Message neutre par jeu : PUBG Mobile conserve son libellé historique, tout autre jeu
@@ -269,15 +429,24 @@ async def preflight(order_id: str, *, provider=None) -> dict:
         raise HTTPException(status_code=409, detail=detail)
     offers_by_cat, lines = {}, []
     for u in pending:
+        prov = instance(u["provider"])
         cat = u["category_id"]
-        if cat not in offers_by_cat:
-            # Offres live de la catégorie, en vérifiant qu'elle appartient bien au jeu de la commande
-            # (aucun mélange entre catalogues de jeux). FAIL-CLOSED : un jeu inconnu échoue
-            # explicitement (409) — jamais d'accès au catalogue fournisseur complet. Seul le chemin
-            # de compatibilité PUBG historique (game_id absent) conserve le comportement d'origine.
-            offers_by_cat[cat] = await fzr_mapping.offers_for_game(order.get("game_id"), cat,
-                                                                  provider=provider)
-        offers = offers_by_cat[cat]
+        key = (prov.name, cat)
+        record = unit_record(order, u)
+        if key not in offers_by_cat:
+            if record:
+                # Reprise d'une unité DÉJÀ créée : la cible enregistrée fait foi (le jeu a pu être
+                # basculé depuis, ses catégories changées). On vérifie seulement que l'offre existe
+                # encore chez SON fournisseur.
+                offers_by_cat[key] = await prov.get_offers(cat)
+            else:
+                # Offres live de la catégorie, en vérifiant qu'elle appartient bien au jeu de la
+                # commande (aucun mélange entre catalogues de jeux). FAIL-CLOSED : un jeu inconnu
+                # échoue explicitement (409). Seul le chemin de compatibilité PUBG historique
+                # (game_id absent) conserve le comportement d'origine.
+                offers_by_cat[key] = await fzr_mapping.offers_for_game(order.get("game_id"), cat,
+                                                                      provider=prov)
+        offers = offers_by_cat[key]
         offer = next((o for o in offers["offers"] if o["offer_id"] == u["offer_id"]), None)
         if not offer:
             reason = "Offre indisponible chez le fournisseur (retirée du catalogue)."
@@ -285,34 +454,36 @@ async def preflight(order_id: str, *, provider=None) -> dict:
                 raise HTTPException(status_code=409, detail=reason)
             skipped.append({"index": u["line_index"], "product": u["product"], "reason": reason})
             continue
-        if provider.name == "aluu":
+        # Champs `/create` exigés par CETTE offre — jamais la liste agrégée du jeu : un pack qui
+        # n'exige pas `serverid` ne doit pas être bloqué parce qu'un AUTRE pack l'exige.
+        offer_fields = offer.get("fields") or offers.get("fields") or []
+        field_keys = [f["key"] for f in offer_fields if f.get("key")]
+        if prov.name == "aluu":
             # Un pack ALUU qui exige `serverid` (ou `charname`) ne doit JAMAIS partir avec une
             # identité incomplète : refus explicite avant tout envoi, libellé existant.
-            required = [f["key"] for f in offers.get("fields") or [] if f.get("key")]
-            missing = await provider.missing_order_fields(order.get("game_id"), _identity_fields(order), required)
+            missing = await prov.missing_order_fields(order.get("game_id"), _identity_fields(order), field_keys)
             if missing:
                 if single:
                     raise HTTPException(status_code=409, detail=MISSING_IDENTITY_DETAIL)
                 skipped.append({"index": u["line_index"], "product": u["product"],
                                 "reason": MISSING_IDENTITY_DETAIL})
                 continue
-        field_keys = [f["key"] for f in offers["fields"] if f.get("key")]
         declared = list((_identity_fields(order) or {}).keys())
         # Clé de champ effectivement envoyée : on utilise le champ DÉCLARÉ par le jeu s'il correspond
         # à ce qu'attend le fournisseur. Aucune hypothèse `player_id` universelle.
         matched = [k for k in declared if k in field_keys]
         field_key = matched[0] if matched else (field_keys[0] if field_keys else (declared[0] if declared else "player_id"))
-        record = unit_record(order, u)
         lines.append({
             "index": u["line_index"], "component_index": u["component_index"], "quantity_index": u["quantity_index"], "path": u["path"],
             "product": u["product"], "component_name": u["component_name"], "category_id": u["category_id"],
             "offer_id": u["offer_id"], "offer_name": offer["name"], "price_usd": offer["price_usd"],
             "field_key": field_key, "idempotency_key": u["idempotency_key"], "retry": bool(record),
+            "provider": prov.name,
         })
     if not lines:
         raise HTTPException(status_code=409, detail=skipped[-1]["reason"] if skipped else "Aucune ligne éligible.")
     report = {
-        "order_number": order["order_number"], "provider": provider.name, "player_id": order["pubg_id"],
+        "order_number": order["order_number"], "provider": first["provider"], "player_id": order["pubg_id"],
         "identity_fields": _identity_fields(order),
         "player_name": validation.player_name, "mgs_total": order["total"],
         "lines": lines, "skipped": skipped, "ready_count": len(lines),
@@ -331,16 +502,23 @@ async def _update_record(order_id: str, path, fields: dict):
         **{f"{path}.{k}": v for k, v in fields.items()}, f"{path}.updated_at": _now(), "updated_at": _now()}})
 
 
-async def _fulfill_unit(order: dict, line: dict, actor: str, provider) -> dict:
+async def _fulfill_unit(order: dict, line: dict, actor: str, provider, *, current=None) -> dict:
     """Claim atomique + création fournisseur pour UNE unité. Retry réutilise la même Idempotency-Key.
 
-    `provider` est le fournisseur résolu pour CETTE opération : il est enregistré sur l'unité et
-    utilisé pour l'appel. Aucun autre fournisseur n'est consulté, même en cas d'erreur.
+    Le FOURNISSEUR DE L'UNITÉ fait foi : s'il existe déjà un record, c'est le sien qui est
+    utilisé (et réécrit) — `provider` ne sert qu'à une unité qui n'en a pas encore. Le claim de
+    reprise FUSIONNE l'ancien record : aucun identifiant déjà obtenu (`provider_order_id`,
+    `aluu_order_id`, `provider_reference`), aucune action manuelle en cours n'est perdue, et
+    `provider` n'est jamais remplacé par la configuration actuelle du jeu.
     """
     order_id, idx, cidx, path = order["id"], line["index"], line["component_index"], line["path"]
     q = line.get("quantity_index", 0)
     unit = {"line_index": idx, "component_index": cidx, "quantity_index": q}
     existing = unit_record(order, unit)
+    if existing and _record_provider(existing) != provider.name:
+        # Reprise d'une unité créée chez un AUTRE fournisseur que la config actuelle : on ne
+        # réoriente pas, on repart de SON fournisseur.
+        provider = providers.get_provider_by_name(_record_provider(existing))
     record = {
         "provider": provider.name, "status": "creating", "provider_order_id": None, "provider_status": None,
         "line_index": idx, "component_index": cidx, "quantity_index": q, "product_name": line["product"],
@@ -353,6 +531,8 @@ async def _fulfill_unit(order: dict, line: dict, actor: str, provider) -> dict:
         "created_at": (existing or {}).get("created_at") or _now(), "updated_at": _now(),
     }
     if existing:
+        # Fusion (et non remplacement) : tout ce que l'unité a déjà obtenu survit au claim.
+        record = {**existing, **record, "provider": _record_provider(existing)}
         claim = await db.orders.update_one(
             {"id": order_id, f"{path}.provider_order_id": None, f"{path}.status": {"$in": list(RETRYABLE)}},
             {"$set": {path: record, "updated_at": _now()}})
@@ -411,7 +591,7 @@ async def _fulfill_unit(order: dict, line: dict, actor: str, provider) -> dict:
         "provider": provider.name})
     if provider.normalize_status(provider_status) in PROVIDER_ALERT_NORMALIZED:
         await audit("fzr.provider_failed", actor, order_id, {"provider_status": provider_status, "line": idx, "component": cidx})
-    await _sync_mgs_status(order_id, actor)
+    await _sync_mgs_status(order_id, actor, current=current)
     updated = await db.orders.find_one({"id": order_id}, PUBLIC)
     return unit_record(updated, unit)
 
@@ -421,16 +601,28 @@ async def fulfill_order(order_id: str, actor: str) -> dict:
     order = await db.orders.find_one({"id": order_id}, PUBLIC)
     if not order:
         raise HTTPException(status_code=404, detail="Commande introuvable")
-    # FOURNISSEUR résolu UNE fois : préflight et création utilisent la même instance.
-    provider = await providers.provider_for_game(order.get("game_id"))
-    report = await preflight(order_id, provider=provider)
-    all_units, _ = await _all_units(order, provider=provider)
+    # Configuration ACTUELLE résolue UNE fois (paresseusement) : préflight et liste d'unités la
+    # partagent. Elle ne concerne QUE les unités encore sans record — chaque unité déjà créée
+    # garde le fournisseur enregistré sur elle (voir `_units_for_line`).
+    current = _CurrentProvider(order.get("game_id"))
+    report = await preflight(order_id, current=current)
+    all_units, _ = await _all_units(order, current=current)
     legacy_single = _is_legacy_single(order, all_units)
+    instances: dict[str, object] = {}
+
+    def instance(name: str):
+        prov = instances.get(name)
+        if prov is None:
+            prov = instances[name] = providers.get_provider_by_name(name)
+        return prov
+
     results = []
     for line in report["lines"]:
         line = {**line, "player_name": report.get("player_name")}
         try:
-            record = await _fulfill_unit(order, line, actor, provider)
+            # FOURNISSEUR DE LA LIGNE (celui de son unité), jamais la config du jeu.
+            record = await _fulfill_unit(order, line, actor, instance(line["provider"]),
+                                         current=current)
             results.append({"index": line["index"], "component_index": line["component_index"],
                             "product": line["product"], "component_name": line.get("component_name"),
                             "ok": True, "fazercards": record})
@@ -450,7 +642,8 @@ async def refresh_status(order_id: str, actor: str) -> dict:
     order = await db.orders.find_one({"id": order_id}, PUBLIC)
     if not order:
         raise HTTPException(status_code=404, detail="Aucune commande fournisseur pour cette commande.")
-    units, _ = await _all_units(order)
+    current = _CurrentProvider(order.get("game_id"))
+    units, _ = await _all_units(order, current=current)
     targets = [(u, unit_record(order, u)) for u in units]
     targets = [(u, r) for u, r in targets if r and r.get("provider_order_id")
                and not r.get("polling_stopped")]
@@ -487,7 +680,7 @@ async def refresh_status(order_id: str, actor: str) -> dict:
         # Aucune unité n'a pu être rafraîchie : erreur explicite, jamais un statut périmé muet.
         raise HTTPException(status_code=502,
                             detail=f"Rafraîchissement impossible pour {len(targets)} unité(s) : {failures[0]['error']}")
-    await _sync_mgs_status(order_id, actor)
+    await _sync_mgs_status(order_id, actor, current=current)
     updated = await db.orders.find_one({"id": order_id}, PUBLIC)
     if _is_legacy_single(updated, units):
         return updated["fazercards"]
@@ -498,12 +691,12 @@ async def refresh_status(order_id: str, actor: str) -> dict:
     return result
 
 
-async def _sync_mgs_status(order_id: str, actor: str):
+async def _sync_mgs_status(order_id: str, actor: str, *, current=None):
     """paid → delivered UNIQUEMENT quand TOUTES les unités (composants inclus) sont completed fournisseur."""
     order = await db.orders.find_one({"id": order_id}, PUBLIC)
     if not order or order.get("status") != "paid":
         return
-    units, skipped = await _all_units(order)
+    units, skipped = await _all_units(order, current=current)
     if not units or skipped:
         return
     instances: dict = {}
@@ -561,8 +754,14 @@ async def _apply_status_event(order: dict, unit: dict, provider_name: str, statu
     await _sync_mgs_status(order["id"], actor)
 
 
-async def apply_webhook_event(event: dict) -> dict:
-    """order.created / order.status_changed → synchronise l'unité concernée. Dédupliqué par event_id."""
+async def apply_webhook_event(event: dict, *, provider_name: str | None = None) -> dict:
+    """order.created / order.status_changed → synchronise l'unité concernée. Dédupliqué par event_id.
+
+    `provider_name` restreint la recherche d'unité au fournisseur qui a ÉMIS l'événement : un
+    identifiant est propre à un fournisseur, et deux fournisseurs peuvent en principe en
+    partager un. La route FazerCards passe `"fazercards"` ; la route ALUU passera `"aluu"`
+    (lot 5). Absent = pas de filtre (compatibilité des appelants existants).
+    """
     data = event.get("data") or {}
     provider_order_id = data.get("order_id")
     if not provider_order_id:
@@ -580,14 +779,19 @@ async def apply_webhook_event(event: dict) -> dict:
     if not order:
         return {"ok": True, "ignored": True}
     units, _ = await _all_units(order)
-    target = next((u for u in units if _unit_matches(unit_record(order, u), provider_order_id)), None)
+    candidates = [(u, unit_record(order, u)) for u in units]
+    if provider_name:
+        # Seules les unités DU FOURNISSEUR de l'événement peuvent répondre à son identifiant.
+        wanted = provider_name.strip().lower()
+        candidates = [(u, r) for u, r in candidates if r and _record_provider(r) == wanted]
+    target = next((u for u, r in candidates if _unit_matches(r, provider_order_id)), None)
     if target is None:
         return {"ok": True, "ignored": True}
     if event.get("event") == "order.status_changed" and data.get("status"):
         provider_status = str(data["status"])
-        provider_name = _record_provider(unit_record(order, target))
-        await _apply_status_event(order, target, provider_name, provider_status, "webhook:fazercards")
-        await audit("fzr.webhook_status", provider_name, order["id"],
+        unit_provider = _record_provider(unit_record(order, target))
+        await _apply_status_event(order, target, unit_provider, provider_status, f"webhook:{unit_provider}")
+        await audit("fzr.webhook_status", unit_provider, order["id"],
                     {"provider_order_id": provider_order_id, "status": provider_status,
                      "previous_status": data.get("previous_status"), "line": target["line_index"], "component": target["component_index"]})
     return {"ok": True}

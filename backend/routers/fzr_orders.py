@@ -386,4 +386,6 @@ async def fzr_webhook(request: Request):
         raise HTTPException(status_code=400, detail="Invalid JSON")
     if not isinstance(event, dict):
         raise HTTPException(status_code=400, detail="Invalid payload")
-    return await fzr_fulfillment.apply_webhook_event(event)
+    # La route FazerCards ne peut concerner QUE des unités FazerCards : un identifiant identique
+    # enregistré sur une unité ALUU ne doit jamais être mis à jour par ce webhook.
+    return await fzr_fulfillment.apply_webhook_event(event, provider_name="fazercards")

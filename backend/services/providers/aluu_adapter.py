@@ -115,15 +115,21 @@ def _mgs_code(code: str | None) -> str | None:
     return text if text in _MGS_ERROR_CODES else None
 
 
-def _read_config(doc: dict | None, *, require_endpoint: bool) -> dict | None:
+def _read_config(doc: dict | None, *, require_endpoint: bool,
+                 require_provider: bool = True) -> dict | None:
     """Lit la configuration ALUU d'un document `games` fourni. `None` = inutilisable (fail-closed).
 
-    Aucun repli sur un champ d'un autre nom, aucune clé devinée : `provider`, `aluu_game_code`
-    et `aluu_identity_map` doivent être explicitement présents et valides.
+    Aucun repli sur un champ d'un autre nom, aucune clé devinée : `aluu_game_code` et
+    `aluu_identity_map` doivent être explicitement présents et valides.
+
+    `require_provider=False` sert UNIQUEMENT la reprise d'une unité déjà créée chez ALUU : si le
+    jeu est repassé `provider="fazercards"`, ses champs ALUU restent la seule façon de retrouver
+    le code jeu et la table d'identité de la commande en vol. La résolution d'un NOUVEAU jeu
+    garde `require_provider=True` (aucun jeu n'est présumé ALUU).
     """
     if not isinstance(doc, Mapping):
         return None
-    if str(doc.get("provider") or "").strip().lower() != "aluu":
+    if require_provider and str(doc.get("provider") or "").strip().lower() != "aluu":
         return None
     game_code = str(doc.get("aluu_game_code") or "").strip()
     mapping = doc.get("aluu_identity_map")
@@ -199,17 +205,19 @@ class AluuProvider(Provider):
         return [doc for doc in data or [] if isinstance(doc, Mapping)]
 
     async def _config_for_game(self, game_id: str, *, require_endpoint: bool) -> dict | None:
+        """Configuration du jeu. Une unité ALUU déjà créée reste reprise après une bascule."""
         for doc in await self._load_configs():
             if str(doc.get("id") or "").strip() != game_id:
                 continue
-            return _read_config(doc, require_endpoint=require_endpoint)
+            return _read_config(doc, require_endpoint=require_endpoint, require_provider=False)
         return None
 
     async def _config_for_code(self, game_code: str) -> dict | None:
+        """Configuration retrouvée par CODE JEU (cible enregistrée sur l'unité ALUU)."""
         for doc in await self._load_configs():
             if str(doc.get("aluu_game_code") or "").strip() != game_code:
                 continue
-            return _read_config(doc, require_endpoint=False)
+            return _read_config(doc, require_endpoint=False, require_provider=False)
         return None
 
     async def _authorized(self) -> set[str]:
@@ -351,18 +359,37 @@ class AluuProvider(Provider):
             "name": pack.get("name") or pack["denom"],
             "price_usd": pack.get("price_usd"),
             "stock_status": pack.get("stock_status"),
+            # Exigences PAR PACK : un pack qui n'exige pas `serverid` ne doit pas être bloqué
+            # (ni recevoir un champ vide) parce qu'un AUTRE pack du même jeu l'exige.
+            "requires_server_id": bool(pack.get("requires_server_id")),
+            "requires_char_name": bool(pack.get("requires_char_name")),
+            "fields": self._offer_fields(pack),
         } for pack in packs]
         return {"category_id": code, "name": None, "note": None, "offers": offers,
                 "fields": self._required_fields(packs)}
 
     @staticmethod
-    def _required_fields(packs: list[dict]) -> list[dict]:
-        """Champs du corps /create réellement exigés par les packs du jeu (doc « POST /create »)."""
+    def _offer_fields(pack: dict) -> list[dict]:
+        """Champs du corps `/create` exigés par UN pack (doc « POST /create »)."""
         keys = ["userid"]  # toujours obligatoire
-        if any(pack.get("requires_server_id") for pack in packs):
+        if pack.get("requires_server_id"):
             keys.append("serverid")
-        if any(pack.get("requires_char_name") for pack in packs):
+        if pack.get("requires_char_name"):
             keys.append("charname")
+        return [{"key": key, "label": _FIELD_LABELS[key], "type": "string"} for key in keys]
+
+    @staticmethod
+    def _required_fields(packs: list[dict]) -> list[dict]:
+        """Agrégat des champs exigés par les packs du jeu (compatibilité des appelants existants).
+
+        Le PRÉFLIGHT ne doit PAS s'en servir pour décider d'un envoi : il lit `offers[].fields`
+        de l'offre choisie. Cet agrégat ne sert qu'à l'affichage/au diagnostic du jeu.
+        """
+        keys: list[str] = ["userid"]  # toujours obligatoire, même sans pack connu
+        for pack in packs:
+            for field in AluuProvider._offer_fields(pack):
+                if field["key"] not in keys:
+                    keys.append(field["key"])
         return [{"key": key, "label": _FIELD_LABELS[key], "type": "string"} for key in keys]
 
     # ------------------------------------------------------------------ commandes

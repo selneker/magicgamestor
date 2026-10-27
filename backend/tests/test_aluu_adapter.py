@@ -296,7 +296,10 @@ def test_get_offers_normalizes_packs_and_required_fields(monkeypatch):
     assert result["category_id"] == "mlbb"
     assert [o["offer_id"] for o in result["offers"]] == ["86", "172"]
     assert result["offers"][0] == {"offer_id": "86", "name": "86 Diamonds",
-                                   "price_usd": 1.53, "stock_status": "in_stock"}
+                                   "price_usd": 1.53, "stock_status": "in_stock",
+                                   "requires_server_id": True, "requires_char_name": False,
+                                   "fields": [{"key": "userid", "label": "Player ID", "type": "string"},
+                                              {"key": "serverid", "label": "Server / zone ID", "type": "string"}]}
     assert [f["key"] for f in result["fields"]] == ["userid", "serverid"]
 
 
