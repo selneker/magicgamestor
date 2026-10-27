@@ -155,9 +155,25 @@ async def validate_identity(body: IdentityValidateIn, request: Request):
 
 @router.post("/fazercards/pubg/validate-id")
 async def validate_pubg_id(body: PubgValidateIn, request: Request):
-    """Compat historique (PUBG Mobile). Délègue au même chemin que la validation générique."""
+    """Compat historique (PUBG Mobile). Délègue au même chemin que la validation générique.
+
+    Le FOURNISSEUR est résolu par jeu (`providers.provider_for_game`) : `pubg-mobile` reste
+    FazerCards tant que son document `games` ne déclare pas `provider: "aluu"`, et bascule alors
+    sur ALUU — sans aucun repli possible vers FazerCards, même en cas d'erreur.
+
+    FORMAT DE RÉPONSE : strictement celui d'avant, pour les deux fournisseurs (`valid`,
+    `message`, `player_name`, `region` ; en erreur un simple `detail`). Aucun `code` ni `game_id`
+    n'est ajouté ici : `PubgIdVerify` ne lit que ces champs et le statut HTTP.
+    """
     check(f"fzr_validate:ip:{client_ip(request)}", setting("FZR_VALIDATE_PER_10MIN_PER_IP", 30), 600)
-    result = await providers.get_provider("pubg-mobile").validate_identity("pubg-mobile", {"player_id": body.player_id})
+    try:
+        provider = await providers.provider_for_game("pubg-mobile")
+        result = await provider.validate_identity("pubg-mobile", {"player_id": body.player_id})
+    except providers.ProviderError as exc:
+        # Erreurs normalisées (ALUU) : même contrat HTTP qu'aujourd'hui — un `detail` seul, sans
+        # code interne ni `game_id`. Les erreurs FazerCards sont des
+        # `IdentityValidationHTTPException` (HTTPException), elles traversent ce bloc inchangées.
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from None
     if not result.valid:
         return {"valid": False, "message": "ID PUBG Mobile invalide"}
     return {"valid": True, "player_name": result.player_name, "region": result.region}

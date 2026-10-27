@@ -19,6 +19,7 @@ Règles :
 L'import des adapters est différé à l'appel pour éviter les cycles d'import
 (`services.fazercards` importe `services.providers.errors`).
 """
+import logging
 import time
 from collections.abc import Awaitable, Callable, Mapping
 
@@ -32,6 +33,8 @@ from services.providers.errors import (ProviderError, ProviderInsufficientBalanc
 GAME_PROVIDER: dict[str, str] = {"pubg-mobile": "fazercards", "free-fire": "fazercards"}
 DEFAULT_PROVIDER = "fazercards"
 SUPPORTED_PROVIDERS = ("fazercards", "aluu")
+
+logger = logging.getLogger(__name__)
 
 # Seuls champs nécessaires à la résolution : aucun champ d'identité joueur n'est chargé.
 GAME_PROJECTION = {"_id": 0, "id": 1, "provider": 1, "aluu_game_code": 1,
@@ -161,6 +164,12 @@ async def provider_for_game(game_id: str | None, *, games=None) -> Provider:
 
     collection = games if games is not None else _games_collection()
     doc = await collection.find_one({"id": gid}, GAME_PROJECTION)
+    if doc is None:
+        # Document absent = défaut historique, jamais une supposition ALUU. On le trace une fois
+        # par lecture (donc au plus une fois par TTL de cache), sans aucun champ joueur.
+        logger.warning(
+            "providers: aucun document games pour le jeu %s — défaut %s appliqué "
+            "(comportement historique)", gid, DEFAULT_PROVIDER)
     name = _provider_name_for_document(doc)
     _cache_put(gid, name)
     return _provider_instance(name, gid, games)

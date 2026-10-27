@@ -379,3 +379,120 @@ def test_router_fazercards_game_is_unchanged(make_client, monkeypatch):
                                "game_id": "free-fire"}
     assert captured["game_id"] == "free-fire"
     assert captured["args"] == ("free-fire", {"player_id": "123456789"})
+
+
+# ------------------------------------------------------------ route PUBG historique (compat)
+
+LEGACY = "/fazercards/pubg/validate-id"
+
+
+def test_legacy_pubg_route_fazercards_is_unchanged(make_client, monkeypatch):
+    """Jeu sans `provider` : chemin FazerCards et corps de réponse identiques à avant."""
+    calls = []
+
+    async def fake_validate(fields, game_id=None):
+        calls.append((fields, game_id))
+        return {"valid": True, "player_name": "FZRName", "region": "Asia"}
+
+    monkeypatch.setattr(fzr, "validate_identity", fake_validate)
+    client, _ = make_client([{"id": "pubg-mobile"}])
+
+    response = client.post(LEGACY, json={"player_id": PLAYER_ID})
+
+    assert response.status_code == 200
+    assert response.json() == {"valid": True, "player_name": "FZRName", "region": "Asia"}
+    assert calls == [({"player_id": PLAYER_ID}, "pubg-mobile")]
+
+
+def test_legacy_pubg_route_fazercards_invalid_is_unchanged(make_client, monkeypatch):
+    async def fake_validate(fields, game_id=None):
+        return {"valid": False}
+
+    monkeypatch.setattr(fzr, "validate_identity", fake_validate)
+    client, _ = make_client([{"id": "pubg-mobile"}])
+
+    response = client.post(LEGACY, json={"player_id": PLAYER_ID})
+
+    assert response.status_code == 200
+    assert response.json() == {"valid": False, "message": "ID PUBG Mobile invalide"}
+
+
+def test_legacy_pubg_route_fazercards_error_keeps_the_plain_detail(make_client, monkeypatch):
+    """Erreur FazerCards : même corps qu'avant (un `detail` seul, aucun `code`)."""
+    detail = "Vérification d'ID indisponible."
+
+    async def fake_validate(fields, game_id=None):
+        raise fzr.IdentityValidationHTTPException(
+            status_code=503, detail=detail, code="provider_unavailable")
+
+    monkeypatch.setattr(fzr, "validate_identity", fake_validate)
+    client, _ = make_client([{"id": "pubg-mobile"}])
+
+    response = client.post(LEGACY, json={"player_id": PLAYER_ID})
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": detail}
+
+
+def test_legacy_pubg_route_aluu_valid_has_the_same_body_shape(make_client, monkeypatch):
+    mock_transport(monkeypatch, lambda req: httpx.Response(
+        200, json={"valid": "valid", "username": "PlayerName"}))
+    client, _ = make_client([ALUU_GAME])
+
+    response = client.post(LEGACY, json={"player_id": PLAYER_ID})
+
+    assert response.status_code == 200
+    assert response.json() == {"valid": True, "player_name": "PlayerName", "region": None}
+
+
+def test_legacy_pubg_route_aluu_invalid_keeps_the_historical_message(make_client, monkeypatch):
+    mock_transport(monkeypatch, lambda req: httpx.Response(
+        200, json={"valid": "invalid", "name": "na", "region": "na"}))
+    client, _ = make_client([ALUU_GAME])
+
+    response = client.post(LEGACY, json={"player_id": PLAYER_ID})
+
+    assert response.status_code == 200
+    assert response.json() == {"valid": False, "message": "ID PUBG Mobile invalide"}
+
+
+def test_legacy_pubg_route_aluu_error_is_a_plain_detail_and_never_falls_back(
+        make_client, monkeypatch):
+    """403 ALUU → 502 avec un `detail` seul ; FazerCards n'est JAMAIS appelé."""
+    async def forbidden(*_args, **_kwargs):  # pragma: no cover - ne doit jamais être appelé
+        raise AssertionError("repli FazerCards interdit pour un jeu configuré ALUU")
+
+    monkeypatch.setattr(fzr, "validate_identity", forbidden)
+    mock_transport(monkeypatch, lambda req: httpx.Response(
+        403, json={"success": False, "code": "IP_NOT_ALLOWED"}))
+    client, _ = make_client([ALUU_GAME])
+
+    response = client.post(LEGACY, json={"player_id": PLAYER_ID})
+
+    data = response.json()
+    assert response.status_code == 502
+    assert data.keys() == {"detail"}          # ni `code`, ni `game_id` : contrat historique
+    assert data["detail"]
+    assert "aluu" not in str(data).lower()
+
+
+# --------------------------------------------------------------------- journal (doc absent)
+
+def test_missing_game_document_logs_a_warning_and_keeps_fazercards(caplog):
+    with caplog.at_level("WARNING", logger="services.providers"):
+        provider = run(providers.provider_for_game("jeu-inexistant", games=FakeCollection([])))
+
+    messages = [record.getMessage() for record in caplog.records
+                if record.name == "services.providers"]
+    assert provider.name == "fazercards"
+    assert any("jeu-inexistant" in message and "fazercards" in message for message in messages)
+    assert all(PLAYER_ID not in message for message in messages)
+
+
+def test_existing_fazercards_document_logs_no_warning(caplog):
+    """Document présent sans `provider` = cas NORMAL : aucune alerte."""
+    with caplog.at_level("WARNING", logger="services.providers"):
+        provider = run(providers.provider_for_game("free-fire", games=FakeCollection([FAZER_GAME])))
+
+    assert provider.name == "fazercards"
+    assert [record for record in caplog.records if record.name == "services.providers"] == []
