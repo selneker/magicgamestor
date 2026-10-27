@@ -312,6 +312,42 @@ def test_get_offers_requires_a_category():
         run(provider().get_offers(""))
 
 
+# --------------------------------------------------------------------------- champs requis
+
+def test_missing_order_fields_covers_the_declared_identity():
+    """`characterId` (Name Check) couvre `userid` (corps `/create`)."""
+    assert run(provider().missing_order_fields("pubg-mobile", {"player_id": PLAYER_ID},
+                                              ["userid"])) == []
+
+
+def test_missing_order_fields_reports_serverid_when_no_field_covers_it():
+    assert run(provider().missing_order_fields("pubg-mobile", {"player_id": PLAYER_ID},
+                                              ["userid", "serverid"])) == ["serverid"]
+
+
+def test_missing_order_fields_accepts_a_declared_server_field():
+    fields = {"player_id": PLAYER_ID, "zone_id": ZONE_ID}
+    assert run(provider().missing_order_fields("mobile-legends", fields,
+                                              ["userid", "serverid"])) == []
+
+
+def test_missing_order_fields_treats_a_blank_value_as_absent():
+    assert run(provider().missing_order_fields("mobile-legends",
+                                              {"player_id": PLAYER_ID, "zone_id": "   "},
+                                              ["userid", "serverid"])) == ["serverid"]
+
+
+def test_missing_order_fields_without_required_param_never_reads_configuration():
+    """Aucun appel réseau et aucune configuration nécessaire quand rien n'est exigé."""
+    assert run(provider(games=[]).missing_order_fields("inconnu", {}, [])) == []
+
+
+def test_missing_order_fields_unknown_game_is_fail_closed():
+    """Configuration absente = rien n'est couvert : les paramètres requis restent requis."""
+    assert run(provider(games=[]).missing_order_fields("inconnu", {"player_id": PLAYER_ID},
+                                                      ["userid", "serverid"])) == ["userid", "serverid"]
+
+
 # --------------------------------------------------------------------------- catalogue
 
 def test_get_categories_is_restricted_to_configured_aluu_games(monkeypatch):

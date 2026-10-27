@@ -296,6 +296,27 @@ class AluuProvider(Provider):
                 status_code=502, code="provider_unavailable")
         return IdentityValidation(valid=False, player_name=None, region=None, raw=result)
 
+    async def missing_order_fields(self, game_id: str, fields: dict,
+                                   required_params: Iterable[str]) -> list[str]:
+        """Paramètres du corps `/create` exigés par les packs mais couverts par AUCUN champ fourni.
+
+        Utilisé par le préflight MGS : un pack qui exige `serverid` ne doit jamais être envoyé
+        avec une identité qui ne le porte pas. Aucun appel réseau : les paramètres requis
+        viennent du catalogue déjà chargé (`offers["fields"]`).
+        """
+        required = [str(param).strip() for param in required_params or [] if str(param or "").strip()]
+        if not required:
+            return []
+        config = await self._config_for_game(game_id, require_endpoint=False)
+        if config is None:
+            return required  # configuration absente = rien n'est couvert (fail-closed)
+        covered: set[str] = set()
+        for mgs_key, aluu_param in config["identity_map"].items():
+            value = (fields or {}).get(mgs_key)
+            if isinstance(value, str) and value.strip():
+                covered.add(_ORDER_FIELD_ALIASES.get(aluu_param, aluu_param))
+        return [param for param in required if param not in covered]
+
     # ------------------------------------------------------------------ catalogue
 
     async def get_categories(self) -> list[dict]:
