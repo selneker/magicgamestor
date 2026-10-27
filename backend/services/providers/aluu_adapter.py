@@ -69,6 +69,16 @@ _CHECK_PARAMS: dict[str, frozenset[str]] = {
     "bgmi": frozenset({"gameCode", "id"}),
 }
 
+
+def allowed_check_params(endpoint: str) -> frozenset[str] | None:
+    """Paramètres Name Check autorisés pour un endpoint (`None` = endpoint inconnu).
+
+    Accesseur public de la liste blanche fermée ci-dessus : la configuration admin et l'appel
+    réel doivent refuser EXACTEMENT les mêmes paramètres.
+    """
+    return _CHECK_PARAMS.get(str(endpoint or "").strip())
+
+
 # Alias documenté `paramètre Name Check -> champ du corps /create`.
 # Les deux espaces de noms sont distincts chez ALUU : Name Check parle `characterId` /
 # `server_code`, la création parle `userid` / `serverid` / `charname`.

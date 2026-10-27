@@ -13,7 +13,7 @@ from core.audit import audit
 from core.db import db
 from core.games import DEFAULT_GAME_ID, game_provider
 from core.security import require_admin, require_permission, require_super_admin
-from services import fazercards, fzr_fulfillment, fzr_mapping, providers
+from services import aluu_mapping, fazercards, fzr_fulfillment, fzr_mapping, providers
 
 router = APIRouter(tags=["fazercards-fulfillment"])
 logger = logging.getLogger("mgs.fzr")
@@ -276,7 +276,15 @@ async def fzr_coverage(game: str | None = None):
 
     `?game=` restreint le catalogue ET les références `used_by` à ce jeu : une offre utilisée
     par un produit d'un autre jeu n'apparaît jamais comme « utilisée » ici (pas de référence croisée).
+
+    Un jeu ALUU affiche le catalogue ALUU et les références `aluu_mapping` — JAMAIS le catalogue
+    FazerCards : l'écran doit dire la vérité sur ce qui sera réellement livré.
     """
+    if game:
+        resolved = await _game_providers({game})
+        if resolved.get(game) == "aluu":
+            return await _aluu_coverage(game)
+
     categories = await fazercards.catalog_for_game(game)
     used = {}
     async for p in db.products.find({"fazercards_mapping": {"$exists": True}, **fzr_mapping.game_product_query(game)},
@@ -291,7 +299,46 @@ async def fzr_coverage(game: str | None = None):
             offers.append({"category_id": cat["category_id"], "offer_id": o["offer_id"], "name": o["name"],
                            "price_usd": o["price_usd"], "kind": fzr_mapping.classify_offer(o, game),
                            "used_by": used.get((cat["category_id"], o["offer_id"]), [])})
-    return {"offers": offers}
+    return {"offers": offers, "provider": "fazercards", "catalog_unavailable": False}
+
+
+async def _aluu_coverage(game: str) -> dict:
+    """Couverture d'un jeu ALUU : packs ALUU live + produits liés par `aluu_mapping`.
+
+    Aucun repli sur FazerCards : `fazercards_mapping` n'est ni lu ni affiché pour un jeu ALUU.
+    Catalogue indisponible = liste vide + `catalog_unavailable: true` (jamais des offres inventées).
+    """
+    doc = await db.games.find_one({"id": game}, {"_id": 0, "id": 1, "aluu_game_code": 1})
+    code = str((doc or {}).get("aluu_game_code") or "").strip()
+    if not code:
+        return {"offers": [], "provider": "aluu", "catalog_unavailable": True}
+    try:
+        packs = await aluu_mapping.live_packs(code)
+    except providers.ProviderError as exc:
+        logger.warning("coverage ALUU %s: catalogue indisponible code=%s", game, exc.code)
+        return {"offers": [], "provider": "aluu", "catalog_unavailable": True}
+
+    used: dict[str, list[dict]] = {}
+    async for p in db.products.find({"aluu_mapping": {"$exists": True},
+                                     **fzr_mapping.game_product_query(game)},
+                                    {"_id": 0, "name": 1, "slug": 1, "aluu_mapping": 1}):
+        mapping = p["aluu_mapping"]
+        if str(mapping.get("game_code") or "") != code:
+            continue
+        denom = str(mapping.get("denom") or "")
+        if denom:
+            used.setdefault(denom, []).append({"name": p.get("name"), "slug": p.get("slug")})
+
+    offers = []
+    for pack in packs:
+        name = pack.get("name") or pack.get("offer_id")
+        offers.append({
+            "category_id": code, "offer_id": pack["offer_id"], "name": name,
+            "price_usd": pack.get("price_usd"),
+            "kind": fzr_mapping.classify_offer({"offer_id": pack["offer_id"], "name": name}, game),
+            "used_by": used.get(pack["offer_id"], []),
+        })
+    return {"offers": offers, "provider": "aluu", "catalog_unavailable": False}
 
 
 # ---------- Audit générique des mappings UC (direct / composition exacte / manquant) ----------

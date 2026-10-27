@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 
 from core.audit import audit
 from core.db import db
+from services import providers
 from services.fzr_mapping import game_product_query
 
 # Nombre AUTONOME uniquement — même règle que `fzr_mapping._OTHER_QTY` (copie assumée : ici la
@@ -28,6 +29,9 @@ MATCH_BY_DENOM, MATCH_BY_NAME = "denom", "name"
 
 PRODUCT_PROJECTION = {"_id": 0, "id": 1, "slug": 1, "name": 1, "uc_amount": 1, "price": 1,
                       "requires_mapping": 1, "aluu_mapping": 1}
+
+# Types qui ne s'apparient JAMAIS sur une quantité : ils ne portent pas de `denom` ALUU.
+NOT_APPARIABLE_TYPES = ("prime", "prime_plus", "evo")
 
 
 def _now() -> str:
@@ -71,6 +75,20 @@ def _pick(candidates: list[dict]) -> list[dict]:
     ceux trouvés par le nom (le nom peut décrire un bonus, ex. « 66 » → « 60 UC + 6 UC »)."""
     by_denom = [c for c in candidates if c["matched_by"] == MATCH_BY_DENOM]
     return by_denom or candidates
+
+
+def _match_object(pack: dict) -> dict:
+    """Cible d'un pack telle que l'écran l'affiche (jamais de champ interne)."""
+    return {"denom": str(pack.get("offer_id") or "").strip(),
+            "offer_name": pack.get("name"),
+            "price_usd": pack.get("price_usd")}
+
+
+def _pack_by_denom(packs: list[dict] | None, denom: str) -> dict | None:
+    for pack in packs or []:
+        if str(pack.get("offer_id") or "").strip() == denom:
+            return pack
+    return None
 
 
 def current_state(mapping: dict | None, game_code: str, denom: str) -> str:
@@ -118,7 +136,10 @@ def match_products(products: list[dict], packs: list[dict], game_code: str) -> d
             items.append({**base, "match": AMBIGUOUS, "matched_by": None, "denom": None,
                           "aluu_name": None, "price_usd": None, "current": "missing",
                           "reason": "plusieurs packs ALUU pour la même quantité",
-                          "candidates": [c["offer_id"] for c in candidates]})
+                          "candidates": [c["offer_id"] for c in candidates],
+                          # Additif (lot 6) : l'écran a besoin des packs eux-mêmes, pas seulement
+                          # de leurs identifiants, pour laisser l'administrateur trancher.
+                          "candidate_packs": [_match_object(c) for c in candidates]})
             continue
         offer = candidates[0]
         items.append({**base, "match": EXACT, "matched_by": offer["matched_by"],
@@ -139,16 +160,95 @@ def match_products(products: list[dict], packs: list[dict], game_code: str) -> d
     return {"items": items, "unmatched": unmatched, "summary": summary}
 
 
+async def appariable_products(game_id: str, *, collection=None) -> list[dict]:
+    """Produits réellement appariables à un pack ALUU, pour UN jeu.
+
+    Même filtre que l'aperçu : une quantité est nécessaire (`uc_amount > 0`) et les types
+    Prime / Prime+ / pack évolutif en sont exclus (mapping manuel, aucune correspondance exacte).
+    C'est l'ensemble UNIQUE des deux tables de l'écran (courante et proposition).
+    """
+    return await (collection or db.products).find(
+        {"uc_amount": {"$gt": 0}, "type": {"$nin": list(NOT_APPARIABLE_TYPES)},
+         **game_product_query(game_id)}, PRODUCT_PROJECTION).to_list(1000)
+
+
 async def preview(game_id: str, game_code: str, packs: list[dict], *, collection=None) -> dict:
     """Dry-run LECTURE SEULE des produits à quantité d'un jeu contre les packs ALUU fournis.
 
     `packs` = `offers` renvoyés par `AluuProvider.get_offers` (aucun appel réseau ici).
     """
-    products = await (collection or db.products).find(
-        {"uc_amount": {"$gt": 0}, "type": {"$nin": ["prime", "prime_plus", "evo"]},
-         **game_product_query(game_id)}, PRODUCT_PROJECTION).to_list(1000)
+    products = await appariable_products(game_id, collection=collection)
     return {"game_id": game_id, "aluu_game_code": game_code,
             **match_products(products, packs, game_code)}
+
+
+async def live_packs(game_code: str) -> list[dict]:
+    """Packs ALUU LIVE d'un jeu, normalisés pour l'appariement (`offer_id` = `denom`).
+
+    Passe par l'adapter (source unique de normalisation du catalogue) : aucun autre module ne
+    doit reconstruire `offer_id` à partir de `denom`. Lève `ProviderError` si le fournisseur
+    est indisponible — l'appelant décide alors de ne RIEN écrire.
+    """
+    provider = providers.get_provider_by_name("aluu")
+    offers = await provider.get_offers(game_code)
+    return list(offers.get("offers") or [])
+
+
+# --------------------------------------------------------------------------- lignes d'écran (lot 6)
+
+def current_row(product: dict, packs: list[dict] | None, game_code: str) -> dict:
+    """Ligne de la table `products` : la VÉRITÉ courante du produit, jamais une proposition.
+
+    `packs` = catalogue ALUU live, ou `None` quand il est indisponible. Un `denom` ne peut être
+    déclaré `stale` que si l'on sait qu'il a disparu : sans catalogue live, on ne l'affirme pas.
+    """
+    mapping = product.get("aluu_mapping") or None
+    denom = str((mapping or {}).get("denom") or "").strip()
+    code = str((mapping or {}).get("game_code") or "").strip()
+    row = {"product_id": product.get("id"), "name": product.get("name"),
+           "price": product.get("price"), "state": MISSING, "matched_by": None, "match": None}
+    if not mapping or not denom or not code:
+        return row
+    pack = _pack_by_denom(packs, denom) if packs is not None else None
+    match = {"denom": denom, "offer_name": mapping.get("offer_name"),
+             "price_usd": mapping.get("price_usd_at_link")}
+    if mapping.get("confirmed") is False:
+        return {**row, "state": "unconfirmed", "matched_by": _matched_by(pack), "match": match}
+    if code != game_code or (packs is not None and pack is None):
+        return {**row, "state": "stale"}
+    return {**row, "state": "mapped", "matched_by": _matched_by(pack), "match": match}
+
+
+def _matched_by(pack: dict | None) -> str | None:
+    """Comment un pack a été trouvé : `denom` si son identifiant EST la quantité, sinon `name`."""
+    if pack is None:
+        return None
+    return amount_of(pack)[1]
+
+
+def current_rows(products: list[dict], packs: list[dict] | None, game_code: str) -> list[dict]:
+    return [current_row(product, packs, game_code) for product in products]
+
+
+def proposal_rows(products: list[dict], packs: list[dict], game_code: str) -> list[dict]:
+    """Lignes de la table `preview` : ce qui SERAIT écrit, jamais `stale`.
+
+    L'ordre des clés suit le contrat d'écran (comparé caractère par caractère par les tests).
+    """
+    rows = []
+    for item in match_products(products, packs, game_code)["items"]:
+        state = "proposed" if item["match"] == EXACT else item["match"]
+        row = {"product_id": item["product_id"], "state": state,
+               "matched_by": item.get("matched_by"), "match": None,
+               "selected": state == "proposed"}
+        if state == "proposed":
+            # `item["name"]` est le nom du PRODUIT : la cible d'appariement vient de `aluu_name`.
+            row["match"] = {"denom": item["denom"], "offer_name": item.get("aluu_name"),
+                            "price_usd": item.get("price_usd")}
+        elif state == "ambiguous":
+            row["candidates"] = item.get("candidate_packs") or []
+        rows.append(row)
+    return rows
 
 
 def _mapping_doc(item: dict, game_code: str, actor: str | None) -> dict:
@@ -212,5 +312,6 @@ async def apply(preview_doc: dict, product_ids: list[str], *, actor: str | None 
             "skipped_count": len(skipped)}
 
 
-__all__ = ["AMBIGUOUS", "EXACT", "MISSING", "amount_of", "apply", "current_state",
-           "mapping_ok_aluu", "match_products", "preview"]
+__all__ = ["AMBIGUOUS", "EXACT", "MISSING", "amount_of", "appariable_products", "apply",
+           "current_row", "current_rows", "current_state", "live_packs", "mapping_ok_aluu",
+           "match_products", "preview", "proposal_rows"]

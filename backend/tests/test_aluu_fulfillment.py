@@ -106,6 +106,14 @@ def _matches(doc, query) -> bool:
                 if value is _MISSING or value not in expected["$in"]:
                     return False
                 continue
+            if "$gt" in expected:  # Mongo : un champ absent ne satisfait pas un comparateur
+                if value is _MISSING or value is None or not value > expected["$gt"]:
+                    return False
+                continue
+            if "$nin" in expected:  # Mongo : un champ absent satisfait $nin
+                if value is not _MISSING and value in expected["$nin"]:
+                    return False
+                continue
             raise AssertionError(f"opérateur de requête non géré : {expected}")
         if expected is None:  # Mongo : `{champ: None}` matche aussi l'absence du champ
             if value is not _MISSING and value is not None:

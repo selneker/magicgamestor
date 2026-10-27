@@ -5,17 +5,21 @@ Un document `games` peut porter `provider`, `aluu_game_code`, `aluu_check_endpoi
 jeu, quel endpoint de vérification, quelle table d'identité). Ils restent ADMIN.
 
 Tests PURS : aucun Mongo, aucun réseau. La collection `games` est un double qui applique
-réellement les projections d'EXCLUSION de `PUBLIC_GAME` (le point faible des autres faux db du
-dépôt, qui ignorent la projection et masqueraient justement une fuite).
+réellement les projections de `PUBLIC_GAME` et du routeur admin (le point faible des autres
+faux db du dépôt, qui ignorent la projection et masqueraient justement une fuite).
 """
+import asyncio
 from copy import deepcopy
+from types import SimpleNamespace
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from core.security import get_current_user
+from routers import aluu_admin
 from routers import games as games_router
+from services import aluu, providers
 
 GAME_ID = "free-fire"
 IDENTITY_FIELDS = [
@@ -65,10 +69,22 @@ def _matches(doc: dict, query: dict) -> bool:
 
 
 def _project(doc: dict, projection: dict | None) -> dict:
-    """Projection Mongo d'EXCLUSION (`{champ: 0}`) — le seul type utilisé par PUBLIC_GAME."""
+    """Projection Mongo réelle : inclusion (`{champ: 1}`) ou exclusion (`{champ: 0}`).
+
+    `PUBLIC_GAME` est une projection d'EXCLUSION ; `GAME_DOC` du routeur admin est une
+    projection d'INCLUSION. Les deux doivent être appliquées pour que la mesure ait un sens.
+    """
+    if not projection:
+        return deepcopy(doc)
+    included = [key for key, flag in projection.items() if flag and key != "_id"]
+    if included:
+        out = {key: deepcopy(doc[key]) for key in included if key in doc}
+        if projection.get("_id", 1) and "_id" in doc:
+            out["_id"] = deepcopy(doc["_id"])
+        return out
     out = deepcopy(doc)
-    for key, flag in (projection or {}).items():
-        if flag == 0:
+    for key, flag in projection.items():
+        if not flag:
             out.pop(key, None)
     return out
 
@@ -90,6 +106,15 @@ class FakeCollection:
     async def insert_one(self, document):
         self.documents.append(deepcopy(document))
         return document
+
+    async def update_one(self, query, update):
+        """`$set` uniquement : c'est la seule écriture des routes admin du lot 6."""
+        for doc in self.documents:
+            if _matches(doc, query):
+                for key, value in (update.get("$set") or {}).items():
+                    doc[key] = deepcopy(value)
+                return SimpleNamespace(matched_count=1, modified_count=1)
+        return SimpleNamespace(matched_count=0, modified_count=0)
 
     async def count_documents(self, _query):
         return len(self.documents)
@@ -170,3 +195,49 @@ def test_projection_is_an_exclusion_projection(api):
     game = client.get(f"/api/games/{GAME_ID}").json()
 
     assert "name" in game and "identity_fields" in game and "slug" in game
+
+
+# --------------------------------------------------------------------------- écritures admin
+
+def test_an_admin_write_never_makes_the_provider_configuration_public(api, monkeypatch):
+    """Les routes du lot 6 ÉCRIVENT `provider` et `aluu_*` : la projection publique doit tenir.
+
+    On écrit par les routes réelles (config ALUU puis bascule), puis on relit les routes
+    publiques : aucun des quatre champs ne doit apparaître, et le contrat de saisie du
+    checkout (`identity_fields`) reste intact.
+    """
+    client, fake = api
+
+    async def catalogue():
+        return [{"game_code": "ff-new", "name": "Free Fire"}]
+
+    async def no_audit(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(aluu, "games", catalogue)
+    monkeypatch.setattr(aluu_admin, "db", fake)
+    monkeypatch.setattr(aluu_admin, "audit", no_audit)
+    monkeypatch.setattr(providers, "invalidate_provider_cache", lambda *_a: None)
+
+    manager = {"user_id": "admin-1", "role": "admin", "permissions": ["catalog.manage"]}
+    super_admin = {"user_id": "admin-2", "role": "super_admin", "permissions": []}
+
+    written = asyncio.run(aluu_admin.put_provider_config(
+        GAME_ID, aluu_admin.ProviderConfigIn(
+            aluu_game_code="ff-new", aluu_check_endpoint="mlbb-check",
+            aluu_identity_map={"player_id": "user_id"}), manager))
+    assert not hasattr(written, "status_code")
+    switched = asyncio.run(aluu_admin.put_game_provider(
+        GAME_ID, aluu_admin.ProviderSwitchIn(provider="fazercards"), super_admin))
+    assert not hasattr(switched, "status_code")
+    assert fake.games.documents[0]["provider"] == "fazercards"
+    assert fake.games.documents[0]["aluu_identity_map"] == {"player_id": "user_id"}
+
+    one = client.get(f"/api/games/{GAME_ID}")
+    many = client.get("/api/games")
+
+    assert one.status_code == 200 and many.status_code == 200
+    _assert_no_provider_config(one.json(), where=f"GET /api/games/{GAME_ID} après écriture admin")
+    for game in many.json():
+        _assert_no_provider_config(game, where="GET /api/games après écriture admin")
+    assert [f["key"] for f in one.json()["identity_fields"]] == ["player_id"]
