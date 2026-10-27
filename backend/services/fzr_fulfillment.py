@@ -857,6 +857,11 @@ async def apply_webhook_event(event: dict, *, provider_name: str | None = None) 
     return {"ok": True}
 
 
+def _masked_identifier(value: str) -> str:
+    """Identifiant tronqué pour les journaux : jamais la valeur complète (donnée client)."""
+    return f"{value[:4]}…" if len(value) > 4 else "…"
+
+
 async def apply_provider_event(*, provider_name: str, provider_order_id: str | None,
                                status: str | None, event: str | None = None,
                                raw: dict | None = None) -> dict:
@@ -879,6 +884,7 @@ async def apply_provider_event(*, provider_name: str, provider_order_id: str | N
 
     Aucun retry, aucun polling : l'événement est appliqué une fois puis acquitté (2xx), y
     compris quand la commande est inconnue (la doc demande de ne pas compter sur un renvoi).
+    Une commande inconnue ne laisse AUCUNE trace de dédup et produit un avertissement masqué.
     """
     provider = (provider_name or "").strip().lower()
     order_key = str(provider_order_id or "").strip()
@@ -893,6 +899,10 @@ async def apply_provider_event(*, provider_name: str, provider_order_id: str | N
                                               {"provider_order_ids": order_key},
                                               {"aluu_order_id": order_key}]}, PUBLIC)
     if not order:
+        # Commande inconnue : acquittée (2xx) pour qu'ALUU ne renvoie pas, et AUCUNE dédup
+        # n'est écrite — un rejeu reste donc possible. L'identifiant est masqué dans le journal.
+        logger.warning("ALUU webhook: commande inconnue (orderid=%s, statut=%s)",
+                       _masked_identifier(order_key), raw_status)
         return {"ok": True, "ignored": True}
     target, _record = await _target_unit(order, provider, order_key)
     if target is None:

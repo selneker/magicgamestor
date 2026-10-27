@@ -17,6 +17,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import logging
 import time
 from copy import deepcopy
 
@@ -415,13 +416,18 @@ def test_a_final_status_is_never_overwritten(client):
 
 # --------------------------------------------------------------------------- 4. commande inconnue
 
-def test_unknown_order_is_acknowledged_without_retry(client):
+def test_unknown_order_is_acknowledged_without_retry(client, caplog):
+    """Commande inconnue (revue RV-001) : 2xx, aucune dédup écrite, warning masqué."""
     w = client(orders=[])
+    caplog.set_level(logging.WARNING, logger="mgs.fzr")
 
     response = w.post(w.client, body())
 
     assert response.status_code == 200
     assert response.json() == {"ok": True, "ignored": True}
+    assert w.db.provider_webhook_events.documents == []      # le rejeu reste possible
+    assert PARTNER_ID not in caplog.text                     # jamais l'identifiant complet
+    assert "MGS-…" in caplog.text
 
 
 def test_unknown_provider_order_id_on_a_known_order_is_ignored(client):
