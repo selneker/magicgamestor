@@ -73,6 +73,14 @@ async def ensure_indexes():
     await db.fzr_price_alerts.create_index([("acknowledged", 1), ("detected_at", -1)])
     await db.fzr_webhook_events.create_index("event_id", unique=True)
     await db.orders.create_index("fazercards.provider_order_id", sparse=True)
+    # ALUU : dédup des webhooks top-up sur (orderid, statut, `updated_at` fournisseur).
+    # Collection neuve et vide → l'index unique ne peut pas échouer sur des doublons existants.
+    await db.provider_webhook_events.create_index(
+        [("provider", 1), ("provider_order_id", 1), ("status", 1), ("provider_updated_at", 1)],
+        unique=True)
+    # ALUU : recherche d'une unité par l'un de ses identifiants fournisseur (jamais unique).
+    await db.orders.create_index("provider_order_ids", sparse=True)
+    await db.orders.create_index("aluu_order_id", sparse=True)
     # Binance USDT: txHash unique, one open slot per order and per (network, exact amount).
     await db.crypto_payments.create_index("id", unique=True)
     await db.crypto_payments.create_index([("order_id", 1), ("created_at", -1)])

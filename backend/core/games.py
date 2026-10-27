@@ -70,6 +70,39 @@ def _mapping_ok(mapping: dict | None) -> bool:
     return bool(mapping.get("category_id") and mapping.get("components"))
 
 
+def _mapping_ok_aluu(mapping: dict | None) -> bool:
+    """Mapping ALUU utilisable : code jeu + pack, confirmé.
+
+    Copie locale volontaire de `services.aluu_mapping.mapping_ok_aluu` (même contrainte que
+    `_mapping_ok` : `core` n'importe pas `services`).
+    """
+    if not mapping or mapping.get("confirmed") is False:
+        return False
+    return bool(str(mapping.get("game_code") or "").strip() and str(mapping.get("denom") or "").strip())
+
+
+# Copie de `services.aluu.CHECK_ENDPOINTS` (même raison : `core` n'importe pas `services`).
+ALUU_CHECK_ENDPOINTS = ("game-check", "mlbb-check", "bgmi")
+
+
+def game_provider(game: dict | None) -> str:
+    """Fournisseur effectif d'un document `games`. Document absent = FazerCards (compat).
+
+    Une valeur inconnue n'est jamais interprétée comme ALUU : seul `provider: "aluu"` exact
+    bascule le jeu, tout le reste garde le comportement historique.
+    """
+    return "aluu" if str((game or {}).get("provider") or "").strip().lower() == "aluu" else "fazercards"
+
+
+def aluu_config_ok(game: dict | None) -> bool:
+    """Configuration ALUU complète : code jeu, endpoint Name Check connu, table d'identité non vide."""
+    doc = game or {}
+    mapping = doc.get("aluu_identity_map")
+    return bool(str(doc.get("aluu_game_code") or "").strip()
+                and str(doc.get("aluu_check_endpoint") or "").strip() in ALUU_CHECK_ENDPOINTS
+                and isinstance(mapping, dict) and bool(mapping))
+
+
 async def game_has_sellable_catalog(game_id: str) -> bool:
     """Un jeu est VENDABLE s'il a au moins un produit ACTIF réellement livrable.
 
@@ -77,10 +110,21 @@ async def game_has_sellable_catalog(game_id: str) -> bool:
     exigeant un mapping fournisseur absent/non confirmé, n'est pas vendable. C'est la
     condition d'activation publique d'un jeu — un jeu sans catalogue vendable ne doit
     jamais être annoncé au client.
+
+    Le champ de mapping dépend du FOURNISSEUR du jeu (`aluu_mapping` ou `fazercards_mapping`).
+    Un jeu ALUU dont la configuration est incomplète n'est jamais vendable (fail-closed).
     """
+    game = await db.games.find_one({"id": game_id}, {"_id": 0, "id": 1, "provider": 1,
+                                                     "aluu_game_code": 1, "aluu_check_endpoint": 1,
+                                                     "aluu_identity_map": 1})
+    provider = game_provider(game)
+    if provider == "aluu" and not aluu_config_ok(game):
+        return False
+    field = "aluu_mapping" if provider == "aluu" else "fazercards_mapping"
+    mapping_ok = _mapping_ok_aluu if provider == "aluu" else _mapping_ok
     async for p in db.products.find({"game_id": game_id, "active": True},
-                                    {"_id": 0, "requires_mapping": 1, "fazercards_mapping": 1}):
-        if not p.get("requires_mapping") or _mapping_ok(p.get("fazercards_mapping")):
+                                    {"_id": 0, "requires_mapping": 1, field: 1}):
+        if not p.get("requires_mapping") or mapping_ok(p.get(field)):
             return True
     return False
 
@@ -341,36 +385,68 @@ async def check_product_type(game_id: str, type_key: str) -> dict:
 
 
 async def game_readiness(game: dict) -> dict:
-    """Explicit, data-driven checklist: a game becomes sellable only when every check is true."""
+    """Explicit, data-driven checklist: a game becomes sellable only when every check is true.
+
+    Le FOURNISSEUR du jeu décide du champ de mapping lu et des contrôles ajoutés : la branche
+    FazerCards (document sans `provider`, cas historique) produit exactement les mêmes six
+    vérifications qu'avant ; un jeu ALUU lit `aluu_mapping`, restreint `mapping_scope` à son
+    code jeu et reçoit une vérification `provider_config` supplémentaire.
+    """
     gid = game["id"]
+    provider = game_provider(game)
+    is_aluu = provider == "aluu"
+    field = "aluu_mapping" if is_aluu else "fazercards_mapping"
+    aluu_code = str(game.get("aluu_game_code") or "").strip()
     configured = game.get("fazercards_categories_configured") is True
     categories = set(game.get("fazercards_categories") or [])
     types = {t["key"] for t in product_types_for(game)}
     products = await db.products.find({"game_id": gid}, {"_id": 0, "name": 1, "type": 1, "active": 1,
-                                                          "requires_mapping": 1, "fazercards_mapping": 1}).to_list(500)
+                                                          "requires_mapping": 1, field: 1}).to_list(500)
     active = [p for p in products if p.get("active")]
-    deliverable = [p for p in active if not p.get("requires_mapping") or _mapping_ok(p.get("fazercards_mapping"))]
+    mapping_ok = _mapping_ok_aluu if is_aluu else _mapping_ok
+    deliverable = [p for p in active if not p.get("requires_mapping") or mapping_ok(p.get(field))]
     bad_types = sorted({p["name"] for p in products if p.get("type") not in types})
-    foreign = sorted({p["name"] for p in products if (p.get("fazercards_mapping") or {}).get("category_id")
-                      and configured and p["fazercards_mapping"]["category_id"] not in categories})
+    if is_aluu:
+        # Un mapping ALUU qui pointe vers un autre code jeu livre le mauvais pack : refusé.
+        foreign = sorted({p["name"] for p in products if (p.get(field) or {}).get("game_code")
+                          and aluu_code and p[field]["game_code"] != aluu_code})
+    else:
+        foreign = sorted({p["name"] for p in products if (p.get(field) or {}).get("category_id")
+                          and configured and p[field]["category_id"] not in categories})
     legacy = gid == DEFAULT_GAME_ID
+    if is_aluu:
+        categories_check = {
+            "key": "provider_categories", "ok": bool(aluu_code),
+            "detail": "Code jeu ALUU configure." if aluu_code
+            else "Aucun code jeu ALUU configure (Admin -> Fournisseur)."}
+    else:
+        categories_check = {
+            "key": "provider_categories", "ok": legacy or (configured and bool(categories)),
+            "detail": "Categories fournisseur affectees." if legacy or (configured and categories)
+            else "Aucune categorie FazerCards affectee (Admin -> Fournisseur)."}
     checks = [
         {"key": "identity", "ok": bool(identity_spec(game)),
          "detail": "Champs d'identite joueur declares." if identity_spec(game) else NO_IDENTITY_DETAIL},
         {"key": "product_types", "ok": bool(types),
          "detail": "Types de produit configures." if types else "Aucun type de produit configure pour ce jeu."},
-        {"key": "provider_categories", "ok": legacy or (configured and bool(categories)),
-         "detail": "Categories fournisseur affectees." if legacy or (configured and categories)
-         else "Aucune categorie FazerCards affectee (Admin -> Fournisseur)."},
+        categories_check,
         {"key": "catalog", "ok": bool(deliverable),
          "detail": f"{len(deliverable)} produit(s) actif(s) livrable(s)." if deliverable else NO_CATALOG_DETAIL},
         {"key": "type_compat", "ok": not bad_types,
          "detail": "Tous les produits utilisent un type du jeu." if not bad_types
          else "Type incompatible pour : " + ", ".join(bad_types[:5])},
         {"key": "mapping_scope", "ok": not foreign,
-         "detail": "Mappings limites aux categories du jeu." if not foreign
-         else "Mapping hors categories du jeu : " + ", ".join(foreign[:5])},
+         "detail": ("Mappings limites au code jeu ALUU." if is_aluu else "Mappings limites aux categories du jeu.")
+         if not foreign
+         else ("Mapping ALUU vers un autre code jeu : " if is_aluu else "Mapping hors categories du jeu : ")
+         + ", ".join(foreign[:5])},
     ]
+    if is_aluu:
+        config_ok = aluu_config_ok(game)
+        checks.append({
+            "key": "provider_config", "ok": config_ok,
+            "detail": "Configuration ALUU complete (code jeu, endpoint Name Check, identite)." if config_ok
+            else "Configuration ALUU incomplete : code jeu, endpoint Name Check et table d'identite requis."})
     return {"ready": all(c["ok"] for c in checks), "checks": checks}
 
 
