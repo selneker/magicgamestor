@@ -1050,3 +1050,89 @@ def test_refresh_status_surfaces_an_invalid_configuration_as_a_provider_error(wo
     assert exc.value.status_code == 503
     assert exc.value.code == "unsupported_game"
     assert w.aluu.status_calls == []      # aucune interrogation du fournisseur
+
+
+# ===================================================================== partie 2 : unit_count
+#
+# Nombre d'unités attendu par LIGNE, mémorisé sur chaque record à sa première création (revue
+# RV-001). Il fait foi pour déclarer une ligne complète, même si le mapping a été supprimé ou
+# invalidé depuis : une unité jamais créée ne peut plus passer pour « tout est livré ».
+
+COMPOSITE_2_UNITS = {"mode": "composite", "category_id": "free_fire", "confirmed": True,
+                     "components": [{"offer_id": "60", "offer_name": "60 UC", "quantity": 2}]}
+
+COMPOSITE_RECORD = {
+    "provider": "fazercards", "status": "submitted", "provider_order_id": "FC-1",
+    "provider_status": "processing", "line_index": 0, "component_index": 0,
+    "quantity_index": 0, "product_name": "720 UC",
+}
+
+
+def composite_order(*, unit_count: int | None = 2, **record):
+    """Commande d'une ligne composée à 2 unités, dont UNE seule est créée."""
+    unit = {**COMPOSITE_RECORD, **record}
+    if unit_count is not None:
+        unit["unit_count"] = unit_count
+    order = make_order(items=[item("p-720", "720 UC")])
+    order["fazercards_components"] = {"0": {"0": unit}}
+    order["fazercards_provider_ids"] = ["FC-1"]
+    return order
+
+
+def test_every_created_unit_records_the_expected_unit_count(world, monkeypatch):
+    """Une ligne composée à 2 composants mémorise `unit_count = 2` sur chacune de ses unités."""
+    provider = FakeFazercardsProvider()
+    w = world(orders=[make_order(items=[item("p-720", "720 UC")])],
+              products=[product("p-720", uc_amount=720,
+                                fazercards_mapping=COMPOSITE_2_UNITS)],
+              games=[dict(FAZER_GAME)])
+    patch_fazercards(monkeypatch, provider)
+
+    result = run(fzr_fulfillment.fulfill_order("ord-1", "admin:1"))
+
+    assert [entry["ok"] for entry in result["results"]] == [True, True]
+    records = w.order["fazercards_components"]["0"]
+    assert [records[key]["unit_count"] for key in ("0", "1")] == [2, 2]
+
+
+def test_partial_composite_line_is_not_delivered_when_the_mapping_disappears(world, monkeypatch):
+    """1 unité créée sur 2, mapping supprimé : la commande n'est PAS livrée (RV-001)."""
+    provider = FakeFazercardsProvider()
+    w = world(orders=[composite_order()], products=[product("p-720", uc_amount=720)],
+              games=[dict(FAZER_GAME)])
+    patch_fazercards(monkeypatch, provider)
+
+    run(fzr_fulfillment.refresh_status("ord-1", "admin:1"))
+
+    stored = w.order
+    assert stored["fazercards_components"]["0"]["0"]["provider_status"] == "completed"
+    assert stored["status"] == "paid"          # la 2e unité n'a jamais été créée
+
+
+def test_partial_composite_line_with_a_live_mapping_is_unchanged(world, monkeypatch):
+    """Mapping toujours là : même conclusion, mais par la lecture du mapping (non-régression)."""
+    provider = FakeFazercardsProvider()
+    w = world(orders=[composite_order()],
+              products=[product("p-720", uc_amount=720,
+                                fazercards_mapping=COMPOSITE_2_UNITS)],
+              games=[dict(FAZER_GAME)])
+    patch_fazercards(monkeypatch, provider)
+
+    run(fzr_fulfillment.refresh_status("ord-1", "admin:1"))
+
+    assert w.order["fazercards_components"]["0"]["0"]["provider_status"] == "completed"
+    assert w.order["status"] == "paid"
+    assert provider.created == []              # aucune unité inventée
+
+
+def test_legacy_composite_line_without_unit_count_keeps_its_behaviour(world, monkeypatch):
+    """Record historique sans `unit_count` : le comportement actuel est conservé tel quel."""
+    provider = FakeFazercardsProvider()
+    w = world(orders=[composite_order(unit_count=None)], products=[product("p-720", uc_amount=720)],
+              games=[dict(FAZER_GAME)])
+    patch_fazercards(monkeypatch, provider)
+
+    run(fzr_fulfillment.refresh_status("ord-1", "admin:1"))
+
+    assert w.order["status"] == "delivered"
+    assert "unit_count" not in w.order["fazercards_components"]["0"]["0"]

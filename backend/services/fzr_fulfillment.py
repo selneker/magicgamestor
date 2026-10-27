@@ -246,11 +246,13 @@ def _mapping_base(mapping: dict, *, is_aluu: bool) -> tuple[list[dict], str]:
 
 
 def _unit(order: dict, idx: int, component_index, quantity_index: int, *, record: dict | None,
-          provider_name: str, category_id, offer_id, component_name, product: str) -> dict:
+          provider_name: str, category_id, offer_id, component_name, product: str,
+          unit_count: int | None = None) -> dict:
     """Une unité de fulfillment.
 
     Si elle a un record, SA cible et SON fournisseur priment sur la configuration courante : le
-    jeu a pu être basculé et son mapping changé ou supprimé depuis sa création.
+    jeu a pu être basculé et son mapping changé ou supprimé depuis sa création. `unit_count`
+    est le nombre d'unités attendu pour la LIGNE, mémorisé sur chaque record à sa création.
     """
     path, key = _unit_identity(order["order_number"], idx, component_index, quantity_index)
     if record:
@@ -263,7 +265,7 @@ def _unit(order: dict, idx: int, component_index, quantity_index: int, *, record
             "quantity_index": quantity_index, "path": path, "idempotency_key": key,
             "category_id": category_id, "offer_id": offer_id,
             "product": product, "component_name": component_name,
-            "provider": provider_name, "retry": bool(record)}
+            "provider": provider_name, "retry": bool(record), "unit_count": unit_count}
 
 
 async def _product_mapping(item: dict, *, is_aluu: bool) -> dict | None:
@@ -326,6 +328,7 @@ async def _units_for_line(order: dict, idx: int, item: dict, *,
 
     if state == "ok":
         base, category_id = _mapping_base(mapping, is_aluu=is_aluu)
+        expected = len(base) * qty
         for q in range(qty):
             for component in base:
                 cidx = component["component_index"]
@@ -334,7 +337,7 @@ async def _units_for_line(order: dict, idx: int, item: dict, *,
                                    provider_name=provider_name, category_id=category_id,
                                    offer_id=component["offer_id"],
                                    component_name=component["component_name"],
-                                   product=product_name))
+                                   product=product_name, unit_count=expected))
 
     # Positions enregistrées que le mapping lu ne produit plus (autre fournisseur, mapping
     # modifié ou supprimé) : elles restent envoyables avec LEUR fournisseur et LEUR cible.
@@ -343,15 +346,22 @@ async def _units_for_line(order: dict, idx: int, item: dict, *,
             continue
         units.append(_unit(order, idx, cidx, q, record=record, provider_name="",
                            category_id=None, offer_id=None, component_name=None,
-                           product=product_name))
+                           product=product_name, unit_count=record.get("unit_count")))
 
     skip = None
     if state != "ok":
         # Aucun mapping utilisable : la ligne n'est complète que si toutes les positions
-        # CONNUES (celles des records) ont un record. Les positions qu'un mapping perdu ne
-        # décrit plus ne sont pas devinables — aucune unité n'est inventée pour autant.
-        components = {cidx for cidx, _q in records} or {None}
-        if len(records) < len(components) * qty:
+        # CONNUES (celles des records) ont un record. Le nombre attendu mémorisé à la création
+        # (`unit_count`) fait foi même si le mapping a disparu : une ligne dont une unité n'a
+        # jamais été créée n'est jamais déclarée complète.
+        expected = next((int(r["unit_count"]) for r in records.values()
+                         if r.get("unit_count") is not None), None)
+        if expected is not None:
+            complete = len(records) >= expected
+        else:  # ligne historique sans `unit_count` : comportement inchangé
+            components = {cidx for cidx, _q in records} or {None}
+            complete = len(records) >= len(components) * qty
+        if not complete:
             skip = {"index": idx, "product": product_name,
                     "reason": _missing_mapping_reason(state, is_aluu=is_aluu)}
     return units, skip
@@ -481,7 +491,7 @@ async def preflight(order_id: str, *, provider=None,
             "product": u["product"], "component_name": u["component_name"], "category_id": u["category_id"],
             "offer_id": u["offer_id"], "offer_name": offer["name"], "price_usd": offer["price_usd"],
             "field_key": field_key, "idempotency_key": u["idempotency_key"], "retry": bool(record),
-            "provider": prov.name,
+            "provider": prov.name, "unit_count": u.get("unit_count"),
         })
     if not lines:
         raise HTTPException(status_code=409, detail=skipped[-1]["reason"] if skipped else "Aucune ligne éligible.")
@@ -533,6 +543,10 @@ async def _fulfill_unit(order: dict, line: dict, actor: str, provider, *, curren
         "requested_by": actor, "last_error": None,
         "created_at": (existing or {}).get("created_at") or _now(), "updated_at": _now(),
     }
+    if line.get("unit_count") is not None:
+        # Nombre d'unités attendu pour la LIGNE, mémorisé à la première création : il fait foi
+        # même si le mapping du produit est supprimé ou invalidé plus tard.
+        record["unit_count"] = line["unit_count"]
     if existing:
         # Fusion (et non remplacement) : tout ce que l'unité a déjà obtenu survit au claim.
         record = {**existing, **record, "provider": _record_provider(existing)}
