@@ -1136,3 +1136,66 @@ def test_legacy_composite_line_without_unit_count_keeps_its_behaviour(world, mon
 
     assert w.order["status"] == "delivered"
     assert "unit_count" not in w.order["fazercards_components"]["0"]["0"]
+
+
+# ===================================================================== partie 3 : commande mixte
+#
+# Préflight d'une commande dont les unités à envoyer appartiennent à DEUX fournisseurs (reprise
+# ALUU + unité neuve FazerCards) : l'identité est validée une fois PAR fournisseur présent, et
+# aucun envoi n'a lieu si l'un d'eux la refuse (revue RV-001).
+
+class CountingFazercardsProvider(FakeFazercardsProvider):
+    """FazerCards sans HTTP qui compte ses validations d'identité."""
+
+    def __init__(self, *, valid: bool = True):
+        super().__init__()
+        self.valid = valid
+        self.validated = 0
+
+    async def validate_identity(self, game_id, fields):
+        self.validated += 1
+        return IdentityValidation(valid=self.valid, player_name="Joueur FC", region=None, raw={})
+
+
+def mixed_pending_order():
+    """Ligne 1 : reprise ALUU (retryable). Ligne 2 : unité neuve, jeu basculé sur FazerCards."""
+    order = make_order(items=[item("p-60", "60 Diamants"), item("p-120", "120 Diamants")])
+    order["fazercards"] = {"provider": "aluu", "status": "submit_timeout",
+                           "provider_order_id": None, "provider_status": None,
+                           "category_id": "ff", "offer_id": "60",
+                           "product_name": "60 Diamants", "idempotency_key": "MGS-1-1"}
+    return order
+
+
+def mixed_products():
+    return [product(aluu_mapping=ALUU_MAPPING),
+            product("p-120", uc_amount=120, fazercards_mapping=FC_MAPPING)]
+
+
+def test_preflight_validates_identity_once_per_provider_of_a_mixed_order(world, monkeypatch):
+    provider = CountingFazercardsProvider()
+    # Le jeu a été basculé sur FazerCards mais garde sa configuration ALUU (rollback admin).
+    w = world(orders=[mixed_pending_order()], products=mixed_products(),
+              games=[dict(FAZER_GAME_WITH_ALUU_RESIDUE)])
+    patch_fazercards(monkeypatch, provider)
+
+    report = run(fzr_fulfillment.preflight("ord-1"))
+
+    assert [line["provider"] for line in report["lines"]] == ["aluu", "fazercards"]
+    assert len(w.aluu.name_checks) == 1        # une validation ALUU
+    assert provider.validated == 1             # ET une validation FazerCards
+    assert report["player_name"] == "Joueur Test"   # celui du premier fournisseur en attente
+
+
+def test_preflight_refuses_when_the_second_provider_rejects_the_identity(world, monkeypatch):
+    provider = CountingFazercardsProvider(valid=False)
+    # Le jeu a été basculé sur FazerCards mais garde sa configuration ALUU (rollback admin).
+    w = world(orders=[mixed_pending_order()], products=mixed_products(),
+              games=[dict(FAZER_GAME_WITH_ALUU_RESIDUE)])
+    patch_fazercards(monkeypatch, provider)
+
+    with pytest.raises(HTTPException) as exc:
+        run(fzr_fulfillment.preflight("ord-1"))
+
+    assert exc.value.status_code == 409
+    assert w.aluu.created == [] and provider.created == []   # aucun envoi

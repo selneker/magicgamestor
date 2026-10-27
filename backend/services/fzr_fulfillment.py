@@ -430,16 +430,22 @@ async def preflight(order_id: str, *, provider=None,
         return prov
 
     first = pending[0]
-    validation = await instance(first["provider"]).validate_identity(
-        order.get("game_id"), _identity_fields(order))  # 502/504 si service indisponible
-    if not validation.valid:
-        # Message neutre par jeu : PUBG Mobile conserve son libellé historique, tout autre jeu
-        # reçoit un message générique (aucune hypothèse PUBG pour un jeu dynamique).
-        if (order.get("game_id") or DEFAULT_GAME_ID) == DEFAULT_GAME_ID:
-            detail = "ID PUBG Mobile invalide chez le fournisseur — commande non envoyée."
-        else:
-            detail = "Identité joueur invalide chez le fournisseur — commande non envoyée."
-        raise HTTPException(status_code=409, detail=detail)
+    # Une validation d'identité PAR fournisseur présent dans les unités à envoyer : une commande
+    # mixte (reprise ALUU + unité neuve FazerCards) ne peut pas partir sans que CHAQUE
+    # fournisseur ait validé l'identité.
+    validations: dict[str, object] = {}
+    for name in dict.fromkeys(u["provider"] for u in pending):
+        validation = await instance(name).validate_identity(
+            order.get("game_id"), _identity_fields(order))  # 502/504 si service indisponible
+        if not validation.valid:
+            # Message neutre par jeu : PUBG Mobile conserve son libellé historique, tout autre jeu
+            # reçoit un message générique (aucune hypothèse PUBG pour un jeu dynamique).
+            if (order.get("game_id") or DEFAULT_GAME_ID) == DEFAULT_GAME_ID:
+                detail = "ID PUBG Mobile invalide chez le fournisseur — commande non envoyée."
+            else:
+                detail = "Identité joueur invalide chez le fournisseur — commande non envoyée."
+            raise HTTPException(status_code=409, detail=detail)
+        validations[name] = validation
     offers_by_cat, lines = {}, []
     for u in pending:
         prov = instance(u["provider"])
@@ -498,7 +504,7 @@ async def preflight(order_id: str, *, provider=None,
     report = {
         "order_number": order["order_number"], "provider": first["provider"], "player_id": order["pubg_id"],
         "identity_fields": _identity_fields(order),
-        "player_name": validation.player_name, "mgs_total": order["total"],
+        "player_name": validations[first["provider"]].player_name, "mgs_total": order["total"],
         "lines": lines, "skipped": skipped, "ready_count": len(lines),
     }
     if single:  # compat mono-ligne directe : champs historiques au premier niveau
