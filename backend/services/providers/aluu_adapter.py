@@ -56,6 +56,19 @@ WEBHOOK_TOLERANCE_S = 300
 # (les deux paramètres attendus viennent du mapping d'identité).
 _ENDPOINT_FIXED_PARAMS: dict[str, dict[str, str]] = {"bgmi": {"gameCode": "bgmi"}}
 
+# Paramètres AUTORISÉS par endpoint Name Check — liste blanche fermée.
+# Doc : « Which endpoint for which game » — sur les 215 jeux listés, les seuls paramètres
+# `game-check` sont `code` + `characterId`, auxquels s'ajoutent `server_code` (49 jeux) et
+# `charname` (11 jeux) ; `mlbb-check` ne prend que `user_id` + `server_id`. `bgmi` a sa
+# propre section : `gameCode` + `id` (« BGMI — GET /api/check/bgmi »).
+# Un paramètre hors liste vient forcément d'une table `aluu_identity_map` mal configurée :
+# on refuse AVANT l'appel réseau (fail-closed).
+_CHECK_PARAMS: dict[str, frozenset[str]] = {
+    "game-check": frozenset({"code", "characterId", "server_code", "charname"}),
+    "mlbb-check": frozenset({"user_id", "server_id"}),
+    "bgmi": frozenset({"gameCode", "id"}),
+}
+
 # Alias documenté `paramètre Name Check -> champ du corps /create`.
 # Les deux espaces de noms sont distincts chez ALUU : Name Check parle `characterId` /
 # `server_code`, la création parle `userid` / `serverid` / `charname`.
@@ -281,6 +294,16 @@ class AluuProvider(Provider):
                 raise ProviderValidationError(_UNSUPPORTED_IDENTITY, status_code=503,
                                               code="unsupported_game")
             params["code"] = config["game_code"]
+
+        # Liste blanche FERMÉE par endpoint : un paramètre non documenté trahit une table
+        # d'identité erronée, jamais une variante légitime. Refus avant tout appel réseau.
+        allowed = _CHECK_PARAMS.get(endpoint)
+        unknown = sorted(set(params) - allowed) if allowed else []
+        if allowed is None or unknown:
+            logger.warning("aluu name_check endpoint=%s: paramètres non autorisés %s",
+                           endpoint, ",".join(unknown) or "(endpoint inconnu)")
+            raise ProviderValidationError(_UNSUPPORTED_IDENTITY, status_code=503,
+                                          code="unsupported_game")
 
         try:
             result = await aluu.name_check(endpoint, params)

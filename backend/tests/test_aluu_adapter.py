@@ -14,7 +14,7 @@ import pytest
 
 from services import aluu
 from services.providers import errors as perr
-from services.providers.aluu_adapter import AluuProvider
+from services.providers.aluu_adapter import _CHECK_PARAMS, AluuProvider
 from services.providers.base import IdentityValidation, OrderStatus, Provider, ProviderOrder
 
 RealAsyncClient = httpx.AsyncClient
@@ -277,6 +277,50 @@ def test_validate_identity_accepts_async_config_loader(monkeypatch):
     fake_api(monkeypatch, 200, {"valid": "valid", "name": "PlayerName"})
     result = run(provider(loader).validate_identity("pubg-mobile", {"player_id": PLAYER_ID}))
     assert result.valid is True
+
+
+def test_check_params_allowlist_matches_the_documented_parameters():
+    """Verrou documentaire : la liste blanche est EXACTEMENT celle de la doc ALUU.
+
+    Doc « Which endpoint for which game » : `game-check` n'accepte que `code`,
+    `characterId`, `server_code` et `charname` (« Mobile Legends — GET
+    /api/check/mlbb-check » : `user_id`, `server_id` ; « BGMI — GET /api/check/bgmi » :
+    `gameCode`, `id`).
+    """
+    assert _CHECK_PARAMS == {
+        "game-check": frozenset({"code", "characterId", "server_code", "charname"}),
+        "mlbb-check": frozenset({"user_id", "server_id"}),
+        "bgmi": frozenset({"gameCode", "id"}),
+    }
+
+
+def test_validate_identity_refuses_a_param_outside_the_endpoint_allowlist(monkeypatch):
+    """`denom` (paramètre de `/create`) n'existe pas en Name Check : refus AVANT tout appel."""
+    calls = []
+    mock_transport(monkeypatch, lambda req: calls.append(req) or httpx.Response(200, json={}))
+    game = {**PUBG_GAME,
+            "aluu_identity_map": {"player_id": "characterId", "zone_id": "denom"}}
+
+    with pytest.raises(perr.ProviderValidationError) as exc:
+        run(provider([game]).validate_identity(
+            game["id"], {"player_id": PLAYER_ID, "zone_id": ZONE_ID}))
+
+    assert exc.value.status_code == 503
+    assert exc.value.code == "unsupported_game"
+    assert calls == []
+
+
+def test_validate_identity_refuses_mlbb_params_on_game_check(monkeypatch):
+    """Une table recopiée depuis un autre jeu ne part jamais telle quelle chez le fournisseur."""
+    calls = []
+    mock_transport(monkeypatch, lambda req: calls.append(req) or httpx.Response(200, json={}))
+    game = {**PUBG_GAME, "aluu_identity_map": {"player_id": "user_id"}}
+
+    with pytest.raises(perr.ProviderValidationError) as exc:
+        run(provider([game]).validate_identity(game["id"], {"player_id": PLAYER_ID}))
+
+    assert exc.value.code == "unsupported_game"
+    assert calls == []
 
 
 # --------------------------------------------------------------------------- offres
