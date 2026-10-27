@@ -668,9 +668,15 @@ def test_verify_webhook_signature_rejects_stale_bad_and_unsigned(monkeypatch):
     assert prov.verify_webhook_signature(raw, _sign(stamp, raw), "abc") is False  # non numérique
 
 
-def test_verify_webhook_signature_without_secret_rejects(monkeypatch):
+def test_verify_webhook_signature_without_secret_raises_a_configuration_error(monkeypatch):
+    """Secret absent (revue RV-001) : erreur de configuration 503, jamais un simple `False`."""
     raw = b'{"success":true}'
-    assert provider().verify_webhook_signature(raw, "0" * 64, "1768472100") is False
+    monkeypatch.setattr("services.providers.aluu_adapter.time.time", lambda: 1768472100)
+
+    with pytest.raises(aluu.AluuNotConfiguredError) as exc:
+        provider().verify_webhook_signature(raw, "0" * 64, "1768472100")
+
+    assert exc.value.status_code == 503
 
 
 def test_verify_webhook_signature_with_non_ascii_header_is_false_not_an_exception(monkeypatch):

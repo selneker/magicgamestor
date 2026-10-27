@@ -528,10 +528,9 @@ class AluuProvider(Provider):
             return False
         if abs(time.time() - int(stamp)) > WEBHOOK_TOLERANCE_S:
             return False
-        try:
-            expected = aluu.webhook_signature(stamp, raw_body)
-        except ProviderError:  # secret absent = rejet, jamais un 500
-            return False
+        # Secret absent → `AluuNotConfiguredError` (503) : la route le traduit en « non
+        # configuré », jamais en 401 (signature) ni en 500.
+        expected = aluu.webhook_signature(stamp, raw_body)
         # Comparaison sur des OCTETS : `compare_digest` lève `TypeError` sur une `str`
         # non-ASCII, or l'en-tête de signature est une entrée non fiable. Sur octets, une
         # signature non-ASCII est simplement différente → `False`, jamais une exception.

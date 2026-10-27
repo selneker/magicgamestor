@@ -279,15 +279,16 @@ def test_stale_timestamp_is_rejected(client):
     assert w.order["fazercards"]["provider_status"] == "pending"
 
 
-def test_missing_webhook_secret_rejects_instead_of_500(client, monkeypatch):
-    """Secret absent : rejet 401 (fail-closed), jamais une erreur serveur."""
+def test_missing_webhook_secret_is_503_not_401(client, monkeypatch):
+    """Secret absent (revue RV-001) : 503 « non configuré », jamais un 401 ni une 500."""
     w = client(orders=[order_doc()])
     monkeypatch.delenv("ALUU_WEBHOOK_SECRET", raising=False)
 
     response = w.post(w.client, body())
 
-    assert response.status_code == 401
+    assert response.status_code == 503
     assert w.order["fazercards"]["provider_status"] == "pending"
+    assert w.db.provider_webhook_events.documents == []
 
 
 # --------------------------------------------------------------------------- 2. dédup

@@ -42,8 +42,15 @@ async def aluu_webhook(request: Request):
     """
     raw = await request.body()
     provider = providers.get_provider_by_name(WEBHOOK_PROVIDER)
-    if not provider.verify_webhook_signature(
-            raw, request.headers.get(SIGNATURE_HEADER), request.headers.get(TIMESTAMP_HEADER)):
+    try:
+        valid = provider.verify_webhook_signature(
+            raw, request.headers.get(SIGNATURE_HEADER), request.headers.get(TIMESTAMP_HEADER))
+    except providers.ProviderError as exc:
+        # Secret webhook absent : le fournisseur n'est pas configuré → 503, jamais un 401
+        # (qui ferait croire à une signature invalide) ni une 500 (qui ferait réessayer en vain).
+        logger.error("ALUU webhook not configured (code=%s)", exc.code)
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from None
+    if not valid:
         # Aucune valeur d'en-tête n'est journalisée : elle est non fiable et non nécessaire.
         logger.warning("ALUU webhook rejected: invalid or stale signature")
         raise HTTPException(status_code=401, detail="Invalid signature")
