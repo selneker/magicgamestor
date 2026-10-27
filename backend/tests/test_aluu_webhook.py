@@ -13,6 +13,7 @@ Contrat vérifié, dans l'ordre de la doc « Top-up webhooks » :
 5. commande inconnue acquittée (pas de retry) ;
 6. barrière `provider == "aluu"` : une unité FazerCards n'est jamais touchée.
 """
+import asyncio
 import hashlib
 import hmac
 import json
@@ -22,6 +23,7 @@ from copy import deepcopy
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from pymongo.errors import DuplicateKeyError
 
 from core import db as core_db
 from routers import aluu as aluu_router
@@ -62,10 +64,6 @@ def order_doc(**unit):
 
 
 # --------------------------------------------------------------------------- faux Mongo
-
-class Duplicate(Exception):
-    """Violation d'index unique composite."""
-
 
 _MISSING = object()
 
@@ -137,7 +135,7 @@ class FakeCollection:
     async def insert_one(self, document):
         for fields in self.unique:
             if any(all(doc.get(f) == document.get(f) for f in fields) for doc in self.documents):
-                raise Duplicate(fields)
+                raise DuplicateKeyError(f"E11000 duplicate key {fields}")
         self.documents.append(deepcopy(document))
 
     async def update_one(self, selector, update):
@@ -173,6 +171,15 @@ class FakeDb:
 
 
 # --------------------------------------------------------------------------- décor
+
+def run(coro):
+    return asyncio.run(coro)
+
+
+def loose(world):
+    """Client qui rend la réponse au lieu de relancer l'exception serveur (test des 5xx)."""
+    return TestClient(world.app, raise_server_exceptions=False)
+
 
 def signature(raw: bytes, timestamp: str) -> str:
     return hmac.new(SECRET.encode(), timestamp.encode() + b"." + raw, hashlib.sha256).hexdigest()
@@ -226,6 +233,7 @@ def client(monkeypatch):
 
         app = FastAPI()
         app.include_router(aluu_router.router, prefix="/api")
+        world.app = app
         world.client = TestClient(app)
         return world
 
@@ -293,6 +301,73 @@ def test_identical_delivery_is_deduplicated(client):
 
     assert first.status_code == 200 and first.json() == {"ok": True}
     assert second.status_code == 200 and second.json() == {"ok": True, "duplicate": True}
+    assert len([e for e in w.audit if e["action"] == "fzr.webhook_status"]) == 1
+    assert len(w.db.provider_webhook_events.documents) == 1
+
+
+def test_a_mongo_failure_on_the_dedup_insertion_is_not_a_duplicate(client):
+    """Erreur Mongo ≠ doublon (revue RV-001) : réponse non 2xx pour qu'ALUU réessaie."""
+    w = client(orders=[order_doc()])
+
+    async def unavailable(_document):
+        raise RuntimeError("mongo indisponible")
+
+    w.db.provider_webhook_events.insert_one = unavailable
+
+    response = w.post(loose(w), body())
+
+    assert response.status_code >= 500          # jamais un `duplicate: true` menteur
+
+
+def test_an_application_failure_does_not_consume_the_dedup(client):
+    """La dédup n'est écrite qu'APRÈS l'application : un échec laisse le rejeu utile."""
+    w = client(orders=[order_doc()])
+    real_update = w.db.orders.update_one
+    calls = {"n": 0}
+
+    async def failing_once(selector, update):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("écriture impossible")
+        return await real_update(selector, update)
+
+    w.db.orders.update_one = failing_once
+
+    failed = w.post(loose(w), body())
+
+    assert failed.status_code >= 500
+    assert w.db.provider_webhook_events.documents == []     # dédup non consommée
+    assert w.order["fazercards"]["provider_status"] == "pending"
+
+    replay = w.post(w.client, body())
+
+    assert replay.status_code == 200 and replay.json() == {"ok": True}
+    assert w.order["fazercards"]["provider_status"] == "successful"
+    assert len(w.db.provider_webhook_events.documents) == 1
+
+
+def test_two_concurrent_deliveries_apply_once_and_audit_once(client):
+    """Course réelle : les deux livraisons passent le pré-contrôle, une seule applique sa trace."""
+    w = client(orders=[order_doc()])
+
+    async def always_absent(*_args, **_kwargs):
+        return None
+
+    w.db.provider_webhook_events.find_one = always_absent
+
+    async def both():
+        return await asyncio.gather(
+            fzr_fulfillment.apply_provider_event(
+                provider_name="aluu", provider_order_id=PARTNER_ID,
+                status="successful", event="order.successful"),
+            fzr_fulfillment.apply_provider_event(
+                provider_name="aluu", provider_order_id=PARTNER_ID,
+                status="successful", event="order.successful"))
+
+    outcomes = run(both())
+
+    assert sorted(bool(o.get("duplicate")) for o in outcomes) == [False, True]
+    assert w.order["status"] == "delivered"                 # état final correct
     assert len([e for e in w.audit if e["action"] == "fzr.webhook_status"]) == 1
     assert len(w.db.provider_webhook_events.documents) == 1
 

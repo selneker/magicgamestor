@@ -25,6 +25,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
+from pymongo.errors import DuplicateKeyError
 
 from core.audit import audit
 from core.db import db
@@ -852,6 +853,11 @@ async def apply_provider_event(*, provider_name: str, provider_order_id: str | N
       La seule information stable est le triplet `(fournisseur, commande, statut)` ; c'est lui
       qui est inséré dans `provider_webhook_events` (index unique). Un rejeu du même statut est
       donc un doublon, sans jamais réécrire l'unité.
+    - **dédup APRÈS application** : la trace n'est écrite qu'une fois l'événement réellement
+      appliqué. Une erreur de base, un échec d'application ou une commande inconnue ne consomme
+      donc pas la dédup, et le rejeu du fournisseur reste utile. Seule une violation d'index
+      unique (`DuplicateKeyError`) signifie « doublon » ; toute autre exception remonte (5xx)
+      pour qu'ALUU réessaie.
     - **monotonie** : un statut final déjà enregistré n'est jamais remplacé (voir
       `_apply_status_event`).
     - **double barrière fournisseur** : la route est dédiée à ALUU (barrière 1) et la recherche
@@ -865,11 +871,8 @@ async def apply_provider_event(*, provider_name: str, provider_order_id: str | N
     raw_status = str(status or "").strip()
     if not provider or not order_key or not raw_status:
         return {"ok": True, "ignored": True}
-    try:
-        await db.provider_webhook_events.insert_one({
-            "provider": provider, "provider_order_id": order_key, "status": raw_status,
-            "event": event, "created_at": _now()})
-    except Exception:
+    dedup = {"provider": provider, "provider_order_id": order_key, "status": raw_status}
+    if await db.provider_webhook_events.find_one(dedup):
         return {"ok": True, "duplicate": True}
     order = await db.orders.find_one({"$or": [{"fazercards.provider_order_id": order_key},
                                               {"fazercards_provider_ids": order_key},
@@ -883,6 +886,10 @@ async def apply_provider_event(*, provider_name: str, provider_order_id: str | N
     applied = await _apply_status_event(order, target, provider, raw_status, f"webhook:{provider}")
     if not applied:
         return {"ok": True, "ignored": True}
+    try:
+        await db.provider_webhook_events.insert_one({**dedup, "event": event, "created_at": _now()})
+    except DuplicateKeyError:  # deux livraisons concurrentes : la seconde n'a plus rien à faire
+        return {"ok": True, "duplicate": True}
     await audit("fzr.webhook_status", provider, order["id"],
                 {"provider_order_id": order_key, "status": raw_status, "event": event,
                  "line": target["line_index"], "component": target["component_index"]})
