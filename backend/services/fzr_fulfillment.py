@@ -869,9 +869,10 @@ async def apply_provider_event(*, provider_name: str, provider_order_id: str | N
 
     Différences ASSUMÉES avec `apply_webhook_event` (chemin FazerCards, laissé intact) :
     - **dédup** : un webhook ALUU ne porte ni `event_id` ni date de mise à jour fournisseur.
-      La seule information stable est le triplet `(fournisseur, commande, statut)` ; c'est lui
-      qui est inséré dans `provider_webhook_events` (index unique). Un rejeu du même statut est
-      donc un doublon, sans jamais réécrire l'unité.
+      La seule information stable est le triplet `(fournisseur, commande, statut NORMALISÉ)`
+      (`error` et `cancelled` sont le même statut MGS `failed`) ; c'est lui qui est inséré dans
+      `provider_webhook_events` (index unique). Un rejeu du même statut est donc un doublon,
+      sans jamais réécrire l'unité.
     - **dédup APRÈS application** : la trace n'est écrite qu'une fois l'événement réellement
       appliqué. Une erreur de base, un échec d'application ou une commande inconnue ne consomme
       donc pas la dédup, et le rejeu du fournisseur reste utile. Seule une violation d'index
@@ -891,7 +892,9 @@ async def apply_provider_event(*, provider_name: str, provider_order_id: str | N
     raw_status = str(status or "").strip()
     if not provider or not order_key or not raw_status:
         return {"ok": True, "ignored": True}
-    dedup = {"provider": provider, "provider_order_id": order_key, "status": raw_status}
+    # Clé de dédup = statut NORMALISÉ : « error » et « cancelled » sont le même `failed`.
+    normalized_status = providers.get_provider_by_name(provider).normalize_status(raw_status)
+    dedup = {"provider": provider, "provider_order_id": order_key, "status": normalized_status}
     if await db.provider_webhook_events.find_one(dedup):
         return {"ok": True, "duplicate": True}
     order = await db.orders.find_one({"$or": [{"fazercards.provider_order_id": order_key},

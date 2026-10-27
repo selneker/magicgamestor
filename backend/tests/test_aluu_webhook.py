@@ -307,6 +307,21 @@ def test_identical_delivery_is_deduplicated(client):
     assert len(w.db.provider_webhook_events.documents) == 1
 
 
+def test_the_dedup_key_uses_the_normalized_status(client):
+    """`error` puis `cancelled` = même statut MGS `failed` : rejeu, aucun second effet."""
+    w = client(orders=[order_doc()])
+
+    first = w.post(w.client, body(status="error", event="order.failed"))
+    second = w.post(w.client, body(status="cancelled"))
+
+    assert first.json() == {"ok": True}
+    assert second.json() == {"ok": True, "duplicate": True}
+    assert w.order["fazercards"]["provider_status"] == "error"   # jamais réécrit
+    assert w.db.provider_webhook_events.documents[0]["status"] == "failed"
+    assert len(w.db.provider_webhook_events.documents) == 1
+    assert len([e for e in w.audit if e["action"] == "fzr.webhook_status"]) == 1
+
+
 def test_a_mongo_failure_on_the_dedup_insertion_is_not_a_duplicate(client):
     """Erreur Mongo ≠ doublon (revue RV-001) : réponse non 2xx pour qu'ALUU réessaie."""
     w = client(orders=[order_doc()])
