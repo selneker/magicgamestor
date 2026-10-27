@@ -351,7 +351,17 @@ async def fzr_fulfill(order_id: str, admin=Depends(require_permission("orders.ma
 
 @router.post("/admin/orders/{order_id}/fazercards/refresh-status")
 async def fzr_refresh_status(order_id: str, admin=Depends(require_permission("orders.manage"))):
-    return await fzr_fulfillment.refresh_status(order_id, f"admin:{admin['user_id']}")
+    """Rafraîchissement explicite. Une erreur fournisseur est traduite, jamais un 500.
+
+    `_all_units` peut lever un `ProviderError` avant tout appel réseau (configuration ALUU
+    incomplète, fournisseur non instanciable) : ce chemin passe donc par le même contrat que
+    `preflight` et `fulfill`.
+    """
+    try:
+        return await fzr_fulfillment.refresh_status(order_id, f"admin:{admin['user_id']}")
+    except providers.ProviderError as exc:
+        logger.warning("fzr refresh-status: erreur fournisseur code=%s http=%s", exc.code, exc.status_code)
+        return _provider_error_response(exc, await _game_id_of(order_id))
 
 
 # ---------- Alerte prix fournisseur ----------

@@ -85,3 +85,24 @@ def test_fulfill_provider_error_never_500_and_falls_back_without_a_code(monkeypa
         "code": "provider_unavailable",
         "game_id": None,
     }
+
+
+def test_refresh_status_provider_error_is_translated_too(monkeypatch):
+    """`refresh-status` : un `ProviderError` venu de `_all_units` devient un contrat, jamais 500."""
+    use_db(monkeypatch, {"id": "ord-1", "game_id": "example-game"})
+
+    async def boom(order_id, actor):
+        raise perr.ProviderUnavailableError(
+            "Jeu configuré ALUU mais configuration incomplète.", status_code=503,
+            code="unsupported_game")
+
+    monkeypatch.setattr(fzr_orders.fzr_fulfillment, "refresh_status", boom)
+
+    response = run(fzr_orders.fzr_refresh_status("ord-1", {"user_id": "admin-1"}))
+
+    assert response.status_code == 503
+    assert payload(response) == {
+        "detail": "Jeu configuré ALUU mais configuration incomplète.",
+        "code": "unsupported_game",
+        "game_id": "example-game",
+    }

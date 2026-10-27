@@ -1025,3 +1025,20 @@ def test_reconciliation_lists_only_non_final_aluu_units(world, monkeypatch):
     # Lecture seule : ni création, ni interrogation, ni écriture.
     assert w.aluu.created == [] and w.aluu.status_calls == []
     assert w.order["fazercards"]["provider_status"] == "pending"
+
+
+def test_refresh_status_surfaces_an_invalid_configuration_as_a_provider_error(world, monkeypatch):
+    """`_all_units` lève AVANT tout réseau (jeu ALUU sans configuration) : l'erreur reste typée.
+
+    C'est le point de fuite corrigé côté route : `refresh_status` doit laisser passer un
+    `ProviderError` (traduit par `routers/fzr_orders.py`), jamais une exception générique.
+    """
+    broken = {"id": GAME_ID, "provider": "aluu"}   # ni code, ni endpoint, ni mapping d'identité
+    w = world(orders=[make_order()], products=[product(aluu_mapping=ALUU_MAPPING)], games=[broken])
+
+    with pytest.raises(perr.ProviderUnavailableError) as exc:
+        run(fzr_fulfillment.refresh_status("ord-1", "admin:1"))
+
+    assert exc.value.status_code == 503
+    assert exc.value.code == "unsupported_game"
+    assert w.aluu.status_calls == []      # aucune interrogation du fournisseur
