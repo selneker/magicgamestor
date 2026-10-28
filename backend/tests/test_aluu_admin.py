@@ -558,6 +558,35 @@ def test_an_identity_map_that_is_empty_once_nulls_are_omitted_is_refused(world):
     assert world.audit == []
 
 
+def test_an_identity_key_the_game_does_not_declare_is_refused(world):
+    """Clé absente des champs d'identité du jeu : le mapping ne serait relié à rien (BE-007)."""
+    world(games=[bare_game()])
+
+    response = run(aluu_admin.put_provider_config(
+        GAME, _config(identity={"playerid": "characterId"}), MANAGER))
+
+    assert status_of(response) == 400
+    assert body_of(response)["code"] == "invalid_identity_map"
+    assert "aluu_identity_map" not in world.game
+    assert world.audit == []
+    assert world.invalidations == []
+
+
+def test_a_mix_of_declared_and_unknown_identity_keys_writes_nothing(world):
+    """Une seule clé inconnue suffit : aucune écriture partielle, aucun audit, aucun cache vidé."""
+    world(games=[bare_game()])
+
+    response = run(aluu_admin.put_provider_config(
+        GAME, _config(identity={"player_id": "characterId", "playerid": "characterId"}),
+        MANAGER))
+
+    assert status_of(response) == 400
+    assert body_of(response)["code"] == "invalid_identity_map"
+    assert "aluu_identity_map" not in world.game
+    assert world.audit == []
+    assert world.invalidations == []
+
+
 def test_an_unavailable_catalogue_writes_nothing(world):
     """Règle : catalogue live indisponible ⇒ rien n'est écrit, même pour un code valide."""
     world(games=[bare_game()],

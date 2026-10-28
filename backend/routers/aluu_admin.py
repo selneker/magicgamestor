@@ -106,11 +106,15 @@ async def _packs(game_code: str) -> list[dict]:
 
 
 async def _validate_aluu_config(game_id: str, code: str | None, endpoint: str | None,
-                                identity_map: dict | None) -> tuple[dict[str, str], list[dict]]:
+                                identity_map: dict | None,
+                                identity_fields: list[dict]) -> tuple[dict[str, str], list[dict]]:
     """Valide une configuration ALUU dans l'ORDRE du contrat, ou lève `_Invalid`.
 
     Ordre : forme du code → catalogue live (source de vérité) → endpoint → table d'identité.
     Si le catalogue est indisponible, RIEN n'est écrit : 502 `provider_unavailable`.
+
+    `identity_fields` = champs d'identité DÉCLARÉS du jeu (`identity_spec`), les seuls qu'une
+    commande puisse remplir : une clé hors de cette liste décrit un champ qui n'existe pas.
     """
     value = str(code or "").strip()
     if not GAME_CODE_RE.match(value):
@@ -144,12 +148,19 @@ async def _validate_aluu_config(game_id: str, code: str | None, endpoint: str | 
         raise _Invalid(_error(400, "invalid_identity_map", game_id,
                               "Table d'identité vide : déclarez au moins un champ du jeu."))
     clean: dict[str, str] = {}
+    declared = {str(field.get("key") or "") for field in identity_fields}
     for key, param in identity_map.items():
         field, aluu_param = str(key or "").strip(), str(param or "").strip()
         if not field or not aluu_param or aluu_param not in allowed:
             raise _Invalid(_error(400, "invalid_identity_map", game_id,
                                   "Table d'identité invalide : un paramètre n'est pas accepté "
                                   "par cet endpoint de vérification."))
+        if field not in declared:
+            # Une clé inconnue du jeu n'est reliée à rien : la commande ne la remplira jamais,
+            # donc le mapping serait silencieusement inopérant. Refus, rien n'est écrit.
+            raise _Invalid(_error(400, "invalid_identity_map", game_id,
+                                  f"Table d'identité invalide : « {field} » n'est pas un champ "
+                                  "d'identité déclaré de ce jeu."))
         clean[field] = aluu_param
     return clean, catalogue
 
@@ -334,7 +345,7 @@ async def put_game_provider(game_id: str, body: ProviderSwitchIn,
         identity_map = doc.get("aluu_identity_map")
         try:
             _identity_map, catalogue = await _validate_aluu_config(
-                game_id, code, endpoint, identity_map)
+                game_id, code, endpoint, identity_map, identity_spec(doc))
         except _Invalid as invalid:
             return invalid.response
     else:
@@ -359,7 +370,8 @@ async def put_provider_config(game_id: str, body: ProviderConfigIn,
 
     try:
         identity_map, catalogue = await _validate_aluu_config(
-            game_id, body.aluu_game_code, body.aluu_check_endpoint, body.aluu_identity_map)
+            game_id, body.aluu_game_code, body.aluu_check_endpoint, body.aluu_identity_map,
+            identity_spec(doc))
     except _Invalid as invalid:
         return invalid.response
 
