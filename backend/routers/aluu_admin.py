@@ -46,6 +46,13 @@ CHECK_ENDPOINT_LABELS = {
     "bgmi": "admin.provider.check_endpoint.bgmi",
 }
 
+# Le bouton de bascule vise TOUJOURS l'autre fournisseur. Mapping littéral (et non une
+# f-string) : le test i18n collecte les clés du source par expression régulière.
+SWITCH_LABELS = {
+    "aluu": "admin.provider.switch.to_aluu",
+    "fazercards": "admin.provider.switch.to_fazercards",
+}
+
 
 class _Invalid(Exception):
     """Validation refusée : porte la réponse d'erreur déjà au format du contrat."""
@@ -184,6 +191,8 @@ def _webhook_url() -> str | None:
 
 def _provider_blocks(doc: dict, catalogue: list[dict] | None) -> list[dict]:
     provider = game_provider(doc)
+    # La bascule vise l'AUTRE fournisseur : le bouton ne propose jamais l'état courant.
+    target = "aluu" if provider == "fazercards" else "fazercards"
     declared = bool(str(doc.get("provider") or "").strip())
     code = str(doc.get("aluu_game_code") or "").strip() or None
     endpoint = str(doc.get("aluu_check_endpoint") or "").strip() or None
@@ -281,10 +290,13 @@ def _provider_blocks(doc: dict, catalogue: list[dict] | None) -> list[dict]:
          "requires": ["permissions.can_edit"]},
         {"kind": "heading", "label_key": "admin.provider.section.switch", "level": 2},
         {"kind": "text", "label_key": "admin.provider.switch.warning", "tone": "warning"},
-        {"kind": "button", "key": "switch_provider", "label_key": "admin.provider.switch.action",
+        {"kind": "button", "key": "switch_provider",
+         "label_key": SWITCH_LABELS[target],
          "action": "put_game_provider", "variant": "danger",
          "requires": ["permissions.can_switch_provider"],
-         "confirm_key": "admin.provider.switch.confirm"},
+         "confirm_key": "admin.provider.switch.confirm",
+         # Corps FIXE de `put_game_provider` : le serveur ne lit que `{provider}` (§ 3.2).
+         "payload": {"provider": target}},
         {"kind": "text", "label_key": "admin.provider.switch.in_flight", "tone": "neutral"},
     ]
 

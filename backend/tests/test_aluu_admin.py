@@ -453,6 +453,43 @@ def test_switching_the_provider_is_reserved_to_the_super_admin(world, monkeypatc
     assert "aluu.provider_changed" in world.actions()
 
 
+# --------------------------------------- cible de la bascule : payload du bouton (contrat § 3.2)
+
+def _switch_button(screen):
+    return next(block for block in screen["blocks"]
+                if block.get("kind") == "button" and block.get("key") == "switch_provider")
+
+
+def test_the_switch_button_targets_the_other_provider(world):
+    """Le bouton porte la cible ET son libellé : jamais l'état courant, jamais une clé vide."""
+    world(games=[game_doc(provider="fazercards")])
+    towards_aluu = _switch_button(body_of(run(aluu_admin.get_provider_screen(GAME, MANAGER))))
+
+    world(games=[game_doc(provider="aluu")])
+    towards_fazercards = _switch_button(
+        body_of(run(aluu_admin.get_provider_screen(GAME, MANAGER))))
+
+    assert towards_aluu["payload"] == {"provider": "aluu"}
+    assert towards_aluu["label_key"] == "admin.provider.switch.to_aluu"
+    assert towards_fazercards["payload"] == {"provider": "fazercards"}
+    assert towards_fazercards["label_key"] == "admin.provider.switch.to_fazercards"
+    assert towards_aluu["confirm_key"] == towards_fazercards["confirm_key"] == \
+        "admin.provider.switch.confirm"
+
+
+def test_the_switch_payload_is_the_whole_body_the_server_accepts(world, monkeypatch):
+    """Le client envoie `payload` TEL QUEL : le serveur ne lit toujours que `{provider}`."""
+    world(games=[game_doc(provider="fazercards")])
+    button = _switch_button(body_of(run(aluu_admin.get_provider_screen(GAME, MANAGER))))
+
+    with _client(monkeypatch, SUPER) as client:
+        response = client.put(f"/admin/games/{GAME}/provider", json=button["payload"])
+
+    assert response.status_code == 200
+    assert world.game["provider"] == "aluu"
+    assert _switch_button(response.json())["payload"] == {"provider": "fazercards"}
+
+
 # --------------------------------------------------------------------------- validation du code
 
 def _config(code=CODE, endpoint="game-check", identity=None):
