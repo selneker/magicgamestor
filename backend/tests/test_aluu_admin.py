@@ -279,6 +279,18 @@ def test_each_identity_row_offers_only_the_parameters_its_endpoint_accepts(world
     assert row["allowed_params"] == sorted(allowed_check_params("game-check"))
 
 
+def test_visible_when_is_resolved_against_bare_game_keys(world):
+    """`visible_when` se résout contre l'enveloppe `game`, en CLÉS NUES (contrat § 2 règle 5)."""
+    world(games=[game_doc()])
+
+    screen = body_of(run(aluu_admin.get_provider_screen(GAME, MANAGER)))
+    conditions = [block["visible_when"] for block in screen["blocks"] if "visible_when" in block]
+
+    assert conditions, "aucun bloc conditionnel : le motif de `visible_when` a changé"
+    assert [key for condition in conditions for key in condition
+            if key not in screen["game"]] == []
+
+
 # ------------------------------------------- édition de la table d'identité (contrat § 3.1, BE-008)
 
 def _select(screen, key):
@@ -979,6 +991,32 @@ def test_apply_is_atomic_across_the_whole_selection(world):
     assert status_of(response) == 409
     for stored in world.db.products.documents:
         assert "aluu_mapping" not in stored          # la ligne valide n'est pas écrite non plus
+
+
+def test_an_empty_selection_writes_nothing_and_returns_the_apply_envelope(world):
+    """`apply: []` = 200 sans écriture (contrat § 3.4) : aucun produit n'est touché."""
+    world(games=[game_doc()], products=[product("p-100", 100)])
+
+    response = run(aluu_admin.apply_mapping(GAME, _apply(), MANAGER))
+
+    assert status_of(response) == 200
+    body = body_of(response)
+    assert (body["written"], body["unchanged"], body["skipped"]) == ([], [], [])
+    assert (body["written_count"], body["unchanged_count"], body["skipped_count"]) == (0, 0, 0)
+    assert "aluu_mapping" not in world.db.products.documents[0]
+    assert world.audit == []
+
+
+def test_an_empty_selection_still_validates_the_aluu_configuration(world):
+    """Le corps vide ne court-circuite pas la configuration : une config cassée reste un 503."""
+    world(games=[game_doc(aluu_game_code=None)], products=[product("p-100", 100)])
+
+
+    response = run(aluu_admin.apply_mapping(GAME, _apply(), MANAGER))
+
+    assert status_of(response) == 503
+    assert body_of(response)["code"] == "unsupported_game"
+    assert world.pack_calls == []
 
 
 # --------------------------------------------------------------------------- couverture
