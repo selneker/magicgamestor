@@ -181,7 +181,9 @@ def _provider_blocks(doc: dict, catalogue: list[dict] | None) -> list[dict]:
         identity_rows.append({
             "key": key, "label": field.get("label") or key,
             "aluu_param": str(param) if param else None,
-            "state": "mapped" if param and str(param) in allowed else "missing"})
+            "state": "mapped" if param and str(param) in allowed else "missing",
+            # Liste fermée des paramètres que l'écran peut proposer pour ce champ (contrat § 5).
+            "allowed_params": sorted(allowed)})
         seen.add(key)
     # Une clé déclarée hors des champs du jeu reste VISIBLE : la masquer cacherait une
     # configuration orpheline que personne ne pourrait corriger.
@@ -189,7 +191,8 @@ def _provider_blocks(doc: dict, catalogue: list[dict] | None) -> list[dict]:
         if key in seen:
             continue
         identity_rows.append({"key": key, "label": key, "aluu_param": str(param),
-                              "state": "mapped" if str(param) in allowed else "missing"})
+                              "state": "mapped" if str(param) in allowed else "missing",
+                              "allowed_params": sorted(allowed)})
 
     return [
         {"kind": "heading", "label_key": "admin.provider.title", "level": 1},
@@ -203,8 +206,9 @@ def _provider_blocks(doc: dict, catalogue: list[dict] | None) -> list[dict]:
          "visible_when": {"provider_declared": False}},
         {"kind": "heading", "label_key": "admin.provider.section.connection", "level": 2},
         {"kind": "table", "key": "connection", "empty_key": "common.empty", "columns": [
-            {"key": "label_key", "label_key": "admin.provider.column.setting"},
-            {"key": "value", "label_key": "admin.provider.column.value"}],
+            {"key": "label_key", "label_key": "admin.provider.column.setting",
+             "format": "label_key"},
+            {"key": "value", "label_key": "admin.provider.column.value", "format": "text"}],
          "rows": connection},
         {"kind": "heading", "label_key": "admin.provider.section.game", "level": 2},
         {"kind": "text", "label_key": "admin.provider.section.game.hint", "tone": "muted"},
@@ -225,9 +229,12 @@ def _provider_blocks(doc: dict, catalogue: list[dict] | None) -> list[dict]:
                      for name in aluu.CHECK_ENDPOINTS]},
         {"kind": "table", "key": "identity_fields", "empty_key": "admin.provider.identity.empty",
          "columns": [
-             {"key": "key", "label_key": "admin.provider.column.identity_field"},
-             {"key": "label", "label_key": "admin.provider.column.identity_label"},
-             {"key": "aluu_param", "label_key": "admin.provider.column.aluu_param"}],
+             {"key": "key", "label_key": "admin.provider.column.identity_field",
+              "format": "text"},
+             {"key": "label", "label_key": "admin.provider.column.identity_label",
+              "format": "text"},
+             {"key": "aluu_param", "label_key": "admin.provider.column.aluu_param",
+              "format": "text"}],
          "rows": identity_rows},
         {"kind": "text", "label_key": "admin.provider.identity.hint", "tone": "muted"},
         {"kind": "button", "key": "save_config", "label_key": "common.save",
@@ -346,26 +353,32 @@ def _mapping_blocks(current: list[dict], proposal: list[dict]) -> list[dict]:
         {"kind": "text", "label_key": "admin.aluu_mapping.preview_notice", "tone": "warning"},
         {"kind": "table", "key": "products", "empty_key": "admin.aluu_mapping.empty",
          "columns": [
-             {"key": "name", "label_key": "admin.aluu_mapping.column.product"},
-             {"key": "price", "label_key": "admin.aluu_mapping.column.price"},
-             {"key": "state", "label_key": "admin.aluu_mapping.column.state"},
-             {"key": "match", "label_key": "admin.aluu_mapping.column.match"}],
-         "rows": current,
-         "row_actions": [
-             {"key": "pick", "label_key": "admin.aluu_mapping.action.pick",
-              "enabled_for_states": ["missing", "ambiguous", "stale"]},
-             {"key": "confirm", "label_key": "admin.aluu_mapping.action.confirm",
-              "enabled_for_states": ["unconfirmed"]}]},
+             {"key": "name", "label_key": "admin.aluu_mapping.column.product",
+              "format": "text"},
+             {"key": "price", "label_key": "admin.aluu_mapping.column.price",
+              "format": "money"},
+             {"key": "state", "label_key": "admin.aluu_mapping.column.state",
+              "format": "state"},
+             {"key": "match", "label_key": "admin.aluu_mapping.column.match",
+              "format": "pack"}],
+         "rows": current},
         {"kind": "button", "key": "preview", "label_key": "admin.aluu_mapping.preview",
          "action": "mapping_preview", "variant": "secondary",
          "requires": ["permissions.can_preview"]},
         {"kind": "heading", "label_key": "admin.aluu_mapping.section.preview", "level": 2},
         {"kind": "table", "key": "preview", "empty_key": "admin.aluu_mapping.preview.empty",
          "columns": [
-             {"key": "product_id", "label_key": "admin.aluu_mapping.column.product"},
-             {"key": "state", "label_key": "admin.aluu_mapping.column.state"},
-             {"key": "matched_by", "label_key": "admin.aluu_mapping.column.matched_by"},
-             {"key": "match", "label_key": "admin.aluu_mapping.column.match"}],
+             # La case à cocher du flux « aperçu → sélection → appliquer » (contrat § 5).
+             {"key": "selected", "label_key": "admin.aluu_mapping.column.selected",
+              "format": "checkbox"},
+             {"key": "product_id", "label_key": "admin.aluu_mapping.column.product",
+              "format": "text"},
+             {"key": "state", "label_key": "admin.aluu_mapping.column.state",
+              "format": "state"},
+             {"key": "matched_by", "label_key": "admin.aluu_mapping.column.matched_by",
+              "format": "text"},
+             {"key": "match", "label_key": "admin.aluu_mapping.column.match",
+              "format": "pack"}],
          "rows": proposal},
         {"kind": "text", "label_key": "admin.aluu_mapping.apply_notice", "tone": "warning"},
         {"kind": "button", "key": "apply", "label_key": "admin.aluu_mapping.apply",

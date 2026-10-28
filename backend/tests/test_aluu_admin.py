@@ -29,6 +29,7 @@ from core import security
 from routers import aluu_admin, fzr_orders
 from services import aluu, aluu_mapping, providers
 from services.providers import errors as perr
+from services.providers.aluu_adapter import allowed_check_params
 
 from test_aluu_fulfillment import FakeDb
 
@@ -219,6 +220,59 @@ def test_mapping_screen_matches_the_contract_example(world):
 
     example = json.loads((CONTRACT_DIR / "screen-mapping.json").read_text())
     _assert_contract(example, response)
+
+
+# Vocabulaire FERMÉ des formats de colonne (contrat § 2). En ajouter un est un changement de
+# contrat, pas un détail d'implémentation : l'écran doit savoir le rendre.
+COLUMN_FORMATS = {"text", "label_key", "money", "state", "pack", "checkbox"}
+
+
+def _tables(screen):
+    return [block for block in screen["blocks"] if block.get("kind") == "table"]
+
+
+def test_every_table_column_of_both_screens_declares_a_known_format(world):
+    """Sans `format`, l'écran devrait deviner le rendu d'une cellule : refusé par le contrat."""
+    world(games=[game_doc()], products=deepcopy(CONTRACT_PRODUCTS))
+
+    screens = (body_of(run(aluu_admin.get_provider_screen(GAME, MANAGER))),
+               body_of(run(aluu_admin.get_mapping_screen(GAME, MANAGER))))
+
+    columns = [column for screen in screens for table in _tables(screen)
+               for column in table["columns"]]
+    assert columns, "aucune colonne trouvée : le motif des tableaux a changé"
+    assert [column["key"] for column in columns if "format" not in column] == []
+    assert {column["format"] for column in columns} <= COLUMN_FORMATS
+
+
+def test_no_screen_exposes_row_actions_any_more(world):
+    """Les actions de ligne sont remplacées par la case à cocher de l'aperçu (contrat § 5)."""
+    world(games=[game_doc()], products=deepcopy(CONTRACT_PRODUCTS))
+
+    for screen in (body_of(run(aluu_admin.get_provider_screen(GAME, MANAGER))),
+                   body_of(run(aluu_admin.get_mapping_screen(GAME, MANAGER)))):
+        assert [block for block in screen["blocks"] if "row_actions" in block] == []
+
+
+def test_the_preview_opens_with_the_selection_checkbox(world):
+    world(games=[game_doc()], products=deepcopy(CONTRACT_PRODUCTS))
+
+    screen = body_of(run(aluu_admin.get_mapping_screen(GAME, MANAGER)))
+
+    assert _table(screen, "preview")["columns"][0] == {
+        "key": "selected", "label_key": "admin.aluu_mapping.column.selected",
+        "format": "checkbox"}
+
+
+def test_each_identity_row_offers_only_the_parameters_its_endpoint_accepts(world):
+    """`allowed_params` est la liste FERMÉE que l'écran peut proposer, celle de l'adapter."""
+    world(games=[game_doc(aluu_identity_map={"player_id": "nope"})])
+
+    screen = body_of(run(aluu_admin.get_provider_screen(GAME, MANAGER)))
+    row = _table(screen, "identity_fields")["rows"][0]
+
+    assert row["state"] == "missing"
+    assert row["allowed_params"] == sorted(allowed_check_params("game-check"))
 
 
 @requires_contract
