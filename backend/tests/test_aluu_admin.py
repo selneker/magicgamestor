@@ -498,14 +498,34 @@ def test_switching_to_aluu_validates_the_saved_configuration(world):
 
 
 def test_switching_to_aluu_without_any_configuration_is_refused(world):
+    """Configuration absente = conflit d'ÉTAT (409), pas une indisponibilité (503).
+
+    `unsupported_game` reste réservé aux autres usages : un code = un statut (contrat § 3.2).
+    """
     world(games=[{"id": GAME, "name": "Example Game"}])
 
     response = run(aluu_admin.put_game_provider(
         GAME, aluu_admin.ProviderSwitchIn(provider="aluu"), SUPER))
 
-    assert status_of(response) == 503
-    assert body_of(response)["code"] == "unsupported_game"
+    assert status_of(response) == 409
+    assert body_of(response)["code"] == "config_incomplete"
     assert "provider" not in world.game
+    assert world.catalogue_calls == 0        # refus AVANT tout appel fournisseur
+    assert world.audit == []
+
+
+def test_switching_to_aluu_with_a_partially_saved_configuration_is_refused(world):
+    """La config doit être COMPLÈTE (`aluu_config_ok`), pas seulement présente par morceaux."""
+    world(games=[game_doc(provider="fazercards", aluu_identity_map={})])
+
+    response = run(aluu_admin.put_game_provider(
+        GAME, aluu_admin.ProviderSwitchIn(provider="aluu"), SUPER))
+
+    assert status_of(response) == 409
+    assert body_of(response)["code"] == "config_incomplete"
+    assert world.game["provider"] == "fazercards"
+    assert world.catalogue_calls == 0
+    assert world.invalidations == []
 
 
 def test_switching_back_to_fazercards_keeps_every_aluu_field(world):

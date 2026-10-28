@@ -23,7 +23,7 @@ from pydantic import BaseModel, Field
 
 from core.audit import audit
 from core.db import db
-from core.games import game_provider, identity_spec
+from core.games import aluu_config_ok, game_provider, identity_spec
 from core.security import has_permission, is_super_admin, require_permission, require_super_admin
 from services import aluu, aluu_mapping, providers
 from services.providers.aluu_adapter import _read_config, allowed_check_params
@@ -294,12 +294,16 @@ async def put_game_provider(game_id: str, body: ProviderSwitchIn,
         return _error(404, "game_not_found", game_id, "Jeu introuvable.")
 
     if target == "aluu":
+        if not aluu_config_ok(doc):
+            # Configuration absente ou incomplète : basculer ici laisserait un jeu ALUU
+            # inutilisable. C'est un CONFLIT D'ÉTAT (409), pas une indisponibilité (503) :
+            # `unsupported_game` reste réservé aux autres usages (contrat § 3.2).
+            return _error(409, "config_incomplete", game_id,
+                          "Enregistrez d'abord la configuration ALUU complète du jeu "
+                          "(code jeu, endpoint Name Check et table d'identité).")
         code = str(doc.get("aluu_game_code") or "").strip()
         endpoint = str(doc.get("aluu_check_endpoint") or "").strip()
         identity_map = doc.get("aluu_identity_map")
-        if not code and not endpoint and not identity_map:
-            return _error(503, "unsupported_game", game_id,
-                          "Enregistrez d'abord la configuration ALUU du jeu.")
         try:
             _identity_map, catalogue = await _validate_aluu_config(
                 game_id, code, endpoint, identity_map)
