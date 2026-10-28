@@ -299,6 +299,27 @@ async def _line_mapping(order: dict, idx: int, item: dict, *, records: dict,
     return mapping, is_aluu, provider.name, _mapping_state(mapping, is_aluu=is_aluu)
 
 
+async def _remember_unit_count(order: dict, idx: int, records: dict, expected: int) -> None:
+    """Mémorise `unit_count` sur les records HISTORIQUES d'une ligne (jamais d'écrasement).
+
+    Une ligne composée créée avant BE-003 n'a pas mémorisé le nombre d'unités attendu. Tant que
+    son mapping est utilisable, on le calcule et on l'écrit AVANT de décider de la complétude :
+    si le mapping disparaît ensuite, la ligne ne pourra plus passer pour complète alors qu'une
+    unité n'a jamais été créée. Un `unit_count` déjà présent n'est jamais réécrit, et aucun
+    record n'est créé : la condition `status` existe interdit d'inventer un nœud.
+    """
+    for (cidx, q), record in records.items():
+        if record.get("unit_count") is not None:
+            continue
+        path, _key = _unit_identity(order["order_number"], idx, cidx, q)
+        result = await db.orders.update_one(
+            {"id": order["id"], f"{path}.status": {"$exists": True},
+             f"{path}.unit_count": {"$exists": False}},
+            {"$set": {f"{path}.unit_count": expected}})
+        if result.modified_count == 1:
+            record["unit_count"] = expected
+
+
 async def _units_for_line(order: dict, idx: int, item: dict, *,
                           current: _CurrentProvider) -> tuple[list, dict | None]:
     """Unités d'une ligne. Le FOURNISSEUR est décidé **par unité** :
@@ -329,6 +350,9 @@ async def _units_for_line(order: dict, idx: int, item: dict, *,
     if state == "ok":
         base, category_id = _mapping_base(mapping, is_aluu=is_aluu)
         expected = len(base) * qty
+        # Record historique (créé avant BE-003) : le nombre attendu est écrit maintenant, tant
+        # que le mapping permet de le calculer. Ensuite il fait foi, même sans mapping.
+        await _remember_unit_count(order, idx, records, expected)
         for q in range(qty):
             for component in base:
                 cidx = component["component_index"]

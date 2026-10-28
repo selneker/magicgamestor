@@ -1138,6 +1138,69 @@ def test_legacy_composite_line_without_unit_count_keeps_its_behaviour(world, mon
     assert "unit_count" not in w.order["fazercards_components"]["0"]["0"]
 
 
+# --------------------------------------------------------------------------- rattrapage (BE-007)
+#
+# Un record créé AVANT BE-003 n'a pas de `unit_count`. Tant que le mapping est utilisable, le
+# nombre attendu est calculé et écrit sur le record au PREMIER passage : ensuite il fait foi,
+# même si le mapping est supprimé. Un `unit_count` déjà présent n'est jamais réécrit.
+#
+# Cas RÉSIDUEL assumé : un record historique dont le mapping a déjà disparu au premier passage
+# garde le comportement d'avant (test ci-dessus, `test_legacy_composite_line_without_unit_count_
+# keeps_its_behaviour`) — aucun nombre attendu ne peut plus être calculé sans inventer.
+
+def drop_product_mapping(world, product_id="p-720"):
+    """Retire le mapping du produit (simule une suppression en cours de route)."""
+    for doc in world.db.products.documents:
+        if doc["id"] == product_id:
+            doc.pop("fazercards_mapping", None)
+
+
+def test_a_legacy_record_gets_its_unit_count_from_the_live_mapping(world, monkeypatch):
+    """(a) Record historique + mapping utilisable : `unit_count` est écrit, valeur du mapping."""
+    provider = FakeFazercardsProvider()
+    w = world(orders=[composite_order(unit_count=None)],
+              products=[product("p-720", uc_amount=720,
+                                fazercards_mapping=COMPOSITE_2_UNITS)],
+              games=[dict(FAZER_GAME)])
+    patch_fazercards(monkeypatch, provider)
+
+    run(fzr_fulfillment.refresh_status("ord-1", "admin:1"))
+
+    assert w.order["fazercards_components"]["0"]["0"]["unit_count"] == 2
+    assert w.order["status"] == "paid"          # la 2e unité n'a jamais été créée
+
+
+def test_a_legacy_record_is_not_completed_after_the_mapping_disappears(world, monkeypatch):
+    """(b) `unit_count` écrit au 1er passage, mapping supprimé ensuite : ligne non livrée."""
+    provider = FakeFazercardsProvider()
+    w = world(orders=[composite_order(unit_count=None)],
+              products=[product("p-720", uc_amount=720,
+                                fazercards_mapping=COMPOSITE_2_UNITS)],
+              games=[dict(FAZER_GAME)])
+    patch_fazercards(monkeypatch, provider)
+
+    run(fzr_fulfillment.refresh_status("ord-1", "admin:1"))   # 1er passage : rattrapage
+    drop_product_mapping(w)
+    run(fzr_fulfillment.refresh_status("ord-1", "admin:1"))   # 2e passage : plus de mapping
+
+    assert w.order["fazercards_components"]["0"]["0"]["unit_count"] == 2
+    assert w.order["status"] == "paid"          # 1 unité sur 2 : jamais « livrée »
+
+
+def test_an_existing_unit_count_is_never_overwritten(world, monkeypatch):
+    """(c) `unit_count` déjà présent : la valeur mémorisée fait foi, le mapping ne l'écrase pas."""
+    provider = FakeFazercardsProvider()
+    w = world(orders=[composite_order(unit_count=3)],
+              products=[product("p-720", uc_amount=720,
+                                fazercards_mapping=COMPOSITE_2_UNITS)],
+              games=[dict(FAZER_GAME)])
+    patch_fazercards(monkeypatch, provider)
+
+    run(fzr_fulfillment.refresh_status("ord-1", "admin:1"))
+
+    assert w.order["fazercards_components"]["0"]["0"]["unit_count"] == 3
+
+
 # ===================================================================== partie 3 : commande mixte
 #
 # Préflight d'une commande dont les unités à envoyer appartiennent à DEUX fournisseurs (reprise
