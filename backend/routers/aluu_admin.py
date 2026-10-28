@@ -432,11 +432,14 @@ def _mapping_blocks(current: list[dict], proposal: list[dict]) -> list[dict]:
     ]
 
 
-async def _mapping_screen(doc: dict, packs: list[dict] | None) -> dict:
+async def _mapping_screen(doc: dict, packs: list[dict] | None, user: dict) -> dict:
     """Les deux tables de l'écran, sur le MÊME ensemble de produits appariables.
 
     `packs = None` (catalogue live indisponible) : la table courante reste servie depuis la
     vérité locale, la proposition est vide — jamais une proposition inventée.
+
+    Les permissions sont celles du RÔLE RÉEL de l'appelant, comme sur l'écran fournisseur :
+    le client s'en sert pour afficher, jamais pour autoriser (la route garde sa dépendance).
     """
     code = str(doc.get("aluu_game_code") or "").strip()
     products = await aluu_mapping.appariable_products(doc["id"])
@@ -450,7 +453,8 @@ async def _mapping_screen(doc: dict, packs: list[dict] | None) -> dict:
                  "provider": game_provider(doc)},
         # Le mapping ne s'édite pas en place : il s'APERÇOIT puis s'APPLIQUE.
         "permissions": {"can_edit": False,
-                        "can_preview": True, "can_apply": True},
+                        "can_preview": has_permission(user, "catalog.manage"),
+                        "can_apply": has_permission(user, "catalog.manage")},
         "blocks": _mapping_blocks(current, proposal),
     }
 
@@ -484,7 +488,7 @@ async def get_mapping_screen(game_id: str,
             packs = await _packs(code)
         except providers.ProviderError as exc:
             logger.warning("aluu admin: catalogue indisponible pour %s code=%s", game_id, exc.code)
-    return await _mapping_screen(doc, packs)
+    return await _mapping_screen(doc, packs, user)
 
 
 @router.post("/admin/games/{game_id}/aluu-mapping/preview")

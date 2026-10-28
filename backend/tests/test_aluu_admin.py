@@ -722,6 +722,21 @@ def test_an_unavailable_catalogue_still_renders_the_screen(world):
     assert _table(screen, "preview")["rows"] == []        # jamais une proposition inventée
 
 
+def test_the_mapping_screen_permissions_follow_the_caller_role(world):
+    """`can_preview` / `can_apply` sont calculés comme sur l'écran fournisseur (BE-007).
+
+    Un compte sans `catalog.manage` reçoit `false` : le client n'affiche pas les boutons.
+    Aucune modification de la dépendance de route — c'est un affichage, pas une autorisation.
+    """
+    world(games=[game_doc()], products=deepcopy(CONTRACT_PRODUCTS))
+
+    allowed = body_of(run(aluu_admin.get_mapping_screen(GAME, MANAGER)))["permissions"]
+    denied = body_of(run(aluu_admin.get_mapping_screen(GAME, READER)))["permissions"]
+
+    assert allowed == {"can_edit": False, "can_preview": True, "can_apply": True}
+    assert denied == {"can_edit": False, "can_preview": False, "can_apply": False}
+
+
 # --------------------------------------------------------------------------- aperçu
 
 def test_preview_proposes_the_aluu_pack_itself_not_the_product_name(world):
