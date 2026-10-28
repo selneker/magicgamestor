@@ -189,7 +189,37 @@ def _webhook_url() -> str | None:
     return f"{base.rstrip('/')}{WEBHOOK_PATH}" if base else None
 
 
-def _provider_blocks(doc: dict, catalogue: list[dict] | None) -> list[dict]:
+def _identity_selects(spec: list[dict], declared_map: dict, allowed: frozenset[str],
+                      can_edit: bool) -> list[dict]:
+    """Un `select` par champ d'identité DÉCLARÉ du jeu, après la table récapitulative.
+
+    `value` est le paramètre actuellement lié, ou `null` : une valeur vide signifie « non
+    relié » et le client OMET alors la clé de `aluu_identity_map` (contrat § 3.1). Aucune
+    option « non relié » en v0 : le champ se délie en vidant le select.
+    """
+    blocks: list[dict] = []
+    for field in spec:
+        key = str(field.get("key") or "")
+        if not key:
+            continue
+        param = declared_map.get(key)
+        blocks.append({
+            "kind": "select",
+            "key": f"aluu_identity_map.{key}",
+            # Libellé du JEU (donnée du catalogue), jamais un texte fixe (contrat § 2).
+            "label_key": None,
+            "label": field.get("label") or key,
+            "value": str(param) if param else None,
+            "disabled": not can_edit,
+            # Liste FERMÉE des paramètres de l'endpoint, la même que `allowed_params`.
+            "options": [{"value": name, "label_key": None, "label": name}
+                        for name in sorted(allowed)],
+        })
+    return blocks
+
+
+def _provider_blocks(doc: dict, catalogue: list[dict] | None,
+                     can_edit: bool) -> list[dict]:
     provider = game_provider(doc)
     # La bascule vise l'AUTRE fournisseur : le bouton ne propose jamais l'état courant.
     target = "aluu" if provider == "fazercards" else "fazercards"
@@ -285,6 +315,8 @@ def _provider_blocks(doc: dict, catalogue: list[dict] | None) -> list[dict]:
               "format": "text"}],
          "rows": identity_rows},
         {"kind": "text", "label_key": "admin.provider.identity.hint", "tone": "muted"},
+        # La table reste un récapitulatif en LECTURE SEULE ; l'édition se fait par ces selects.
+        *_identity_selects(spec, declared_map, allowed, can_edit),
         {"kind": "button", "key": "save_config", "label_key": "common.save",
          "action": "put_config", "variant": "primary",
          "requires": ["permissions.can_edit"]},
@@ -302,6 +334,7 @@ def _provider_blocks(doc: dict, catalogue: list[dict] | None) -> list[dict]:
 
 
 def _provider_screen(doc: dict, user: dict, catalogue: list[dict] | None) -> dict:
+    can_edit = has_permission(user, "catalog.manage")
     return {
         "contract_version": CONTRACT_VERSION,
         "screen": "provider",
@@ -309,11 +342,11 @@ def _provider_screen(doc: dict, user: dict, catalogue: list[dict] | None) -> dic
         "game": {"id": doc.get("id"), "name": doc.get("name") or doc.get("id"),
                  "provider": game_provider(doc),
                  "provider_declared": bool(str(doc.get("provider") or "").strip())},
-        "permissions": {"can_edit": has_permission(user, "catalog.manage"),
+        "permissions": {"can_edit": can_edit,
                         "can_switch_provider": is_super_admin(user),
                         "can_preview": has_permission(user, "catalog.manage"),
                         "can_apply": has_permission(user, "catalog.manage")},
-        "blocks": _provider_blocks(doc, catalogue),
+        "blocks": _provider_blocks(doc, catalogue, can_edit),
     }
 
 

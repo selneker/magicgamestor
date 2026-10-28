@@ -279,6 +279,71 @@ def test_each_identity_row_offers_only_the_parameters_its_endpoint_accepts(world
     assert row["allowed_params"] == sorted(allowed_check_params("game-check"))
 
 
+# ------------------------------------------- édition de la table d'identité (contrat § 3.1, BE-008)
+
+def _select(screen, key):
+    return next(block for block in screen["blocks"]
+                if block.get("kind") == "select" and block.get("key") == key)
+
+
+def _select_or_none(screen, key):
+    return next((block for block in screen["blocks"]
+                 if block.get("kind") == "select" and block.get("key") == key), None)
+
+
+def test_each_declared_identity_field_gets_an_edit_select_after_the_table(world):
+    """La table reste un récapitulatif ; l'édition passe par un select PAR champ déclaré."""
+    world(games=[game_doc()])
+
+    screen = body_of(run(aluu_admin.get_provider_screen(GAME, MANAGER)))
+    select = _select(screen, "aluu_identity_map.player_id")
+
+    assert select == {
+        "kind": "select", "key": "aluu_identity_map.player_id", "label_key": None,
+        "label": "Player ID", "value": "characterId", "disabled": False,
+        "options": [{"value": param, "label_key": None, "label": param}
+                    for param in sorted(allowed_check_params("game-check"))]}
+    table_index = next(index for index, block in enumerate(screen["blocks"])
+                       if block.get("kind") == "table"
+                       and block.get("key") == "identity_fields")
+    assert screen["blocks"].index(select) > table_index
+
+
+def test_an_identity_select_is_disabled_without_the_catalog_permission(world):
+    """`disabled` suit `permissions.can_edit`, calculé depuis le rôle réel de l'appelant."""
+    world(games=[game_doc()])
+
+    screen = body_of(run(aluu_admin.get_provider_screen(GAME, READER)))
+
+    assert screen["permissions"]["can_edit"] is False
+    assert _select(screen, "aluu_identity_map.player_id")["disabled"] is True
+
+
+def test_an_unbound_identity_field_has_a_null_value_and_no_unlink_option(world):
+    """Valeur vide = champ non relié : le client OMET la clé, il n'envoie jamais `null`."""
+    world(games=[game_doc(aluu_identity_map={})])
+
+    select = _select(body_of(run(aluu_admin.get_provider_screen(GAME, MANAGER))),
+                     "aluu_identity_map.player_id")
+
+    assert select["value"] is None
+    assert [option["value"] for option in select["options"]] == \
+        sorted(allowed_check_params("game-check"))
+
+
+def test_an_orphan_identity_key_stays_recap_only_and_has_no_select(world):
+    """Une clé hors des champs du jeu reste VISIBLE en lecture seule, mais ne s'édite pas."""
+    world(games=[game_doc(aluu_identity_map={"player_id": "characterId",
+                                             "legacy_id": "code"})])
+
+    screen = body_of(run(aluu_admin.get_provider_screen(GAME, MANAGER)))
+    rows = {row["key"]: row for row in _table(screen, "identity_fields")["rows"]}
+
+    assert "legacy_id" in rows
+    assert _select(screen, "aluu_identity_map.player_id") is not None
+    assert _select_or_none(screen, "aluu_identity_map.legacy_id") is None
+
+
 # ------------------------------------------------------- URL de webhook (calculée serveur, § 3.5)
 
 def _provider_screen_with(world, monkeypatch, **env):
