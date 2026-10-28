@@ -60,11 +60,15 @@ class ProviderSwitchIn(BaseModel):
 
 
 class ProviderConfigIn(BaseModel):
-    """Corps de `put_config`. Champs optionnels : c'est la validation qui refuse, avec un code."""
+    """Corps de `put_config`. Champs optionnels : c'est la validation qui refuse, avec un code.
+
+    `aluu_identity_map` est la table COMPLÈTE ; une valeur `null` délie le champ et n'est
+    jamais écrite (contrat § 3.1).
+    """
 
     aluu_game_code: str | None = None
     aluu_check_endpoint: str | None = None
-    aluu_identity_map: dict | None = None
+    aluu_identity_map: dict[str, str | None] | None = None
 
 
 class MappingLineIn(BaseModel):
@@ -132,6 +136,10 @@ async def _validate_aluu_config(game_id: str, code: str | None, endpoint: str | 
                               f"{', '.join(aluu.CHECK_ENDPOINTS)} attendu."))
 
     allowed = allowed_check_params(endpoint_value) or frozenset()
+    if isinstance(identity_map, dict):
+        # `null` = champ délié : la valeur est OMISE, jamais écrite (contrat § 3.1). Une clé
+        # absente et une clé `null` ont donc le même effet.
+        identity_map = {key: param for key, param in identity_map.items() if param is not None}
     if not isinstance(identity_map, dict) or not identity_map:
         raise _Invalid(_error(400, "invalid_identity_map", game_id,
                               "Table d'identité vide : déclarez au moins un champ du jeu."))

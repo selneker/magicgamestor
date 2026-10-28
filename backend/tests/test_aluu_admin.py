@@ -468,6 +468,31 @@ def test_a_valid_configuration_is_written_and_audited(world):
     assert world.actions() == ["aluu.provider_config_saved"]
 
 
+def test_a_null_identity_entry_unbinds_the_field_without_writing_it(world):
+    """`null` = champ délié : la clé est OMISE de la table écrite (contrat § 3.1)."""
+    world(games=[bare_game(identity_fields=[
+        {"key": "player_id", "label": "Player ID", "required": True, "primary": True},
+        {"key": "server", "label": "Server", "required": False}])])
+
+    response = run(aluu_admin.put_provider_config(
+        GAME, _config(identity={"player_id": "characterId", "server": None}), MANAGER))
+
+    assert status_of(response) == 200
+    assert world.game["aluu_identity_map"] == {"player_id": "characterId"}
+
+
+def test_an_identity_map_that_is_empty_once_nulls_are_omitted_is_refused(world):
+    world(games=[bare_game()])
+
+    response = run(aluu_admin.put_provider_config(
+        GAME, _config(identity={"player_id": None}), MANAGER))
+
+    assert status_of(response) == 400
+    assert body_of(response)["code"] == "invalid_identity_map"
+    assert world.game.get("aluu_identity_map") is None
+    assert world.audit == []
+
+
 def test_an_unavailable_catalogue_writes_nothing(world):
     """Règle : catalogue live indisponible ⇒ rien n'est écrit, même pour un code valide."""
     world(games=[bare_game()],
