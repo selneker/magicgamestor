@@ -78,7 +78,7 @@ mongod --dbpath ~/mgs-mongo --port 27017 --bind_ip 127.0.0.1
 **Option B — Docker :**
 
 ```bash
-docker run --rm -d --name mgs-test-mongo -p 27017:27017 mongo:7
+docker run --rm -d --name mgs-test-mongo -p 127.0.0.1:27017:27017 mongo:7
 ```
 
 Laisse ce terminal ouvert (c'est le terminal « Mongo »).
