@@ -202,7 +202,11 @@ def _assert_contract(example, actual, path="screen"):
 
 
 @requires_contract
-def test_provider_screen_matches_the_contract_example(world):
+def test_provider_screen_matches_the_contract_example(world, monkeypatch):
+    # L'exemple du contrat est le cas « base publique absente » : on fixe l'environnement,
+    # sinon une variable exportée sur la machine changerait le type de `connection[].value`.
+    for name in ("BACKEND_PUBLIC_URL", "RENDER_EXTERNAL_URL"):
+        monkeypatch.delenv(name, raising=False)
     undeclared = {key: value for key, value in game_doc().items() if key != "provider"}
     world(games=[undeclared])
 
@@ -273,6 +277,67 @@ def test_each_identity_row_offers_only_the_parameters_its_endpoint_accepts(world
 
     assert row["state"] == "missing"
     assert row["allowed_params"] == sorted(allowed_check_params("game-check"))
+
+
+# ------------------------------------------------------- URL de webhook (calculée serveur, § 3.5)
+
+def _provider_screen_with(world, monkeypatch, **env):
+    """Écran fournisseur rendu avec EXACTEMENT les variables d'environnement demandées."""
+    for name in ("BACKEND_PUBLIC_URL", "RENDER_EXTERNAL_URL"):
+        monkeypatch.delenv(name, raising=False)
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    world(games=[game_doc()])
+    return body_of(run(aluu_admin.get_provider_screen(GAME, MANAGER)))
+
+
+def _webhook_row(screen):
+    return next(row for row in _table(screen, "connection")["rows"]
+                if row["key"] == "webhook_url")
+
+
+def test_the_webhook_url_is_computed_from_the_public_base_url(world, monkeypatch):
+    row = _webhook_row(_provider_screen_with(
+        world, monkeypatch, BACKEND_PUBLIC_URL="https://api.magicgame.store"))
+
+    assert row["value"] == "https://api.magicgame.store/api/aluu/webhook"
+    assert row["configured"] is True
+    assert row["state"] == "mapped"
+    assert row["value_key"] == "admin.provider.connection.configured"
+
+
+def test_a_trailing_slash_never_doubles_the_webhook_path(world, monkeypatch):
+    row = _webhook_row(_provider_screen_with(
+        world, monkeypatch, BACKEND_PUBLIC_URL="https://api.magicgame.store/"))
+
+    assert row["value"] == "https://api.magicgame.store/api/aluu/webhook"
+
+
+def test_the_render_url_is_used_when_no_public_base_url_is_set(world, monkeypatch):
+    row = _webhook_row(_provider_screen_with(
+        world, monkeypatch, RENDER_EXTERNAL_URL="https://mgs.onrender.com"))
+
+    assert row["value"] == "https://mgs.onrender.com/api/aluu/webhook"
+    assert row["configured"] is True
+
+
+def test_without_any_public_base_url_the_webhook_row_says_not_configured(world, monkeypatch):
+    row = _webhook_row(_provider_screen_with(world, monkeypatch))
+
+    assert row == {"key": "webhook_url",
+                   "label_key": "admin.provider.connection.webhook_url",
+                   "value_key": "admin.provider.connection.not_configured",
+                   "value": None, "configured": False, "state": "missing"}
+
+
+def test_the_webhook_url_is_never_an_input_of_the_screen(world, monkeypatch):
+    """Elle est calculée par le serveur : aucun bloc de saisie ne la porte."""
+    screen = _provider_screen_with(
+        world, monkeypatch, BACKEND_PUBLIC_URL="https://api.magicgame.store")
+
+    inputs = [block.get("key") for block in screen["blocks"]
+              if block.get("kind") in ("select", "input", "toggle", "checkbox")]
+    assert "webhook_url" not in inputs
 
 
 @requires_contract

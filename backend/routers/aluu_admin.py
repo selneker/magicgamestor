@@ -156,6 +156,21 @@ async def _validate_aluu_config(game_id: str, code: str | None, endpoint: str | 
 
 # --------------------------------------------------------------------------- écran fournisseur
 
+WEBHOOK_PATH = "/api/aluu/webhook"
+
+
+def _webhook_url() -> str | None:
+    """URL publique du webhook, calculée côté serveur (contrat § 3.5).
+
+    Une seule source, celle qui sert déjà aux webhooks PAPI et aux callbacks OAuth :
+    `BACKEND_PUBLIC_URL`, puis `RENDER_EXTERNAL_URL` en secours sur Render. Absente = `None` :
+    l'écran affiche « non configuré » et aucune URL n'est inventée.
+    """
+    base = (os.environ.get("BACKEND_PUBLIC_URL")
+            or os.environ.get("RENDER_EXTERNAL_URL") or "").strip()
+    return f"{base.rstrip('/')}{WEBHOOK_PATH}" if base else None
+
+
 def _provider_blocks(doc: dict, catalogue: list[dict] | None) -> list[dict]:
     provider = game_provider(doc)
     declared = bool(str(doc.get("provider") or "").strip())
@@ -167,6 +182,7 @@ def _provider_blocks(doc: dict, catalogue: list[dict] | None) -> list[dict]:
 
     api_key = aluu.configured()
     webhook_secret = bool(os.environ.get("ALUU_WEBHOOK_SECRET"))
+    webhook_url = _webhook_url()
     connection = [
         {"key": "api_key", "label_key": "admin.provider.connection.api_key",
          "value_key": "admin.provider.connection.configured", "value": None,
@@ -174,10 +190,14 @@ def _provider_blocks(doc: dict, catalogue: list[dict] | None) -> list[dict]:
         {"key": "webhook_secret", "label_key": "admin.provider.connection.webhook_secret",
          "value_key": "admin.provider.connection.configured", "value": None,
          "configured": webhook_secret, "state": "mapped" if webhook_secret else "missing"},
-        # Aucune variable d'environnement ne porte cette URL dans ce dépôt : on ne l'invente pas.
+        # Seule ligne de `connection` qui transporte une valeur : l'URL n'est pas un secret,
+        # elle est recopiée depuis la configuration du serveur, jamais saisie par le client.
         {"key": "webhook_url", "label_key": "admin.provider.connection.webhook_url",
-         "value_key": "admin.provider.connection.not_configured", "value": None,
-         "configured": False, "state": "missing"},
+         "value_key": ("admin.provider.connection.configured" if webhook_url
+                       else "admin.provider.connection.not_configured"),
+         "value": webhook_url,
+         "configured": webhook_url is not None,
+         "state": "mapped" if webhook_url else "missing"},
     ]
 
     spec = identity_spec(doc)
