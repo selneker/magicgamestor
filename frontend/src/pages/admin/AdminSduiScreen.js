@@ -110,9 +110,14 @@ export default function AdminSduiScreen({ screen, gameId }) {
   /** GET de l'écran. Remplace raw, réinitialise values/aperçu/sélection.
    * emptyPreview : après un mapping_apply réussi (README §3.6), l'écran est
    * rechargé PUIS l'aperçu est vidé — la table « preview » revient à son état
-   * vide, même si le GET renvoie des lignes dans cette table. */
+   * vide, même si le GET renvoie des lignes dans cette table.
+   * failMode :
+   *  - « screen » (défaut) : échec du GET → écran d'erreur du rendu (pas d'écran).
+   *  - « banner » (refetch post-apply) : les lignes sont DÉJÀ écrites côté
+   *    serveur — l'aperçu et la sélection sont vidés QUAND MÊME, l'écran affiché
+   *    reste en place et l'échec du rechargement s'affiche dans la bannière. */
   const fetchScreen = useCallback(
-    (actionName, emptyPreview = false) => {
+    (actionName, emptyPreview = false, failMode = "screen") => {
       const req = requestFor(actionName, gameId);
       if (!req) {
         // props invalides (screen inconnu, gameId vide) : fail-closed, jamais de requête.
@@ -140,8 +145,16 @@ export default function AdminSduiScreen({ screen, gameId }) {
         })
         .catch((err) => {
           if (seq !== seqRef.current || !mountedRef.current) return;
-          setRaw(null);
-          setLoadError({ code: responseCode(err) });
+          if (failMode === "banner") {
+            // Refetch post-apply : rien n'est annulable — l'aperçu reste vide,
+            // l'écran affiché ne change pas, l'erreur du GET va en bannière.
+            setRowsByKey(emptyPreview ? { preview: [] } : {});
+            setSelection({});
+            setActionError({ code: responseCode(err) });
+          } else {
+            setRaw(null);
+            setLoadError({ code: responseCode(err) });
+          }
           setLoading(false);
           setBusy(false);
         });
@@ -223,7 +236,9 @@ export default function AdminSduiScreen({ screen, gameId }) {
           }
           if (actionName === "mapping_apply") {
             setBusy(false);
-            fetchScreen(LOAD_ACTION.mapping, true); // 200 → recharge par GET, puis vide l'aperçu
+            // 200 → recharge par GET ; quel que soit l'issue du rechargement,
+            // l'aperçu et la sélection sont vidés (les lignes sont déjà écrites).
+            fetchScreen(LOAD_ACTION.mapping, true, "banner");
             return;
           }
           // put_config / put_game_provider : la réponse EST le nouvel écran

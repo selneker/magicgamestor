@@ -269,6 +269,27 @@ test("apply : seulement les proposed cochées, exactement ce corps ; désactivé
   await act(async () => root.unmount());
 });
 
+test("apply 200 puis refetch échoué : aperçu vidé quand même, bannière avec le code du GET, écran conservé", async () => {
+  const { container, root } = await mountMappingWithPreview();
+  api.post.mockResolvedValueOnce({ data: applyFixture }); // l'apply POST lui-même réussit
+  api.get.mockRejectedValueOnce(ERR.known); // le refetch GET échoue
+  await click(q(container, "sdui-button-apply"));
+  await click(q(container, "sdui-confirm-run"));
+  // l'échec du rechargement s'affiche dans la bannière (code du GET, detail jamais)
+  const banner = q(container, "sdui-action-error");
+  expect(banner.getAttribute("role")).toBe("alert");
+  expect(banner.textContent).toContain("Code jeu invalide (lettres, chiffres, tiret et souligné uniquement).");
+  expect(container.textContent).not.toContain("TECHNICAL_DETAIL");
+  // l'écran affiché reste en place (pas d'écran d'erreur)
+  expect(container.querySelector("h1").textContent).toBe("Correspondance produits ↔ packs");
+  expect(q(container, "sdui-error")).toBeNull();
+  // les lignes sont déjà écrites côté serveur : l'aperçu est vidé QUAND MÊME
+  expect(q(container, "sdui-row-preview-PRODUCT-0001")).toBeNull();
+  expect(q(container, "sdui-table-preview-empty").textContent).toBe("Aucune proposition : rien ne peut être appliqué.");
+  expect(q(container, "sdui-button-apply").disabled).toBe(true); // plus rien à appliquer
+  await act(async () => root.unmount());
+});
+
 test("apply : décocher la dernière ligne proposed désactive le bouton", async () => {
   const { container, root } = await mountMappingWithPreview();
   expect(q(container, "sdui-button-apply").disabled).toBe(false);
