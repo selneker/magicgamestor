@@ -15,6 +15,7 @@ import {
   visibleBlocks,
   confirmNeeded,
 } from "./engine";
+import { makeT } from "./t";
 import { HeadingBlock, TextBlock, SelectBlock, ButtonBlock, ConfirmDialog } from "./fields";
 import { TableBlock } from "./tables";
 
@@ -36,7 +37,10 @@ import { TableBlock } from "./tables";
  * @param {function} onRetry     relance le chargement après une erreur.
  */
 export function SduiScreen({ raw, loading, error, permissions, rowsByKey, selection, onSelect, busy, onRun, onRetry }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  // t() enrobé : les clés à point du contrat (ex. admin.aluu_mapping.preview.empty)
+  // se résolvent localement — voir t.js (FE-005). Les autres passent par t().
+  const tt = useMemo(() => makeT(t, lang), [t, lang]);
   const [values, setValues] = useState({});
   const [confirming, setConfirming] = useState(null);
   const [running, setRunning] = useState(false);
@@ -77,7 +81,7 @@ export function SduiScreen({ raw, loading, error, permissions, rowsByKey, select
   if (loading) {
     return (
       <div data-testid="sdui-loading" className="p-6 text-sm text-muted-foreground">
-        {t("sdui.loading")}
+        {tt("sdui.loading")}
       </div>
     );
   }
@@ -86,8 +90,8 @@ export function SduiScreen({ raw, loading, error, permissions, rowsByKey, select
     // Le code seul est traduit via errors.json ; detail n'est JAMAIS lu ni affiché.
     return (
       <div data-testid="sdui-error" role="alert" className="panel space-y-2 p-4">
-        <p className="text-sm font-semibold">{t("sdui.error.title")}</p>
-        <p className="text-sm text-muted-foreground">{errorLabel(error && error.code, t)}</p>
+        <p className="text-sm font-semibold">{tt("sdui.error.title")}</p>
+        <p className="text-sm text-muted-foreground">{errorLabel(error && error.code, tt)}</p>
         {typeof onRetry === "function" && (
           <Button type="button" variant="secondary" className="h-11 px-6" onClick={onRetry} data-testid="sdui-error-retry">
             {t("sdui.error.retry")}
@@ -100,7 +104,7 @@ export function SduiScreen({ raw, loading, error, permissions, rowsByKey, select
   if (!versionSupported(raw)) {
     return (
       <div data-testid="sdui-version" role="alert" className="p-6 text-sm text-muted-foreground">
-        {t("sdui.error.versionUnsupported")}
+        {tt("sdui.error.versionUnsupported")}
       </div>
     );
   }
@@ -123,9 +127,9 @@ export function SduiScreen({ raw, loading, error, permissions, rowsByKey, select
     const key = keys.has(block) ? keys.get(block) : `idx-${index}`;
     switch (block.kind) {
       case "heading":
-        return <HeadingBlock key={key} block={block} t={t} />;
+        return <HeadingBlock key={key} block={block} t={tt} />;
       case "text":
-        return <TextBlock key={key} block={block} t={t} />;
+        return <TextBlock key={key} block={block} t={tt} />;
       case "select":
         return (
           <SelectBlock
@@ -134,7 +138,7 @@ export function SduiScreen({ raw, loading, error, permissions, rowsByKey, select
             permissions={perms}
             value={values[block.key] ?? block.value}
             onChange={(field, value) => setValues((prev) => ({ ...prev, [field]: value }))}
-            t={t}
+            t={tt}
           />
         );
       case "table": {
@@ -152,13 +156,13 @@ export function SduiScreen({ raw, loading, error, permissions, rowsByKey, select
             selection={selection && typeof selection === "object" ? selection[block.key] : undefined}
             busy={busy || running}
             onSelect={onSelect}
-            t={t}
+            t={tt}
           />
         );
       }
       case "button":
         return (
-          <ButtonBlock key={key} block={block} permissions={perms} busy={busy || running} onTrigger={trigger} t={t} />
+          <ButtonBlock key={key} block={block} permissions={perms} busy={busy || running} onTrigger={trigger} t={tt} />
         );
       default:
         // toggle (supprimé du v0, BE-004) et tout kind inconnu : ignorés.
@@ -175,7 +179,7 @@ export function SduiScreen({ raw, loading, error, permissions, rowsByKey, select
           running={running}
           onCancel={() => !running && setConfirming(null)}
           onConfirm={() => execute(confirming)}
-          t={t}
+          t={tt}
         />
       )}
     </div>

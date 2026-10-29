@@ -1,0 +1,150 @@
+{
+  "contract_version": "v0",
+  "screen": "mapping",
+  "generated_at": "2026-10-27T00:00:00+00:00",
+  "game": {
+    "id": "example_game",
+    "name": "Example Game",
+    "provider": "aluu"
+  },
+  "permissions": {
+    "can_edit": false,
+    "can_preview": true,
+    "can_apply": true
+  },
+  "blocks": [
+    {
+      "kind": "heading",
+      "label_key": "admin.aluu_mapping.title",
+      "level": 1
+    },
+    {
+      "kind": "text",
+      "label_key": "admin.aluu_mapping.intro",
+      "tone": "muted"
+    },
+    {
+      "kind": "text",
+      "label_key": "admin.aluu_mapping.preview_notice",
+      "tone": "warning"
+    },
+    {
+      "kind": "table",
+      "key": "products",
+      "empty_key": "admin.aluu_mapping.empty",
+      "columns": [
+        { "key": "name", "label_key": "admin.aluu_mapping.column.product", "format": "text" },
+        { "key": "price", "label_key": "admin.aluu_mapping.column.price", "format": "money" },
+        { "key": "state", "label_key": "admin.aluu_mapping.column.state", "format": "state" },
+        { "key": "match", "label_key": "admin.aluu_mapping.column.match", "format": "pack" }
+      ],
+      "rows": [
+        {
+          "product_id": "PRODUCT-0001",
+          "name": "Example Pack 0001",
+          "price": 5000,
+          "state": "mapped",
+          "matched_by": "denom",
+          "match": { "denom": "000", "offer_name": "Example Pack 0001", "price_usd": "0.0000" }
+        },
+        {
+          "product_id": "PRODUCT-0002",
+          "name": "Example Pack 0002",
+          "price": 10000,
+          "state": "unconfirmed",
+          "matched_by": "denom",
+          "match": { "denom": "000", "offer_name": "Example Pack 0002", "price_usd": "0.0000" }
+        },
+        {
+          "product_id": "PRODUCT-0003",
+          "name": "Example Pack 0003",
+          "price": 15000,
+          "state": "stale",
+          "matched_by": null,
+          "match": null
+        },
+        {
+          "product_id": "PRODUCT-0004",
+          "name": "Example Pack 0004",
+          "price": 20000,
+          "state": "missing",
+          "matched_by": null,
+          "match": null
+        }
+      ]
+    },
+    {
+      "kind": "button",
+      "key": "preview",
+      "label_key": "admin.aluu_mapping.preview",
+      "action": "mapping_preview",
+      "variant": "secondary",
+      "requires": ["permissions.can_preview"]
+    },
+    {
+      "kind": "heading",
+      "label_key": "admin.aluu_mapping.section.preview",
+      "level": 2
+    },
+    {
+      "kind": "table",
+      "key": "preview",
+      "empty_key": "admin.aluu_mapping.preview.empty",
+      "columns": [
+        { "key": "selected", "label_key": "admin.aluu_mapping.column.selected", "format": "checkbox" },
+        { "key": "product_id", "label_key": "admin.aluu_mapping.column.product", "format": "text" },
+        { "key": "state", "label_key": "admin.aluu_mapping.column.state", "format": "state" },
+        { "key": "matched_by", "label_key": "admin.aluu_mapping.column.matched_by", "format": "text" },
+        { "key": "match", "label_key": "admin.aluu_mapping.column.match", "format": "pack" }
+      ],
+      "rows": [
+        {
+          "product_id": "PRODUCT-0001",
+          "state": "proposed",
+          "matched_by": "denom",
+          "match": { "denom": "000", "offer_name": "Example Pack 0001", "price_usd": "0.0000" },
+          "selected": true
+        },
+        {
+          "product_id": "PRODUCT-0002",
+          "state": "ambiguous",
+          "matched_by": null,
+          "match": null,
+          "selected": false,
+          "candidates": [
+            { "denom": "000", "offer_name": "Example Pack 0002", "price_usd": "0.0000" },
+            { "denom": "000", "offer_name": "Example Pack 0002 (bonus)", "price_usd": "0.0000" }
+          ]
+        },
+        {
+          "product_id": "PRODUCT-0003",
+          "state": "missing",
+          "matched_by": null,
+          "match": null,
+          "selected": false
+        },
+        {
+          "product_id": "PRODUCT-0004",
+          "state": "missing",
+          "matched_by": null,
+          "match": null,
+          "selected": false
+        }
+      ]
+    },
+    {
+      "kind": "text",
+      "label_key": "admin.aluu_mapping.apply_notice",
+      "tone": "warning"
+    },
+    {
+      "kind": "button",
+      "key": "apply",
+      "label_key": "admin.aluu_mapping.apply",
+      "action": "mapping_apply",
+      "variant": "primary",
+      "requires": ["permissions.can_apply"],
+      "confirm_key": "admin.aluu_mapping.apply.confirm"
+    }
+  ]
+}

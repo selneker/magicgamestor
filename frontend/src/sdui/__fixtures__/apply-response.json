@@ -1,0 +1,17 @@
+{
+  "game_id": "example_game",
+  "aluu_game_code": "example_game",
+  "written": [
+    {
+      "product_id": "PRODUCT-0001",
+      "denom": "000",
+      "offer_name": "Example Pack 0001",
+      "price_usd": "0.0000"
+    }
+  ],
+  "unchanged": [],
+  "skipped": [],
+  "written_count": 1,
+  "unchanged_count": 0,
+  "skipped_count": 0
+}
