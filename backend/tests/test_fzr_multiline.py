@@ -105,15 +105,23 @@ class TestMultiLineFulfill:
             run(fzr_fulfillment.fulfill_order(order["id"], "test"))
         assert e.value.status_code == 409 and calls == []
 
-    def test_qty_gt1_line_skipped_others_sent(self, monkeypatch):
+    def test_qty_gt1_line_sent_as_two_units(self, monkeypatch):
+        """Une ligne `quantity=2` produit DEUX unités fournisseur (règle actuelle : `_unit_identity`)."""
         calls = []
         mock_transport(monkeypatch, multi_handler(calls))
         pid2 = make_mapped_product()
         order = make_multi_order(1, extra_items=[{"product_id": pid2, "slug": "x2", "name": "60 UC x2",
                                                   "type": "uc", "unit_price": 5000, "quantity": 2, "line_total": 10000}])
         out = run(fzr_fulfillment.fulfill_order(order["id"], "test"))
-        assert len(calls) == 1 and len(out["results"]) == 1
-        assert any("Quantité" in s["reason"] for s in out["skipped"])
+        assert len(calls) == 3 and len(out["results"]) == 3
+        assert all(r["ok"] for r in out["results"]) and out["skipped"] == []
+        assert [c["idempotency_key"] for c in calls] == [
+            f"{order['order_number']}-1", f"{order['order_number']}-L2-1", f"{order['order_number']}-L2-U2"]
+        stored = run(db.orders.find_one({"id": order["id"]}, {"_id": 0}))
+        ids = [stored["fazercards"]["provider_order_id"],
+               stored["fazercards_lines"]["1"]["provider_order_id"],
+               stored["fazercards_reps"]["1"]["1"]["provider_order_id"]]
+        assert all(ids) and len(set(ids)) == 3
 
     def test_partial_then_second_click_sends_only_remaining(self, monkeypatch):
         calls = []

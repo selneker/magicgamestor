@@ -185,15 +185,6 @@ class TestFulfillPreconditions:
             run(fzr_fulfillment.fulfill_order(order["id"], "test"))
         assert e.value.status_code == 409 and "indisponible" in e.value.detail.lower()
 
-    def test_multi_item_order_not_eligible(self, monkeypatch):
-        mock_transport(monkeypatch, happy_handler())
-        pid = make_mapped_product()
-        order = make_order(status="paid", items=[
-            {"product_id": pid, "slug": "60-uc", "name": "60 UC", "type": "uc", "unit_price": 5000, "quantity": 2, "line_total": 10000}])
-        with pytest.raises(HTTPException) as e:
-            run(fzr_fulfillment.fulfill_order(order["id"], "test"))
-        assert e.value.status_code == 409
-
 
 class TestFulfillSuccess:
     def test_order_accepted_snapshot_and_provider_id(self, monkeypatch):
@@ -221,6 +212,23 @@ class TestFulfillSuccess:
         with pytest.raises(HTTPException) as e:
             run(fzr_fulfillment.fulfill_order(order["id"], "test"))
         assert e.value.status_code == 409 and h.provider_id in e.value.detail
+
+    def test_quantity_2_creates_two_units(self, monkeypatch):
+        """`quantity=2` → deux unités fournisseur indépendantes (plus de refus « multi-lignes »)."""
+        calls = []
+        mock_transport(monkeypatch, happy_handler(calls))
+        pid = make_mapped_product()
+        order = make_order(status="paid", items=[
+            {"product_id": pid, "slug": "60-uc", "name": "60 UC", "type": "uc",
+             "unit_price": 5000, "quantity": 2, "line_total": 10000}])
+        out = run(fzr_fulfillment.fulfill_order(order["id"], "test"))
+        assert len(calls) == 2 and len(out["results"]) == 2
+        assert all(r["ok"] for r in out["results"]) and out["skipped"] == []
+        assert [c["idempotency_key"] for c in calls] == [
+            f"{order['order_number']}-1", f"{order['order_number']}-L1-U2"]
+        stored = run(db.orders.find_one({"id": order["id"]}, {"_id": 0}))
+        assert stored["fazercards"]["provider_order_id"]
+        assert stored["fazercards_reps"]["0"]["1"]["provider_order_id"]
 
 
 class TestIdempotencyRetry:

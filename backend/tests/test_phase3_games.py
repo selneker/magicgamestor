@@ -207,7 +207,6 @@ def _services():
 
 
 def test_game_catalog_is_discovered_from_provider_keywords(monkeypatch):
-    import asyncio
     fazercards, _ = _services()
 
     async def fake_all():
@@ -218,19 +217,18 @@ def test_game_catalog_is_discovered_from_provider_keywords(monkeypatch):
         ]
 
     monkeypatch.setattr(fazercards, "_topup_categories", fake_all)
-    assert [c["category_id"] for c in asyncio.run(fazercards.game_categories("free-fire"))] == ["cat_ff_1"]
-    assert [c["category_id"] for c in asyncio.run(fazercards.game_categories("pubg-mobile"))] == ["cat_pubgm_1"]
+    assert [c["category_id"] for c in run(fazercards.game_categories("free-fire"))] == ["cat_ff_1"]
+    assert [c["category_id"] for c in run(fazercards.game_categories("pubg-mobile"))] == ["cat_pubgm_1"]
 
     async def only_pubg():
         return [{"category_id": "cat_pubgm_1", "name": "PUBG Mobile", "note": ""}]
 
     monkeypatch.setattr(fazercards, "_topup_categories", only_pubg)
-    assert asyncio.run(fazercards.game_categories("free-fire")) == []
+    assert run(fazercards.game_categories("free-fire")) == []
 
 
 def test_mapping_rejects_a_category_belonging_to_another_game(monkeypatch):
     """A product can only be mapped to a category of ITS OWN game (no cross-game mapping)."""
-    import asyncio
     from fastapi import HTTPException
     fazercards, fzr_mapping = _services()
 
@@ -239,5 +237,5 @@ def test_mapping_rejects_a_category_belonging_to_another_game(monkeypatch):
 
     monkeypatch.setattr(fazercards, "game_categories", fake_cats)
     with pytest.raises(HTTPException) as err:
-        asyncio.run(fzr_mapping.offers_for_game(FREE_FIRE, "cat_pubgm_1"))
+        run(fzr_mapping.offers_for_game(FREE_FIRE, "cat_pubgm_1"))
     assert err.value.status_code == 409

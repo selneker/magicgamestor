@@ -94,7 +94,7 @@ cat > .env <<EOF
 MONGO_URL=mongodb://127.0.0.1:27017
 DB_NAME=mgs_test_live
 JWT_SECRET=$(openssl rand -hex 32)
-ADMIN_EMAIL=admin@test.local
+ADMIN_EMAIL=admin@mgs-test.example.com
 ADMIN_PASSWORD=$(openssl rand -hex 16)
 EOF
 chmod 600 .env
@@ -111,6 +111,8 @@ le remplace **uniquement** dans `~/mgs-live`.
 
 `ADMIN_EMAIL` / `ADMIN_PASSWORD` servent à deux choses : le serveur crée (ou met à jour) ce
 compte super-admin au démarrage (`core/seed.py`), et les tests s'en servent pour se connecter.
+L'adresse doit passer la validation d'e-mail de l'API : un domaine réservé comme `test.local`
+est refusé en `422` (« special-use or reserved name »), d'où `mgs-test.example.com`.
 
 ---
 
@@ -181,16 +183,15 @@ Trois détails qui comptent :
 | Module | Attendu |
 |---|---|
 | `test_phase3_games` | 8 passed |
-| `test_fzr_phase3` | 25 passed, **1 échec préexistant** (voir ci-dessous) |
+| `test_fzr_phase3` | 26 passed |
 | les trois autres | 0 échec |
 
-Échec connu, **hors périmètre**, déjà constaté avant la migration ALUU :
-
-```
-tests/test_fzr_phase3.py::TestFulfillPreconditions::test_multi_item_order_not_eligible
-```
-
-Il attend un message « Quantité » qu'aucun code ne produit plus. Ne le corrige pas ici.
+Constaté par exécution le 2026-10-28 (BE-010 puis BE-011, base jetable, `-n 0`) : **60 passed,
+0 échec** sur les 5 suites. `test_phase3_games` = 8 passed une fois l'isolation de ses deux tests
+unitaires corrigée (ils exécutaient l'appel dans une boucle asyncio neuve au lieu de celle du
+client Mongo) ; `test_fzr_phase3` = 26 passed après réécriture du test qui décrivait encore
+l'ancienne règle « multi-lignes / quantité > 1 refusée », qui n'existe plus (une ligne
+`quantity=2` produit deux unités fournisseur).
 
 > Je ne donne pas de total pour `test_multigame_identity_contract`, `test_multigame_core` et
 > `test_saved_identities` : je ne peux pas exécuter Mongo dans mon environnement, donc je ne les
