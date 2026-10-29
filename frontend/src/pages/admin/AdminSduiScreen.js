@@ -19,6 +19,7 @@
 // bouton « preview » et la table « preview » coexistent dans l'écran mapping.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { SduiScreen } from "@/sdui/Screen";
@@ -263,6 +264,16 @@ export default function AdminSduiScreen({ screen, gameId }) {
 
   return (
     <div ref={wrapperRef} tabIndex={-1} className="sdui-page outline-none">
+      {/* Lien de retour vers la liste des jeux (cible ≥ 44 px, libellé explicite). */}
+      <div className="mb-3">
+        <Link
+          to="/admin/jeux"
+          className="inline-flex h-11 items-center rounded-full border px-4 text-sm font-semibold text-foreground hover:bg-muted/50"
+          data-testid="sdui-back"
+        >
+          {tt("admin.backToGames")}
+        </Link>
+      </div>
       {actionError !== null && (
         <div role="alert" className="panel mb-4 p-3" data-testid="sdui-action-error">
           <p className="text-sm font-semibold text-foreground">{errorLabel(actionError.code, tt)}</p>

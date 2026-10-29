@@ -17,6 +17,13 @@ global.IS_REACT_ACT_ENVIRONMENT = true;
 
 jest.mock("@/lib/api", () => ({ api: { get: jest.fn(), put: jest.fn(), post: jest.fn() } }));
 
+// react-router-dom v7 ne se résout pas sous jest (motif du dépôt, cf. Header.test.js) ;
+// la page n'utilise que Link (retour vers la liste des jeux).
+jest.mock("react-router-dom", () => {
+  const React = require("react");
+  return { Link: ({ to, children, ...props }) => React.createElement("a", { ...props, href: to }, children) };
+});
+
 jest.mock("@/context/LanguageContext", () => ({
   // passthrough : makeT retombe sur resolveFlat(translations) — textes réels du contrat.
   useLang: () => ({ t: (path) => path, lang: "fr" }),
@@ -102,6 +109,10 @@ test("les deux fixtures se rendent : un seul h1 chacun, blocs du contrat", async
   const a = await mount(<AdminSduiScreen screen="provider" gameId={GAME} />);
   expect(a.container.querySelectorAll("h1")).toHaveLength(1);
   expect(a.container.querySelector("h1").textContent).toBe("Fournisseur du jeu");
+  // lien de retour vers la liste des jeux : texte réel de la traduction, cible ≥ 44 px
+  const back = q(a.container, "sdui-back");
+  expect(back.getAttribute("href")).toBe("/admin/jeux");
+  expect(back.textContent).toBe("Retour aux jeux");
   expect(q(a.container, "sdui-select-provider").querySelector("select").disabled).toBe(true); // select disabled du contrat
   expect(q(a.container, "sdui-select-provider").querySelector("select").value).toBe("fazercards");
   await act(async () => a.root.unmount());

@@ -35,6 +35,7 @@ import AdminEvents from "@/pages/admin/AdminEvents";
 import AdminLoyalty from "@/pages/admin/AdminLoyalty";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminPayments from "@/pages/admin/AdminPayments";
+import { ADMIN_SDUI_ROUTES, SduiRoute } from "@/pages/admin/AdminSduiRoutes";
 
 function AppRouter() {
   return (
@@ -67,6 +68,11 @@ function AppRouter() {
             <Route path="commandes" element={<AdminOrders />} />
             <Route path="catalogue" element={<AdminProducts />} />
             <Route path="jeux" element={<AdminGames />} />
+            {/* Écrans SDUI (FE-006) : path ↔ écran défini une seule fois dans
+                ADMIN_SDUI_ROUTES ; garde admin hérité de la route parente. */}
+            {ADMIN_SDUI_ROUTES.map((route) => (
+              <Route key={route.screen} path={route.path} element={<SduiRoute screen={route.screen} />} />
+            ))}
             <Route path="fournisseur" element={<AdminFazercards />} />
             <Route path="evenements" element={<AdminEvents />} />
             <Route path="messages" element={<AdminChat />} />

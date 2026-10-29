@@ -158,6 +158,16 @@ cart: { otherGame: "Votre panier contient des offres d'un autre jeu. Finalisez o
         column: { product: "Produit", price: "Prix de vente", state: "État", match: "Pack correspondant", selected: "Sélection", matched_by: "Critère" },
         state: { mapped: "Lié", unconfirmed: "À confirmer", missing: "Non lié", stale: "Pack disparu", proposed: "Proposé", ambiguous: "Ambigu" },
       },
+      // Liens de l'interface d'administration vers les écrans SDUI (FE-006) —
+      // clés d'application (pas du contrat) ; les libellés « …For » servent de
+      // nom accessible incluant le nom du jeu.
+      sdui: {
+        provider: "Fournisseur",
+        providerFor: "Fournisseur du jeu {name}",
+        mapping: "Mapping ALUU",
+        mappingFor: "Mapping ALUU du jeu {name}",
+      },
+      backToGames: "Retour aux jeux",
     },
     sdui: {
       loading: "Chargement de l'écran…",
@@ -356,6 +366,15 @@ cart: { otherGame: "Your cart holds offers from another game. Check out or empty
         column: { product: "Product", price: "Selling price", state: "State", match: "Matching pack", selected: "Selection", matched_by: "Criterion" },
         state: { mapped: "Linked", unconfirmed: "To confirm", missing: "Not linked", stale: "Pack gone", proposed: "Proposed", ambiguous: "Ambiguous" },
       },
+      // Admin UI links to the SDUI screens (FE-006) — application keys (not from
+      // the contract); the "…For" labels are accessible names including the game.
+      sdui: {
+        provider: "Provider",
+        providerFor: "Provider for game {name}",
+        mapping: "ALUU mapping",
+        mappingFor: "ALUU mapping for game {name}",
+      },
+      backToGames: "Back to games",
     },
     sdui: {
       loading: "Loading screen…",

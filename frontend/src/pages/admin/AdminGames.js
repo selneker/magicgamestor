@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { CheckCircle2, Gamepad2, Pencil, Plus, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,6 +43,7 @@ const KEY_RE = /^[a-z][a-z0-9_]{0,31}$/;
 
 export default function AdminGames() {
   const { t } = useLang();
+  const { can } = useAuth();
   const [games, setGames] = useState([]);
   const [editing, setEditing] = useState(null);
   const load = () => api.get("/admin/games").then((r) => setGames(r.data)).catch(() => {});
@@ -121,7 +124,7 @@ export default function AdminGames() {
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {games.map((g) => (
           <div key={g.id} data-testid={`admin-game-${g.slug || g.id}`}
-            className={`flex min-w-0 items-center gap-3 rounded-2xl border bg-white p-3 sm:p-4 ${g.active ? "border-slate-100" : "border-dashed border-slate-300 opacity-60"}`}>
+            className={`flex min-w-0 flex-wrap items-center gap-3 rounded-2xl border bg-white p-3 sm:p-4 ${g.active ? "border-slate-100" : "border-dashed border-slate-300 opacity-60"}`}>
             <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-[#0A0A0A]">
               {g.icon_url ? <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy" />
                 : <Gamepad2 className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
@@ -138,6 +141,23 @@ export default function AdminGames() {
                 <Pencil className="h-4 w-4" />
               </Button>
             </div>
+            {/* Écrans SDUI (FE-006) : visibles seulement avec catalog.manage — le
+                serveur reste l'autorité (accès direct sans droit → 403 affiché).
+                Cibles ≥ 44 px ; nom accessible unique incluant le nom du jeu. */}
+            {can("catalog.manage") && (
+              <div className="flex w-full flex-wrap gap-2 sm:col-span-2" data-testid={`admin-game-sdui-links-${g.slug || g.id}`}>
+                <Button asChild variant="outline" className="h-11 rounded-full px-4 font-bold">
+                  <Link to={`/admin/jeux/${g.id}/fournisseur`} aria-label={t("admin.sdui.providerFor", { name: g.name })} data-testid={`sdui-link-provider-${g.slug || g.id}`}>
+                    {t("admin.sdui.provider")}
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="h-11 rounded-full px-4 font-bold">
+                  <Link to={`/admin/jeux/${g.id}/mapping`} aria-label={t("admin.sdui.mappingFor", { name: g.name })} data-testid={`sdui-link-mapping-${g.slug || g.id}`}>
+                    {t("admin.sdui.mapping")}
+                  </Link>
+                </Button>
+              </div>
+            )}
           </div>
         ))}
       </div>
