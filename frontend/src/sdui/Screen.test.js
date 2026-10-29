@@ -641,3 +641,54 @@ test("select dont la valeur est absente des options (catalogue périmé) → tra
   expect(select.value).toBe(""); // valeur inconnue des options → vide
   await act(async () => root.unmount());
 });
+
+// ——— Nom accessible des tableaux (FE-005, commit 2) ————————————————————————
+
+test("table : nommée par le heading qui précède (aria-labelledby), jamais par la clé brute", async () => {
+  const { container, root } = await mount(<SduiScreen raw={MAPPING_SCREEN} />);
+  const table = q(container, "sdui-table-products");
+  expect(table.getAttribute("aria-label")).toBeNull(); // plus jamais la clé du bloc
+  const labelledBy = table.getAttribute("aria-labelledby");
+  expect(labelledBy).toBeTruthy();
+  // le heading level 1 (titre de l'écran) précède la table : son id la nomme
+  const heading = q(container, "sdui-heading-1");
+  expect(heading.getAttribute("id")).toBe(labelledBy);
+  expect(heading.textContent).toBe("Correspondance produits ↔ packs");
+  await act(async () => root.unmount());
+});
+
+test("table sans heading précédent : aucun nom, ni aria-label ni aria-labelledby", async () => {
+  const raw = {
+    contract_version: "v0",
+    game: {},
+    blocks: [
+      { kind: "table", key: "x", empty_key: "common.empty", columns: [{ key: "a", label_key: "x", format: "text" }] },
+    ],
+  };
+  const { container, root } = await mount(<SduiScreen raw={raw} />);
+  const table = q(container, "sdui-table-x");
+  expect(table.getAttribute("aria-label")).toBeNull();
+  expect(table.getAttribute("aria-labelledby")).toBeNull();
+  await act(async () => root.unmount());
+});
+
+test("deux tableaux : chacun est nommé par le heading qui le précède (le plus proche)", async () => {
+  const raw = {
+    contract_version: "v0",
+    game: {},
+    blocks: [
+      { kind: "heading", label_key: "admin.provider.section.connection", level: 2 },
+      { kind: "table", key: "t1", empty_key: "common.empty", columns: [{ key: "a", label_key: "x", format: "text" }] },
+      { kind: "heading", label_key: "admin.provider.section.game", level: 2 },
+      { kind: "table", key: "t2", empty_key: "common.empty", columns: [{ key: "a", label_key: "x", format: "text" }] },
+    ],
+  };
+  const { container, root } = await mount(<SduiScreen raw={raw} />);
+  const headings = container.querySelectorAll("h2");
+  const t1 = q(container, "sdui-table-t1");
+  const t2 = q(container, "sdui-table-t2");
+  expect(t1.getAttribute("aria-labelledby")).toBe(headings[0].getAttribute("id"));
+  expect(t2.getAttribute("aria-labelledby")).toBe(headings[1].getAttribute("id"));
+  expect(t1.getAttribute("aria-labelledby")).not.toBe(t2.getAttribute("aria-labelledby"));
+  await act(async () => root.unmount());
+});

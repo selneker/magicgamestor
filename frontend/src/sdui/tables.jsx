@@ -69,8 +69,10 @@ function StateBadge({ row, column, t }) {
  * Brique table du contrat v0 (README §2) : key, columns[] (key + label_key +
  * format obligatoire), rows[], empty_key. Le conteneur défile horizontalement
  * (tabIndex=0, focus visible par le ring des jetons) pour les écrans 390 px.
+ * Nom accessible : `labelledBy` (id du heading qui précède, relié par Screen —
+ * FE-005) ; sans titre précédent, AUCUN nom — jamais la clé brute du bloc.
  */
-export function TableBlock({ block, rows, selection, busy, onSelect, t }) {
+export function TableBlock({ block, labelledBy, rows, selection, busy, onSelect, t }) {
   const columns = Array.isArray(block.columns) ? block.columns : [];
   const tableRows = Array.isArray(rows) ? rows : [];
   return (
@@ -78,7 +80,7 @@ export function TableBlock({ block, rows, selection, busy, onSelect, t }) {
       className="overflow-x-auto rounded-[10px] border border-[color:var(--rule)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       tabIndex={0}
       role="region"
-      aria-label={block.key}
+      aria-labelledby={labelledBy}
       data-testid={`sdui-table-${block.key}`}
     >
       <table className="w-full min-w-max text-left text-sm">

@@ -5,7 +5,7 @@
 // fourni par le parent (FE-005). Les gardes de sécurité (version, requires,
 // confirmation, double clic, sélection) vivent dans engine.js + fields.jsx + tables.jsx.
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useLang } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +49,21 @@ export function SduiScreen({ raw, loading, error, permissions, rowsByKey, select
   // visible_when s'évalue contre game.* de l'enveloppe (orientation BE-004, Q2).
   const context = raw && typeof raw === "object" && raw.game && typeof raw.game === "object" ? raw.game : {};
   const blocks = visibleBlocks(parsed.screen.blocks, context);
+  // Nom accessible des tableaux (FE-005) : chaque heading reçoit un id généré
+  // ici (useId) et chaque table est nommée par aria-labelledby vers le heading
+  // qui précède — sans titre précédent, aucun nom, jamais la clé brute du bloc.
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  let lastHeadingId = null;
+  const annotated = blocks.map((block, index) => {
+    if (!block || typeof block !== "object") return { block, headingId: null, labelledBy: null };
+    if (block.kind === "heading") {
+      const headingId = `sdui-${uid}-heading-${index}`;
+      lastHeadingId = headingId;
+      return { block, headingId, labelledBy: null };
+    }
+    if (block.kind === "table") return { block, headingId: null, labelledBy: lastHeadingId };
+    return { block, headingId: null, labelledBy: null };
+  });
   // Permissions reflétées : l'enveloppe les porte (calculées par le serveur) ; le
   // prop n'existe que pour une surcharge explicite du parent. Le client ne fait
   // jamais autorité — le serveur refuse de toute façon.
@@ -125,9 +140,10 @@ export function SduiScreen({ raw, loading, error, permissions, rowsByKey, select
 
   const renderBlock = (block, index) => {
     const key = keys.has(block) ? keys.get(block) : `idx-${index}`;
+    const meta = annotated[index] ?? { headingId: null, labelledBy: null };
     switch (block.kind) {
       case "heading":
-        return <HeadingBlock key={key} block={block} t={tt} />;
+        return <HeadingBlock key={key} block={block} id={meta.headingId} t={tt} />;
       case "text":
         return <TextBlock key={key} block={block} t={tt} />;
       case "select":
@@ -152,6 +168,7 @@ export function SduiScreen({ raw, loading, error, permissions, rowsByKey, select
           <TableBlock
             key={key}
             block={block}
+            labelledBy={meta.labelledBy}
             rows={override ?? block.rows}
             selection={selection && typeof selection === "object" ? selection[block.key] : undefined}
             busy={busy || running}

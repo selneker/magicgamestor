@@ -17,12 +17,12 @@ const HEADING_CLASSES = {
   h3: "text-base font-semibold",
 };
 
-export function HeadingBlock({ block, t }) {
+export function HeadingBlock({ block, id, t }) {
   // level hors 1–3 → h2 (repli neutre), jamais un tag construit depuis le JSON.
   const level = block.level >= 1 && block.level <= 3 ? block.level : 2;
   const Tag = HEADING_TAGS[level - 1];
   return (
-    <Tag className={HEADING_CLASSES[Tag]} data-testid={`sdui-heading-${level}`}>
+    <Tag className={HEADING_CLASSES[Tag]} id={id} data-testid={`sdui-heading-${level}`}>
       {label(block, t)}
     </Tag>
   );
