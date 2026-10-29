@@ -107,7 +107,7 @@ async def eligibility(product_id: str = Query(min_length=1), pubg_id: str = Quer
         raise HTTPException(status_code=404, detail="Offre introuvable.")
     if not product.get("active"):
         return {"eligible": False, "reason": "Cette offre n'est pas disponible actuellement.", "season": None}
-    blocked = purchase_blocked(product)
+    blocked = await purchase_blocked(product)
     if blocked:
         return {"eligible": False, "reason": blocked, "season": None}
     try:

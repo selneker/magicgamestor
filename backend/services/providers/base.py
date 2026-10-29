@@ -85,8 +85,15 @@ class Provider(ABC):
 
     # ---------- webhook ----------
     @abstractmethod
-    def verify_webhook_signature(self, raw_body: bytes, signature: str | None) -> bool:
-        """Vérifie la signature sur le RAW BODY (avant tout parsing)."""
+    def verify_webhook_signature(self, raw_body: bytes, signature: str | None,
+                                 timestamp: str | None = None) -> bool:
+        """Vérifie la signature sur le RAW BODY (avant tout parsing).
+
+        `timestamp` est OPTIONNEL et additif : les fournisseurs qui signent le corps seul
+        (FazerCards) l'ignorent, ceux qui signent aussi l'horodatage (ALUU) le contrôlent.
+        Une implémentation qui ne déclare pas ce paramètre reste utilisable à deux arguments :
+        les appels existants (webhook FazerCards) sont inchangés.
+        """
 
     @abstractmethod
     def parse_webhook_event(self, payload: dict) -> ProviderWebhookEvent:

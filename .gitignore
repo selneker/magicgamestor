@@ -49,6 +49,9 @@ yarn-error.log*
 .pnpm-debug.log*
 dump.rdb
 
+# Script de diagnostic local : données de session, jamais versionné.
+backend/debug_test.py
+
 # System files
 .DS_Store
 *.pem

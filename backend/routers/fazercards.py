@@ -53,6 +53,19 @@ def _error_response(exc: HTTPException, game_id: str) -> JSONResponse:
     })
 
 
+def _provider_error_response(exc: providers.ProviderError, game_id: str) -> JSONResponse:
+    """Même contrat additif pour les fournisseurs qui lèvent des erreurs normalisées (ALUU).
+
+    Les adapters garantissent qu'aucun code interne (ex. `verification_failed`) ne remonte ;
+    un code absent retombe sur `provider_unavailable`.
+    """
+    return JSONResponse(status_code=exc.status_code, content={
+        "detail": exc.message,
+        "code": exc.code or "provider_unavailable",
+        "game_id": game_id,
+    })
+
+
 class PubgValidateIn(BaseModel):
     player_id: str
 
@@ -92,8 +105,12 @@ class IdentityValidateIn(BaseModel):
 async def validate_identity(body: IdentityValidateIn, request: Request):
     """Validation d'identité joueur pour N'IMPORTE QUEL jeu configuré.
 
+    Le FOURNISSEUR est résolu par jeu (`providers.provider_for_game`) : champ `provider` absent
+    = FazerCards (comportement historique), `aluu` = ALUU avec sa configuration de jeu.
+
     FAIL-CLOSED : un jeu sans cible de validation chez le fournisseur reçoit un 503 explicite
     (voir services.fazercards.validation_target) — jamais un repli silencieux sur PUBG Mobile.
+    Un jeu configuré ALUU ne bascule jamais sur FazerCards, même en cas d'erreur.
     """
     # Compatibilité : le défaut Pydantic reste PUBG Mobile. On trace seulement l'appel legacy,
     # sans jamais journaliser les champs joueur.
@@ -115,7 +132,8 @@ async def validate_identity(body: IdentityValidateIn, request: Request):
                 "code": _identity_error_code(spec, body.fields),
                 "game_id": body.game_id,
             }
-        result = await providers.get_provider(body.game_id).validate_identity(body.game_id, checked[0])
+        provider = await providers.provider_for_game(body.game_id)
+        result = await provider.validate_identity(body.game_id, checked[0])
         if not result.valid:
             # Message neutre par jeu : PUBG Mobile garde son libellé historique.
             if body.game_id == "pubg-mobile":
@@ -131,13 +149,31 @@ async def validate_identity(body: IdentityValidateIn, request: Request):
         }
     except HTTPException as exc:
         return _error_response(exc, body.game_id)
+    except providers.ProviderError as exc:
+        return _provider_error_response(exc, body.game_id)
 
 
 @router.post("/fazercards/pubg/validate-id")
 async def validate_pubg_id(body: PubgValidateIn, request: Request):
-    """Compat historique (PUBG Mobile). Délègue au même chemin que la validation générique."""
+    """Compat historique (PUBG Mobile). Délègue au même chemin que la validation générique.
+
+    Le FOURNISSEUR est résolu par jeu (`providers.provider_for_game`) : `pubg-mobile` reste
+    FazerCards tant que son document `games` ne déclare pas `provider: "aluu"`, et bascule alors
+    sur ALUU — sans aucun repli possible vers FazerCards, même en cas d'erreur.
+
+    FORMAT DE RÉPONSE : strictement celui d'avant, pour les deux fournisseurs (`valid`,
+    `message`, `player_name`, `region` ; en erreur un simple `detail`). Aucun `code` ni `game_id`
+    n'est ajouté ici : `PubgIdVerify` ne lit que ces champs et le statut HTTP.
+    """
     check(f"fzr_validate:ip:{client_ip(request)}", setting("FZR_VALIDATE_PER_10MIN_PER_IP", 30), 600)
-    result = await providers.get_provider("pubg-mobile").validate_identity("pubg-mobile", {"player_id": body.player_id})
+    try:
+        provider = await providers.provider_for_game("pubg-mobile")
+        result = await provider.validate_identity("pubg-mobile", {"player_id": body.player_id})
+    except providers.ProviderError as exc:
+        # Erreurs normalisées (ALUU) : même contrat HTTP qu'aujourd'hui — un `detail` seul, sans
+        # code interne ni `game_id`. Les erreurs FazerCards sont des
+        # `IdentityValidationHTTPException` (HTTPException), elles traversent ce bloc inchangées.
+        raise HTTPException(status_code=exc.status_code, detail=exc.message) from None
     if not result.valid:
         return {"valid": False, "message": "ID PUBG Mobile invalide"}
     return {"valid": True, "player_name": result.player_name, "region": result.region}

@@ -6,17 +6,21 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from core.audit import audit
 from core.db import db
-from core.games import DEFAULT_GAME_ID
+from core.games import DEFAULT_GAME_ID, game_provider
 from core.security import require_admin, require_permission, require_super_admin
-from services import fazercards, fzr_fulfillment, fzr_mapping, providers
+from services import aluu_mapping, fazercards, fzr_fulfillment, fzr_mapping, providers
 
 router = APIRouter(tags=["fazercards-fulfillment"])
 logger = logging.getLogger("mgs.fzr")
 PUBLIC = {"_id": 0}
+# Champs nécessaires pour connaître le fournisseur d'un jeu (aucun champ d'identité joueur).
+GAME_PROVIDER_PROJECTION = {"_id": 0, "id": 1, "provider": 1, "aluu_game_code": 1,
+                            "aluu_check_endpoint": 1, "aluu_identity_map": 1}
 
 
 def _now() -> str:
@@ -42,6 +46,63 @@ class MappingIn(BaseModel):
 
 class CategoryAssignmentIn(BaseModel):
     category_ids: list[str] = Field(default_factory=list, max_length=500)
+
+
+async def _game_providers(game_ids: set[str]) -> dict[str, str]:
+    """Fournisseur de chaque jeu, lu sur le document `games`. Aucune exception possible : l'écran
+    admin doit s'afficher même si la configuration d'un jeu est invalide.
+
+    Document absent ou champ `provider` absent = FazerCards, exactement comme la résolution
+    réelle (`game_provider` ne bascule que sur `"aluu"` exact).
+    """
+    ids = sorted({gid for gid in game_ids if gid})
+    if not ids:
+        return {}
+    found: dict[str, str] = {}
+    async for doc in db.games.find({"id": {"$in": ids}}, GAME_PROVIDER_PROJECTION):
+        found[doc["id"]] = game_provider(doc)
+    return found
+
+
+def _provider_of(providers_by_id: dict[str, str], product: dict) -> str:
+    return providers_by_id.get(product.get("game_id") or "", "fazercards")
+
+
+async def _game_id_of(order_id: str) -> str | None:
+    """`game_id` d'une commande, pour le contrat d'erreur. Ne lève jamais.
+
+    Appelée UNIQUEMENT sur le chemin d'erreur : l'erreur fournisseur d'origine prime, une
+    lecture de base qui échoue ne doit pas la remplacer par une autre exception.
+    """
+    try:
+        doc = await db.orders.find_one({"id": order_id}, {"_id": 0, "game_id": 1})
+    except Exception:  # base indisponible : le contrat reste servi, sans `game_id`
+        return None
+    return (doc or {}).get("game_id") or None
+
+
+def _provider_error_response(exc: providers.ProviderError, game_id: str | None) -> JSONResponse:
+    """Erreur fournisseur normalisée → JSON additif, JAMAIS un 500.
+
+    Contrat identique à `routers/fazercards.py` : `detail` (message neutre produit par
+    l'adapter, jamais un message brut du fournisseur), `code` stable, `game_id`. Un code
+    absent retombe sur `provider_unavailable`.
+    """
+    status = exc.status_code if 400 <= int(exc.status_code or 0) <= 599 else 502
+    return JSONResponse(status_code=status, content={
+        "detail": exc.message,
+        "code": exc.code or "provider_unavailable",
+        "game_id": game_id,
+    })
+
+
+async def _annotate_mappings(products: list[dict]) -> list[dict]:
+    """Ajoute `mapping_status` / `fulfillable` / `supplier_cost_usd` lus sur le champ du
+    FOURNISSEUR du jeu : `fazercards_mapping` (inchangé) ou `aluu_mapping`."""
+    providers_by_id = await _game_providers({p.get("game_id") for p in products})
+    for p in products:
+        p.update(fzr_mapping.mapping_view(p, _provider_of(providers_by_id, p)))
+    return products
 
 
 
@@ -177,12 +238,8 @@ async def fzr_mappings(game: str | None = None):
     products = [p async for p in db.products.find(query, {"_id": 0, "id": 1, "slug": 1, "name": 1, "type": 1,
                                                           "price": 1, "uc_amount": 1, "duration_months": 1,
                                                           "active": 1, "game_id": 1, "requires_mapping": 1,
-                                                          "fazercards_mapping": 1}).sort("sort_order", 1)]
-    for p in products:
-        mapping = p.get("fazercards_mapping")
-        p["mapping_status"] = fzr_mapping.mapping_status(mapping)
-        p["fulfillable"] = fzr_mapping.fulfillable(mapping)
-        p["supplier_cost_usd"] = fzr_mapping.supplier_cost_usd(mapping, p.get("game_id"))
+                                                          "fazercards_mapping": 1, "aluu_mapping": 1}).sort("sort_order", 1)]
+    await _annotate_mappings(products)
     return {"products": products, "game": game}
 
 
@@ -198,9 +255,10 @@ async def fzr_set_mapping(product_id: str, body: MappingIn, admin=Depends(requir
                  "offer_id": mapping.get("offer_id"),
                  "components": [{"offer_id": c["offer_id"], "quantity": c["quantity"]} for c in mapping.get("components", [])],
                  "confirmed": mapping["confirmed"]})
-    return {"product_id": product_id, "fazercards_mapping": mapping,
-            "mapping_status": fzr_mapping.mapping_status(mapping), "fulfillable": fzr_mapping.fulfillable(mapping),
-            "supplier_cost_usd": fzr_mapping.supplier_cost_usd(mapping)}
+    view = fzr_mapping.mapping_view(
+        {**product, "fazercards_mapping": mapping},
+        _provider_of(await _game_providers({product.get("game_id")}), product))
+    return {"product_id": product_id, "fazercards_mapping": mapping, **view}
 
 
 @router.delete("/admin/fazercards/products/{product_id}/mapping")
@@ -218,7 +276,15 @@ async def fzr_coverage(game: str | None = None):
 
     `?game=` restreint le catalogue ET les références `used_by` à ce jeu : une offre utilisée
     par un produit d'un autre jeu n'apparaît jamais comme « utilisée » ici (pas de référence croisée).
+
+    Un jeu ALUU affiche le catalogue ALUU et les références `aluu_mapping` — JAMAIS le catalogue
+    FazerCards : l'écran doit dire la vérité sur ce qui sera réellement livré.
     """
+    if game:
+        resolved = await _game_providers({game})
+        if resolved.get(game) == "aluu":
+            return await _aluu_coverage(game)
+
     categories = await fazercards.catalog_for_game(game)
     used = {}
     async for p in db.products.find({"fazercards_mapping": {"$exists": True}, **fzr_mapping.game_product_query(game)},
@@ -233,7 +299,46 @@ async def fzr_coverage(game: str | None = None):
             offers.append({"category_id": cat["category_id"], "offer_id": o["offer_id"], "name": o["name"],
                            "price_usd": o["price_usd"], "kind": fzr_mapping.classify_offer(o, game),
                            "used_by": used.get((cat["category_id"], o["offer_id"]), [])})
-    return {"offers": offers}
+    return {"offers": offers, "provider": "fazercards", "catalog_unavailable": False}
+
+
+async def _aluu_coverage(game: str) -> dict:
+    """Couverture d'un jeu ALUU : packs ALUU live + produits liés par `aluu_mapping`.
+
+    Aucun repli sur FazerCards : `fazercards_mapping` n'est ni lu ni affiché pour un jeu ALUU.
+    Catalogue indisponible = liste vide + `catalog_unavailable: true` (jamais des offres inventées).
+    """
+    doc = await db.games.find_one({"id": game}, {"_id": 0, "id": 1, "aluu_game_code": 1})
+    code = str((doc or {}).get("aluu_game_code") or "").strip()
+    if not code:
+        return {"offers": [], "provider": "aluu", "catalog_unavailable": True}
+    try:
+        packs = await aluu_mapping.live_packs(code)
+    except providers.ProviderError as exc:
+        logger.warning("coverage ALUU %s: catalogue indisponible code=%s", game, exc.code)
+        return {"offers": [], "provider": "aluu", "catalog_unavailable": True}
+
+    used: dict[str, list[dict]] = {}
+    async for p in db.products.find({"aluu_mapping": {"$exists": True},
+                                     **fzr_mapping.game_product_query(game)},
+                                    {"_id": 0, "name": 1, "slug": 1, "aluu_mapping": 1}):
+        mapping = p["aluu_mapping"]
+        if str(mapping.get("game_code") or "") != code:
+            continue
+        denom = str(mapping.get("denom") or "")
+        if denom:
+            used.setdefault(denom, []).append({"name": p.get("name"), "slug": p.get("slug")})
+
+    offers = []
+    for pack in packs:
+        name = pack.get("name") or pack.get("offer_id")
+        offers.append({
+            "category_id": code, "offer_id": pack["offer_id"], "name": name,
+            "price_usd": pack.get("price_usd"),
+            "kind": fzr_mapping.classify_offer({"offer_id": pack["offer_id"], "name": name}, game),
+            "used_by": used.get(pack["offer_id"], []),
+        })
+    return {"offers": offers, "provider": "aluu", "catalog_unavailable": False}
 
 
 # ---------- Audit générique des mappings UC (direct / composition exacte / manquant) ----------
@@ -273,17 +378,37 @@ async def fzr_uc_audit_apply(game: str | None = None, admin=Depends(require_perm
 # ---------- Fulfillment fournisseur ----------
 @router.get("/admin/orders/{order_id}/fazercards/preflight", dependencies=[Depends(require_permission("orders.manage"))])
 async def fzr_preflight(order_id: str):
-    return await fzr_fulfillment.preflight(order_id)
+    """Pré-commande en LECTURE SEULE. Une erreur fournisseur est traduite, jamais un 500."""
+    try:
+        return await fzr_fulfillment.preflight(order_id)
+    except providers.ProviderError as exc:
+        logger.warning("fzr preflight: erreur fournisseur code=%s http=%s", exc.code, exc.status_code)
+        return _provider_error_response(exc, await _game_id_of(order_id))
 
 
 @router.post("/admin/orders/{order_id}/fazercards/fulfill")
 async def fzr_fulfill(order_id: str, admin=Depends(require_permission("orders.manage"))):
-    return await fzr_fulfillment.fulfill_order(order_id, f"admin:{admin['user_id']}")
+    """Envoi fournisseur. Une erreur fournisseur est traduite, jamais un 500."""
+    try:
+        return await fzr_fulfillment.fulfill_order(order_id, f"admin:{admin['user_id']}")
+    except providers.ProviderError as exc:
+        logger.warning("fzr fulfill: erreur fournisseur code=%s http=%s", exc.code, exc.status_code)
+        return _provider_error_response(exc, await _game_id_of(order_id))
 
 
 @router.post("/admin/orders/{order_id}/fazercards/refresh-status")
 async def fzr_refresh_status(order_id: str, admin=Depends(require_permission("orders.manage"))):
-    return await fzr_fulfillment.refresh_status(order_id, f"admin:{admin['user_id']}")
+    """Rafraîchissement explicite. Une erreur fournisseur est traduite, jamais un 500.
+
+    `_all_units` peut lever un `ProviderError` avant tout appel réseau (configuration ALUU
+    incomplète, fournisseur non instanciable) : ce chemin passe donc par le même contrat que
+    `preflight` et `fulfill`.
+    """
+    try:
+        return await fzr_fulfillment.refresh_status(order_id, f"admin:{admin['user_id']}")
+    except providers.ProviderError as exc:
+        logger.warning("fzr refresh-status: erreur fournisseur code=%s http=%s", exc.code, exc.status_code)
+        return _provider_error_response(exc, await _game_id_of(order_id))
 
 
 # ---------- Alerte prix fournisseur ----------
@@ -357,4 +482,6 @@ async def fzr_webhook(request: Request):
         raise HTTPException(status_code=400, detail="Invalid JSON")
     if not isinstance(event, dict):
         raise HTTPException(status_code=400, detail="Invalid payload")
-    return await fzr_fulfillment.apply_webhook_event(event)
+    # La route FazerCards ne peut concerner QUE des unités FazerCards : un identifiant identique
+    # enregistré sur une unité ALUU ne doit jamais être mis à jour par ce webhook.
+    return await fzr_fulfillment.apply_webhook_event(event, provider_name="fazercards")

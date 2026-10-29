@@ -18,8 +18,11 @@ PUBLIC = {"_id": 0}
 # recopiés sur les réponses publiques (une boutique n'expose pas la nomenclature du fournisseur).
 # En revanche `identity_fields` EST public : c'est le contrat de saisie que le checkout doit
 # rendre (libellés/formats), et il ne contient aucune donnée commerciale ni identifiant fournisseur.
+# La CONFIGURATION FOURNISSEUR (quel fournisseur, code jeu, endpoint de vérification, table
+# d'identité) reste elle aussi strictement admin : elle décrit l'infrastructure, pas le jeu.
 PUBLIC_GAME = {"_id": 0, "fazercards_categories": 0, "fazercards_categories_configured": 0,
-               "fazercards_validation_category": 0}
+               "fazercards_validation_category": 0,
+               "provider": 0, "aluu_game_code": 0, "aluu_check_endpoint": 0, "aluu_identity_map": 0}
 FIELD_KEY = re.compile(r"[a-z][a-z0-9_]{0,31}", re.ASCII)
 
 

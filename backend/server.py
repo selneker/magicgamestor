@@ -16,7 +16,7 @@ from core.origins import allowed_origins
 from core.security import PERMISSIONS as DEFAULT_ADMIN_PERMISSIONS
 from core.games import migrate_multigame, migrate_saved_pubg_ids, reconcile_sellable_games, seed_games
 from core.seed import seed_all
-from routers import admin_users, auth, crypto, evo, fazercards, games, fiveone, fzr_orders, products, orders, payments, events, chat, push, loyalty
+from routers import admin_users, aluu, aluu_admin, auth, crypto, evo, fazercards, games, fiveone, fzr_orders, products, orders, payments, events, chat, push, loyalty
 from services import binance_watcher
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -68,8 +68,8 @@ async def root():
 
 
 for r in (auth.router, products.router, orders.router, payments.router, events.router, chat.router, push.router,
-          loyalty.router, admin_users.router, evo.router, fazercards.router, fzr_orders.router, fiveone.router, crypto.router,
-          games.router):
+          loyalty.router, admin_users.router, evo.router, fazercards.router, fzr_orders.router, aluu.router,
+          aluu_admin.router, fiveone.router, crypto.router, games.router):
     api.include_router(r)
 app.include_router(api)
 

@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from core.audit import audit
 from core.db import db
 from core.games import DEFAULT_GAME_ID
-from services import fazercards
+from services import fazercards, providers
 
 MAX_COMPONENTS = 10
 _UC_NAME = re.compile(r"^([\d\s]+)\s*UC$", re.IGNORECASE)
@@ -125,14 +125,89 @@ def supplier_cost_usd(mapping: dict | None, game_id: str | None = None):
     return mapping.get("price_usd_at_link")
 
 
-def purchase_blocked(product: dict) -> str | None:
-    """Produit exigeant un mapping fournisseur valide et confirmé avant toute vente."""
-    if product.get("requires_mapping") and not mapping_ok(product.get("fazercards_mapping")):
-        return f"« {product.get('name')} » n'est pas encore disponible : mapping fournisseur manquant ou non confirmé."
-    return None
+ALUU_MAPPING_FIELD = "aluu_mapping"
+FAZERCARDS_MAPPING_FIELD = "fazercards_mapping"
 
 
-async def offers_for_game(game_id: str | None, category_id: str) -> dict:
+def _is_aluu(provider: str | None) -> bool:
+    """Seul `provider: "aluu"` exact bascule la lecture. Tout le reste = FazerCards (compat)."""
+    return str(provider or "").strip().lower() == "aluu"
+
+
+def mapping_field_for(provider: str | None = None) -> str:
+    """Champ de mapping lu POUR CE FOURNISSEUR. Les deux champs ne sont jamais interchangeables."""
+    return ALUU_MAPPING_FIELD if _is_aluu(provider) else FAZERCARDS_MAPPING_FIELD
+
+
+def mapping_ok_for(mapping: dict | None, provider: str | None = None) -> bool:
+    """Mapping utilisable pour ce fournisseur.
+
+    FazerCards : `mapping_ok` historique, au bit près. ALUU : code jeu + pack confirmés
+    (`services.aluu_mapping.mapping_ok_aluu`, import différé — `aluu_mapping` importe ce module).
+    """
+    if _is_aluu(provider):
+        from services.aluu_mapping import mapping_ok_aluu
+        return mapping_ok_aluu(mapping)
+    return mapping_ok(mapping)
+
+
+def mapping_status_for(mapping: dict | None, provider: str | None = None) -> str:
+    """`mapping_status` du fournisseur du jeu, même vocabulaire que l'écran admin existant."""
+    if not _is_aluu(provider):
+        return mapping_status(mapping)
+    if not mapping:
+        return "missing"
+    if mapping.get("confirmed") is False:
+        return "unconfirmed"
+    if not mapping_ok_for(mapping, provider):
+        return "invalid"
+    return "direct"  # ALUU : une cible unique (code jeu + pack), jamais de composé
+
+
+def supplier_cost_for(mapping: dict | None, provider: str | None = None,
+                      game_id: str | None = None):
+    """Coût fournisseur du mapping du bon fournisseur. Aucune valeur inventée : None si absent."""
+    if not _is_aluu(provider):
+        return supplier_cost_usd(mapping, game_id)
+    return (mapping or {}).get("price_usd_at_link")
+
+
+def mapping_view(product: dict, provider: str | None = None) -> dict:
+    """Vue admin `mapping_status` / `fulfillable` / `supplier_cost_usd` pour le fournisseur du jeu."""
+    mapping = product.get(mapping_field_for(provider))
+    return {"mapping_status": mapping_status_for(mapping, provider),
+            "fulfillable": mapping_ok_for(mapping, provider),
+            "supplier_cost_usd": supplier_cost_for(mapping, provider, product.get("game_id"))}
+
+
+def _blocked_message(product: dict) -> str:
+    return (f"« {product.get('name')} » n'est pas encore disponible : "
+            "mapping fournisseur manquant ou non confirmé.")
+
+
+async def purchase_blocked(product: dict) -> str | None:
+    """Produit exigeant un mapping fournisseur valide et confirmé avant toute vente.
+
+    Le FOURNISSEUR du jeu décide du champ lu : FazerCards (document absent ou sans `provider`)
+    lit `fazercards_mapping` — décision et message identiques à avant ; un jeu ALUU lit
+    `aluu_mapping` (code jeu + pack confirmés). Un produit ALUU qui ne porte qu'un ancien
+    `fazercards_mapping` est donc BLOQUÉ, jamais vendu puis refusé à la livraison.
+
+    FAIL-CLOSED : toute erreur de résolution (configuration ALUU incomplète, fournisseur
+    inconnu, base indisponible) bloque l'achat avec le message habituel. Jamais un 500,
+    jamais « vendable par défaut ».
+    """
+    if not product.get("requires_mapping"):
+        return None
+    blocked = _blocked_message(product)
+    try:
+        provider = (await providers.provider_for_game(product.get("game_id"))).name
+    except Exception:  # ProviderError, erreur de base : on refuse la vente, on ne lève pas
+        return blocked
+    return None if mapping_ok_for(product.get(mapping_field_for(provider)), provider) else blocked
+
+
+async def offers_for_game(game_id: str | None, category_id: str, *, provider=None) -> dict:
     """Offres live d'une catégorie, en s'assurant qu'elle appartient bien au jeu du produit
     (aucun mélange entre catalogues de jeux).
 
@@ -140,21 +215,47 @@ async def offers_for_game(game_id: str | None, category_id: str) -> dict:
     échoue explicitement (409) via `game_categories` — jamais d'accès au catalogue fournisseur
     complet. Seul le chemin de compatibilité PUBG historique (game_id absent) conserve le
     comportement d'origine, sans contrôle de catégorie.
+
+    Le FOURNISSEUR du jeu décide du catalogue : FazerCards garde `game_categories` +
+    `pubg_offers_fresh` à l'identique ; ALUU n'a qu'un catalogue par code jeu, qui doit être
+    exactement le `aluu_game_code` du document `games` (aucune autre catégorie n'est lisible).
     """
-    if game_id is not None:
-        allowed = {c["category_id"] for c in await fazercards.game_categories(game_id)}
-        if category_id not in allowed:
+    if game_id is None:
+        # Compat historique : aucun contrôle de catégorie, comportement d'origine.
+        return await fazercards.pubg_offers_fresh(category_id)
+    provider = provider or await providers.provider_for_game(game_id)
+    if provider.name == "aluu":
+        game = await db.games.find_one({"id": game_id}, {"_id": 0, "aluu_game_code": 1})
+        aluu_code = str((game or {}).get("aluu_game_code") or "").strip()
+        if not aluu_code or category_id != aluu_code:
             raise HTTPException(status_code=409,
-                                detail=f"Cette catégorie FazerCards n'appartient pas au jeu « {game_id} ».")
+                                detail=f"Cette catégorie ALUU n'appartient pas au jeu « {game_id} ».")
+        return await provider.get_offers(category_id)
+    allowed = {c["category_id"] for c in await fazercards.game_categories(game_id)}
+    if category_id not in allowed:
+        raise HTTPException(status_code=409,
+                            detail=f"Cette catégorie FazerCards n'appartient pas au jeu « {game_id} ».")
     return await fazercards.pubg_offers_fresh(category_id)
+
+
+def _refuse_aluu_game(game_id: str | None, provider) -> None:
+    """Le mapping FazerCards ne s'écrit JAMAIS sur un jeu ALUU (rollback et roll-forward séparés)."""
+    if provider.name == "aluu":
+        raise HTTPException(
+            status_code=409,
+            detail=(f"Le jeu « {game_id} » utilise le fournisseur ALUU : son mapping s'applique "
+                    "depuis l'écran ALUU (aperçu puis application explicite), jamais dans "
+                    "le mapping FazerCards."))
 
 
 async def build_mapping(product: dict, body) -> dict:
     """Valide contre le catalogue FazerCards live puis construit le document de mapping. Rien n'est inventé."""
-    offers = await offers_for_game(product.get("game_id"), body.category_id)
+    game_id = product.get("game_id")
+    provider = await providers.provider_for_game(game_id)
+    _refuse_aluu_game(game_id, provider)
+    offers = await offers_for_game(game_id, body.category_id, provider=provider)
     by_id = {o["offer_id"]: o for o in offers["offers"]}
     base = {"category_id": offers["category_id"], "confirmed": bool(body.confirmed), "linked_at": _now()}
-    game_id = product.get("game_id")
     game_data = None
     if game_id not in (None, DEFAULT_GAME_ID):
         # Le jeu est chargé UNE fois ici (route async) ; le helper get_currency_label ne fait aucune requête.
@@ -334,7 +435,14 @@ async def audit_uc_products(catalog: list[dict], game_id: str | None = None) -> 
 
     `game_id` isole strictement l'audit : un audit Free Fire ne lit jamais les produits PUBG
     (et inversement). Sans `game_id`, le comportement historique est conservé.
+
+    Un jeu ALUU est IGNORÉ (liste vide) : cet audit compare des offres FazerCards, il ne peut
+    rien dire d'un catalogue ALUU. L'écriture correspondante est refusée (`apply_uc_audit`).
     """
+    if game_id:
+        provider = await providers.provider_for_game(game_id)
+        if provider.name == "aluu":
+            return []
     catalog_by_offer = {(cat["category_id"], o["offer_id"]): o for cat in catalog for o in (cat.get("offers") or [])}
     query = {"uc_amount": {"$gt": 0}, "type": {"$nin": ["prime", "prime_plus", "evo"]}, **game_product_query(game_id)}
     rows = []
@@ -372,7 +480,13 @@ async def apply_uc_audit(catalog: list[dict], actor: str | None = None, game_id:
 
     `game_id` est transmis à l'audit : appliquer l'audit d'un jeu ne modifie JAMAIS les
     produits d'un autre jeu. Préserve les mappings déjà corrects.
+
+    Un jeu ALUU est REFUSÉ (409) : l'audit FazerCards n'écrit jamais dans un jeu dont le
+    fournisseur est ALUU (le mapping ALUU passe par son propre aperçu + apply).
     """
+    if game_id:
+        provider = await providers.provider_for_game(game_id)
+        _refuse_aluu_game(game_id, provider)
     rows = await audit_uc_products(catalog, game_id)
     fixed, removed = [], []
     for row in rows:
