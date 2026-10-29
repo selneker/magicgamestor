@@ -35,13 +35,25 @@ import { TableBlock } from "./tables";
  * @param {function} onRun       (actionName, block) → Promise ; appelé APRÈS confirmation
  *                               pour une écriture. Le payload est l'affaire du parent (T3).
  * @param {function} onRetry     relance le chargement après une erreur.
+ * @param {object}   values      valeurs contrôlées des selects (clé = block.key),
+ *                               tenues par le parent (FE-005) ; absent → état interne.
+ * @param {function} onValueChange (field, value) → le parent tient `values`
+ *                               (contrôlé) — requis si `values` est fourni.
+ * @param {object}   disableBlock { "<kind>:<key>": true } — désactivation par bloc
+ *                               indexée par TYPE + key (décision FE-005 : le bouton
+ *                               « preview » et la table « preview » coexistent).
  */
-export function SduiScreen({ raw, loading, error, permissions, rowsByKey, selection, onSelect, busy, onRun, onRetry }) {
+export function SduiScreen({ raw, loading, error, permissions, rowsByKey, selection, onSelect, busy, onRun, onRetry, values: controlledValues, onValueChange, disableBlock }) {
   const { t, lang } = useLang();
   // t() enrobé : les clés à point du contrat (ex. admin.aluu_mapping.preview.empty)
   // se résolvent localement — voir t.js (FE-005). Les autres passent par t().
   const tt = useMemo(() => makeT(t, lang), [t, lang]);
-  const [values, setValues] = useState({});
+  const [internalValues, setInternalValues] = useState({});
+  const values = controlledValues ?? internalValues;
+  const changeValue = (field, value) => {
+    if (controlledValues && typeof onValueChange === "function") onValueChange(field, value);
+    else setInternalValues((prev) => ({ ...prev, [field]: value }));
+  };
   const [confirming, setConfirming] = useState(null);
   const [running, setRunning] = useState(false);
 
@@ -153,7 +165,7 @@ export function SduiScreen({ raw, loading, error, permissions, rowsByKey, select
             block={block}
             permissions={perms}
             value={values[block.key] ?? block.value}
-            onChange={(field, value) => setValues((prev) => ({ ...prev, [field]: value }))}
+            onChange={changeValue}
             t={tt}
           />
         );
@@ -179,7 +191,15 @@ export function SduiScreen({ raw, loading, error, permissions, rowsByKey, select
       }
       case "button":
         return (
-          <ButtonBlock key={key} block={block} permissions={perms} busy={busy || running} onTrigger={trigger} t={tt} />
+          <ButtonBlock
+            key={key}
+            block={block}
+            permissions={perms}
+            busy={busy || running}
+            disabled={disableBlock && disableBlock[`button:${block.key}`] === true}
+            onTrigger={trigger}
+            t={tt}
+          />
         );
       default:
         // toggle (supprimé du v0, BE-004) et tout kind inconnu : ignorés.

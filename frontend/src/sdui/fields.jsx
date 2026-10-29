@@ -109,15 +109,15 @@ const BUTTON_VARIANTS = { primary: "default", secondary: "secondary", danger: "d
  * onTrigger(block) est appelé UNIQUEMENT si le bouton est actif : Screen décide
  * ensuite confirmation ou exécution directe.
  */
-export function ButtonBlock({ block, permissions, busy, onTrigger, t }) {
-  const disabled =
-    block.disabled === true || !!busy || !requirementsSatisfied(block.requires, permissions);
+export function ButtonBlock({ block, permissions, busy, disabled, onTrigger, t }) {
+  const isDisabled =
+    block.disabled === true || !!busy || disabled === true || !requirementsSatisfied(block.requires, permissions);
   return (
     <Button
       type="button"
       variant={BUTTON_VARIANTS[block.variant] ?? BUTTON_VARIANTS.primary}
       className="h-11 px-6"
-      disabled={disabled}
+      disabled={isDisabled}
       aria-busy={busy || undefined}
       onClick={() => onTrigger?.(block)}
       data-testid={`sdui-button-${block.key}`}
