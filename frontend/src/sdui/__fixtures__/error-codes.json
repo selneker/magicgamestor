@@ -1,0 +1,27 @@
+{
+  "source": "codes[].code du fichier errors.json du contrat",
+  "codes": [
+    "unsupported_game",
+    "config_incomplete",
+    "provider_unavailable",
+    "provider_timeout",
+    "rate_limited",
+    "missing_field",
+    "invalid_order",
+    "order_not_found",
+    "game_not_found",
+    "order_rejected",
+    "pack_unavailable",
+    "polling_stopped",
+    "insufficient_balance",
+    "duplicate_order_mismatch",
+    "invalid_game_code",
+    "invalid_check_endpoint",
+    "invalid_identity_map",
+    "game_code_not_in_catalog",
+    "mapping_not_found",
+    "mapping_stale",
+    "permission_denied",
+    "invalid_payload"
+  ]
+}

@@ -1,0 +1,197 @@
+{
+  "contract_version": "v0",
+  "screen": "provider",
+  "generated_at": "2026-10-27T00:00:00+00:00",
+  "game": {
+    "id": "example_game",
+    "name": "Example Game",
+    "provider": "fazercards",
+    "provider_declared": false
+  },
+  "permissions": {
+    "can_edit": true,
+    "can_switch_provider": false,
+    "can_preview": true,
+    "can_apply": true
+  },
+  "blocks": [
+    {
+      "kind": "heading",
+      "label_key": "admin.provider.title",
+      "level": 1
+    },
+    {
+      "kind": "text",
+      "label_key": "admin.provider.intro",
+      "tone": "muted"
+    },
+    {
+      "kind": "text",
+      "label_key": "admin.provider.readonly_notice",
+      "tone": "muted"
+    },
+    {
+      "kind": "select",
+      "key": "provider",
+      "label_key": "admin.provider.field.provider",
+      "value": "fazercards",
+      "disabled": true,
+      "options": [
+        { "value": "fazercards", "label_key": "admin.provider.option.fazercards" },
+        { "value": "aluu", "label_key": "admin.provider.option.aluu" }
+      ]
+    },
+    {
+      "kind": "text",
+      "label_key": "admin.provider.undeclared_hint",
+      "tone": "warning",
+      "visible_when": { "provider_declared": false }
+    },
+    {
+      "kind": "heading",
+      "label_key": "admin.provider.section.connection",
+      "level": 2
+    },
+    {
+      "kind": "table",
+      "key": "connection",
+      "empty_key": "common.empty",
+      "columns": [
+        { "key": "label_key", "label_key": "admin.provider.column.setting", "format": "label_key" },
+        { "key": "value", "label_key": "admin.provider.column.value", "format": "text" }
+      ],
+      "rows": [
+        {
+          "key": "api_key",
+          "label_key": "admin.provider.connection.api_key",
+          "value_key": "admin.provider.connection.configured",
+          "value": null,
+          "configured": true,
+          "state": "mapped"
+        },
+        {
+          "key": "webhook_secret",
+          "label_key": "admin.provider.connection.webhook_secret",
+          "value_key": "admin.provider.connection.configured",
+          "value": null,
+          "configured": true,
+          "state": "mapped"
+        },
+        {
+          "key": "webhook_url",
+          "label_key": "admin.provider.connection.webhook_url",
+          "value_key": "admin.provider.connection.not_configured",
+          "value": null,
+          "configured": false,
+          "state": "missing"
+        }
+      ]
+    },
+    {
+      "kind": "heading",
+      "label_key": "admin.provider.section.game",
+      "level": 2
+    },
+    {
+      "kind": "text",
+      "label_key": "admin.provider.section.game.hint",
+      "tone": "muted"
+    },
+    {
+      "kind": "select",
+      "key": "aluu_game_code",
+      "label_key": "admin.provider.field.game_code",
+      "value": "example_game",
+      "placeholder_key": "admin.provider.placeholder.game_code",
+      "disabled": false,
+      "options": [
+        { "value": "example_game", "label_key": null, "label": "Example Game" },
+        { "value": "example_game_2", "label_key": null, "label": "Example Game 2" }
+      ]
+    },
+    {
+      "kind": "select",
+      "key": "aluu_check_endpoint",
+      "label_key": "admin.provider.field.check_endpoint",
+      "value": "game-check",
+      "placeholder_key": "admin.provider.placeholder.check_endpoint",
+      "disabled": false,
+      "options": [
+        { "value": "game-check", "label_key": "admin.provider.check_endpoint.game_check" },
+        { "value": "mlbb-check", "label_key": "admin.provider.check_endpoint.mlbb_check" },
+        { "value": "bgmi", "label_key": "admin.provider.check_endpoint.bgmi" }
+      ]
+    },
+    {
+      "kind": "table",
+      "key": "identity_fields",
+      "empty_key": "admin.provider.identity.empty",
+      "columns": [
+        { "key": "key", "label_key": "admin.provider.column.identity_field", "format": "text" },
+        { "key": "label", "label_key": "admin.provider.column.identity_label", "format": "text" },
+        { "key": "aluu_param", "label_key": "admin.provider.column.aluu_param", "format": "text" }
+      ],
+      "rows": [
+        {
+          "key": "player_id",
+          "label": "Player ID",
+          "aluu_param": "characterId",
+          "state": "mapped",
+          "allowed_params": ["characterId", "charname", "code", "server_code"]
+        }
+      ]
+    },
+    {
+      "kind": "text",
+      "label_key": "admin.provider.identity.hint",
+      "tone": "muted"
+    },
+    {
+      "kind": "select",
+      "key": "aluu_identity_map.player_id",
+      "label_key": null,
+      "label": "Player ID",
+      "value": "characterId",
+      "disabled": false,
+      "options": [
+        { "value": "characterId", "label_key": null, "label": "characterId" },
+        { "value": "charname", "label_key": null, "label": "charname" },
+        { "value": "code", "label_key": null, "label": "code" },
+        { "value": "server_code", "label_key": null, "label": "server_code" }
+      ]
+    },
+    {
+      "kind": "button",
+      "key": "save_config",
+      "label_key": "common.save",
+      "action": "put_config",
+      "variant": "primary",
+      "requires": ["permissions.can_edit"]
+    },
+    {
+      "kind": "heading",
+      "label_key": "admin.provider.section.switch",
+      "level": 2
+    },
+    {
+      "kind": "text",
+      "label_key": "admin.provider.switch.warning",
+      "tone": "warning"
+    },
+    {
+      "kind": "button",
+      "key": "switch_provider",
+      "label_key": "admin.provider.switch.to_aluu",
+      "action": "put_game_provider",
+      "variant": "danger",
+      "requires": ["permissions.can_switch_provider"],
+      "confirm_key": "admin.provider.switch.confirm",
+      "payload": { "provider": "aluu" }
+    },
+    {
+      "kind": "text",
+      "label_key": "admin.provider.switch.in_flight",
+      "tone": "neutral"
+    }
+  ]
+}

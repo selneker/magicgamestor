@@ -1,0 +1,55 @@
+{
+  "_comment": "Une erreur par famille de scope du contrat errors.json (enveloppe { detail, code, game_id }) + le cas 403 de la couche d'authentification partagée (enveloppe FastAPI { detail } SANS code — le client s'y fie au statut). detail n'est jamais affiché.",
+  "samples": [
+    {
+      "family": "validate",
+      "http": 400,
+      "body": { "detail": "identity field missing", "code": "missing_field", "game_id": "example_game" }
+    },
+    {
+      "family": "preflight",
+      "http": 409,
+      "body": { "detail": "pack removed from catalogue", "code": "pack_unavailable", "game_id": "example_game" }
+    },
+    {
+      "family": "fulfill",
+      "http": 504,
+      "body": { "detail": "provider timeout after submission", "code": "provider_timeout", "game_id": "example_game" }
+    },
+    {
+      "family": "webhook",
+      "http": 502,
+      "body": { "detail": "provider unreachable", "code": "provider_unavailable", "game_id": "example_game" }
+    },
+    {
+      "family": "config",
+      "http": 409,
+      "body": { "detail": "ALUU configuration incomplete", "code": "config_incomplete", "game_id": "example_game" }
+    },
+    {
+      "family": "mapping",
+      "http": 409,
+      "body": { "detail": "selection no longer matches fresh preview", "code": "mapping_stale", "game_id": "example_game" }
+    },
+    {
+      "family": "refresh",
+      "http": 410,
+      "body": { "detail": "provider asked to stop tracking", "code": "polling_stopped", "game_id": "example_game" }
+    },
+    {
+      "family": "reconciliation",
+      "http": 404,
+      "body": { "detail": "unknown provider order", "code": "order_not_found", "game_id": "example_game" }
+    },
+    {
+      "family": "all",
+      "http": 400,
+      "body": { "detail": "request body invalid", "code": "invalid_payload", "game_id": "example_game" }
+    },
+    {
+      "family": "auth",
+      "http": 403,
+      "body": { "detail": "Not authenticated" }
+    }
+  ]
+}
