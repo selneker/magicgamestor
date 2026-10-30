@@ -162,8 +162,16 @@ async def preflight(order_id: str) -> dict:
         detail = skipped[0]["reason"] if single and skipped else \
             "Aucune ligne éligible : " + "; ".join(f"{s['product']} — {s['reason']}" for s in skipped)
         raise HTTPException(status_code=409, detail=detail or "Aucune ligne éligible.")
-    validation = await providers.get_provider(order.get("game_id")).validate_identity(
-        order.get("game_id"), _identity_fields(order))  # 502/504 si service indisponible
+    # Vérificateur d'identité : DONNÉE du jeu (`identity_verifier`), résolue ici. Le top-up reste
+    # `get_provider()` (inchangé). Document jeu absent / commande legacy sans game_id = aucun
+    # vérificateur configuré -> FazerCards, comportement historique.
+    game_id = order.get("game_id")
+    game = await db.games.find_one(
+        {"id": game_id},
+        {"_id": 0, "id": 1, "identity_fields": 1, "identity_verifier": 1}) if game_id else None
+    validation = await providers.resolve_identity_provider(
+        game or {"id": game_id}).validate_identity(
+        game_id, _identity_fields(order))  # 502/504 si service indisponible
     if not validation.valid:
         # Message neutre par jeu : PUBG Mobile conserve son libellé historique, tout autre jeu
         # reçoit un message générique (aucune hypothèse PUBG pour un jeu dynamique).

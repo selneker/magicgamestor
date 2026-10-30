@@ -210,7 +210,10 @@ def _fazercards() -> IdentityProvider:
     from services.providers import get_provider
 
     provider = get_provider(None)
-    if not isinstance(provider, IdentityProvider):  # pragma: no cover - Phase 2 : FazerCards
+    # Vérification de CAPACITÉ (et non de type nominal) : un fournisseur qui ne sait pas valider
+    # une identité est une mauvaise configuration (503), mais un provider simulé/duck-typé qui
+    # expose `validate_identity` reste utilisable (les bancs de tests existants en dépendent).
+    if not callable(getattr(provider, "validate_identity", None)):
         raise _http_error(503, UNSUPPORTED_GAME_DETAIL, "unsupported_game")
     return provider
 
