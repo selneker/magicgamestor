@@ -11,6 +11,7 @@ from core.audit import audit
 from core.db import db
 from core.games import (DEFAULT_GAME_ID, check_identity_payload, game_sale_path_ready, identity_spec,
                         with_game_defaults)
+from core.identity_keys import find_lock, identity_key, order_game_id, order_identity_key
 from core.security import (ADMIN_ROLES, get_current_user, get_optional_user, require_admin,
                            require_permission, require_super_admin)
 from routers.evo import EVO_TYPE, release_evo_locks, reserve_evo
@@ -119,15 +120,22 @@ async def release_subscription_locks(order_id: str):
 
 
 async def reserve_subscription(pubg_id: str, sub_type: str, order: dict, months: int):
-    """Atomic per-(pubg_id, type) reservation via the unique index on subscription_locks."""
+    """Réservation atomique par (game_id, identity_key, type) via l'index unique dédié.
+
+    `pubg_id` reste stocké (colonne historique) ; la CLÉ d'unicité est le couple
+    `game_id` + `identity_key` : deux zones, ou deux jeux, ne se bloquent plus entre eux.
+    """
     expires_at = subscription_expiry(order["created_at"], months)
+    game_id, key = order_game_id(order), order_identity_key(order)
     for _ in range(3):
         try:
-            await db.subscription_locks.insert_one({"pubg_id": pubg_id, "type": sub_type, "order_id": order["id"],
+            await db.subscription_locks.insert_one({"game_id": game_id, "identity_key": key,
+                                                    "pubg_id": pubg_id, "type": sub_type,
+                                                    "order_id": order["id"],
                                                     "expires_at": expires_at, "created_at": _now()})
             return
         except DuplicateKeyError:
-            existing = await db.subscription_locks.find_one({"pubg_id": pubg_id, "type": sub_type})
+            existing = await find_lock(db.subscription_locks, game_id, key, pubg_id, {"type": sub_type})
             if not existing:
                 continue
             holder = await db.orders.find_one({"id": existing["order_id"]}, {"status": 1})
@@ -140,7 +148,10 @@ async def reserve_subscription(pubg_id: str, sub_type: str, order: dict, months:
 
 async def active_subscriptions(pubg_id: str) -> dict:
     result = {}
-    async for lock in db.subscription_locks.find({"pubg_id": pubg_id}):
+    # Route PUBG Mobile uniquement : un verrou d'un AUTRE jeu partageant le même numéro ne doit
+    # pas apparaître comme un abonnement PUBG (documents antérieurs : `game_id` absent).
+    query = {"pubg_id": pubg_id, "game_id": {"$in": [DEFAULT_GAME_ID, None]}}
+    async for lock in db.subscription_locks.find(query):
         holder = await db.orders.find_one({"id": lock["order_id"]}, {"status": 1})
         if holder and holder["status"] not in INACTIVE_STATUSES and lock["expires_at"] > _now():
             result[lock["type"]] = {"expires_at": lock["expires_at"], "status": holder["status"], "order_id": lock["order_id"]}
@@ -162,7 +173,10 @@ async def backfill_subscription_locks():
             if expires_at <= _now():
                 continue
             try:
-                await db.subscription_locks.insert_one({"pubg_id": order["pubg_id"], "type": item["type"], "order_id": order["id"],
+                await db.subscription_locks.insert_one({"game_id": order_game_id(order),
+                                                        "identity_key": order_identity_key(order),
+                                                        "pubg_id": order["pubg_id"], "type": item["type"],
+                                                        "order_id": order["id"],
                                                         "expires_at": expires_at, "created_at": _now()})
             except DuplicateKeyError:
                 pass
@@ -237,6 +251,8 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         if body.game_id != DEFAULT_GAME_ID:
             raise HTTPException(status_code=409, detail=reason)
     identity_snapshot = await _identity_snapshot(body, user)
+    # Clé d'anti-doublon : identité EFFECTIVE de cette commande (voir core.identity_keys).
+    identity_key_value = identity_key(identity_snapshot.get("fields"))
     from services import fiveone
     payment_provider = None
     if body.payment_method in ("mvola", "orange"):
@@ -282,7 +298,7 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
     order = {
         "id": str(uuid.uuid4()), "order_number": _order_number(), "user_id": user["user_id"] if user else None,
         "email": (user or {}).get("email") or body.email, "pubg_id": body.pubg_id, "pseudo": body.pseudo.strip(),
-        "game_id": body.game_id, "identity_snapshot": identity_snapshot,
+        "game_id": body.game_id, "identity_snapshot": identity_snapshot, "identity_key": identity_key_value,
         "items": items, "subtotal": total, "payment_fee": payment_fee, "total": total + payment_fee, "currency": "Ar",
         "payment_method": body.payment_method, "payment_provider": payment_provider,
         "payment_phone": body.payment_phone, "manual_reference": body.manual_reference,
@@ -295,7 +311,7 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
             await reserve_subscription(body.pubg_id, item["type"], order, item.get("duration_months") or 1)
         for item in evo_items:
             product = products[item["product_id"]]
-            period_key, season = await reserve_evo(body.pubg_id, product, order["id"])
+            period_key, season = await reserve_evo(order, product)
             item.update({"evo_limit": product.get("evo_limit"), "period_key": period_key,
                          "season_id": (season or {}).get("id"), "season_name": (season or {}).get("name"),
                          "week_key": period_key.removeprefix("week:") if period_key.startswith("week:") else None})

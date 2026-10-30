@@ -27,10 +27,13 @@ async def ensure_indexes():
     await db.game_identities.create_index([("user_id", 1), ("game_id", 1)])
     # Per-type rule (1 Prime + 1 Prime+ per PUBG ID) replaces the former single-subscription index.
     await _drop_if_exists(db.orders, "one_subscription_order_per_pubg")
-    await db.subscription_locks.create_index([("pubg_id", 1), ("type", 1)], unique=True)
+    # Les index UNIQUES des verrous d'identité appartiennent à `core.identity_keys` (PL-003-BE-7) :
+    # (game_id, identity_key, …) après migration, sinon l'index historique (pubg_id, …) — jamais les
+    # deux à la fois. Voir `ensure_lock_indexes` (aucun démarrage sans protection anti-doublon).
+    from core.identity_keys import ensure_lock_indexes
+    await ensure_lock_indexes()
     await db.subscription_locks.create_index("order_id")
-    # Pack évolutif: one order per (PUBG ID, offer, period) enforced atomically.
-    await db.evo_locks.create_index([("pubg_id", 1), ("offer_slug", 1), ("period_key", 1)], unique=True)
+    # Pack évolutif: same rule, one order per (game, identity, offer, period) enforced atomically.
     await db.evo_locks.create_index("order_id")
     await db.seasons.create_index("id", unique=True)
     await db.chat_conversations.create_index("user_id", unique=True)
