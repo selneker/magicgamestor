@@ -11,6 +11,7 @@ from core.games import (DEFAULT_GAME_ID, NO_CATALOG_DETAIL, check_identity_paylo
                         identity_spec, normalize_identity_fields, normalize_product_types, product_types_for,
                         public_game_ids)
 from core.security import get_current_user, require_permission
+from services.providers import IdentityVerifierError, normalize_identity_verifier
 
 router = APIRouter(tags=["games"])
 PUBLIC = {"_id": 0}
@@ -19,7 +20,10 @@ PUBLIC = {"_id": 0}
 # En revanche `identity_fields` EST public : c'est le contrat de saisie que le checkout doit
 # rendre (libellés/formats), et il ne contient aucune donnée commerciale ni identifiant fournisseur.
 PUBLIC_GAME = {"_id": 0, "fazercards_categories": 0, "fazercards_categories_configured": 0,
-               "fazercards_validation_category": 0}
+               "fazercards_validation_category": 0,
+               # Configuration ADMIN du vérificateur d'identité (slug fournisseur, champs
+               # techniques) : jamais exposée au client. `identity_fields` reste public.
+               "identity_verifier": 0}
 FIELD_KEY = re.compile(r"[a-z][a-z0-9_]{0,31}", re.ASCII)
 
 
@@ -31,6 +35,19 @@ def _effective(game: dict) -> dict:
 
 def _now():
     return datetime.now(timezone.utc).isoformat()
+
+
+def _checked_verifier(raw, game_id: str, identity_fields: list[dict]) -> dict | None:
+    """Valide `identity_verifier` avec les MÊMES règles qu'à la résolution (rejet clair, 400).
+
+    La configuration est rejetée à l'écriture : une valeur incohérente ne doit jamais être
+    enregistrée pour n'échouer qu'au moment du paiement.
+    """
+    try:
+        return normalize_identity_verifier(raw, game_id, identity_fields)
+    except IdentityVerifierError as exc:
+        raise HTTPException(
+            status_code=400, detail=f"Vérificateur d'identité invalide : {exc}") from None
 
 
 @router.get("/games")
@@ -159,6 +176,9 @@ class GameIn(BaseModel):
     # Catégorie de validation FazerCards pour ce jeu (espace de validation, distinct des catégories commerciales).
     # Aucun jeu n'est présumé l'avoir : None signifie "validation non disponible".
     fazercards_validation_category: str | None = None
+    # Vérificateur d'identité par jeu : {"provider": "neferbyte", "slug", "id_field",
+    # "server_field"} ou {"provider": "fazercards"}. None/absent = FazerCards (défaut).
+    identity_verifier: dict | None = None
     description: str = ""
     description_en: str | None = None
     active: bool = True
@@ -201,6 +221,8 @@ async def create_game(body: GameIn, user=Depends(require_permission("catalog.man
     data["slug"] = data.get("slug") or data["id"]
     data["identity_fields"] = normalize_identity_fields(data.get("identity_fields"))
     data["product_types"] = normalize_product_types(data.get("product_types"), body.id)
+    data["identity_verifier"] = _checked_verifier(
+        data.get("identity_verifier"), body.id, data["identity_fields"])
     doc = {**data, "created_at": _now(), "updated_at": _now()}
     await db.games.insert_one(doc)
     await audit("game.create", user["user_id"], body.id, {"name": body.name, "active": body.active})
@@ -232,6 +254,14 @@ async def update_game(game_id: str, body: GameIn, user=Depends(require_permissio
         data["product_types"] = current.get("product_types") or []
     else:
         data["product_types"] = normalize_product_types(body.product_types, game_id)
+    if "identity_verifier" not in body.model_fields_set:
+        # Champ absent de la requête : on conserve la configuration actuelle (un simple
+        # changement de nom/logo/activation ne doit pas changer de vérificateur d'identité).
+        data["identity_verifier"] = current.get("identity_verifier")
+    else:
+        # Fourni explicitement, y compris `null` : `null` = retour à FazerCards (retour arrière).
+        data["identity_verifier"] = _checked_verifier(
+            body.identity_verifier, game_id, data["identity_fields"])
     if "fazercards_validation_category" not in body.model_fields_set:
         # Champ absent de la requête : on conserve la valeur actuelle (un simple
         # changement de nom/logo/activation ne doit pas effacer la catégorie).
@@ -252,5 +282,6 @@ async def update_game(game_id: str, body: GameIn, user=Depends(require_permissio
     await audit("game.update", user["user_id"], game_id,
                 {"name": body.name, "active": body.active, "icon_url": body.icon_url,
                  "identity_field_keys": [f["key"] for f in data["identity_fields"]],
-                 "product_type_keys": [t["key"] for t in data["product_types"]]})
+                 "product_type_keys": [t["key"] for t in data["product_types"]],
+                 "identity_provider": (data.get("identity_verifier") or {}).get("provider")})
     return await db.games.find_one({"id": game_id}, PUBLIC)
