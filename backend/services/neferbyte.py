@@ -266,6 +266,23 @@ def _unavailable_reason(message: str) -> str:
     return "unavailable"
 
 
+def _daily_limit_announced(response: httpx.Response) -> bool:
+    """Vrai si une réponse 429 annonce le quota JOURNALIER, et non une limite de débit.
+
+    Un 429 peut être momentané (trop de requêtes à la seconde) : seule la mention explicite
+    « daily limit » justifie de fermer Neferbyte jusqu'à 00:00 UTC. Le corps n'est jamais logué
+    et une charge utile illisible vaut « pas d'indication » (donc pas de fermeture du jour).
+    """
+    try:
+        payload = response.json()
+    except (ValueError, httpx.HTTPError):
+        return False
+    if not isinstance(payload, dict):
+        return False
+    message = payload.get("msg")
+    return isinstance(message, str) and "daily limit" in message.lower()
+
+
 def _classify_error_message(message: str | None) -> tuple[str, str]:
     """(statut, raison) d'un message d'erreur Neferbyte. Tout l'inconnu est `provider_unavailable`."""
     text = (message or "").strip().lower()
@@ -373,8 +390,14 @@ async def verify_identity(slug: str, player_id: str | None, server: str | None =
             logger.warning("neferbyte %s: authentification refusée", spec.slug)
             return IdentityCheck(status=PROVIDER_UNAVAILABLE, reason="auth")
         if response.status_code == 429:
-            logger.warning("neferbyte %s: quota/limite atteinte", spec.slug)
-            return IdentityCheck(status=PROVIDER_UNAVAILABLE, reason="quota")
+            # Seul un 429 qui annonce explicitement le quota du jour ferme la journée côté garde.
+            # Une limite de débit momentanée reste `provider_unavailable` sans nouvel essai
+            # immédiat, mais ne coupe pas Neferbyte jusqu'à 00:00 UTC.
+            if _daily_limit_announced(response):
+                logger.warning("neferbyte %s: quota journalier atteint", spec.slug)
+                return IdentityCheck(status=PROVIDER_UNAVAILABLE, reason="quota")
+            logger.warning("neferbyte %s: limite de débit momentanée (429)", spec.slug)
+            return IdentityCheck(status=PROVIDER_UNAVAILABLE, reason="rate_limited")
 
         try:
             payload = response.json()

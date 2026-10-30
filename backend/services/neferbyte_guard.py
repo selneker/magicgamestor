@@ -26,6 +26,7 @@ appelé juste avant chaque tentative HTTP, donc une requête ne peut pas partir 
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import hmac
 import logging
@@ -143,13 +144,17 @@ class SuccessCache:
             if now - stored_at > ttl:
                 self._entries.pop(key, None)
                 return None
-            return check
+            # Copie à la lecture : un appelant qui modifierait le résultat (pseudo, `raw`…)
+            # ne changerait pas la réponse suivante servie depuis le cache.
+            return copy.deepcopy(check)
 
     def put(self, key: str, check: neferbyte.IdentityCheck) -> None:
         if cache_ttl_s() <= 0 or not key:
             return
+        # Copie à l'écriture : le cache ne partage aucun objet modifiable avec l'appelant.
+        stored = copy.deepcopy(check)
         with self._lock:
-            self._entries[key] = (_clock(), check)
+            self._entries[key] = (_clock(), stored)
             self._entries.move_to_end(key)
             while len(self._entries) > self.max_entries:
                 self._entries.popitem(last=False)
@@ -349,7 +354,8 @@ async def verify_identity(slug: str, player_id: str | None, server: str | None =
     if check.status == neferbyte.OK:
         _remember(key, check)
     elif check.status == neferbyte.PROVIDER_UNAVAILABLE and check.reason == "quota":
-        # 429 comme message « You have reached your daily limit today » : le jour est clos.
+        # Quota JOURNALIER annoncé par le fournisseur (« daily limit ») : le jour est clos. Un 429
+        # de débit momentané arrive ici avec `reason="rate_limited"` et ne ferme rien.
         await _mark_exhausted()
     return check
 

@@ -246,6 +246,30 @@ def test_ok_is_never_returned_without_a_real_provider_success(monkeypatch):
     assert cached.status == neferbyte.OK and len(seen) == 1
 
 
+def test_cached_result_is_not_shared_with_the_caller(monkeypatch):
+    """Modifier un résultat reçu ne change pas la réponse suivante : le cache est copié."""
+    handler, seen = handler_counting(lambda n: httpx.Response(200, json=ok_body()))
+    mock_http(monkeypatch, handler)
+
+    first = run(guard.verify_identity("free-fire", GAME_ID))
+    assert first.status == neferbyte.OK
+    first.player_name = "Mutated"
+    first.region = "mutated"
+    first.status = neferbyte.INVALID_ID
+    first.raw["username"] = "Mutated"
+
+    second = run(guard.verify_identity("free-fire", GAME_ID))
+    assert second.status == neferbyte.OK and second.player_name == NICKNAME
+    assert second.region is None and second.raw["username"] == NICKNAME
+    assert second is not first
+    assert len(seen) == 1
+
+    # Deux lectures du cache ne rendent pas non plus le même objet.
+    third = run(guard.verify_identity("free-fire", GAME_ID))
+    assert third is not second and third.status == neferbyte.OK
+    assert len(seen) == 1
+
+
 # --------------------------------------------------------------------------- #
 # 2. Clé de cache hachée, aucune fuite
 # --------------------------------------------------------------------------- #
@@ -388,12 +412,34 @@ def test_provider_daily_limit_marks_the_day_exhausted(monkeypatch, quota):
     assert len(seen) == 1                       # le second appel n'a même pas été tenté
 
 
-def test_http_429_also_closes_the_day(monkeypatch, quota):
-    mock_http(monkeypatch, lambda request: httpx.Response(429, json=error_body("nope")))
+def test_http_429_without_a_daily_limit_indication_does_not_close_the_day(monkeypatch, quota):
+    """Un 429 de débit momentané reste compté et ne coupe pas Neferbyte jusqu'à 00:00 UTC."""
+    monkeypatch.setenv(guard.DAILY_LIMIT_ENV, "50")
+    handler, seen = handler_counting(lambda n: httpx.Response(429, json=error_body("Too many requests")))
+    mock_http(monkeypatch, handler)
+
+    first = run(guard.verify_identity("free-fire", GAME_ID))
+    assert first.status == neferbyte.PROVIDER_UNAVAILABLE and first.reason == "rate_limited"
+    assert quota.docs[today()].get("exhausted") is not True
+    assert guard._blocked() is False
+
+    # La journée reste ouverte : l'appel suivant repart réellement chez le fournisseur.
+    second = run(guard.verify_identity("free-fire", OTHER_ID))
+    assert second.status == neferbyte.PROVIDER_UNAVAILABLE and second.reason == "rate_limited"
+    assert len(seen) == 2
+    assert quota.attempts(today()) == 2        # chaque tentative reste comptée
+
+
+def test_http_429_with_a_daily_limit_message_closes_the_day(monkeypatch, quota):
+    """Le 429 qui annonce le quota journalier ferme bien la journée."""
+    handler, seen = handler_counting(lambda n: httpx.Response(
+        429, json=error_body("You have reached your daily limit today.")))
+    mock_http(monkeypatch, handler)
 
     assert run(guard.verify_identity("free-fire", GAME_ID)).reason == "quota"
     assert quota.docs[today()]["exhausted"] is True
     assert run(guard.verify_identity("free-fire", OTHER_ID)).reason == "quota_guard"
+    assert len(seen) == 1
 
 
 def test_eighty_percent_warning_is_logged_once(monkeypatch, caplog):

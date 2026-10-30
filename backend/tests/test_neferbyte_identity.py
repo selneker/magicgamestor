@@ -196,7 +196,9 @@ def test_missing_key_is_unavailable_without_call(monkeypatch):
 
 
 def test_http_auth_and_quota_are_unavailable_without_retry(monkeypatch, no_sleep):
-    for status_code, reason in ((401, "auth"), (403, "auth"), (429, "quota")):
+    # Un 429 sans mention du quota journalier est une limite de débit momentanée : il ne doit
+    # PAS être confondu avec le quota du jour (BE-6, correctif A).
+    for status_code, reason in ((401, "auth"), (403, "auth"), (429, "rate_limited")):
         calls: list[httpx.Request] = []
 
         def handler(request, code=status_code):
@@ -208,6 +210,43 @@ def test_http_auth_and_quota_are_unavailable_without_retry(monkeypatch, no_sleep
         assert res.status == neferbyte.PROVIDER_UNAVAILABLE and res.reason == reason
         assert len(calls) == 1
     assert no_sleep == []
+
+
+@pytest.mark.parametrize("body", [
+    {"error": True, "msg": "You have reached your daily limit today."},
+    {"error": True, "msg": "DAILY LIMIT reached for your plan."},
+    {"success": False, "msg": "Daily limit exceeded", "data": None},
+])
+def test_http_429_with_a_daily_limit_indication_is_a_quota(monkeypatch, no_sleep, body):
+    """Un 429 qui annonce explicitement le quota journalier reste `quota` (jour à fermer)."""
+    calls: list[httpx.Request] = []
+
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(429, json=body)
+
+    mock_http(monkeypatch, handler)
+    res = run(neferbyte.verify_identity("free-fire", GAME_ID))
+
+    assert res.status == neferbyte.PROVIDER_UNAVAILABLE and res.reason == "quota"
+    assert len(calls) == 1                   # jamais de nouvel essai immédiat
+    assert no_sleep == []
+
+
+@pytest.mark.parametrize("body", [None, "not json", ["unexpected"], {"msg": 42}])
+def test_http_429_with_an_unreadable_body_stays_momentary(monkeypatch, no_sleep, body):
+    """Charge utile illisible : aucune indication de quota, donc pas de fermeture du jour."""
+    def handler(request):
+        if body is None:
+            return httpx.Response(429)
+        if body == "not json":
+            return httpx.Response(429, text="not json")
+        return httpx.Response(429, json=body)
+
+    mock_http(monkeypatch, handler)
+    res = run(neferbyte.verify_identity("free-fire", GAME_ID))
+
+    assert res.status == neferbyte.PROVIDER_UNAVAILABLE and res.reason == "rate_limited"
 
 
 @pytest.mark.parametrize("message, reason", [
