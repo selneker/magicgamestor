@@ -114,7 +114,8 @@ def rate_limit(monkeypatch):
 
 
 def make_client(monkeypatch, games: dict, fazercards_provider=None,
-                neferbyte_result=None, neferbyte_calls: list | None = None):
+                neferbyte_result=None, neferbyte_calls: list | None = None,
+                patch_get_provider: bool = True):
     """Application FastAPI en mémoire : routeur réel, base et fournisseurs simulés."""
 
     async def fake_find_one(query, projection=None):
@@ -129,7 +130,8 @@ def make_client(monkeypatch, games: dict, fazercards_provider=None,
         fzr_calls.append(game_id)
         return fazercards_provider
 
-    monkeypatch.setattr(fzr_router.providers, "get_provider", fake_get_provider)
+    if patch_get_provider:
+        monkeypatch.setattr(fzr_router.providers, "get_provider", fake_get_provider)
 
     calls = neferbyte_calls if neferbyte_calls is not None else []
 
@@ -163,9 +165,9 @@ def test_ref_free_fire_success(monkeypatch, rate_limit):
                         "game_id": FREE_FIRE}
     assert provider.calls == [(FREE_FIRE, {"player_id": FF_ID})]
     assert nef_calls == []
-    # FazerCards est sollicité une fois (instance par défaut de `get_provider()`, BE-3) :
-    # seule la réponse compte pour le contrat, l'argument interne peut être `None` (défaut).
-    assert len(fzr_calls) == 1
+    # Résolution par défaut = `get_provider(<id du jeu>)`, comme avant BE-4 : un fournisseur de
+    # secours choisi par jeu (table GAME_PROVIDER) reste honoré.
+    assert fzr_calls == [FREE_FIRE]
 
 
 def test_ref_free_fire_invalid_id(monkeypatch, rate_limit):
@@ -181,13 +183,14 @@ def test_ref_free_fire_invalid_id(monkeypatch, rate_limit):
 
 def test_ref_pubg_success_generic_route(monkeypatch, rate_limit):
     provider = FakeProvider(IdentityValidation(valid=True, player_name="Kapotue", region="ID"))
-    client, _fzr, _nef = make_client(monkeypatch, {PUBG: PUBG_GAME}, provider)
+    client, fzr_calls, _nef = make_client(monkeypatch, {PUBG: PUBG_GAME}, provider)
 
     r = post_identity(client, PUBG, {"player_id": PUBG_ID})
 
     assert r.status_code == 200
     assert r.json() == {"valid": True, "player_name": "Kapotue", "region": "ID", "game_id": PUBG}
     assert provider.calls == [(PUBG, {"player_id": PUBG_ID})]
+    assert fzr_calls == [PUBG]
 
 
 def test_ref_pubg_invalid_id_generic_route(monkeypatch, rate_limit):
@@ -260,13 +263,14 @@ def test_ref_unknown_game_is_404(monkeypatch, rate_limit):
 
 def test_ref_pubg_legacy_route_success(monkeypatch, rate_limit):
     provider = FakeProvider(IdentityValidation(valid=True, player_name="Kapotue", region="ID"))
-    client, _fzr, _nef = make_client(monkeypatch, {PUBG: PUBG_GAME}, provider)
+    client, fzr_calls, _nef = make_client(monkeypatch, {PUBG: PUBG_GAME}, provider)
 
     r = client.post("/fazercards/pubg/validate-id", json={"player_id": PUBG_ID})
 
     assert r.status_code == 200
     assert r.json() == {"valid": True, "player_name": "Kapotue", "region": "ID"}
     assert provider.calls == [(PUBG, {"player_id": PUBG_ID})]
+    assert fzr_calls == [PUBG]
 
 
 def test_ref_pubg_legacy_route_invalid_id(monkeypatch, rate_limit):
@@ -401,7 +405,7 @@ def test_neferbyte_rollback_to_fazercards_by_nulling_the_field(monkeypatch, rate
 
     assert r.json() == {"valid": True, "player_name": "FFPlayer", "region": "SG",
                         "game_id": FREE_FIRE}
-    assert fzr_calls == [None] and nef_calls == []
+    assert fzr_calls == [FREE_FIRE] and nef_calls == []
 
 
 def test_pubg_legacy_route_uses_configured_verifier(monkeypatch, rate_limit):
@@ -453,7 +457,7 @@ def test_pubg_legacy_route_without_game_document_keeps_fazercards(monkeypatch, r
 
     assert r.status_code == 200
     assert r.json() == {"valid": True, "player_name": "Kapotue", "region": "ID"}
-    assert fzr_calls == [None] and nef_calls == []
+    assert fzr_calls == [PUBG] and nef_calls == []
 
 
 def test_real_app_wiring_legacy_route(monkeypatch, rate_limit):
@@ -473,6 +477,32 @@ def test_real_app_wiring_legacy_route(monkeypatch, rate_limit):
 
     assert r.status_code == 200
     assert r.json() == {"valid": True, "player_name": "Kapotue", "region": "ID"}
+
+
+def test_identity_validation_honours_per_game_provider_table(monkeypatch, rate_limit):
+    """Un fournisseur de secours associé à UN jeu dans `GAME_PROVIDER` reste utilisé.
+
+    Preuve que la résolution par défaut transmet bien l'ID du jeu à `get_provider` : avec
+    `get_provider(None)`, la table par jeu serait ignorée et FazerCards serait appelé.
+    """
+    from services import providers as providers_mod
+
+    backup = FakeProvider(IdentityValidation(valid=True, player_name="FFPlayer", region="SG"))
+    backup.name = "backup"
+    monkeypatch.setattr(providers_mod, "GAME_PROVIDER", {FREE_FIRE: "backup"})
+    monkeypatch.setitem(providers_mod._INSTANCES, "backup", backup)
+
+    # `patch_get_provider=False` : le VRAI `get_provider` lit la table simulée.
+    client, fzr_calls, nef_calls = make_client(monkeypatch, {FREE_FIRE: FF_GAME},
+                                               patch_get_provider=False)
+
+    r = post_identity(client, FREE_FIRE, {"player_id": FF_ID})
+
+    assert r.status_code == 200
+    assert r.json() == {"valid": True, "player_name": "FFPlayer", "region": "SG",
+                        "game_id": FREE_FIRE}
+    assert backup.calls == [(FREE_FIRE, {"player_id": FF_ID})]
+    assert fzr_calls == [] and nef_calls == []
 
 
 # --------------------------------------------------------------------------- #
@@ -624,6 +654,7 @@ def test_preflight_without_verifier_keeps_fazercards_behaviour(monkeypatch, pref
     assert exc.value.status_code == 502
     assert exc.value.detail == FZR_UNAVAILABLE_DETAIL
     assert nef_calls == [] and state["sent"] == []
+    assert state["fzr_calls"] == [FREE_FIRE]  # même résolution qu'avant BE-4
 
 
 def test_preflight_neferbyte_ok_builds_report_with_verified_name(monkeypatch, preflight_env):

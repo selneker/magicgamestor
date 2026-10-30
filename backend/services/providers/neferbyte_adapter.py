@@ -201,15 +201,17 @@ class NeferbyteProvider(IdentityProvider):
 # --------------------------------------------------------------------------- #
 # Résolution par jeu (synchrone : le document jeu est déjà chargé)
 # --------------------------------------------------------------------------- #
-def _fazercards() -> IdentityProvider:
-    """Fournisseur par défaut : FazerCards, instance unique réutilisée par `get_provider`.
+def _fazercards(game_id: str | None = None) -> IdentityProvider:
+    """Fournisseur par défaut : celui de TOP-UP du jeu, résolu par `get_provider(game_id)`.
 
-    Le défaut ne dépend pas du jeu (aucun jeu ne change de comportement tant que
-    `identity_verifier` est absent) ; `get_provider` est appelé sans game_id exprès.
+    `game_id` est transmis tel quel : la table `GAME_PROVIDER` peut désigner un fournisseur de
+    secours PAR JEU, et la validation d'identité doit honorer ce choix comme avant BE-4
+    (`get_provider(None)` l'ignorerait). Aucun jeu ne change de comportement aujourd'hui : la table
+    ne contient que FazerCards.
     """
     from services.providers import get_provider
 
-    provider = get_provider(None)
+    provider = get_provider(game_id)
     # Vérification de CAPACITÉ (et non de type nominal) : un fournisseur qui ne sait pas valider
     # une identité est une mauvaise configuration (503), mais un provider simulé/duck-typé qui
     # expose `validate_identity` reste utilisable (les bancs de tests existants en dépendent).
@@ -223,21 +225,25 @@ def resolve_identity_provider(game: dict | None = None) -> IdentityProvider:
 
     FazerCards si le champ est absent / `None` / `{"provider": "fazercards"}` ; Neferbyte si la
     configuration est cohérente ; 503 `unsupported_game` sinon (aucun appel fournisseur).
+
+    Dans les deux cas « FazerCards », la résolution passe par `get_provider(<id du jeu>)` : le
+    fournisseur de secours reste choisi par jeu, exactement comme avant BE-4.
     """
     from core.games import identity_spec
 
     game = game or {}
+    game_id = game.get("id")
     raw = game.get("identity_verifier")
     if raw is None:
-        return _fazercards()
+        return _fazercards(game_id)
     try:
-        config = normalize_identity_verifier(raw, game.get("id"), identity_spec(game))
+        config = normalize_identity_verifier(raw, game_id, identity_spec(game))
     except IdentityVerifierError as exc:
         # Motif précis côté logs admin uniquement : jamais renvoyé tel quel au client.
-        logger.warning("identity_verifier inutilisable pour le jeu %s : %s", game.get("id"), exc)
+        logger.warning("identity_verifier inutilisable pour le jeu %s : %s", game_id, exc)
         raise _http_error(503, UNSUPPORTED_GAME_DETAIL, "unsupported_game") from None
     if config is None or config["provider"] == FAZERCARDS:
-        return _fazercards()
+        return _fazercards(game_id)
     return NeferbyteProvider(slug=config["slug"], id_field=config["id_field"],
                              server_field=config["server_field"])
 
