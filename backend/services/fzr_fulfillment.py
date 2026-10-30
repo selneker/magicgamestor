@@ -42,6 +42,31 @@ def _identity_fields(order: dict) -> dict:
     return fields
 
 
+def _required_field_keys(offers: dict) -> list[str]:
+    """Clés de champs EXIGÉES par l'offre FazerCards (`GET /topups/offers` -> `fields`)."""
+    return [f["key"] for f in (offers.get("fields") or []) if f.get("key")]
+
+
+def _missing_required_field_keys(required: list[str], fields: dict | None) -> list[str]:
+    """Clés exigées absentes ou vides : elles ne peuvent pas être « validées » (aucune invention)."""
+    return [k for k in required if not str((fields or {}).get(k) or "").strip()]
+
+
+async def _record_verification(order_id: str, provider, validation) -> None:
+    """Trace de la vérification RÉELLE dans le snapshot : fournisseur, pseudo validé, horodatage.
+
+    Appelée par le préflight UNIQUEMENT une fois toutes ses vérifications passées (identité validée,
+    champs exigés présents, offres disponibles) : aucune trace n'est écrite en cas d'échec.
+    Aucune valeur d'identifiant n'est dupliquée ici ; `validated_at` est l'heure serveur.
+    """
+    await db.orders.update_one(
+        {"id": order_id},
+        {"$set": {"identity_snapshot.verification": {
+            "provider": getattr(provider, "name", None),
+            "player_name": validation.player_name,
+            "validated_at": _now()}, "updated_at": _now()}})
+
+
 def _line_path(idx: int) -> str:
     return "fazercards" if idx == 0 else f"fazercards_lines.{idx}"
 
@@ -169,9 +194,12 @@ async def preflight(order_id: str) -> dict:
     game = await db.games.find_one(
         {"id": game_id},
         {"_id": 0, "id": 1, "identity_fields": 1, "identity_verifier": 1}) if game_id else None
-    validation = await providers.resolve_identity_provider(
-        game or {"id": game_id}).validate_identity(
-        game_id, _identity_fields(order))  # 502/504 si service indisponible
+    identity_provider = providers.resolve_identity_provider(game or {"id": game_id})
+    # Champs EXACTEMENT tels qu'ils seront transmis à FazerCards : ce sont eux qui sont validés,
+    # puis re-contrôlés clé par clé face aux champs exigés par l'offre (voir plus bas).
+    validated_fields = _identity_fields(order)
+    validation = await identity_provider.validate_identity(
+        game_id, validated_fields)  # 502/504 si service indisponible
     if not validation.valid:
         # Message neutre par jeu : PUBG Mobile conserve son libellé historique, tout autre jeu
         # reçoit un message générique (aucune hypothèse PUBG pour un jeu dynamique).
@@ -197,9 +225,17 @@ async def preflight(order_id: str) -> dict:
                 raise HTTPException(status_code=409, detail=reason)
             skipped.append({"index": u["line_index"], "product": u["product"], "reason": reason})
             continue
-        field_keys = [f["key"] for f in offers["fields"] if f.get("key")]
-        declared = list((_identity_fields(order) or {}).keys())
-        # Clé de champ effectivement envoyée : on utilise le champ DÉCLARÉ par le jeu s'il correspond
+        field_keys = _required_field_keys(offers)
+        # TOUTES les clés exigées par l'offre sont contrôlées, pas seulement la première : une clé
+        # absente ou vide serait refusée par le fournisseur APRÈS soumission. 409 explicite, rien
+        # n'est envoyé, et le message ne nomme que la clé (jamais un identifiant ni un pseudo).
+        missing = _missing_required_field_keys(field_keys, validated_fields)
+        if missing:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Champ « {missing[0]} » manquant pour ce jeu : commande non envoyée.")
+        declared = list((validated_fields or {}).keys())
+        # Clé de champ de référence : on utilise le champ DÉCLARÉ par le jeu s'il correspond
         # à ce qu'attend le fournisseur. Aucune hypothèse `player_id` universelle.
         matched = [k for k in declared if k in field_keys]
         field_key = matched[0] if matched else (field_keys[0] if field_keys else (declared[0] if declared else "player_id"))
@@ -209,12 +245,17 @@ async def preflight(order_id: str) -> dict:
             "product": u["product"], "component_name": u["component_name"], "category_id": u["category_id"],
             "offer_id": u["offer_id"], "offer_name": offer["name"], "price_usd": offer["price_usd"],
             "field_key": field_key, "idempotency_key": u["idempotency_key"], "retry": bool(record),
+            # Champs RÉELLEMENT validés ci-dessus : c'est ce dictionnaire qui part chez FazerCards.
+            "identity_fields": validated_fields,
         })
     if not lines:
         raise HTTPException(status_code=409, detail=skipped[-1]["reason"] if skipped else "Aucune ligne éligible.")
+    # Préflight COMPLET réussi (identité validée + champs exigés présents + offres disponibles) :
+    # seule une identité réellement vérifiée est tracée dans la commande, jamais avant.
+    await _record_verification(order_id, identity_provider, validation)
     report = {
         "order_number": order["order_number"], "provider": "fazercards", "player_id": order["pubg_id"],
-        "identity_fields": _identity_fields(order),
+        "identity_fields": validated_fields,
         "player_name": validation.player_name, "mgs_total": order["total"],
         "lines": lines, "skipped": skipped, "ready_count": len(lines),
     }
@@ -238,12 +279,15 @@ async def _fulfill_unit(order: dict, line: dict, actor: str) -> dict:
     q = line.get("quantity_index", 0)
     unit = {"line_index": idx, "component_index": cidx, "quantity_index": q}
     existing = unit_record(order, unit)
+    # Champs transmis = EXACTEMENT ceux validés par le préflight (jamais reconstruits ici).
+    fields_payload = (line.get("identity_fields") or _identity_fields(order)
+                      or {line["field_key"]: order["pubg_id"]})
     record = {
         "provider": "fazercards", "status": "creating", "provider_order_id": None, "provider_status": None,
         "line_index": idx, "component_index": cidx, "quantity_index": q, "product_name": line["product"],
         "component_name": line.get("component_name"),
         "category_id": line["category_id"], "offer_id": line["offer_id"], "offer_name": line["offer_name"],
-        "player_id": order["pubg_id"], "identity_snapshot": _identity_fields(order),
+        "player_id": order["pubg_id"], "identity_snapshot": fields_payload,
         "player_name_at_validation": line.get("player_name") or None,
         "supplier_price_usd_at_order": line["price_usd"], "idempotency_key": line["idempotency_key"],
         "requested_by": actor, "last_error": None,
@@ -260,7 +304,6 @@ async def _fulfill_unit(order: dict, line: dict, actor: str) -> dict:
     if claim.modified_count != 1:
         raise HTTPException(status_code=409, detail="Un envoi fournisseur est déjà en cours pour cette unité.")
     provider = providers.get_provider(order.get("game_id"))
-    fields_payload = _identity_fields(order) or {line["field_key"]: order["pubg_id"]}
     try:
         provider_order = await provider.create_order(
             line["category_id"], line["offer_id"], fields_payload, line["idempotency_key"])

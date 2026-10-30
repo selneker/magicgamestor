@@ -523,7 +523,7 @@ def _order(game_id: str) -> dict:
 @pytest.fixture
 def preflight_env(monkeypatch):
     """Préflight isolé : commande et jeux simulés, unité factice, envoi et offres espionnés."""
-    state: dict = {"game": None, "sent": [], "fzr_calls": [], "fzr_exc": None}
+    state: dict = {"game": None, "sent": [], "fzr_calls": [], "fzr_exc": None, "writes": []}
 
     async def fake_order_find_one(query, projection=None):
         if query.get("id") != "order-1":
@@ -555,8 +555,15 @@ def preflight_env(monkeypatch):
     async def boom(*_a, **_k):  # pragma: no cover - ne doit jamais être atteint
         raise AssertionError("aucune commande fournisseur ne doit partir")
 
+    async def fake_update_one(query, update):
+        state["writes"].append((query, update))
+
+        class _Result:
+            modified_count = 1
+        return _Result()
+
     monkeypatch.setattr(fzr_fulfillment, "db", SimpleNamespace(
-        orders=SimpleNamespace(find_one=fake_order_find_one),
+        orders=SimpleNamespace(find_one=fake_order_find_one, update_one=fake_update_one),
         games=SimpleNamespace(find_one=fake_game_find_one)))
     monkeypatch.setattr(fzr_fulfillment, "_all_units", fake_all_units)
     monkeypatch.setattr(fzr_fulfillment, "_fulfill_unit", fake_fulfill_unit)
@@ -581,7 +588,7 @@ def test_preflight_neferbyte_unavailable_blocks_and_sends_nothing(monkeypatch, p
 
     assert exc.value.status_code == 503
     assert exc.value.code == "provider_unavailable"
-    assert state["sent"] == []
+    assert state["sent"] == [] and state["writes"] == []  # rien envoyé, aucune trace
 
 
 def test_preflight_neferbyte_timeout_blocks_and_sends_nothing(monkeypatch, preflight_env):
@@ -594,7 +601,7 @@ def test_preflight_neferbyte_timeout_blocks_and_sends_nothing(monkeypatch, prefl
         run(fzr_fulfillment.fulfill_order("order-1", "admin-1"))
 
     assert exc.value.status_code == 504 and exc.value.code == "provider_unavailable"
-    assert state["sent"] == []
+    assert state["sent"] == [] and state["writes"] == []  # rien envoyé, aucune trace
 
 
 def test_preflight_neferbyte_invalid_identity_keeps_neutral_message(monkeypatch, preflight_env):
@@ -608,7 +615,7 @@ def test_preflight_neferbyte_invalid_identity_keeps_neutral_message(monkeypatch,
 
     assert exc.value.status_code == 409
     assert exc.value.detail == NO_TARGET_DETAIL
-    assert state["sent"] == []
+    assert state["sent"] == [] and state["writes"] == []  # rien envoyé, aucune trace
 
 
 def test_preflight_pubg_invalid_identity_keeps_legacy_message(monkeypatch, preflight_env):
@@ -622,7 +629,7 @@ def test_preflight_pubg_invalid_identity_keeps_legacy_message(monkeypatch, prefl
 
     assert exc.value.status_code == 409
     assert exc.value.detail == NO_TARGET_PUBG_DETAIL
-    assert state["sent"] == []
+    assert state["sent"] == [] and state["writes"] == []  # rien envoyé, aucune trace
 
 
 def test_preflight_neferbyte_incoherent_config_blocks_without_call(monkeypatch, preflight_env):
@@ -670,6 +677,9 @@ def test_preflight_neferbyte_ok_builds_report_with_verified_name(monkeypatch, pr
     assert received == [("free-fire", FF_ID, None)]
     assert report["player_name"] == "FFPlayer" and report["ready_count"] == 1
     assert state["sent"] == []  # preflight ne commande jamais
+    # Trace écrite UNIQUEMENT après une validation réussie, avec le fournisseur qui a validé.
+    trace = state["writes"][-1][1]["$set"]["identity_snapshot.verification"]
+    assert trace["provider"] == "neferbyte" and trace["player_name"] == "FFPlayer" and trace["validated_at"]
 
 
 def _verify_returning(result, calls: list | None = None):
