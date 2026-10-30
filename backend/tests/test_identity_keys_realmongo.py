@@ -348,6 +348,36 @@ def test_cli_entrypoint_runs_the_same_migration(sandbox):
         assert identifier not in proc.stdout, proc.stdout
 
 
+def test_backfill_uses_one_write_command_per_batch_on_real_mongo(sandbox, monkeypatch):
+    """Compteur d'allers-retours RÉEL : 1 commande `bulk_write` par lot, pas une par document."""
+    total = 1_200
+    run(build_old_state(sandbox.db, with_documents=False))
+    run(sandbox.db.orders.insert_many([
+        {"id": f"bulk-ord-{i}", "pubg_id": f"{700000000 + i}", "status": "paid",
+         "identity_snapshot": {"fields": {"player_id": f"{700000000 + i}"}}}
+        for i in range(total)]))
+
+    sent: list[int] = []
+    collection_cls = type(sandbox.db.orders)
+    real_bulk_write = collection_cls.bulk_write
+
+    async def counting_bulk_write(collection, operations, ordered: bool = True, **kwargs):
+        # Motor crée une nouvelle instance de collection à chaque `db.orders` : on compte au
+        # niveau de la classe, et seulement pour la collection `orders`.
+        if collection.name == "orders":
+            sent.append(len(operations))
+        return await real_bulk_write(collection, operations, ordered=ordered, **kwargs)
+
+    monkeypatch.setattr(collection_cls, "bulk_write", counting_bulk_write)
+    monkeypatch.setenv(ik.IDENTITY_KEY_BACKFILL_BATCH_ENV, "500")
+
+    summary = run(ik.migrate_identity_keys())
+
+    assert sent == [500, 500, 200], sent                  # 3 commandes pour 1200 documents
+    assert summary["backfilled"]["orders"] == total       # documents réellement modifiés
+    assert summary["complete"] is True
+
+
 # --------------------------------------------------------------------------- #
 # 4. Unicité RÉELLE après migration
 # --------------------------------------------------------------------------- #

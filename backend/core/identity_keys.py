@@ -26,7 +26,10 @@ index **en dernier** et seulement si tout est en place.
 """
 import logging
 import os
+import time
 import unicodedata
+
+from pymongo import UpdateOne
 
 from core.db import db
 from core.games import DEFAULT_GAME_ID
@@ -35,7 +38,15 @@ logger = logging.getLogger("mgs.identity")
 
 IDENTITY_KEY_SEPARATOR = "|"
 IDENTITY_KEY_MIGRATION_ENV = "IDENTITY_KEY_MIGRATION"
+IDENTITY_KEY_BACKFILL_BATCH_ENV = "IDENTITY_KEY_BACKFILL_BATCH"
 IDENTITY_COLLECTIONS = ("orders", "subscription_locks", "evo_locks")
+
+# Taille de lot du backfill : 500 opérations ≈ 100 Ko de commande (très en dessous de la limite
+# Mongo de 16 Mo), et 500 fois moins d'allers-retours réseau qu'un `update_one` par document —
+# ce qui compte quand la base est hébergée en ligne. Plafond : 10 000 pour ne jamais approcher
+# la limite de commande, même avec une clé d'identité longue.
+DEFAULT_BACKFILL_BATCH = 500
+MAX_BACKFILL_BATCH = 10_000
 
 # Index uniques ACTIFS (après migration) — noms explicites : la procédure de retour arrière les cite.
 SUBSCRIPTION_LOCK_KEYS = [("game_id", 1), ("identity_key", 1), ("type", 1)]
@@ -166,6 +177,21 @@ def migration_enabled() -> bool:
     return raw not in ("off", "0", "false", "no", "disabled")
 
 
+def backfill_batch_size() -> int:
+    """Taille de lot du backfill (`IDENTITY_KEY_BACKFILL_BATCH`, 500 par défaut, bornée 1..10 000).
+
+    Une valeur illisible retombe sur le défaut plutôt que d'empêcher la migration de démarrer.
+    """
+    raw = str(os.environ.get(IDENTITY_KEY_BACKFILL_BATCH_ENV, DEFAULT_BACKFILL_BATCH)).strip()
+    try:
+        size = int(raw)
+    except ValueError:
+        logger.warning("identity_key : %s=%r illisible, taille de lot %s utilisée",
+                       IDENTITY_KEY_BACKFILL_BATCH_ENV, raw, DEFAULT_BACKFILL_BATCH)
+        return DEFAULT_BACKFILL_BATCH
+    return max(1, min(size, MAX_BACKFILL_BATCH))
+
+
 def _needs_backfill() -> dict:
     # En Mongo, `{"champ": None}` correspond aussi à un champ ABSENT ; `""` est traité comme absent.
     return {"$or": [{"identity_key": None}, {"identity_key": ""},
@@ -189,14 +215,43 @@ def _backfill_values(name: str, doc: dict) -> dict:
 
 
 async def _backfill(collection, name: str) -> int:
-    backfilled = 0
+    """Complète la collection par LOTS d'`UpdateOne` (aucune écriture document par document).
+
+    Chaque opération reste sûre en cas de relance ou d'écriture concurrente : elle ne s'applique
+    que si les champs qu'elle pose sont ENCORE absents ou vides (`_needs_backfill` par document),
+    donc une valeur déjà écrite par du code récent n'est jamais écrasée.
+
+    Returns:
+        Le nombre de documents réellement modifiés (résultats des lots, pas les documents lus).
+    """
+    batch_size = backfill_batch_size()
     projection = {"_id": 1, "game_id": 1, "identity_key": 1, "pubg_id": 1, "identity_snapshot": 1}
+    backfilled = 0
+    batch: list[UpdateOne] = []
+    started = time.perf_counter()
+
+    async def flush(operations: list[UpdateOne]) -> int:
+        if not operations:
+            return 0
+        result = await collection.bulk_write(operations, ordered=False)
+        return int(getattr(result, "modified_count", 0) or 0)
+
     async for doc in collection.find(_needs_backfill(), projection):
         values = _backfill_values(name, doc)
         if not values:
             continue
-        await collection.update_one({"_id": doc["_id"]}, {"$set": values})
-        backfilled += 1
+        batch.append(UpdateOne(
+            {"_id": doc["_id"],
+             # « clé encore absente ou vide » : `None` correspond aussi à un champ ABSENT.
+             **{field: {"$in": [None, ""]} for field in values}},
+            {"$set": values}))
+        if len(batch) >= batch_size:
+            backfilled += await flush(batch)
+            batch = []
+    backfilled += await flush(batch)
+
+    logger.info("identity_key : %s document(s) complété(s) dans %s en %.2f s (lots de %s)",
+                backfilled, name, time.perf_counter() - started, batch_size)
     return backfilled
 
 

@@ -157,6 +157,18 @@ class FakeCollection:
                 doc.update(update.get("$set") or {})
                 return
 
+    async def bulk_write(self, operations, ordered: bool = True, **kwargs):
+        """Lot d'`UpdateOne` : applique les filtres (dont `$in: [None, ""]`) et compte les docs."""
+        self.calls.append(f"bulk_write:{len(operations)}")
+        modified = 0
+        for operation in operations:
+            for doc in self.docs:
+                if _matches(doc, operation._filter):
+                    doc.update(operation._doc.get("$set") or {})
+                    modified += 1
+                    break
+        return SimpleNamespace(modified_count=modified)
+
     async def delete_one(self, query: dict):
         for i, doc in enumerate(self.docs):
             if _matches(doc, query):
@@ -477,6 +489,94 @@ def test_migration_is_idempotent(fake_db):
     assert second["complete"] is True
     assert [dict(d) for coll in (fake_db.orders, fake_db.subscription_locks, fake_db.evo_locks)
             for d in coll.docs] == snapshot
+
+
+def test_backfill_writes_in_batches_not_document_by_document(fake_db, monkeypatch):
+    """Le backfill écrit par lots : ~n/taille_lot appels d'écriture, pas n."""
+    monkeypatch.setenv(ik.IDENTITY_KEY_BACKFILL_BATCH_ENV, "500")
+    total = 1_200
+    for i in range(total):
+        _seed(fake_db.orders, id=f"ord-{i}", pubg_id=f"{100000000 + i}",
+              identity_snapshot={"fields": {"player_id": f"{100000000 + i}"}})
+
+    summary = run(ik.migrate_identity_keys())
+
+    writes = [call for call in fake_db.journal if call.startswith("bulk_write:")]
+    assert len(writes) == 3, writes                       # 1200 documents / 500 par lot
+    assert len(writes) < total / 100                      # ordre de grandeur : n / lot, pas n
+    assert summary["backfilled"]["orders"] == total        # documents RÉELLEMENT modifiés
+    assert all(d.get("game_id") and d.get("identity_key") for d in fake_db.orders.docs)
+
+
+@pytest.mark.parametrize("batch", ["1", "5000"])
+def test_backfill_batch_size_does_not_change_the_result(fake_db, monkeypatch, batch):
+    """Lot de 1 (pire cas) et lot plus grand que la collection : résultat identique."""
+    monkeypatch.setenv(ik.IDENTITY_KEY_BACKFILL_BATCH_ENV, batch)
+    _seed_legacy(fake_db, with_game_id=True)
+
+    summary = run(ik.migrate_identity_keys())
+
+    assert summary["complete"] is True
+    assert summary["backfilled"] == {"orders": 1, "subscription_locks": 1, "evo_locks": 1}
+    assert fake_db.orders.docs[0]["identity_key"] == "12345678|2214"
+    assert fake_db.subscription_locks.docs[0]["game_id"] == PUBG
+    assert ik.SUBSCRIPTION_LOCK_INDEX in fake_db.subscription_locks.names()
+    assert "pubg_id_1_type_1" not in fake_db.subscription_locks.names()
+
+
+@pytest.mark.parametrize("raw,expected", [
+    (None, ik.DEFAULT_BACKFILL_BATCH),   # variable absente
+    ("", ik.DEFAULT_BACKFILL_BATCH),
+    ("250", 250),
+    ("0", 1),                            # jamais zéro écriture par lot
+    ("-5", 1),
+    ("999999", ik.MAX_BACKFILL_BATCH),   # plafond : commande Mongo toujours < 16 Mo
+    ("abc", ik.DEFAULT_BACKFILL_BATCH),  # valeur illisible -> défaut, la migration démarre
+])
+def test_backfill_batch_size_parsing(monkeypatch, raw, expected):
+    if raw is None:
+        monkeypatch.delenv(ik.IDENTITY_KEY_BACKFILL_BATCH_ENV, raising=False)
+    else:
+        monkeypatch.setenv(ik.IDENTITY_KEY_BACKFILL_BATCH_ENV, raw)
+    assert ik.backfill_batch_size() == expected
+
+
+def test_backfill_does_not_overwrite_a_value_written_concurrently(fake_db, monkeypatch):
+    """Document complété entre la lecture et l'écriture : la valeur récente n'est jamais écrasée."""
+    _seed_legacy(fake_db, with_game_id=True)          # game_id présent, identity_key absent
+    orders = fake_db.orders
+    original_bulk_write = orders.bulk_write
+
+    async def racing_bulk_write(operations, ordered: bool = True, **kwargs):
+        orders.docs[0]["identity_key"] = "valeur-recente"   # écriture concurrente APRÈS la lecture
+        return await original_bulk_write(operations, ordered=ordered, **kwargs)
+
+    monkeypatch.setattr(orders, "bulk_write", racing_bulk_write)
+
+    summary = run(ik.migrate_identity_keys())
+
+    assert orders.docs[0]["identity_key"] == "valeur-recente"   # jamais écrasée par la migration
+    assert summary["complete"] is True                          # plus aucun document incomplet
+
+
+def test_migration_stops_safely_when_a_key_is_still_missing_after_backfill(fake_db, monkeypatch):
+    """Clé toujours absente après le backfill : arrêt AVANT de supprimer les index historiques."""
+    _seed_legacy(fake_db, with_game_id=False)          # les DEUX clés manquent
+    orders = fake_db.orders
+    original_bulk_write = orders.bulk_write
+
+    async def racing_bulk_write(operations, ordered: bool = True, **kwargs):
+        orders.docs[0]["identity_key"] = "valeur-recente"  # bloque l'opération (garde sur les 2 clés)
+        return await original_bulk_write(operations, ordered=ordered, **kwargs)
+
+    monkeypatch.setattr(orders, "bulk_write", racing_bulk_write)
+
+    summary = run(ik.migrate_identity_keys())
+
+    assert orders.docs[0]["identity_key"] == "valeur-recente"
+    assert summary["complete"] is False
+    assert summary["reason"] == "backfill_incomplet:orders"      # aucune clé perdue en silence
+    assert "pubg_id_1_type_1" in fake_db.subscription_locks.names()  # anciens index conservés
 
 
 def test_migration_stops_before_dropping_when_duplicates_block(fake_db):
