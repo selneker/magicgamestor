@@ -21,19 +21,43 @@ Mapping HTTP prévu (BE-4) : `ok` → `valid: true` ; `invalid_id` → `valid: f
 Règles de sécurité : la clé ne quitte jamais l'en-tête `x-api-key` (jamais loguée, jamais
 renvoyée), et ni l'ID joueur ni le pseudo n'apparaissent dans les logs — le message d'erreur du
 fournisseur contient l'ID en clair, il n'est donc jamais logué tel quel.
+
+Quota (PL-003-BE-5) : `set_attempt_hook(hook)` installe, pour la tâche courante, un point d'accroche
+asynchrone appelé AVANT chaque tentative HTTP ; s'il renvoie `False`, aucune requête ne part et le
+résultat est `provider_unavailable` / `quota_guard`. C'est le crochet utilisé par
+`services.neferbyte_guard` pour compter les appels réels ; ce module ne connaît ni le cache ni la base.
 """
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import logging
 import os
 import re
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from urllib.parse import quote
 
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# Point d'accroche appelé AVANT chaque tentative HTTP (comptage de quota, PL-003-BE-5). Un
+# `ContextVar` et non un paramètre de `verify_identity` : les appelants existants gardent la même
+# signature, et deux vérifications simultanées ne partagent pas leur compteur.
+AttemptHook = Callable[[], Awaitable[bool]]
+_attempt_hook: contextvars.ContextVar[AttemptHook | None] = contextvars.ContextVar(
+    "neferbyte_attempt_hook", default=None)
+
+
+def set_attempt_hook(hook: AttemptHook | None):
+    """Installe le hook des tentatives ; renvoie le jeton à passer à `reset_attempt_hook`."""
+    return _attempt_hook.set(hook)
+
+
+def reset_attempt_hook(token) -> None:
+    """Rétablit le hook précédent (toujours dans un `finally`)."""
+    _attempt_hook.reset(token)
 
 DEFAULT_BASE_URL = "https://api.neferbyte.com"
 # Timeout volontairement court : la vérification est sur le chemin critique du checkout.
@@ -311,6 +335,17 @@ async def verify_identity(slug: str, player_id: str | None, server: str | None =
 
     result: IdentityCheck | None = None
     for attempt in (1, 2):
+        # Comptage/plafond AVANT chaque requête : aucune requête ne part sans être comptée, et un
+        # refus du hook (plafond atteint) empêche l'appel. Un hook en erreur bloque (fail-closed).
+        hook = _attempt_hook.get()
+        if hook is not None:
+            try:
+                allowed = await hook()
+            except Exception:  # pragma: no cover - le hook gère ses propres erreurs
+                allowed = False
+            if not allowed:
+                logger.warning("neferbyte %s: appel bloqué par la protection du quota", spec.slug)
+                return IdentityCheck(status=PROVIDER_UNAVAILABLE, reason="quota_guard")
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
                 response = await client.get(url, headers=headers)
@@ -366,5 +401,5 @@ async def verify_identity(slug: str, player_id: str | None, server: str | None =
 __all__ = [
     "CONFIG_ERROR", "DEFAULT_BASE_URL", "DEFAULT_TIMEOUT_S", "GAMES", "GameSpec", "INVALID_ID",
     "IdentityCheck", "OK", "PROVIDER_UNAVAILABLE", "RETRY_DELAY_S", "TIMEOUT", "configured",
-    "game_spec", "verify_identity",
+    "game_spec", "reset_attempt_hook", "set_attempt_hook", "verify_identity",
 ]

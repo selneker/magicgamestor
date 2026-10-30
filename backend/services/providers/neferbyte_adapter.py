@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import logging
 
-from services import neferbyte
+from services import neferbyte, neferbyte_guard
 from services.providers.base import IdentityProvider, IdentityValidation
 
 logger = logging.getLogger(__name__)
@@ -179,7 +179,7 @@ class NeferbyteProvider(IdentityProvider):
         raw_server = values.get(self.server_field) if self.server_field else None
         server = raw_server.strip() if isinstance(raw_server, str) else None
 
-        check = await neferbyte.verify_identity(self.slug, player_id, server)
+        check = await neferbyte_guard.verify_identity(self.slug, player_id, server)
 
         if check.status == neferbyte.OK:
             return IdentityValidation(valid=True, player_name=check.player_name,
