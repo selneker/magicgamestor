@@ -11,7 +11,10 @@ Ce qui est vérifié :
 - masquage des IDs (4 derniers caractères au plus) et des pseudos (2 caractères + `***`) ;
 - plafond dur de 12 requêtes, et budget réel de 6 requêtes pour le cas nominal ;
 - code de sortie non nul en cas d'échec ;
-- lecture seule : aucune requête hors des deux routes de validation, aucune création de commande.
+- lecture seule : aucune requête hors des deux routes de validation, aucune création de commande ;
+- **PL-003-BE-9** : les ID invalides sont FIXES (`000000001`, jamais tirés au hasard), un 404,
+  un 405 ou un 5xx n'est JAMAIS un « refus client » accepté, `provider_unavailable` fait échouer
+  les cas 2 et 4, et un échec de configuration est signalé comme tel dans la sortie.
 """
 from __future__ import annotations
 
@@ -282,6 +285,107 @@ def test_echec_sur_erreur_serveur(smoke):
     assert "provider_unavailable" in out
     # Jamais le corps brut : seule la paire code/detail est reprise.
     assert "{" not in out and '"detail"' not in out
+
+
+# --------------------------------------------------------------------------- #
+# PL-003-BE-9 — ID invalides fixes, refus client strict, échec de configuration
+# --------------------------------------------------------------------------- #
+def test_ids_invalides_fixes_et_jamais_aleatoires(smoke):
+    """Les cas 2 et 4 envoient le MÊME ID fixe : un tirage aléatoire peut être un vrai compte."""
+    _code, _out, _err, seen = run(smoke, happy_handler)
+
+    payloads = [json.loads(request.content or b"{}") for request in seen]
+    invalides = [p for p in payloads
+                 if (p.get("fields") or {}).get("player_id") == smoke.INVALID_ID]
+
+    assert smoke.INVALID_ID == "000000001"          # préfixe de zéros : non attribuable
+    assert len(invalides) == 2                      # cas 2 (PUBG) et cas 4 (Free Fire)
+    assert {p["game_id"] for p in invalides} == {"pubg-mobile", "free-fire"}
+    # Aucun identifiant « improbable » de longueur variable n'est plus généré.
+    longueurs = {len(p["fields"]["player_id"]) for p in payloads if p.get("fields")}
+    assert longueurs <= {len(smoke.INVALID_ID), len(PUBG_ID), len(FF_ID)}
+
+
+@pytest.mark.parametrize("status", [404, 405, 500, 502, 503, 504])
+def test_un_404_un_405_ou_un_5xx_nest_jamais_un_refus_accepte(smoke, status):
+    """Avant BE-9, tout 4xx était accepté comme « refus client » : 404 et 405 passaient pour OK."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(status, json={"detail": "panne", "code": "provider_unavailable"})
+
+    code, out, _err, _seen = run(smoke, handler)
+
+    assert code == 1
+    assert f"HTTP {status}" in out
+    assert "2. PUBG Mobile — ID invalide" in out.split("ÉCHEC : ", 1)[1]
+    assert "4. Free Fire — ID invalide" in out.split("ÉCHEC : ", 1)[1]
+
+
+def test_provider_unavailable_fait_echouer_les_cas_2_et_4(smoke):
+    """Le but des cas 2/4 est de vérifier la traduction « ID invalide », pas une panne."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = _json(request)
+        if (body.get("fields") or {}).get("player_id") == smoke.INVALID_ID:
+            return httpx.Response(503, json={"detail": "Service de vérification momentanément "
+                                                       "indisponible. Réessayez plus tard.",
+                                             "code": "provider_unavailable"})
+        return happy_handler(request)
+
+    code, out, _err, _seen = run(smoke, handler)
+
+    assert code == 1
+    assert ("ÉCHEC : 2. PUBG Mobile — ID invalide, 4. Free Fire — ID invalide"
+            in out)
+
+
+def test_un_echec_de_configuration_est_signale_comme_tel(smoke):
+    """404 (route/jeu absent) et 503 « non configuré » ne sont pas des verdicts d'identité."""
+
+    def no_game(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, json={"detail": "Game not found", "code": "unsupported_game"})
+
+    code, out, _err, _seen = run(smoke, no_game)
+
+    assert code == 1
+    assert "ÉCHEC DE CONFIGURATION" in out
+    assert "FAZERCARDS_API_KEY" in out          # la cause probable est nommée
+    assert "aucun verdict d'identité" in out
+
+
+def test_une_panne_fournisseur_nest_pas_annoncee_comme_configuration(smoke):
+    """Un 502 est une panne du fournisseur : le message de configuration serait trompeur."""
+
+    def outage(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(502, json={"detail": "Service de vérification momentanément "
+                                                   "indisponible. Réessayez plus tard.",
+                                         "code": "provider_unavailable"})
+
+    code, out, _err, _seen = run(smoke, outage)
+
+    assert code == 1
+    assert "ÉCHEC DE CONFIGURATION" not in out
+
+
+def test_cas_5_accepte_un_422_de_notre_api(smoke):
+    """422 = validation du corps par NOTRE API : c'est un refus client légitime."""
+    code, out, _err, _seen = run(smoke, happy_handler)   # happy_handler répond 422 au cas 5
+
+    assert code == 0
+    assert "HTTP 422 (refus client de notre API)" in out
+
+
+def test_cas_5_refuse_un_404(smoke):
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = _json(request)
+        if not (body.get("fields") or {}):
+            return httpx.Response(404, json={"detail": "Game not found", "code": "unsupported_game"})
+        return happy_handler(request)
+
+    code, out, _err, _seen = run(smoke, handler)
+
+    assert code == 1
+    assert "5. Free Fire — champ requis absent" in out.split("ÉCHEC : ", 1)[1]
 
 
 # --------------------------------------------------------------------------- #

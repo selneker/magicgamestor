@@ -47,12 +47,21 @@ VARIABLES D'ENVIRONNEMENT (aucune valeur n'est codée en dur)
 CAS (un appel chacun, dans cet ordre)
 
     1  PUBG Mobile, ID valide ............ 200, valid:true, pseudo non vide
-    2  PUBG Mobile, ID invalide .......... valid:false, jamais 5xx
+    2  PUBG Mobile, ID invalide .......... HTTP 200, valid:false, code invalid_id
     3  Free Fire, ID valide .............. 200, valid:true, pseudo non vide
-    4  Free Fire, ID invalide ............ valid:false, jamais 5xx
-    5  Free Fire, champ requis absent .... erreur cliente, jamais 5xx ni valid:true
+    4  Free Fire, ID invalide ............ HTTP 200, valid:false, code invalid_id
+    5  Free Fire, champ requis absent .... HTTP 200 code missing_field, ou 422 de NOTRE API
     6  Route historique PUBG ............. même résultat que le cas 1
     7  Contrôle de fuite (0 requête) ..... aucun `identity_verifier`, clé API, ni `reason`
+
+Les cas 2 et 4 utilisent l'ID FIXE `000000001` : c'est un identifiant impossible (préfixe de
+zéros) alors qu'un nombre tiré au hasard peut tomber sur un vrai compte — ce qui est arrivé une
+fois, le script annonçant alors « valid:true » pour un compte existant.
+
+Un 404, un 405 et tout 5xx sont TOUJOURS un échec : ce ne sont pas des verdicts d'identité.
+`provider_unavailable` est donc un échec pour les cas 2 et 4 (le but est justement de vérifier
+que l'ID inexistant est traduit en `invalid_id`). Quand l'échec vient de la configuration
+(404/405, 503 « non configuré ») et non de l'identité, la sortie le dit explicitement.
 
 Codes de sortie : 0 = tout est OK, 1 = au moins un échec, 2 = configuration refusée.
 """
@@ -60,7 +69,6 @@ from __future__ import annotations
 
 import json
 import os
-import random
 import sys
 import time
 from dataclasses import dataclass
@@ -88,6 +96,16 @@ TIMEOUT_S = 20.0
 
 # Marqueurs de fuite interdits dans une réponse de validation.
 LEAK_MARKERS = ("identity_verifier", "api_key", "api_secret", "neferbyte")
+
+# ID « invalide » FIXE des cas 2 et 4 : un préfixe de zéros n'est pas un identifiant attribuable,
+# alors qu'un nombre tiré au hasard peut tomber sur un vrai compte — arrivé une fois, le script
+# affichant alors `valid:true` pour un ID « improbable ». 9 chiffres : accepté par les motifs
+# PUBG (9-13) et Free Fire (6-12), donc le refus vient bien du fournisseur, pas de notre API.
+INVALID_ID = "000000001"
+# Codes que NOS routes renvoient pour un identifiant refusé (`valid:false`, HTTP 200).
+INVALID_ID_CODES = ("invalid_id", "missing_field")
+# Statuts qui trahissent une configuration (route/jeu) et non un verdict d'identité.
+CONFIG_STATUSES = (404, 405)
 
 HEADERS = ("Cas", "Attendu", "Obtenu", "État", "Durée")
 
@@ -218,6 +236,7 @@ class Row:
     ok: bool = False
     skipped: bool = False
     duration_ms: int | None = None
+    config_error: bool = False
 
     @property
     def state(self) -> str:
@@ -270,30 +289,44 @@ def check_valid(status: int, body: dict) -> tuple[bool, str]:
 
 
 def check_invalid(status: int, body: dict) -> tuple[bool, str]:
-    """Cas 2 et 4 : identifiant refusé, jamais 5xx ni `valid:true`."""
+    """Cas 2 et 4 : identifiant refusé par NOS routes — 200, `valid:false`, `code` explicite.
+
+    Tout autre statut est un échec : un 404/405 veut dire que la route ou le jeu n'existe pas, et
+    un 4xx/5xx du fournisseur (`provider_unavailable`) n'est pas un verdict d'identité.
+    """
     code = body.get("code") or "—"
-    if status >= 500:
-        return False, f"HTTP {status} (erreur serveur), code={code}"
-    if status == 200:
-        return body.get("valid") is False, f"HTTP 200, valid={_flag(body.get('valid'))}, code={code}"
-    return 400 <= status < 500, f"HTTP {status} (refus client), code={code}"
+    if status != 200:
+        return False, f"HTTP {status}, code={code} (attendu HTTP 200 avec valid:false)"
+    valid = body.get("valid")
+    ok = valid is False and code in INVALID_ID_CODES
+    return ok, f"HTTP 200, valid={_flag(valid)}, code={code}"
 
 
 def check_missing_field(status: int, body: dict) -> tuple[bool, str]:
-    """Cas 5 : champ requis absent → erreur cliente claire, jamais 5xx ni `valid:true`."""
+    """Cas 5 : champ requis absent → refus client explicite, jamais 5xx ni `valid:true`.
+
+    Deux formes acceptées : `200` + `code: missing_field` (refus applicatif), ou `422` de NOTRE
+    API (validation du corps). Un 404/405/5xx reste un échec.
+    """
     code = body.get("code") or "—"
-    if status >= 500:
-        return False, f"HTTP {status} (erreur serveur), code={code}"
-    if status == 200:
-        ok = body.get("valid") is not True and code == "missing_field"
-        return ok, f"HTTP 200, valid={_flag(body.get('valid'))}, code={code}"
-    return 400 <= status < 500, f"HTTP {status} (refus client), code={code}"
+    if status == 422:
+        return True, "HTTP 422 (refus client de notre API)"
+    if status != 200:
+        return False, f"HTTP {status}, code={code} (attendu HTTP 200 ou 422)"
+    valid = body.get("valid")
+    ok = valid is not True and code == "missing_field"
+    return ok, f"HTTP 200, valid={_flag(valid)}, code={code}"
 
 
-def _invalid_numeric_id(digits: int) -> str:
-    """Identifiant numérique improbable, de la longueur attendue par le fournisseur."""
-    generator = random.SystemRandom()
-    return str(generator.randrange(10 ** (digits - 1), 10**digits))
+def config_failure(status: int, body: dict) -> bool:
+    """L'échec vient-il de la CONFIGURATION (route/jeu/clé) plutôt que de l'identité ?
+
+    404/405 : route ou jeu inexistant. 503 `provider_unavailable` : fournisseur non configuré
+    (clé vide) ou cible de validation absente. Un 502 reste une panne du fournisseur.
+    """
+    if status in CONFIG_STATUSES:
+        return True
+    return status == 503 and body.get("code") == "provider_unavailable"
 
 
 def _has_key(node: Any, key: str) -> bool:
@@ -367,9 +400,9 @@ class Smoke:
                  {"game_id": cfg.pubg_game_id, "fields": pubg_fields},
                  check_valid, pubg_skip),
             Case("2", "PUBG Mobile — ID invalide",
-                 "valid:false, jamais 5xx",
+                 "HTTP 200, valid:false, code invalid_id",
                  GENERIC_ROUTE,
-                 {"game_id": cfg.pubg_game_id, "fields": {"player_id": _invalid_numeric_id(13)}},
+                 {"game_id": cfg.pubg_game_id, "fields": {"player_id": INVALID_ID}},
                  check_invalid, pubg_skip),
             Case("3", "Free Fire — ID valide",
                  "200, valid:true, pseudo non vide",
@@ -377,12 +410,12 @@ class Smoke:
                  {"game_id": cfg.ff_game_id, "fields": self._ff_fields(cfg.ff_id)},
                  check_valid, ff_skip),
             Case("4", "Free Fire — ID invalide",
-                 "valid:false, jamais 5xx",
+                 "HTTP 200, valid:false, code invalid_id",
                  GENERIC_ROUTE,
-                 {"game_id": cfg.ff_game_id, "fields": {cfg.ff_field: _invalid_numeric_id(10)}},
+                 {"game_id": cfg.ff_game_id, "fields": {cfg.ff_field: INVALID_ID}},
                  check_invalid, ff_skip),
             Case("5", "Free Fire — champ requis absent",
-                 "erreur cliente, jamais 5xx ni valid:true",
+                 "200 code missing_field ou 422 de notre API, jamais 5xx",
                  GENERIC_ROUTE,
                  {"game_id": cfg.ff_game_id, "fields": ff_missing_fields},
                  check_missing_field, ff_skip),
@@ -407,10 +440,15 @@ class Smoke:
         body = _json_body(response)
         self.responses.append((label, response))
         ok, obtained = case.check(response.status_code, body)
+        config_error = not ok and config_failure(response.status_code, body)
+        if config_error:
+            obtained = (f"{obtained} — ÉCHEC DE CONFIGURATION "
+                        "(route/jeu/clé : ce n'est pas un verdict d'identité)")
         detail = _safe_detail(body.get("detail"), self.config.secrets)
         if detail and (not ok or response.status_code >= 400):
             obtained = f"{obtained} — {detail}"
-        return Row(label, case.expected, obtained, ok=ok, duration_ms=duration_ms)
+        return Row(label, case.expected, obtained, ok=ok, duration_ms=duration_ms,
+                   config_error=config_error)
 
     def _leak_row(self) -> Row:
         label = "7. Contrôle de fuite (toutes les réponses)"
@@ -470,6 +508,13 @@ class Smoke:
             self._write("Sauté(s) : " + ", ".join(row.case.split(".", 1)[0] for row in skipped))
         if failed:
             self._write("ÉCHEC : " + ", ".join(row.case for row in failed))
+            config_errors = [row for row in failed if row.config_error]
+            if config_errors:
+                self._write(
+                    "ÉCHEC DE CONFIGURATION (aucun verdict d'identité) : "
+                    + ", ".join(row.case.split(".", 1)[0] for row in config_errors)
+                    + " — vérifier la route, le jeu et la clé FAZERCARDS_API_KEY / "
+                      "FAZERCARDS_API_BASE du backend, puis relancer.")
             return 1
         self._write("Résultat : tous les cas exécutés sont conformes.")
         return 0
