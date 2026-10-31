@@ -7,6 +7,8 @@ from pymongo.errors import DuplicateKeyError
 
 from core.audit import audit
 from core.db import db
+from core.games import DEFAULT_GAME_ID
+from core.identity_keys import find_lock, order_game_id, order_identity_key
 from core.security import require_permission
 from services.fzr_mapping import purchase_blocked
 
@@ -61,7 +63,16 @@ async def _holder_status(lock: dict) -> str | None:
 
 async def check_evo(product: dict, pubg_id: str) -> dict:
     period_key, season = await evo_period(product)
-    lock = await db.evo_locks.find_one({"pubg_id": pubg_id, "offer_slug": product["slug"], "period_key": period_key})
+    # Pack évolutif = PUBG Mobile UNIQUEMENT : le type « evo » est réservé à ce jeu
+    # (`core/games.py:287,313-315`), les offres `evo` sont semées avec `game_id: "pubg-mobile"`
+    # (`core/seed.py:99-114`) et `reserve_evo` écrit `game_id = order_game_id(order)`, soit
+    # « pubg-mobile » (`None` pour une commande antérieure à la colonne `game_id`). Le filtre
+    # ci-dessous ne saute donc AUCUN verrou légitime : même numéro dans un autre jeu = autre
+    # identité (jeu distinct), et un verrou d'un autre jeu ne peut pas entrer en collision avec
+    # une réservation PUBG (index unique sur `game_id` + `identity_key`).
+    lock = await db.evo_locks.find_one({"pubg_id": pubg_id, "offer_slug": product["slug"],
+                                        "period_key": period_key,
+                                        "game_id": {"$in": [DEFAULT_GAME_ID, None]}})
     if lock:
         status = await _holder_status(lock)
         if status and status not in INACTIVE_ORDER_STATUSES:
@@ -69,16 +80,20 @@ async def check_evo(product: dict, pubg_id: str) -> dict:
     return {"eligible": True, "reason": None, "period_key": period_key, "season": season}
 
 
-async def reserve_evo(pubg_id: str, product: dict, order_id: str) -> tuple[str, dict | None]:
-    """Atomic per-(pubg_id, offer, period) reservation via the unique index on evo_locks."""
+async def reserve_evo(order: dict, product: dict) -> tuple[str, dict | None]:
+    """Réservation atomique par (game_id, identity_key, offre, période) via l'index unique d'evo_locks."""
+    pubg_id = order.get("pubg_id")
+    game_id, key = order_game_id(order), order_identity_key(order)
     period_key, season = await evo_period(product)
+    extra = {"offer_slug": product["slug"], "period_key": period_key}
     for _ in range(3):
         try:
-            await db.evo_locks.insert_one({"pubg_id": pubg_id, "offer_slug": product["slug"], "period_key": period_key,
-                                           "order_id": order_id, "created_at": _now()})
+            await db.evo_locks.insert_one({"game_id": game_id, "identity_key": key, "pubg_id": pubg_id,
+                                           "offer_slug": product["slug"], "period_key": period_key,
+                                           "order_id": order["id"], "created_at": _now()})
             return period_key, season
         except DuplicateKeyError:
-            existing = await db.evo_locks.find_one({"pubg_id": pubg_id, "offer_slug": product["slug"], "period_key": period_key})
+            existing = await find_lock(db.evo_locks, game_id, key, pubg_id, extra)
             if not existing:
                 continue
             status = await _holder_status(existing)

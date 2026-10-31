@@ -12,6 +12,7 @@ from fastapi import FastAPI, APIRouter
 from starlette.middleware.cors import CORSMiddleware
 
 from core.db import client, ensure_indexes
+from core.identity_keys import migrate_identity_keys
 from core.origins import allowed_origins
 from core.security import PERMISSIONS as DEFAULT_ADMIN_PERMISSIONS
 from core.games import migrate_multigame, migrate_saved_pubg_ids, reconcile_sellable_games, seed_games
@@ -26,6 +27,9 @@ logger = logging.getLogger("mgs")
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await ensure_indexes()
+    # PL-003-BE-7 : backfill game_id/identity_key -> nouveaux index uniques -> anciens en DERNIER.
+    # Désactivable par IDENTITY_KEY_MIGRATION=off ; l'application démarre même si elle s'arrête.
+    await migrate_identity_keys()
     await seed_all()
     await orders.backfill_subscription_locks()
     await migrate_users()

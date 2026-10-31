@@ -1,4 +1,5 @@
 """FazerCards reseller API client — Phase 1: validation ID PUBG Mobile. Phase 2: découverte catalogue/offres."""
+import logging
 import os
 import time
 
@@ -8,6 +9,8 @@ from fastapi import HTTPException
 from core.db import db
 from services.providers.errors import (ProviderInsufficientBalanceError, ProviderOrderError,
                                         ProviderTimeout)
+
+logger = logging.getLogger(__name__)
 
 TIMEOUT_S = 20
 DISCOVERY_TTL_S = 600
@@ -41,7 +44,21 @@ def _config() -> tuple[str, dict]:
     return base, {"X-API-Key": key}
 
 
-async def _request(method: str, path: str, **kwargs) -> dict:
+async def _request(method: str, path: str, *, invalid_id_on_422: bool = False, **kwargs) -> dict:
+    """Appel HTTP au fournisseur, traduit en contrat MGS.
+
+    Args:
+        method: verbe HTTP.
+        path: chemin relatif à `FAZERCARDS_API_BASE`.
+        invalid_id_on_422: réservé à la validation d'identité. FazerCards répond `422` sur
+            `POST /topups/validate-id` quand l'identifiant soumis n'existe pas : ce n'est pas une
+            panne, c'est un refus d'identité (voir `validate_identity`). Les autres appels
+            (catalogue, offres, commandes) conservent le mapping historique 4xx -> 502.
+        **kwargs: transmis tels quels à `httpx`.
+
+    Returns:
+        Corps JSON du fournisseur, ou `{"valid": False}` pour un 422 d'identité refusée.
+    """
     base, headers = _config()
     r = None
     for attempt in (1, 2):  # single retry: upstream game APIs are intermittently flaky
@@ -76,6 +93,18 @@ async def _request(method: str, path: str, **kwargs) -> dict:
             detail="Trop de vérifications. Réessayez dans un instant.",
             code="rate_limited",
         )
+    if r.status_code == 422 and invalid_id_on_422:
+        # PL-003-BE-9 : FazerCards signale « identifiant inexistant » par un 422 sur
+        # `POST /topups/validate-id` (constaté en production sur un ID Free Fire). C'est un
+        # verdict d'identité, pas une indisponibilité : on le traduit en `valid: false`, que
+        # `validate_identity` renvoie tel quel et que la route rend en 200 `invalid_id`, comme
+        # pour PUBG Mobile. FAIL-CLOSED : un ID refusé n'est jamais accepté.
+        # Les 5xx (dont le 502 passager de FazerCards), timeouts, 401/403, 429 et réponses
+        # illisibles gardent leur traitement d'origine.
+        logger.warning(
+            "fazercards validate-id : HTTP 422 du fournisseur traduit en identifiant invalide "
+            "(aucune donnée joueur journalisée)")
+        return {"valid": False}
     if r.is_error:
         raise IdentityValidationHTTPException(
             status_code=502, detail=PROVIDER_ERROR, code="provider_unavailable")
@@ -167,7 +196,11 @@ async def validate_identity(fields: dict, game_id: str | None = None) -> dict:
     player_id universel. Sans `game_id`, comportement historique (PUBG Mobile).
 
     FAIL-CLOSED : si le champ attendu par le fournisseur n'est pas fourni, on échoue explicitement
-    au lieu de substituer une valeur d'un autre champ (jamais d'identité devinée)."""
+    au lieu de substituer une valeur d'un autre champ (jamais d'identité devinée).
+
+    Un `422` du fournisseur sur cette route signifie « identifiant inexistant » : il devient
+    `valid: false` (traduit en `invalid_id` par la route), jamais une erreur d'indisponibilité.
+    """
     category_id, field_key = await validation_target(game_id)
     send = {k: v for k, v in (fields or {}).items() if v}
     if not send:
@@ -183,7 +216,7 @@ async def validate_identity(fields: dict, game_id: str | None = None) -> dict:
                     "par le fournisseur : corrigez-les dans Admin -> Jeux."),
             code="unsupported_game",
         )
-    data = await _request("POST", "/topups/validate-id",
+    data = await _request("POST", "/topups/validate-id", invalid_id_on_422=True,
                           json={"category_id": category_id, "fields": send})
     if "valid" not in data:
         raise IdentityValidationHTTPException(

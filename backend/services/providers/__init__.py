@@ -7,8 +7,8 @@
 L'import de l'adapter est différé dans `get_provider` pour éviter tout cycle d'import
 (services.fazercards importe services.providers.errors).
 """
-from services.providers.base import (IdentityValidation, OrderStatus, Provider, ProviderOrder,
-                                      ProviderWebhookEvent)
+from services.providers.base import (IdentityProvider, IdentityValidation, OrderStatus, Provider,
+                                      ProviderOrder, ProviderWebhookEvent, TopupProvider)
 from services.providers.errors import (ProviderError, ProviderInsufficientBalanceError,
                                         ProviderOrderError, ProviderTimeout, ProviderUnavailableError,
                                         ProviderUnknownError, ProviderValidationError)
@@ -34,9 +34,18 @@ def get_provider(game_id: str | None = None) -> Provider:
     return provider
 
 
+# Import en fin de module : `neferbyte_adapter` n'importe `services.fazercards` qu'au moment
+# d'une erreur (import différé), donc aucun cycle n'est créé quel que soit l'ordre d'import.
+from services.providers.neferbyte_adapter import (IdentityVerifierError,  # noqa: E402
+                                                  NeferbyteProvider, normalize_identity_verifier,
+                                                  resolve_identity_provider)
+
 __all__ = [
+    "IdentityProvider", "TopupProvider",
     "IdentityValidation", "OrderStatus", "Provider", "ProviderOrder", "ProviderWebhookEvent",
     "ProviderError", "ProviderInsufficientBalanceError", "ProviderOrderError", "ProviderTimeout",
     "ProviderUnavailableError", "ProviderUnknownError", "ProviderValidationError",
     "GAME_PROVIDER", "DEFAULT_PROVIDER", "get_provider",
+    "IdentityVerifierError", "NeferbyteProvider", "normalize_identity_verifier",
+    "resolve_identity_provider",
 ]

@@ -13,6 +13,13 @@ from services import fazercards, providers
 router = APIRouter(tags=["fazercards"])
 logger = logging.getLogger(__name__)
 
+PUBG_GAME_ID = "pubg-mobile"
+# Projection minimale pour résoudre le vérificateur d'identité d'un jeu : le contrat de saisie
+# (`identity_fields`) et la configuration admin du vérificateur (`identity_verifier`). Ces deux
+# champs sont indispensables à `resolve_identity_provider` ; les oublier ferait retomber
+# silencieusement le jeu sur FazerCards.
+IDENTITY_GAME_PROJECTION = {"_id": 0, "id": 1, "identity_fields": 1, "identity_verifier": 1}
+
 
 def _identity_error_code(spec: list[dict], fields: dict | None) -> str:
     """Distingue un champ requis absent d'un identifiant présent mais invalide."""
@@ -102,7 +109,7 @@ async def validate_identity(body: IdentityValidateIn, request: Request):
 
     try:
         check(f"fzr_validate:ip:{client_ip(request)}", setting("FZR_VALIDATE_PER_10MIN_PER_IP", 30), 600)
-        game = await db.games.find_one({"id": body.game_id}, {"_id": 0, "id": 1, "identity_fields": 1})
+        game = await db.games.find_one({"id": body.game_id}, IDENTITY_GAME_PROJECTION)
         if not game:
             raise HTTPException(status_code=404, detail="Game not found")
         spec = identity_spec(game)
@@ -115,7 +122,10 @@ async def validate_identity(body: IdentityValidateIn, request: Request):
                 "code": _identity_error_code(spec, body.fields),
                 "game_id": body.game_id,
             }
-        result = await providers.get_provider(body.game_id).validate_identity(body.game_id, checked[0])
+        # Le vérificateur d'identité est une donnée du jeu (`identity_verifier`) : Neferbyte s'il
+        # est configuré, FazerCards sinon. Le contrat de réponse ci-dessous ne change pas.
+        provider = providers.resolve_identity_provider(game)
+        result = await provider.validate_identity(body.game_id, checked[0])
         if not result.valid:
             # Message neutre par jeu : PUBG Mobile garde son libellé historique.
             if body.game_id == "pubg-mobile":
@@ -137,7 +147,13 @@ async def validate_identity(body: IdentityValidateIn, request: Request):
 async def validate_pubg_id(body: PubgValidateIn, request: Request):
     """Compat historique (PUBG Mobile). Délègue au même chemin que la validation générique."""
     check(f"fzr_validate:ip:{client_ip(request)}", setting("FZR_VALIDATE_PER_10MIN_PER_IP", 30), 600)
-    result = await providers.get_provider("pubg-mobile").validate_identity("pubg-mobile", {"player_id": body.player_id})
+    # Même résolution que la route générique : le vérificateur configuré pour PUBG Mobile
+    # s'applique aussi ici. Document jeu absent = aucun `identity_verifier` enregistré : on
+    # conserve le comportement historique (FazerCards) plutôt que d'inventer un 404.
+    game = await db.games.find_one({"id": PUBG_GAME_ID}, IDENTITY_GAME_PROJECTION) \
+        or {"id": PUBG_GAME_ID}
+    result = await providers.resolve_identity_provider(game).validate_identity(
+        PUBG_GAME_ID, {"player_id": body.player_id})
     if not result.valid:
         return {"valid": False, "message": "ID PUBG Mobile invalide"}
     return {"valid": True, "player_name": result.player_name, "region": result.region}
