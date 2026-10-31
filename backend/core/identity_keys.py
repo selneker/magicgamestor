@@ -11,7 +11,9 @@ deux jeux pouvaient entrer en collision sur un même numéro.
 La clé devient `game_id` + `identity_key` :
 
     identity_key = valeurs des champs d'identité DÉCLARÉS par le jeu, dans l'ordre déclaré, jointes
-                   par « | »
+                   par « | » — le séparateur et l'échappement présents DANS une valeur sont
+                   échappés (« \\ » -> « \\\\ », « | » -> « \\| »), sinon deux identités différentes
+                   pourraient produire la même clé
 
 Normalisation appliquée à la CLÉ seulement (jamais aux valeurs envoyées au fournisseur) :
 NFKC, espaces de bord retirés, espaces internes réduits, minuscules, zéros initiaux supprimés
@@ -19,6 +21,10 @@ pour une valeur purement numérique. Exemples :
 
     PUBG Mobile   {"player_id": "52328390220"}                 -> "52328390220"  (== pubg_id)
     Mobile Legends{"player_id": "12345678", "zone_id": "2214"} -> "12345678|2214"
+
+Une valeur SANS « | » ni « \\ » produit donc exactement la même clé qu'avant l'échappement : aucune
+clé déjà écrite en production n'est réécrite (les valeurs d'identité des jeux connus sont
+numériques ou alphanumériques).
 
 La migration de démarrage est ADDITIVE et REJOUABLE : elle ne fait qu'AJOUTER `game_id` /
 `identity_key` aux documents existants, crée les nouveaux index uniques, puis supprime les anciens
@@ -37,6 +43,7 @@ from core.games import DEFAULT_GAME_ID
 logger = logging.getLogger("mgs.identity")
 
 IDENTITY_KEY_SEPARATOR = "|"
+IDENTITY_KEY_ESCAPE = "\\"
 IDENTITY_KEY_MIGRATION_ENV = "IDENTITY_KEY_MIGRATION"
 IDENTITY_KEY_BACKFILL_BATCH_ENV = "IDENTITY_KEY_BACKFILL_BATCH"
 IDENTITY_COLLECTIONS = ("orders", "subscription_locks", "evo_locks")
@@ -76,6 +83,18 @@ def normalize_identity_value(value: object) -> str:
     return text
 
 
+def escape_identity_value(value: str) -> str:
+    """Échappe le séparateur et le caractère d'échappement d'UNE valeur déjà normalisée.
+
+    Sans échappement, ``{"player_id": "a|b", "zone_id": "c"}`` et
+    ``{"player_id": "a", "zone_id": "b|c"}`` produiraient la même clé « a|b|c » : deux identités
+    distinctes seraient dédupliquées ensemble. L'échappement rend la jointure injective ; il est
+    l'IDENTITÉ pour toute valeur sans « | » ni « \\ », donc aucune clé existante ne change.
+    """
+    return value.replace(IDENTITY_KEY_ESCAPE, IDENTITY_KEY_ESCAPE * 2).replace(
+        IDENTITY_KEY_SEPARATOR, IDENTITY_KEY_ESCAPE + IDENTITY_KEY_SEPARATOR)
+
+
 def identity_key(fields: dict | None) -> str:
     """Clé d'identité d'un joueur à partir de ses champs d'identité EFFECTIFS.
 
@@ -84,9 +103,11 @@ def identity_key(fields: dict | None) -> str:
     l'ordre des champs. Les valeurs vides sont ignorées ; aucune valeur inventée n'est ajoutée.
 
     Returns:
-        Les valeurs normalisées jointes par « | » (chaîne vide si aucun champ renseigné).
+        Les valeurs normalisées (séparateur échappé) jointes par « | » — chaîne vide si aucun
+        champ renseigné.
     """
-    values = [normalize_identity_value(v) for v in (fields or {}).values() if str(v or "").strip()]
+    values = [escape_identity_value(normalize_identity_value(v))
+              for v in (fields or {}).values() if str(v or "").strip()]
     return IDENTITY_KEY_SEPARATOR.join(values)
 
 

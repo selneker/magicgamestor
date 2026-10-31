@@ -108,6 +108,31 @@ mongo "<MONGO_URL>/<DB_NAME>" --eval '
 Puis laisser `IDENTITY_KEY_MIGRATION=off`. Les champs `game_id` / `identity_key` ajoutés aux
 documents restent en place : un ajout de champ est inoffensif pour l'ancien code.
 
+> **Mise en garde — revenir à l'ancien code après la migration.**
+>
+> - **Avant la migration** (les deux index `identity_game_*` n'existent pas) : revenir à l'ancienne
+>   version est **sans risque**, aucun index n'a changé.
+> - **Après la migration** : les nouveaux index uniques sont en place. L'ancien code, lui, insère
+>   des verrous **sans** `game_id` ni `identity_key` — ces deux champs valent `null` pour le nouvel
+>   index, et **deux verrous du même type entrent alors en collision** (`DuplicateKeyError` sur la
+>   seconde commande d'un même `type`, même pour deux identités différentes). Il faut donc
+>   **supprimer les nouveaux index et recréer les anciens AVANT de redéployer l'ancien code**.
+>
+> Ordre exact (inchangé, à exécuter dans cet ordre : les anciens index sont créés **avant** la
+> suppression des nouveaux, pour que la protection anti-doublon ne soit jamais interrompue) :
+>
+> ```bash
+> mongo "<MONGO_URL>/<DB_NAME>" --eval '
+>   db.subscription_locks.createIndex({pubg_id: 1, type: 1});
+>   db.evo_locks.createIndex({pubg_id: 1, offer_slug: 1, period_key: 1});
+>   db.subscription_locks.dropIndex("identity_game_subscription_unique");
+>   db.evo_locks.dropIndex("identity_game_evo_unique");'
+> ```
+>
+> Puis redémarrer avec `IDENTITY_KEY_MIGRATION=off` : l'ancien code ignore cette variable, mais un
+> redémarrage de la nouvelle version recréerait aussitôt les nouveaux index au démarrage — et
+> remettrait le blocage décrit ci-dessus.
+
 ## 5. Codes d'erreur vus par le client
 
 | Situation | HTTP | `code` / corps |

@@ -63,7 +63,13 @@ async def _holder_status(lock: dict) -> str | None:
 
 async def check_evo(product: dict, pubg_id: str) -> dict:
     period_key, season = await evo_period(product)
-    # Route PUBG Mobile uniquement : même numéro dans un AUTRE jeu = autre identité (jeu distinct).
+    # Pack évolutif = PUBG Mobile UNIQUEMENT : le type « evo » est réservé à ce jeu
+    # (`core/games.py:287,313-315`), les offres `evo` sont semées avec `game_id: "pubg-mobile"`
+    # (`core/seed.py:99-114`) et `reserve_evo` écrit `game_id = order_game_id(order)`, soit
+    # « pubg-mobile » (`None` pour une commande antérieure à la colonne `game_id`). Le filtre
+    # ci-dessous ne saute donc AUCUN verrou légitime : même numéro dans un autre jeu = autre
+    # identité (jeu distinct), et un verrou d'un autre jeu ne peut pas entrer en collision avec
+    # une réservation PUBG (index unique sur `game_id` + `identity_key`).
     lock = await db.evo_locks.find_one({"pubg_id": pubg_id, "offer_slug": product["slug"],
                                         "period_key": period_key,
                                         "game_id": {"$in": [DEFAULT_GAME_ID, None]}})
