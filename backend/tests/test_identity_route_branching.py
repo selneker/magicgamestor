@@ -309,7 +309,9 @@ def test_ref_pubg_legacy_route_rejects_malformed_id(monkeypatch, rate_limit):
     provider = FakeProvider()
     client, _fzr, _nef = make_client(monkeypatch, {PUBG: PUBG_GAME}, provider)
 
-    for bad in ("12", "abcd", "12345678901234"):
+    # PL-003-BE-11 : la norme est « texte de 1 à 60 caractères » — sont refusés uniquement le vide
+    # (ou les blancs) et le dépassement du plafond, jamais les ID alphanumériques.
+    for bad in ("", "   ", "1" * 61):
         r = client.post("/fazercards/pubg/validate-id", json={"player_id": bad})
         assert r.status_code == 422
     assert provider.calls == []

@@ -27,10 +27,11 @@ def pubg_uc_product():
 
 
 # ---- Orders ----
-def test_order_rejects_8_digit_pubg_id(pubg_uc_product):
+def test_order_rejects_out_of_norm_pubg_id(pubg_uc_product):
+    """PL-003-BE-11 : 8 chiffres est désormais VALIDE ; hors norme = plus de 60 caractères."""
     body = {
         "game_id": "pubg-mobile",
-        "pubg_id": "51234567",  # 8 digits => invalid
+        "pubg_id": "1" * 61,  # 61 caractères => hors norme
         "pseudo": "Tester",
         "items": [{"product_id": pubg_uc_product["id"], "quantity": 1}],
         "payment_method": "mvola",

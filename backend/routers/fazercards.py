@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
 from core.db import db
-from core.games import PUBG_ID_RE, check_identity_payload, identity_spec
+from core.games import (IDENTITY_FIELD_MAX_LENGTH, check_identity_payload, identity_spec)
 from core.ratelimit import check, client_ip, setting
 from core.security import require_permission
 from services import fazercards, providers
@@ -61,6 +61,13 @@ def _error_response(exc: HTTPException, game_id: str) -> JSONResponse:
 
 
 class PubgValidateIn(BaseModel):
+    """Identifiant PUBG Mobile : TEXTE de 1 à 60 caractères (norme PL-003-BE-11).
+
+    Le contrat historique (9 à 13 chiffres) n'est plus imposé ici : les ID numériques existants
+    restent acceptés, et un identifiant alphanumérique l'est aussi. La validation finale reste
+    celle du fournisseur.
+    """
+
     player_id: str
 
     @field_validator("player_id")
@@ -69,8 +76,9 @@ class PubgValidateIn(BaseModel):
         v = (v or "").strip()
         if not v:
             raise ValueError("ID PUBG Mobile requis.")
-        if not PUBG_ID_RE.fullmatch(v):
-            raise ValueError("ID PUBG Mobile mal formé (9 à 13 chiffres).")
+        if len(v) > IDENTITY_FIELD_MAX_LENGTH:
+            raise ValueError(
+                f"ID PUBG Mobile mal formé ({IDENTITY_FIELD_MAX_LENGTH} caractères maximum).")
         return v
 
 
@@ -113,7 +121,11 @@ async def validate_identity(body: IdentityValidateIn, request: Request):
         if not game:
             raise HTTPException(status_code=404, detail="Game not found")
         spec = identity_spec(game)
-        checked = check_identity_payload(spec, body.fields)
+        # Norme PL-003-BE-11 : aucune valeur de plus de 60 caractères n'atteint le fournisseur.
+        # Une valeur hors norme suit EXACTEMENT le chemin d'un champ non conforme (`valid: false`),
+        # pas un 422 : le contrat de réponse ne change pas.
+        too_long = any(len(v) > IDENTITY_FIELD_MAX_LENGTH for v in body.fields.values())
+        checked = None if too_long else check_identity_payload(spec, body.fields)
         if not checked:
             # Same server-side contract as the order endpoint: malformed input never reaches the provider.
             return {

@@ -53,14 +53,20 @@ def _product(admin, gid, type_="cp", active=False, **extra):
 
 # ---------------------------------------------------------------- B1 (pure)
 @pytest.mark.parametrize("value,ok", [
+    # PL-003-BE-11 : la norme est « TEXTE de 1 à 60 caractères ». Les ID numériques de 9 à 13
+    # chiffres restent valides (aucune régression) ; 8 chiffres, 14 chiffres et les ID
+    # alphanumériques le sont désormais aussi ; seuls le vide et plus de 60 caractères échouent.
     ("123456789", True), ("1234567890123", True),
-    ("12345678", False), ("12345678901234", False),          # length bounds
-    ("123456789a", False), ("a123456789", False),            # extra characters (partial match)
-    ("123456789\n", True),                                   # stripped before matching
-    ("１２３４５６７８９", False), ("١٢٣٤٥٦٧٨٩", False),        # non-ASCII digits
-    ("12345 6789", False),
+    ("12345678", True), ("12345678901234", True),            # bornes de longueur élargies
+    ("123456789a", True), ("a123456789", True),              # lettres acceptées
+    ("1112223bb45", True),
+    ("123456789\n", True),                                   # strip avant contrôle
+    ("１" * 9, True), ("١٢٣٤٥٦٧٨٩", True),                    # chiffres non ASCII : texte valide
+    ("12345 6789", True),                                    # espace interne : texte valide
+    ("", False), ("   ", False),                             # vide
+    ("1" * 60, True), ("1" * 61, False),                     # plafond
 ])
-def test_pubg_identity_is_full_string_9_to_13_digits(value, ok):
+def test_pubg_identity_is_text_1_to_60(value, ok):
     assert (check_identity_payload(PUBG_SPEC, {"player_id": value}) is not None) is ok
 
 
@@ -73,7 +79,9 @@ def test_admin_pattern_without_anchors_still_requires_full_match():
 
 
 def test_legacy_pubg_validate_endpoint_matches_order_contract():
-    for bad in ("12345", "12345678901234567", "12345678a"):
+    # PL-003-BE-11 : hors norme = vide ou plus de 60 caractères (les ID courts et alphanumériques
+    # sont désormais acceptés par cette route).
+    for bad in ("", "   ", "1" * 61):
         r = requests.post(f"{API}/fazercards/pubg/validate-id", json={"player_id": bad}, timeout=15)
         assert r.status_code == 422, (bad, r.status_code)
 

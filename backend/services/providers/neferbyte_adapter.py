@@ -24,6 +24,7 @@ de validation (BE-4) n'ait qu'un seul mapping à connaître.
 from __future__ import annotations
 
 import logging
+import re
 
 from services import neferbyte, neferbyte_guard
 from services.providers.base import IdentityProvider, IdentityValidation
@@ -32,6 +33,10 @@ logger = logging.getLogger(__name__)
 
 NEFERBYTE = "neferbyte"
 FAZERCARDS = "fazercards"
+
+# Neferbyte n'accepte que des chiffres sur ses endpoints « numeric » : une valeur alphanumérique
+# est refusée AVANT l'appel (fail-closed, PL-003-BE-11 §E).
+_NUMERIC_ID = re.compile(r"[0-9]+", re.ASCII)
 
 # Même message que le client FazerCards (contrat client inchangé, aucune fuite de détail interne).
 PROVIDER_ERROR = "Service de vérification momentanément indisponible. Réessayez plus tard."
@@ -178,6 +183,14 @@ class NeferbyteProvider(IdentityProvider):
         player_id = raw_id.strip() if isinstance(raw_id, str) else None
         raw_server = values.get(self.server_field) if self.server_field else None
         server = raw_server.strip() if isinstance(raw_server, str) else None
+
+        spec = neferbyte.game_spec(self.slug)
+        if spec is not None and spec.id_kind == "numeric" and player_id is not None \
+                and not _NUMERIC_ID.fullmatch(player_id):
+            # Endpoint numérique : une valeur alphanumérique ne peut pas être valide. Refus local
+            # (aucun appel réseau) — jamais `valid: true`, même si l'API répondait autre chose.
+            logger.warning("neferbyte %s: identifiant non numérique refuse", self.slug)
+            return IdentityValidation(valid=False)
 
         check = await neferbyte_guard.verify_identity(self.slug, player_id, server)
 
