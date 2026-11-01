@@ -6,7 +6,7 @@ import { useLang } from "@/context/LanguageContext";
 import { useGames } from "@/context/GameContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { fieldError } from "@/components/store/checkout/IdentityFieldsVerify";
+import { fieldError, MAX_FIELD_FALLBACK } from "@/components/store/checkout/IdentityFieldsVerify";
 
 const fieldLabel = (f, lang) => (lang === "en" && f.label_en) || f.label || f.key;
 
@@ -19,7 +19,7 @@ function IdentityForm({ spec, form, setForm, onSubmit, onCancel, busy }) {
         <div key={f.key}>
           <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" htmlFor={`ident-${f.key}`}>{fieldLabel(f, lang)}</label>
           <Input id={`ident-${f.key}`} data-testid={f.key === "player_id" ? "identity-player-id-input" : `identity-input-${f.key}`} value={form.fields[f.key] || ""} required={f.required !== false}
-            maxLength={f.max_length || undefined} onChange={(e) => setForm({ ...form, fields: { ...form.fields, [f.key]: e.target.value.trim() } })} className="mt-1 h-11 num" />
+            maxLength={f.max_length || MAX_FIELD_FALLBACK} onChange={(e) => setForm({ ...form, fields: { ...form.fields, [f.key]: e.target.value.trim() } })} className="mt-1 h-11 num" />
         </div>
       ))}
       <div className="flex gap-2 pt-1">

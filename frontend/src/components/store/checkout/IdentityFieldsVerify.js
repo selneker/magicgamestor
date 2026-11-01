@@ -18,7 +18,7 @@ const localError = (field, value) => {
   const v = (value || "").trim();
   if (!v) return field.required === false ? null : "required";
   if (field.min_length && v.length < field.min_length) return "min";
-  if (field.max_length && v.length > field.max_length) return "max";
+  if (v.length > (field.max_length || MAX_FIELD_FALLBACK)) return "max";
   return matchesPattern(field.pattern, v) ? null : "pattern";
 };
 
@@ -27,6 +27,9 @@ export const matchesPattern = (pattern, value) => {
   if (!pattern) return true;
   try { return new RegExp(`^(?:${pattern})$`).test(value); } catch (_) { return false; }
 };
+
+// Contrat PL-003-SEL-2 §1 : sans max_length dans la config du jeu, plafond 60 caractères.
+export const MAX_FIELD_FALLBACK = 60;
 
 export const fieldError = localError;
 
@@ -144,7 +147,7 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
   // du champ lui-même (jamais un texte technique en dur).
   const fieldMessage = (code, f) =>
     code === "min" ? t("checkout.fieldMin", { n: f.min_length })
-    : code === "max" ? t("checkout.fieldMax", { n: f.max_length })
+    : code === "max" ? t("checkout.fieldMax", { n: f.max_length || MAX_FIELD_FALLBACK })
     : code === "pattern" ? t("checkout.fieldFormat")
     : t("checkout.fieldRequired");
 
@@ -174,7 +177,7 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
             value={(values || {})[f.key] || ""}
             onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
             aria-invalid={!!errors[f.key] && !!(values || {})[f.key]} aria-describedby={errors[f.key] ? `identity-err-${f.key}` : undefined}
-            minLength={f.min_length || undefined} maxLength={f.max_length || undefined} autoComplete="off"
+            minLength={f.min_length || undefined} maxLength={f.max_length || MAX_FIELD_FALLBACK} autoComplete="off"
             className="mt-1 h-12 rounded-[12px] num"
           />
           {errors[f.key] && (values || {})[f.key] && <p id={`identity-err-${f.key}`} className="mt-1 text-xs font-semibold text-red-600" data-testid={`identity-field-error-${f.key}`}>{fieldMessage(errors[f.key], f)}</p>}

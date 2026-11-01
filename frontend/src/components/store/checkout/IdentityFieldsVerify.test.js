@@ -432,3 +432,27 @@ test("Reponse arrivee apres une modification des champs : ignoree", async () => 
   } finally { await unmount(container, root); }
 });
 
+// --- Contrat PL-003-SEL-2 §1 : plafond 60 sans max_length ---------------------
+
+test("Sans max_length : le champ plafonne a 60 caracteres (repli, jamais illimite)", async () => {
+  // Champ sans aucune longueur ni motif declare dans la config du jeu.
+  const spec = [{ key: "player_id", label: "ID", required: true, primary: true }];
+  const { container, root } = await mount({ spec, gameId: "generic-game", values: { player_id: "a".repeat(61) } });
+  try {
+    const err = elOf(container, "identity-field-error-player_id");
+    expect(err).not.toBeNull();
+    expect(err.textContent).toBe("60 caractères maximum");
+    // Entrée maxLength du DOM : le navigateur ne peut pas saisir plus de 60.
+    expect(container.querySelector('[data-testid="identity-field-player_id"]').maxLength).toBe(60);
+  } finally { await unmount(container, root); }
+});
+
+test("Sans max_length : 60 exactes passent la validation locale", async () => {
+  const spec = [{ key: "player_id", label: "ID", required: true, primary: true }];
+  const { container, root } = await mount({ spec, gameId: "generic-game", values: { player_id: "a".repeat(60) } });
+  try {
+    expect(elOf(container, "identity-field-error-player_id")).toBeNull();
+    expect(btnOf(container).getAttribute("aria-disabled")).toBe("false");
+  } finally { await unmount(container, root); }
+});
+
