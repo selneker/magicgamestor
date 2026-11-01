@@ -11,12 +11,15 @@ import { Input } from "@/components/ui/input";
 // publiquement par `/api/games` : libellé, longueurs et motif de saisie. Rien n'est supposé :
 // un jeu peut demander `player_id` seul, `zone_id` + `player_id`, `server`… PUBG Mobile garde
 // son écran historique (voir StepVerify) ; ce composant sert les jeux à champs dynamiques.
+// Renvoie un CODE stable (pas un texte) : l'affichage est traduit via t() dans le
+// composant (« required », « min », « max », « pattern »). Jeu historique GameIdentities
+// ne teste que la vérité du retour.
 const localError = (field, value) => {
   const v = (value || "").trim();
-  if (!v) return field.required === false ? null : "requis";
-  if (field.min_length && v.length < field.min_length) return `min ${field.min_length}`;
-  if (field.max_length && v.length > field.max_length) return `max ${field.max_length}`;
-  return matchesPattern(field.pattern, v) ? null : "format";
+  if (!v) return field.required === false ? null : "required";
+  if (field.min_length && v.length < field.min_length) return "min";
+  if (field.max_length && v.length > field.max_length) return "max";
+  return matchesPattern(field.pattern, v) ? null : "pattern";
 };
 
 // B1: whole-string match, same contract as the backend (`re.fullmatch`). An unusable pattern fails closed.
@@ -137,6 +140,14 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
   const primary = spec.find((f) => f.primary) || spec[0];
   const primaryLabel = primary ? (lang === "en" && primary.label_en) || primary.label || primary.key : "";
 
+  // Message d'erreur de champ, traduit : le code de localError + les limites
+  // du champ lui-même (jamais un texte technique en dur).
+  const fieldMessage = (code, f) =>
+    code === "min" ? t("checkout.fieldMin", { n: f.min_length })
+    : code === "max" ? t("checkout.fieldMax", { n: f.max_length })
+    : code === "pattern" ? t("checkout.fieldFormat")
+    : t("checkout.fieldRequired");
+
   // Message « identifiant refuse » : le nom du jeu quand il est connu, sinon
   // une formulation neutre. Jamais le libelle PUBG.
   const invalidMessage =
@@ -166,7 +177,7 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
             minLength={f.min_length || undefined} maxLength={f.max_length || undefined} autoComplete="off"
             className="mt-1 h-12 rounded-[12px] num"
           />
-          {errors[f.key] && (values || {})[f.key] && <p id={`identity-err-${f.key}`} className="mt-1 text-xs font-semibold text-red-600" data-testid={`identity-field-error-${f.key}`}>{errors[f.key]}</p>}
+          {errors[f.key] && (values || {})[f.key] && <p id={`identity-err-${f.key}`} className="mt-1 text-xs font-semibold text-red-600" data-testid={`identity-field-error-${f.key}`}>{fieldMessage(errors[f.key], f)}</p>}
         </div>
       ))}
       {!(checkout && state.status === "valid") && (
