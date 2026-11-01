@@ -172,7 +172,7 @@ test("Chaque panne a son message et n'affiche jamais « ID invalide »", async (
     { status: 503, code: "unsupported_game", attendu: "Vérification indisponible pour ce jeu" },
     { status: 502, code: "provider_unavailable", attendu: "Service momentanément indisponible, réessayez" },
     { status: 504, code: "provider_unavailable", attendu: "Service momentanément indisponible, réessayez" },
-    { status: 429, code: "rate_limited", attendu: "Trop de requêtes, patientez" },
+    { status: 429, code: "rate_limited", attendu: "Trop de tentatives. Réessayez dans quelques minutes." },
   ];
   for (const panne of pannes) {
     api.post.mockRejectedValue({ response: { status: panne.status, data: { detail: "upstream failure", code: panne.code } } });
