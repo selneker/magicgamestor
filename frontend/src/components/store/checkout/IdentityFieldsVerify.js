@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { api } from "@/lib/api";
+import { identityErrorKey } from "@/lib/identityErrors";
 import { useLang } from "@/context/LanguageContext";
 import { useGames } from "@/context/GameContext";
 import { Input } from "@/components/ui/input";
 
-// Vérification d'identité GÉNÉRIQUE (multi-jeux).
+// Vérification d'identité GÉNÉRIQUE (multi-jeux, route /fazercards/validate-id,
+// PUBG Mobile compris — plus aucun écran historique ni hypothèse de format).
 //
 // Les champs affichés viennent de la configuration ADMIN du jeu (`identity_fields`), exposée
 // publiquement par `/api/games` : libellé, longueurs et motif de saisie. Rien n'est supposé :
-// un jeu peut demander `player_id` seul, `zone_id` + `player_id`, `server`… PUBG Mobile garde
-// son écran historique (voir StepVerify) ; ce composant sert les jeux à champs dynamiques.
+// un jeu peut demander `player_id` seul, `zone_id` + `player_id`, `server`… Sans `label`,
+// repli contractuel §1 : « ID joueur » (`checkout.playerId`) / « Zone » (`checkout.zone`).
 // Renvoie un CODE stable (pas un texte) : l'affichage est traduit via t() dans le
 // composant (« required », « min », « max », « pattern »). Jeu historique GameIdentities
 // ne teste que la vérité du retour.
@@ -36,8 +38,9 @@ export const fieldError = localError;
 export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onVerified, autoTrigger = 0, checkout = false, initial = null }) => {
   const { t, lang } = useLang();
   const { games } = useGames();
-  // Nom du jeu tel que le backend le publie (Mobile Legends, ...) : les messages
-  // restent generiques, jamais « ID PUBG Mobile invalide ».
+  // Nom du jeu tel que le backend le publie : sert à la boîte de confirmation
+  // (« correspond bien à votre compte Mobile Legends »), jamais au message
+  // d'échec, qui vient de la table §2 et reste générique.
   const gameName = games.find((g) => g.id === gameId)?.name || "";
   const [state, setState] = useState(initial ? { status: "valid", name: initial.name } : { status: "idle" });
   const first = useRef(!!initial);
@@ -67,6 +70,13 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
   const busy = state.status === "loading";
   const inert = busy || !complete;
 
+  // Verdict de la table §2 -> état d'inhibition : « refused » / « invalid_input »
+  // partent au panneau rouge (le client corrige sa saisie), « unavailable » au
+  // panneau ambre (panne du service). Dans tous les cas la sortie du checkout
+  // reste bloquée tant que `valid:true` n'est pas revenu.
+  const applyVerdict = ({ display, key }) =>
+    setState({ status: display === "unavailable" ? "error" : "invalid", kind: display, key });
+
   const verify = async () => {
     if (inert) return;
     const myReq = ++reqId.current;
@@ -78,40 +88,29 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
       if (data && data.valid === true) {
         setState({ status: "valid", name: data.player_name });
         onVerified({ name: data.player_name || null, fields });
-      } else if (data && data.valid === false) {
-        // 200 { valid:false, code: "invalid_id" | "missing_field" }. Le message
-        // vient de la traduction (jamais du champ `message` de l'API, qui peut
-        // etre en anglais) ; une reponse sans code (backend ancien) retombe
-        // sur le message neutre.
-        setState({ status: "invalid", code: data.code });
       } else {
-        // Ni `true` ni `false` : la reponse n'a pas la forme attendue (HTML
-        // d'une passerelle, objet vide, null...). C'est une panne du service,
-        // JAMAIS un « ID invalide ».
-        console.warn("[identity-verify] reponse inattendue du backend", data);
-        setState({ status: "error", kind: "provider_unavailable" });
+        // Tout le reste — `valid:false` avec son code (`invalid_id`,
+        // `missing_field`), corps inattendu (HTML d'une passerelle, objet vide,
+        // null) — passe par la TABLE du contrat §2 (identityErrorKey, FE-2) :
+        // jamais de branche sur `message`/`detail`, jamais « ID invalide » pour
+        // une panne. Fail-closed : tout ce qui n'est pas `valid:true` bloque.
+        console.warn("[identity-verify] verdict non valide", data);
+        applyVerdict(identityErrorKey({ valid: data?.valid, code: data?.code }));
       }
     } catch (e) {
       if (reqId.current !== myReq) return; // réponse obsolète : ignorée
       const status = e?.response?.status;
       const code = e?.response?.data?.code;
-      // Une panne n'est JAMAIS un « ID invalide » : chaque code du backend a son
-      // etat d'erreur et son message traduit.
-      const kind =
-        code === "unsupported_game" ? "unsupported_game"
-        : code === "provider_unavailable" ? "provider_unavailable"
-        : code === "rate_limited" ? "rate_limited"
-        : !e?.response || status === 504 || status === 429 ? "temporary"
-        : "provider";
       // Le detail de l'API n'est jamais affiche tel quel : il peut etre en
       // anglais (« field required », « Network Error ») ou contenir des infos
-      // techniques. Il part en console, l'ecran garde un message traduit.
+      // techniques. Il part en console, l'ecran garde un message traduit
+      // choisi par la table §2 (422, 429, 502/503/504, codes du backend).
       console.warn("[identity-verify] verification impossible", {
         status: status ?? 0,
         code: code ?? null,
         detail: e?.response?.data?.detail ?? e?.message ?? null,
       });
-      setState({ status: "error", kind });
+      applyVerdict(identityErrorKey({ status, code }));
     }
   };
 
@@ -131,17 +130,17 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
       ? "bg-foreground text-background cursor-not-allowed"
       : "bg-foreground text-background hover:opacity-90";
 
-  // Libelles des champs reellement demandes par ce jeu : le message ne cite
-  // que des champs qui existent (Free Fire n'a pas de zone).
-  const labels = useMemo(() => {
-    const list = spec.map((f) => (lang === "en" && f.label_en) || f.label || f.key);
-    return list.join(` ${t("checkout.verifyOr")} `);
-  }, [spec, lang, t]);
+  // Libelle d'un champ : `label` de la config admin du jeu (`label_en` en
+  // anglais) ; SANS label déclaré, repli contractuel §1 — « ID joueur »
+  // (checkout.playerId) / « Zone » (checkout.zone), puis la cle technique.
+  const labelOf = (f) =>
+    (lang === "en" && f.label_en) || f.label
+    || (f.key === "player_id" ? t("checkout.playerId") : f.key === "zone_id" ? t("checkout.zone") : f.key);
 
   // Libelle du champ principal : celui que le joueur identifie comme son
   // compte (le backend garantit qu'un champ est `primary`).
   const primary = spec.find((f) => f.primary) || spec[0];
-  const primaryLabel = primary ? (lang === "en" && primary.label_en) || primary.label || primary.key : "";
+  const primaryLabel = primary ? labelOf(primary) : "";
 
   // Message d'erreur de champ, traduit : le code de localError + les limites
   // du champ lui-même (jamais un texte technique en dur).
@@ -151,26 +150,11 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
     : code === "pattern" ? t("checkout.fieldFormat")
     : t("checkout.fieldRequired");
 
-  // Message « identifiant refuse » : le nom du jeu quand il est connu, sinon
-  // une formulation neutre. Jamais le libelle PUBG.
-  const invalidMessage =
-    state.code === "missing_field" ? t("checkout.verifyMissingField")
-    : gameName ? t("checkout.verifyInvalidForGame", { labels, game: gameName })
-    : t("checkout.verifyInvalidGeneric", { labels });
-
-  // Message d'erreur : une panne a son propre libelle, jamais « ID invalide ».
-  const errorTitle =
-    state.kind === "unsupported_game" ? t("checkout.verifyUnsupportedGame")
-    : state.kind === "provider_unavailable" ? t("checkout.verifyProviderUnavailable")
-    : state.kind === "rate_limited" ? t("checkout.verifyRateLimited")
-    : state.kind === "temporary" ? t("checkout.errTemporary")
-    : t("checkout.errProvider");
-
   return (
     <div className="mt-2 space-y-3">
       {spec.map((f) => (
         <div key={f.key}>
-          <label htmlFor={`identity-${f.key}`} className="text-sm font-semibold">{(lang === "en" && f.label_en) || f.label || f.key}{f.required === false ? "" : " *"}</label>
+          <label htmlFor={`identity-${f.key}`} className="text-sm font-semibold">{labelOf(f)}{f.required === false ? "" : " *"}</label>
           <Input
             id={`identity-${f.key}`}
             data-testid={`identity-field-${f.key}`}
@@ -202,15 +186,21 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
       {state.status === "invalid" && (
         // Fond ET texte viennent du meme couple de jetons (--destructive /
         // --destructive-foreground) : ils bougent ensemble dans les deux
-        // themes, le contraste reste >= 4,5:1 partout.
+        // themes, le contraste reste >= 4,5:1 partout. Le texte vient de la
+        // table §2 uniquement (« refused » → verifyIdInvalid, « invalid_input »
+        // → verifyMissingField) : jamais un message/message/detail brut.
         <p role="alert" className="flex items-center gap-1.5 rounded-xl border border-destructive bg-destructive p-3 text-sm font-semibold text-destructive-foreground" data-testid="identity-verify-invalid">
-          <XCircle className="h-4 w-4" />{invalidMessage}
+          <XCircle className="h-4 w-4" />{t(state.key)}
         </p>
       )}
       {state.status === "error" && (
+        // Panneau ambre unique pour les pannes de la table §2 (trop de
+        // tentatives, fournisseur indisponible, verdict inconnu) : le repli
+        // manuel est le bouton « Vérifier » ci-dessus, toujours visible —
+        // AUCUN nouvel essai automatique.
         <div role="alert" className="flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700" data-testid="identity-verify-error">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <p className="font-bold" data-testid={`identity-verify-error-${state.kind}`}>{errorTitle}</p>
+          <p className="font-bold" data-testid="identity-verify-error-unavailable">{t(state.key)}</p>
         </div>
       )}
     </div>

@@ -38,13 +38,16 @@ jest.mock("@/lib/api", () => ({
   },
 }));
 
-const PUBG_SPEC = [{ key: "player_id", label: "ID", pattern: "^[0-9]{9,13}$", min_length: 9, max_length: 13, required: true }];
+// Motifs ARBITRAIRES simulés : ils représentent la config admin d'un jeu
+// (« identity_fields » fournie par le backend), jamais une hypothèse du code
+// du front. Aucun garde de format n'existe côté checkout.
+const PUBG_SPEC = [{ key: "player_id", label: "ID", pattern: "^[0-9]{8,12}$", min_length: 8, max_length: 12, required: true }];
 const ML_SPEC = [
-  { key: "player_id", label: "ID joueur", label_en: "Player ID", pattern: "^[0-9]{9,13}$", min_length: 9, max_length: 13, required: true },
+  { key: "player_id", label: "ID joueur", label_en: "Player ID", pattern: "^[0-9]{8,12}$", min_length: 8, max_length: 12, required: true },
   { key: "zone_id", label: "Zone ID", label_en: "Zone ID", pattern: "^[0-9]{3,5}$", min_length: 3, max_length: 5, required: true },
 ];
 const ML_VALUES = { player_id: "123456789", zone_id: "123" };
-const FREE_FIRE_SPEC = [{ key: "player_id", label: "ID joueur", label_en: "Player ID", pattern: "^[0-9]{9,13}$", min_length: 9, max_length: 13, required: true }];
+const FREE_FIRE_SPEC = [{ key: "player_id", label: "ID joueur", label_en: "Player ID", pattern: "^[0-9]{8,12}$", min_length: 8, max_length: 12, required: true }];
 
 // --- Montage factorise -------------------------------------------------------
 
@@ -127,36 +130,36 @@ test("Champs valides : le clic declenche la verification", async () => {
   } finally { await unmount(container, root); }
 });
 
-// --- Messages multi-jeux (T-ML-FRONT) ----------------------------------------
+// --- Verdict « refused » de la table §2 ---------------------------------------
 
-test("Mobile Legends + invalid_id : message du jeu, jamais « PUBG »", async () => {
-  api.post.mockResolvedValue({ data: { valid: false, code: "invalid_id", message: "invalid id" } });
+test("invalid_id : message de la table, jamais le detail ni le message de l'API", async () => {
+  api.post.mockResolvedValue({ data: { valid: false, code: "invalid_id", message: "invalid id", detail: "unknown id" } });
   const { container, root } = await mount();
   try {
     await verifier(container);
     const text = texteDe(container, "identity-verify-invalid");
-    expect(text).toContain("Mobile Legends");
+    expect(text).toBe("Identifiant invalide. Corrigez-le et revérifiez.");
+    expect(text).not.toContain("invalid id");
+    expect(text).not.toContain("unknown id");
     expect(text).not.toContain("PUBG");
-    expect(text).not.toBe("ID PUBG Mobile invalide");
   } finally { await unmount(container, root); }
 });
 
-test("Le message invalide est traduit (FR et EN) et nomme le jeu", async () => {
+test("Le verdict refuse est traduit (FR et EN)", async () => {
   api.post.mockResolvedValue({ data: { valid: false, code: "invalid_id" } });
   for (const lang of ["fr", "en"]) {
     setMockLang(lang);
     const { container, root } = await mount();
     try {
       await verifier(container);
-      const text = texteDe(container, "identity-verify-invalid");
-      expect(text).toContain("Mobile Legends");
-      expect(text).not.toContain("PUBG");
-      expect(text).toContain(lang === "fr" ? "invalide pour" : "Invalid");
+      expect(texteDe(container, "identity-verify-invalid")).toBe(lang === "fr"
+        ? "Identifiant invalide. Corrigez-le et revérifiez."
+        : "Invalid ID. Correct it and verify again.");
     } finally { await unmount(container, root); }
   }
 });
 
-test("missing_field : on demande de renseigner les champs (jamais « ID invalide »)", async () => {
+test("missing_field : on demande de renseigner les champs (jamais « invalide »)", async () => {
   api.post.mockResolvedValue({ data: { valid: false, code: "missing_field" } });
   const { container, root } = await mount();
   try {
@@ -167,9 +170,9 @@ test("missing_field : on demande de renseigner les champs (jamais « ID invalide
   } finally { await unmount(container, root); }
 });
 
-test("Chaque panne a son message et n'affiche jamais « ID invalide »", async () => {
+test("Chaque panne a son message: verdicts de la table §2, jamais « ID invalide »", async () => {
   const pannes = [
-    { status: 503, code: "unsupported_game", attendu: "Vérification indisponible pour ce jeu" },
+    { status: 503, code: "unsupported_game", attendu: "Service momentanément indisponible, réessayez" },
     { status: 502, code: "provider_unavailable", attendu: "Service momentanément indisponible, réessayez" },
     { status: 504, code: "provider_unavailable", attendu: "Service momentanément indisponible, réessayez" },
     { status: 429, code: "rate_limited", attendu: "Trop de tentatives. Réessayez dans quelques minutes." },
@@ -187,26 +190,24 @@ test("Chaque panne a son message et n'affiche jamais « ID invalide »", async (
   }
 });
 
-test("Reponse sans code (backend ancien) : message neutre avec le nom du jeu", async () => {
+test("valid:false sans code (backend ancien) : fail-closed, panne neutre ambre", async () => {
   api.post.mockResolvedValue({ data: { valid: false } });
   const { container, root } = await mount();
   try {
     await verifier(container);
-    const text = texteDe(container, "identity-verify-invalid");
-    expect(text).toContain("Mobile Legends");
-    expect(text).not.toContain("PUBG");
+    expect(invalidOf(container)).toBeNull();
+    expect(texteDe(container, "identity-verify-error")).toContain("Vérification impossible pour le moment");
   } finally { await unmount(container, root); }
 });
 
-test("Le parcours generique n'utilise plus le libelle PUBG « ID PUBG Mobile invalide »", async () => {
-  api.post.mockResolvedValue({ data: { valid: false, code: "invalid_id" } });
+test("Le parcours PUBG emprunte la même table : verdict neutre, sans libellé figé", async () => {
+  api.post.mockResolvedValue({ data: { valid: false, code: "invalid_id", message: "pubg says no" } });
   const { container, root } = await mount({ gameId: "pubg-mobile" });
   try {
     await verifier(container);
     const text = texteDe(container, "identity-verify-invalid");
-    // Le nom du jeu, mais pas l'ancien libelle fige.
-    expect(text).toContain("PUBG Mobile");
-    expect(text).not.toBe("ID PUBG Mobile invalide");
+    expect(text).toBe("Identifiant invalide. Corrigez-le et revérifiez.");
+    expect(text).not.toContain("pubg says no");
   } finally { await unmount(container, root); }
 });
 
@@ -234,82 +235,86 @@ test("Garde inerte : champs incomplets -> aria-disabled et aucune requete", asyn
 
 // --- Forme de la reponse (B2) ------------------------------------------------
 
-test("Reponse non JSON (HTML) : etat erreur, jamais « ID invalide »", async () => {
+test("Reponse non JSON (HTML) : verdict de panne de la table, jamais « ID invalide »", async () => {
   api.post.mockResolvedValue({ data: "<html>oops</html>" });
   const { container, root } = await mount();
   try {
     await verifier(container);
     expect(invalidOf(container)).toBeNull();
-    expect(texteDe(container, "identity-verify-error")).toContain("Service momentanément indisponible, réessayez");
+    expect(texteDe(container, "identity-verify-error")).toContain("Vérification impossible pour le moment");
     expect(warnSpy).toHaveBeenCalled();
   } finally { await unmount(container, root); }
 });
 
-test("Reponse {} : etat erreur, jamais « ID invalide »", async () => {
+test("Reponse {} : verdict de panne de la table, jamais « ID invalide »", async () => {
   api.post.mockResolvedValue({ data: {} });
   const { container, root } = await mount();
   try {
     await verifier(container);
     expect(invalidOf(container)).toBeNull();
-    expect(texteDe(container, "identity-verify-error")).toContain("Service momentanément indisponible, réessayez");
+    expect(texteDe(container, "identity-verify-error")).toContain("Vérification impossible pour le moment");
   } finally { await unmount(container, root); }
 });
 
-test("Reponse null : etat erreur, jamais « ID invalide »", async () => {
+test("Reponse null : verdict de panne de la table, jamais « ID invalide »", async () => {
   api.post.mockResolvedValue({ data: null });
   const { container, root } = await mount();
   try {
     await verifier(container);
     expect(invalidOf(container)).toBeNull();
-    expect(texteDe(container, "identity-verify-error")).toContain("Service momentanément indisponible, réessayez");
+    expect(texteDe(container, "identity-verify-error")).toContain("Vérification impossible pour le moment");
   } finally { await unmount(container, root); }
 });
 
-test("Code inconnu avec valid:false : invalide, avec le nom du jeu", async () => {
+test("Code inconnu avec valid:false : verdict générique neutre (fail-closed)", async () => {
   api.post.mockResolvedValue({ data: { valid: false, code: "mystery_code" } });
   const { container, root } = await mount();
   try {
     await verifier(container);
-    expect(errorOf(container)).toBeNull();
-    const text = texteDe(container, "identity-verify-invalid");
-    expect(text).toContain("Mobile Legends");
-    expect(text).not.toMatch(/invalide.*invalide/i);
+    expect(errorOf(container)).not.toBeNull();
+    expect(texteDe(container, "identity-verify-error")).toContain("Vérification impossible pour le moment");
+    // Le verdict générique n'expose JAMAIS un code brut.
+    expect(texteDe(container, "identity-verify-error")).not.toContain("mystery_code");
   } finally { await unmount(container, root); }
 });
 
-// --- Libelles du spec (A3) ----------------------------------------------------
+// --- Libelles du spec (§1 : formulaire dynamique et replis) -------------------
 
-test("Un seul champ : le message ne cite que ce champ (Free Fire, sans zone)", async () => {
-  api.post.mockResolvedValue({ data: { valid: false, code: "invalid_id" } });
+test("Un seul champ dans la config : aucun champ zone ne s'affiche", async () => {
   const { container, root } = await mount({ spec: FREE_FIRE_SPEC, gameId: "free-fire", values: { player_id: "123456789" } });
   try {
-    await verifier(container);
-    const text = texteDe(container, "identity-verify-invalid");
-    expect(text).toContain("ID joueur");
-    expect(text).toContain("Free Fire");
-    expect(text).not.toMatch(/zone/i);
+    expect(elOf(container, "identity-field-player_id")).not.toBeNull();
+    expect(elOf(container, "identity-field-zone_id")).toBeNull();
   } finally { await unmount(container, root); }
 });
 
-test("Plusieurs champs : les libelles sont reunis par « ou »", async () => {
-  api.post.mockResolvedValue({ data: { valid: false, code: "invalid_id" } });
+test("Deux champs : les libelles admin pilotent le formulaire", async () => {
   const { container, root } = await mount();
   try {
-    await verifier(container);
-    const text = texteDe(container, "identity-verify-invalid");
-    expect(text).toContain("ID joueur ou Zone ID");
-    expect(text).toContain("Mobile Legends");
+    expect(container.querySelector('[for="identity-player_id"]').textContent).toContain("ID joueur");
+    expect(container.querySelector('[for="identity-zone_id"]').textContent).toContain("Zone ID");
   } finally { await unmount(container, root); }
 });
 
-test("Nom du jeu inconnu : le message reste neutre, sans « pour ... »", async () => {
+test("Champ sans label declare : repli contractuel « ID joueur » / « Zone » (§1)", async () => {
+  const spec = [
+    { key: "player_id", required: true, primary: true },
+    { key: "zone_id", required: true },
+  ];
+  const { container, root } = await mount({ spec, gameId: "generic-game", values: { player_id: "abc" } });
+  try {
+    expect(container.querySelector('[for="identity-player_id"]').textContent).toContain("ID joueur");
+    expect(container.querySelector('[for="identity-zone_id"]').textContent).toContain("Zone");
+    expect(container.querySelector('[for="identity-zone_id"]').textContent).not.toContain("ID joueur");
+  } finally { await unmount(container, root); }
+});
+
+test("Jeu inconnu du catalogue : le formulaire reste fonctionnel et neutre", async () => {
   api.post.mockResolvedValue({ data: { valid: false, code: "invalid_id" } });
   const { container, root } = await mount({ gameId: "jeu-inconnu" });
   try {
     await verifier(container);
-    const text = texteDe(container, "identity-verify-invalid");
-    expect(text).toBe("ID joueur ou Zone ID invalide");
-    expect(text).not.toContain("pour");
+    expect(texteDe(container, "identity-verify-invalid")).toBe("Identifiant invalide. Corrigez-le et revérifiez.");
   } finally { await unmount(container, root); }
 });
 
@@ -360,23 +365,23 @@ test("Confirmation : le nom du jeu remplace PUBG, le texte PUBG reste identique"
 
 // --- Detail brut de l'API (S1) -----------------------------------------------
 
-test("Erreur sans code connu : message generique traduit, aucun detail brut affiche", async () => {
-  const cas = [
-    { nom: "422", erreur: { response: { status: 422, data: { detail: [{ loc: ["body", "fields"], msg: "field required" }] } } }, interdit: ["field required"] },
-    { nom: "404", erreur: { response: { status: 404, data: { detail: "jeu inconnu" } } }, interdit: ["jeu inconnu"] },
-    { nom: "500", erreur: { response: { status: 500, data: { detail: "boom" } } }, interdit: ["boom"] },
-    { nom: "reseau", erreur: { message: "Network Error" }, interdit: ["Network Error"] },
-  ];
-  for (const c of cas) {
+test("Les erreurs HTTP suivent la table §2, aucun detail brut affiche", async () => {
+  for (const c of [
+    // 422 -> saisie incorrecte de la table : panneau rouge, champs à corriger.
+    { nom: "422", erreur: { response: { status: 422, data: { detail: [{ loc: ["body", "fields"], msg: "field required" }] } } }, panneau: "identity-verify-invalid", attendu: "Renseignez tous les champs", interdit: ["field required"] },
+    { nom: "404", erreur: { response: { status: 404, data: { detail: "jeu inconnu" } } }, panneau: "identity-verify-error", attendu: "Vérification impossible pour le moment", interdit: ["jeu inconnu"] },
+    { nom: "500", erreur: { response: { status: 500, data: { detail: "boom" } } }, panneau: "identity-verify-error", attendu: "Vérification impossible pour le moment", interdit: ["boom"] },
+    { nom: "reseau", erreur: { message: "Network Error" }, panneau: "identity-verify-error", attendu: "Vérification impossible pour le moment", interdit: ["Network Error"] },
+  ]) {
     api.post.mockRejectedValue(c.erreur);
     const { container, root } = await mount();
     try {
       await verifier(container);
-      const text = texteDe(container, "identity-verify-error");
+      const text = texteDe(container, c.panneau);
       expect(text).toBeTruthy();
+      expect(text).toContain(c.attendu);
       for (const interdit of c.interdit) expect(text).not.toContain(interdit);
-      // Un message traduit du dictionnaire, pas une chaine technique.
-      expect(["Erreur fournisseur", "Problème temporaire de l'API"]).toContain(text);
+      // Un message traduit du dictionnaire, jamais une chaine technique.
       expect(warnSpy).toHaveBeenCalled();
     } finally { await unmount(container, root); }
   }
@@ -453,6 +458,67 @@ test("Sans max_length : 60 exactes passent la validation locale", async () => {
   try {
     expect(elOf(container, "identity-field-error-player_id")).toBeNull();
     expect(btnOf(container).getAttribute("aria-disabled")).toBe("false");
+  } finally { await unmount(container, root); }
+});
+
+// --- Contrat PL-003-FE-3 : une seule requête par clic -------------------------
+
+test("Double clic : une seule requête part, le bouton se fige en cours", async () => {
+  let resolvePost;
+  api.post.mockReturnValue(new Promise((res) => { resolvePost = res; }));
+  const { container, root } = await mount();
+  try {
+    await act(async () => { btnOf(container).click(); });
+    // Second événement discret (nouveau rendu commité) : le bouton est en cours.
+    expect(btnOf(container).textContent).toContain("Vérification");
+    await act(async () => { btnOf(container).click(); });
+    await act(async () => { resolvePost({ data: { valid: true, player_name: "Sel" } }); });
+    expect(api.post).toHaveBeenCalledTimes(1);
+  } finally { await unmount(container, root); }
+});
+
+// --- Valeurs transmises : AUCUN filtre de caractères, pas de motif imposé ------
+
+test("Valeur alphanumérique : transmise sans filtre après découpe aux espaces", async () => {
+  const spec = [{ key: "player_id", label: "ID", required: true, primary: true }];
+  api.post.mockResolvedValue({ data: { valid: true, player_name: "Sel" } });
+  const { container, root } = await mount({ spec, gameId: "generic-game", values: { player_id: "  AB-1234_xyz  " } });
+  try {
+    await verifier(container);
+    expect(api.post).toHaveBeenCalledWith("/fazercards/validate-id", { game_id: "generic-game", fields: { player_id: "AB-1234_xyz" } });
+  } finally { await unmount(container, root); }
+});
+
+test("Sans motif déclaré : toute chaîne de 60 est envoyée telle quelle", async () => {
+  const spec = [{ key: "player_id", label: "ID", required: true, primary: true }];
+  const value = "ABCdef-_09xy &1ABCdef-_09xy &1ABCdef-_09xy &1ABCdef-_09xy &1"; // 60 caractères, sans motif
+  api.post.mockResolvedValue({ data: { valid: true, player_name: "Sel" } });
+  const { container, root } = await mount({ spec, gameId: "generic-game", values: { player_id: value } });
+  try {
+    expect(value.length).toBe(60);
+    await verifier(container);
+    expect(api.post).toHaveBeenCalledWith("/fazercards/validate-id", { game_id: "generic-game", fields: { player_id: value } });
+  } finally { await unmount(container, root); }
+});
+
+// --- Repli manuel après une panne (aucun nouvel essai automatique) ------------
+
+test("Panne : le bouton « Vérifier » reste disponible pour un nouvel essai, sans requête spontanée", async () => {
+  api.post.mockRejectedValueOnce({ response: { status: 503, data: { code: "provider_unavailable" } } })
+    .mockResolvedValueOnce({ data: { valid: true, player_name: "Sel" } });
+  const { container, root } = await mount();
+  try {
+    await verifier(container);
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(elOf(container, "identity-verify-error")).not.toBeNull();
+    // Le bouton de nouveau essai est le même, toujours actif.
+    expect(btnOf(container).getAttribute("aria-disabled")).toBe("false");
+    // Aucune requête spontanée n'est partie pendant l'affichage de la panne.
+    expect(api.post).toHaveBeenCalledTimes(1);
+    await verifier(container);
+    await act(async () => {});
+    expect(elOf(container, "identity-verify-valid")).not.toBeNull();
+    expect(api.post).toHaveBeenCalledTimes(2);
   } finally { await unmount(container, root); }
 });
 
