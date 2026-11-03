@@ -91,5 +91,6 @@ def test_checkout_verified_new_id_synced_without_restart(monkeypatch):
 
 def test_invalid_pubg_id_creates_nothing():
     h, uid = _user()
-    assert _order(h, pubg_id="123").status_code == 422
+    # PL-003-BE-11 : un identifiant hors norme (> 60 caractères) reste refusé et ne crée rien.
+    assert _order(h, pubg_id="1" * 61).status_code == 422
     assert _idents(uid) == [] and mongo.users.find_one({"user_id": uid})["saved_pubg_ids"] == []

@@ -209,18 +209,18 @@ class TestOrders:
         })
         assert r.status_code == 400
 
-    def test_invalid_pubg_id_short(self):
+    def test_invalid_pubg_id_too_long(self):
         pid, _ = _get_product_id("60-uc")
         r = requests.post(f"{API}/orders", json={
-            "pubg_id": "51234567", "pseudo": "Ghost", "items": [{"product_id": pid, "quantity": 1}],
+            "pubg_id": "1" * 61, "pseudo": "Ghost", "items": [{"product_id": pid, "quantity": 1}],
             "payment_method": "mvola", "payment_phone": "0341234567",
         })
         assert r.status_code == 422
 
-    def test_invalid_pubg_id_nondigit(self):
+    def test_invalid_pubg_id_blank(self):
         pid, _ = _get_product_id("60-uc")
         r = requests.post(f"{API}/orders", json={
-            "pubg_id": "51234abcde", "pseudo": "Ghost", "items": [{"product_id": pid, "quantity": 1}],
+            "pubg_id": "   ", "pseudo": "Ghost", "items": [{"product_id": pid, "quantity": 1}],
             "payment_method": "mvola", "payment_phone": "0341234567",
         })
         assert r.status_code == 422

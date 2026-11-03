@@ -3,8 +3,9 @@
 Couvre, sans jamais contacter un vrai fournisseur ni toucher la production :
 - la définition ADMIN des champs d'identité par jeu (`identity_fields`) : validation stricte,
   clés dynamiques (aucune hypothèse `player_id`), un seul champ primaire ;
-- le contrat PUBG Mobile INCHANGÉ : sans déclaration explicite, il garde son identifiant
-  numérique de 9 à 13 chiffres et son code de statut historique ;
+- le contrat PUBG Mobile INCHANGÉ pour les ID numériques : sans déclaration explicite, il accepte
+  toujours un identifiant numérique de 9 à 13 chiffres, avec le même code de statut historique ; sa
+  norme par défaut est désormais « texte de 1 à 60 caractères » (PL-003-BE-11) ;
 - la règle FAIL-CLOSED : un jeu sans champs d'identité déclarés (ou sans catalogue livrable)
   ne peut ni être activé publiquement, ni déclencher une commande ;
 - la non-fuite de la configuration fournisseur (`fazercards_categories`) sur les réponses
@@ -93,10 +94,15 @@ def test_identity_spec_uses_declared_fields_when_present():
 
 
 def test_identity_spec_falls_back_to_legacy_pubg_contract():
-    """PUBG Mobile, sans déclaration, conserve EXACTEMENT son identifiant historique."""
+    """PUBG Mobile, sans déclaration, suit la norme commune : texte de 1 à 60, aucun motif.
+
+    PL-003-BE-11 : le motif numérique de 9 à 13 chiffres n'est plus imposé par défaut ; les ID
+    numériques de cette plage restent acceptés et produisent la même clé d'identité.
+    """
     spec = identity_spec({"id": PUBG})
     assert spec == DEFAULT_IDENTITY_FIELDS[PUBG]
-    assert spec[0]["key"] == "player_id" and spec[0]["pattern"] == r"^[0-9]{9,13}$"
+    assert (spec[0]["key"], spec[0]["pattern"],
+            spec[0]["min_length"], spec[0]["max_length"]) == ("player_id", None, 1, 60)
     # Un jeu inconnu sans déclaration n'a AUCUN contrat : rien n'est deviné.
     assert identity_spec({"id": "unknown-game"}) == []
     assert identity_spec(None) == []
@@ -124,10 +130,19 @@ def test_check_identity_payload_rejects_unknown_missing_or_malformed_fields():
 
 
 def test_check_identity_payload_keeps_pubg_contract_unchanged():
+    """PL-003-BE-11 : les ID numériques 9-13 restent acceptés ; la norme s'élargit à 1-60.
+
+    Ce qui change (décision Selneker) : un ID court (8 chiffres) ou alphanumérique est désormais
+    VALIDE ; ce qui reste refusé : vide et plus de 60 caractères.
+    """
     spec = identity_spec({"id": PUBG})
     assert check_identity_payload(spec, {"player_id": "5123456789"}) == ({"player_id": "5123456789"}, "5123456789")
-    assert check_identity_payload(spec, {"player_id": "51234567"}) is None      # 8 chiffres
-    assert check_identity_payload(spec, {"player_id": "51234abcde"}) is None    # non numérique
+    assert check_identity_payload(spec, {"player_id": "51234567"}) is not None       # 8 chiffres : accepté
+    assert check_identity_payload(spec, {"player_id": "51234abcde"}) is not None     # alphanumérique : accepté
+    assert check_identity_payload(spec, {"player_id": "1112223bb45"}) is not None
+    assert check_identity_payload(spec, {"player_id": "1" * 60}) is not None         # plafond inclus
+    assert check_identity_payload(spec, {"player_id": "1" * 61}) is None             # au-delà du plafond
+    assert check_identity_payload(spec, {"player_id": "   "}) is None                # vide
 
 
 # --------------------------------------------------------------------------- #
@@ -161,14 +176,18 @@ def test_non_pubg_order_is_refused_without_identity_contract(admin):
 
 
 def test_pubg_malformed_player_id_keeps_historical_422():
-    """Non-régression PUBG : l'identifiant mal formé reste refusé en 422 (avant tout traitement)."""
+    """Non-régression PUBG : hors norme (vide ou > 60 caractères) reste refusé en 422.
+
+    PL-003-BE-11 : un ID court ou alphanumérique n'est plus « mal formé » — seuls le vide et le
+    dépassement du plafond de 60 caractères restent refusés avant tout traitement.
+    """
     products = requests.get(f"{API}/products", params={"type": "uc"}, timeout=15).json()
     pid = next(p["id"] for p in products if p.get("purchasable", True))
-    for bad in ("51234567", "51234abcde"):
+    for bad in ("   ", "1" * 61):
         r = requests.post(f"{API}/orders", json={
             "pubg_id": bad, "pseudo": "Ghost", "items": [{"product_id": pid, "quantity": 1}],
             "payment_method": "mvola", "payment_phone": "0341234567"}, timeout=15)
-        assert r.status_code == 422, f"{bad} → {r.status_code} {r.text}"
+        assert r.status_code == 422, f"{bad!r} → {r.status_code} {r.text}"
 
 
 # --------------------------------------------------------------------------- #

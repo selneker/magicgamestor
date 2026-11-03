@@ -62,8 +62,8 @@ export default function Checkout() {
   const game = (gameSel?.games || []).find((g) => g.id === gameId);
   // Mémoïsé : sans cela, `game?.identity_fields || []` crée un NOUVEAU tableau à
   // chaque rendu quand le jeu n'a pas de identity_fields. `spec` changeait donc
-  // d'identité, `handleVerified` aussi, et l'effet de réinitialisation de
-  // PubgIdVerify (useEffect sur [pubgId, onVerified]) se re-déclenchait : le
+  // d'identité, `handleVerified` aussi, et l'effet d'annulation de
+  // IdentityFieldsVerify (useEffect sur [values, onVerified]) se re-déclenchait : le
   // résultat de la vérification était effacé et le client ne pouvait pas
   // sortir de l'étape 1. Le backend injecte toujours le contrat résolu
   // (GET /api/games), mais le front n'avait pas de repli équivalent à

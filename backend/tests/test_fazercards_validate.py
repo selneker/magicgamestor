@@ -149,7 +149,8 @@ class TestLiveEndpoint:
         assert r.status_code == 422
 
     def test_malformed_id_rejected_422(self):
-        for bad in ("abc123456", "123", "1" * 25):
+        # PL-003-BE-11 : seul le vide et le dépassement de 60 caractères restent refusés (422).
+        for bad in ("   ", "1" * 61):
             r = requests.post(ENDPOINT, json={"player_id": bad}, timeout=15)
             assert r.status_code == 422, bad
 

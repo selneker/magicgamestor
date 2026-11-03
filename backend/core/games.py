@@ -92,7 +92,10 @@ async def game_has_sellable_catalog(game_id: str) -> bool:
 # sont qu'un cas particulier (jeu legacy) du modèle générique, jamais une hypothèse globale.
 # --------------------------------------------------------------------------- #
 IDENTITY_FIELD_KEY = re.compile(r"[a-z][a-z0-9_]{0,31}", re.ASCII)
-PUBG_ID_RE = re.compile(r"[0-9]{9,13}", re.ASCII)
+# Norme des champs d'identité (PL-003-BE-11) : un champ est un TEXTE de 1 à 60 caractères, sans
+# motif imposé (certains jeux ont des ID alphanumériques). Un jeu peut déclarer PLUS STRICT (motif,
+# longueurs) ; il ne peut jamais dépasser ce plafond, à l'écriture comme à la lecture.
+IDENTITY_FIELD_MAX_LENGTH = 60
 
 
 def full_match(pattern: str | None, value: str) -> bool:
@@ -105,12 +108,13 @@ def full_match(pattern: str | None, value: str) -> bool:
         return False
 MAX_IDENTITY_FIELDS = 6
 
-# Définition par défaut du seul jeu historique : PUBG Mobile conserve EXACTEMENT son contrat
-# (un identifiant numérique de 9 à 13 chiffres), même si aucun admin ne l'a jamais enregistré.
+# Définition par défaut du seul jeu historique : PUBG Mobile. Depuis PL-003-BE-11 son identifiant
+# suit la norme commune (texte de 1 à 60 caractères, aucun motif) ; les ID numériques de 9 à 13
+# chiffres restent valides et produisent la même clé d'identité qu'avant.
 DEFAULT_IDENTITY_FIELDS: dict[str, list[dict]] = {
     DEFAULT_GAME_ID: [
         {"key": "player_id", "label": "ID PUBG Mobile", "label_en": "PUBG Mobile ID",
-         "pattern": r"^[0-9]{9,13}$", "min_length": 9, "max_length": 13,
+         "pattern": None, "min_length": 1, "max_length": IDENTITY_FIELD_MAX_LENGTH,
          "required": True, "primary": True},
     ],
 }
@@ -157,11 +161,13 @@ def normalize_identity_fields(raw) -> list[dict]:
                 raise HTTPException(status_code=400, detail=f"Motif de validation invalide pour « {key} ».")
         try:
             min_length = int(item.get("min_length") or 1)
-            max_length = int(item.get("max_length") or 32)
+            max_length = int(item.get("max_length") or IDENTITY_FIELD_MAX_LENGTH)
         except (TypeError, ValueError):
             raise HTTPException(status_code=400, detail=f"Longueurs invalides pour « {key} ».")
-        if not 1 <= min_length <= max_length <= 64:
-            raise HTTPException(status_code=400, detail=f"Longueurs invalides pour « {key} » (1 a 64).")
+        if not 1 <= min_length <= max_length <= IDENTITY_FIELD_MAX_LENGTH:
+            raise HTTPException(status_code=400, detail=(
+                f"Longueurs invalides pour « {key} » "
+                f"(1 a {IDENTITY_FIELD_MAX_LENGTH} caracteres)."))
         primary = bool(item.get("primary")) and not has_primary
         has_primary = has_primary or primary
         seen.add(key)
@@ -174,12 +180,27 @@ def normalize_identity_fields(raw) -> list[dict]:
     return clean
 
 
+def _clamp_identity_field(field: dict) -> dict:
+    """Plafonne À LA LECTURE un `max_length` hérité supérieur à la norme (60).
+
+    Une configuration écrite avant PL-003-BE-11 peut porter 64 (ancien plafond) ou davantage : la
+    valeur lue est ramenée à 60, sans modifier le document ni les autres réglages du champ.
+    Renvoie l'objet d'origine quand rien ne change (aucune copie inutile).
+    """
+    try:
+        max_length = int(field.get("max_length"))
+    except (TypeError, ValueError):
+        return field
+    if max_length <= IDENTITY_FIELD_MAX_LENGTH:
+        return field
+    return {**field, "max_length": IDENTITY_FIELD_MAX_LENGTH}
+
+
 def identity_spec(game: dict | None) -> list[dict]:
     """Champs d'identité effectifs d'un jeu : déclaration admin, sinon défaut du jeu legacy."""
     declared = (game or {}).get("identity_fields")
-    if declared:
-        return declared
-    return DEFAULT_IDENTITY_FIELDS.get((game or {}).get("id") or "", [])
+    spec = declared or DEFAULT_IDENTITY_FIELDS.get((game or {}).get("id") or "", [])
+    return [_clamp_identity_field(f) for f in spec]
 
 
 def check_identity_payload(spec: list[dict], fields: dict | None) -> tuple[dict, str] | None:
@@ -201,7 +222,8 @@ def check_identity_payload(spec: list[dict], fields: dict | None) -> tuple[dict,
             if f.get("required", True):
                 return None
             continue
-        if not f.get("min_length", 1) <= len(value) <= f.get("max_length", 64):
+        if not f.get("min_length", 1) <= len(value) <= min(
+                f.get("max_length") or IDENTITY_FIELD_MAX_LENGTH, IDENTITY_FIELD_MAX_LENGTH):
             return None
         if not full_match(f.get("pattern"), value):
             return None
