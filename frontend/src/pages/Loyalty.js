@@ -1,12 +1,20 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeftRight, Coins, Gift } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
-import { Input } from "@/components/ui/input";
+import { useGames } from "@/context/GameContext";
 import { Button } from "@/components/ui/button";
-import { PubgIdVerify } from "@/components/store/PubgIdVerify";
+import { IdentityFieldsVerify } from "@/components/store/checkout/IdentityFieldsVerify";
+
+// Jeu FIGÉ pour la fidélité (décision Selneker, option b — PL-003-FE-4) : le
+// backend `/loyalty/redeem` exige encore `pubg_id` (BE-12 hors périmètre), mais
+// la VÉRIFICATION passe désormais par le composant GÉNÉRIQUE. Les champs
+// affichés viennent exclusivement de GET /api/games (identity_fields du jeu) :
+// si le jeu est introuvable ou inactif dans la réponse, AUCUNE supposition de
+// format — sans spec, pas de formulaire et pas d'échange.
+const LOYALTY_GAME = "pubg-mobile";
 
 function Ledger({ entries }) {
   const { t, lang } = useLang();
@@ -26,21 +34,58 @@ function Ledger({ entries }) {
 function Rewards({ rewards, onRedeem }) {
   const { t } = useLang();
   const { user } = useAuth();
-  const [pubg, setPubg] = useState(user.saved_pubg_ids?.[0] || "");
-  const [, setVerified] = useState(null);
+  const { games } = useGames();
+  const game = games.find((g) => g.id === LOYALTY_GAME) || null;
+  const spec = useMemo(() => game?.identity_fields || [], [game]);
+  const primaryKey = useMemo(() => (spec.find((f) => f.primary) || spec[0])?.key || "player_id", [spec]);
+  const [values, setValues] = useState({});
+  // Uniquement ce que le composant générique renvoie sur `valid:true`
+  // ({ name, fields }) — un préremplissage n'y entre jamais (§4.8).
+  const [verified, setVerified] = useState(null);
+  // Même règle que StepVerify : un ID mémorisé (`saved_pubg_ids`) arrive dans le
+  // champ mais n'est JAMAIS compté comme vérifié — la re-vérification réelle
+  // (POST /fazercards/validate-id, valid:true) seule ouvre l'échange, et un
+  // effacement volontaire n'est pas ré-rempli.
+  const touched = useRef(false);
+  useEffect(() => {
+    if (touched.current || !spec.length) return;
+    const saved = user?.saved_pubg_ids?.[0];
+    if (saved) setValues((v) => (v[primaryKey] ? v : { ...v, [primaryKey]: saved }));
+  }, [spec, user, primaryKey]);
+  const writeValues = useCallback((v) => { touched.current = true; setValues(v); }, []);
+
+  // Le payload `/loyalty/redeem` ne change pas (BE-12 hors périmètre) : la
+  // valeur tronquée-vérifiée du champ primaire part dans `pubg_id`.
+  const verifiedId = verified?.fields?.[primaryKey] || null;
+
   return (
     <div className="space-y-3">
-      <div>
-        <label htmlFor="rw-pubg" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("checkout.pubgId")}</label>
-        <Input id="rw-pubg" value={pubg} onChange={(e) => setPubg(e.target.value.replace(/\D/g, ""))} className="mt-1 h-10 rounded-xl" data-testid="reward-pubg-input" placeholder="52502644815" />
-        <PubgIdVerify pubgId={pubg} onVerified={setVerified} />
-      </div>
+      {spec.length ? (
+        <IdentityFieldsVerify
+          gameId={LOYALTY_GAME}
+          spec={spec}
+          values={values}
+          setValues={writeValues}
+          onVerified={setVerified}
+          checkout
+        />
+      ) : (
+        <p
+          className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700"
+          data-testid="loyalty-verify-unavailable"
+        >
+          {t("checkout.verifyProviderUnavailable")}
+        </p>
+      )}
       {rewards.length === 0
         ? <p className="text-sm text-muted-foreground" data-testid="rewards-empty">{t("loyalty.rewardsEmpty")}</p>
         : rewards.map((r) => (
         <div key={r.id} className="flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors hover:border-[color:var(--rule-strong)]" data-testid={`reward-${r.id}`}>
           <div><p className="font-semibold">{r.name}</p>{r.description && <p className="text-xs text-muted-foreground">{r.description}</p>}</div>
-          <Button size="sm" onClick={() => onRedeem(r, pubg)} className="rounded-full font-semibold" data-testid={`redeem-${r.id}`}>{r.cost_points} pts</Button>
+          {/* Bloqué tant que le composant générique n'a pas renvoyé `valid:true`
+              (aucune modification de champ depuis) : pas de pubg_id signalé,
+              pas d'échange. */}
+          <Button size="sm" disabled={!verifiedId} onClick={() => onRedeem(r, verifiedId)} className="rounded-full font-semibold" data-testid={`redeem-${r.id}`}>{r.cost_points} pts</Button>
         </div>
       ))}
     </div>
