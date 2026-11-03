@@ -88,7 +88,7 @@
         --card-surface: hsl(0 0% 23%);
         --card-pill-bg: hsl(0 0% 29%);
         --card-ink: hsl(var(--cream));
-        --card-border: hsl(var(--cream) / .72);
+        --card-border: hsl(var(--cream) / .5);
         --card-shadow: hsl(0 0% 0% / .28);
         --card-focus: var(--neo-card-bg);
     }
@@ -141,7 +141,6 @@
     .dark .card-lift:hover { box-shadow: 4px 4px 0 hsl(var(--primary) / .5); }
     .product-card-lift { @apply transition-[transform,box-shadow,border-color] duration-200 ease-out; }
     .product-card-lift:hover { transform: translate(-3px, -3px); box-shadow: 5px 5px 0 hsl(var(--foreground) / .25); border-color: var(--rule-strong); }
-    .dark .product-card .text-ink { color: var(--card-ink); }
     .dark .product-card-lift:hover { box-shadow: 5px 5px 0 hsl(var(--primary) / .55); }
     .glass { @apply bg-background/85 backdrop-blur-xl; }
     /* Neubrutalist rhythm: crisp panels, offset shadows, and intentional hard edges. */

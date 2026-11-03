@@ -95,7 +95,7 @@ export function ProductCard({ product, index = 0, badge }) {
         <div className="flex items-start justify-between gap-1.5 sm:gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-3">
             {showPopular && (
-              <span data-testid={`card-context-${product.slug}`} className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--card-border)] bg-[color:var(--card-badge-bg)] px-3 py-1 font-body text-[10px] font-bold uppercase leading-none tracking-wider text-ink"><Icon name={contextIcon} className="h-3 w-3" />{contextLabel}</span>
+              <span data-testid={`card-context-${product.slug}`} className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--card-border)] bg-[color:var(--card-badge-bg)] px-3 py-1 font-body text-[10px] font-bold uppercase leading-none tracking-wider text-ink text-[color:var(--neo-text)]"><Icon name={contextIcon} className="h-3 w-3" />{contextLabel}</span>
             )}
           </div>
           <button type="button" aria-label={`${favorites.includes(product.id) ? t("product.removeFavorite") : t("product.addFavorite")} : ${product.name || product.slug}`} aria-pressed={favorites.includes(product.id)} onClick={handleToggleFavorite} className={`grid aspect-square h-8 w-8 shrink-0 place-items-center !rounded-full border border-ink bg-ink text-white transition duration-150 hover:scale-105 hover:bg-red-500 active:scale-95 aria-[pressed=true]:bg-red-500 aria-[pressed=true]:[&_svg]:fill-white ${focus}`}><Icon name="heart" /></button>
@@ -105,14 +105,14 @@ export function ProductCard({ product, index = 0, badge }) {
         {figure ? (
           <p className={"mt-1 flex min-w-0 items-baseline gap-1 font-display font-extrabold tracking-tighter " + (figureLength >= 5 ? "text-2xl min-[400px]:text-3xl sm:text-4xl" : figureLength >= 4 ? "text-3xl min-[400px]:text-4xl sm:text-5xl" : "text-4xl min-[400px]:text-5xl sm:text-6xl")}>
             <span className="min-w-0 truncate leading-none">{figure}</span>
-            <span className="shrink-0 text-sm font-bold uppercase tracking-tight text-ink/70 sm:text-xl">{unit}</span>
+            <span className="shrink-0 text-sm font-bold uppercase tracking-tight text-[color:var(--card-ink)] opacity-70 sm:text-xl">{unit}</span>
           </p>
         ) : null}
 
         {/* La pastille de prix peint un fond blanc FIXE (`--card-pill-bg`) : son
             texte doit donc etre une encre fixe (`text-ink`), sinon il suit le
             theme et tombe a 1,12:1 sur le blanc en mode sombre. */}
-        <div className={`mt-auto flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border-2 border-[color:var(--card-border)] sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-[color:var(--card-pill-bg)] py-1 pl-2 pr-1 text-ink sm:pl-3" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
+        <div className={`mt-auto flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border-2 border-[color:var(--card-border)] sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-[color:var(--card-pill-bg)] py-1 pl-2 pr-1 text-ink text-[color:var(--card-ink)] sm:pl-3" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
           {!available ? (
             <span className="font-body text-sm font-bold uppercase tracking-wide">Indisponible</span>
           ) : qty > 0 ? (
@@ -127,7 +127,7 @@ export function ProductCard({ product, index = 0, badge }) {
             </>
           ) : (
             <>
-              <div className="flex min-w-0 flex-1 items-center gap-1"><span className="min-w-0 truncate font-display text-[clamp(0.78rem,4.2vw,1.125rem)] font-extrabold leading-none tracking-[-0.04em] sm:text-2xl">{formatAr(product.price)}</span>{showDiscount ? <span className="shrink-0 rounded-full border border-ink bg-neo px-1.5 py-0.5 text-ink font-body text-[9px] font-bold leading-3 sm:px-2 sm:text-[11px] sm:leading-4">-{discount}%</span> : null}</div>
+              <div className="flex min-w-0 flex-1 items-center gap-1"><span className="min-w-0 truncate font-display text-[clamp(0.78rem,4.2vw,1.125rem)] font-extrabold leading-none tracking-[-0.04em] sm:text-2xl">{formatAr(product.price)}</span>{showDiscount ? <span className="shrink-0 rounded-full border border-ink bg-neo px-1.5 py-0.5 text-[color:var(--neo-text)] font-body text-[9px] font-bold leading-3 sm:px-2 sm:text-[11px] sm:leading-4">-{discount}%</span> : null}</div>
               <button type="button" aria-label={`Ajouter au panier : ${product.name || product.slug}`} onClick={handleAdd} className={`grid aspect-square h-10 w-10 shrink-0 place-items-center !rounded-full border-2 border-ink bg-ink text-neo transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
                 <Icon name={actionIconName} />
               </button>
