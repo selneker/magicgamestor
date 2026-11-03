@@ -522,3 +522,66 @@ test("Panne : le bouton « Vérifier » reste disponible pour un nouvel essai, s
   } finally { await unmount(container, root); }
 });
 
+// --- PL-003-FE-5 : pseudo traduit + région affichée quand le backend la renvoie
+
+test("Région présente : libellé pseudo traduit (FR) et région affichée", async () => {
+  api.post.mockResolvedValue({ data: { valid: true, player_name: "Seln", region: "Indonesia" } });
+  const { container, root } = await mount();
+  try {
+    await verifier(container);
+    await act(async () => {});
+    expect(texteDe(container, "identity-verify-player-name")).toContain("Nom du joueur");
+    expect(texteDe(container, "identity-verify-player-name")).toContain("Seln");
+    expect(texteDe(container, "identity-verify-region")).toContain("Région : Indonesia");
+  } finally { await unmount(container, root); }
+});
+
+const sansRegion = [
+  ["absente de la réponse", undefined],
+  ["chaîne vide", ""],
+  ["espaces seuls", "   "],
+];
+
+test.each(sansRegion)("Région %s : aucune ligne, aucun « undefined »", async (_nom, region) => {
+  api.post.mockReset();
+  api.post.mockResolvedValue({ data: { valid: true, player_name: "Seln", ...(region === undefined ? {} : { region }) } });
+  const { container, root } = await mount();
+  try {
+    await verifier(container);
+    await act(async () => {});
+    expect(elOf(container, "identity-verify-region")).toBeNull();
+    expect(container.textContent).not.toContain("undefined");
+    // Personne n'invente de région : une seule requête, panneau sans ligne région.
+    expect(api.post.mock.calls.length).toBe(1);
+  } finally { await unmount(container, root); }
+});
+
+test("Libellés EN : « Player name » et « Region » (parité FR/EN)", async () => {
+  setMockLang("en");
+  api.post.mockResolvedValue({ data: { valid: true, player_name: "Seln", region: "Indonesia" } });
+  const { container, root } = await mount();
+  try {
+    await verifier(container);
+    await act(async () => {});
+    expect(texteDe(container, "identity-verify-player-name")).toContain("Player name");
+    expect(texteDe(container, "identity-verify-region")).toContain("Region : Indonesia");
+    expect(container.textContent).not.toContain("Nom du joueur");
+  } finally { await unmount(container, root); }
+});
+
+test("Restauration via initial : pseudo ET région réaffichés sans appeler le backend", async () => {
+  api.post.mockReset();
+  const onVerified = jest.fn();
+  const { container, root } = await mount({
+    initial: { name: "Seln", region: "Indonesia" },
+    onVerified,
+  });
+  try {
+    await act(async () => {});
+    expect(elOf(container, "identity-verify-valid")).not.toBeNull();
+    expect(texteDe(container, "identity-verify-player-name")).toContain("Seln");
+    expect(texteDe(container, "identity-verify-region")).toContain("Indonesia");
+    expect(api.post).not.toHaveBeenCalled();
+  } finally { await unmount(container, root); }
+});
+

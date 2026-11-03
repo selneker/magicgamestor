@@ -42,7 +42,7 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
   // (« correspond bien à votre compte Mobile Legends »), jamais au message
   // d'échec, qui vient de la table §2 et reste générique.
   const gameName = games.find((g) => g.id === gameId)?.name || "";
-  const [state, setState] = useState(initial ? { status: "valid", name: initial.name } : { status: "idle" });
+  const [state, setState] = useState(initial ? { status: "valid", name: initial.name, region: initial.region || null } : { status: "idle" });
   const first = useRef(!!initial);
   const valuesRef = useRef(values);
   valuesRef.current = values;
@@ -86,8 +86,11 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
       const { data } = await api.post("/fazercards/validate-id", { game_id: gameId, fields });
       if (reqId.current !== myReq) return; // réponse obsolète : ignorée
       if (data && data.valid === true) {
-        setState({ status: "valid", name: data.player_name });
-        onVerified({ name: data.player_name || null, fields });
+        // Contrat §2 : affiche le pseudo (et la région si présente). La région
+        // n'est jamais inventée : vide / non-string -> null -> pas de ligne.
+        const region = typeof data.region === "string" && data.region.trim() ? data.region.trim() : null;
+        setState({ status: "valid", name: data.player_name, region });
+        onVerified({ name: data.player_name || null, region, fields });
       } else {
         // Tout le reste — `valid:false` avec son code (`invalid_id`,
         // `missing_field`), corps inattendu (HTML d'une passerelle, objet vide,
@@ -175,7 +178,10 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
       {state.status === "valid" && checkout && (
         <div role="status" className="rounded-[18px] border-2 border-foreground bg-primary/15 p-4" data-testid="identity-verify-valid">
           <p className="flex items-center gap-2 font-display text-lg font-bold"><CheckCircle2 className="h-5 w-5 text-emerald-600" />{t("checkout.verified")}</p>
-          <p className="mt-1.5 pl-7 text-base font-bold" data-testid="identity-verify-player-name">Pseudo: {state.name || "—"}</p>
+          <p className="mt-1.5 pl-7 text-base font-bold" data-testid="identity-verify-player-name">{t("checkout.verifyPlayerName")} : {state.name || "—"}</p>
+          {state.region && (
+            <p className="pl-7 text-base font-bold" data-testid="identity-verify-region">{t("checkout.verifyRegion")} : {state.region}</p>
+          )}
           <p className="mt-2 text-xs text-foreground/80" data-testid="identity-verify-confirm">
             {gameName
               ? t("checkout.verifyConfirmForGame", { label: primaryLabel, game: gameName })
