@@ -59,12 +59,14 @@ Two operational facts to check before starting:
   stash it **before** creating the phase branch, or the branch will carry it.
   *(Done 2026-10-19: the auth work is parked on `feat/auth-hardening`; `phase-1-paiement` branches from
   `feat/all_fixing` without it.)*
-- **`yarn build` currently succeeds without `REACT_APP_BACKEND_URL`** and silently produces a broken bundle.
-  Always export the var before building until T1.5 makes the build fail loudly.
+- **`REACT_APP_BACKEND_URL` is checked before build/start (T1.5):** `prebuild` runs
+  `node scripts/check-backend-url.mjs --strict` — the build **fails (exit 1)** if the variable is absent, so a
+  broken `baseURL: "undefined/api"` bundle can no longer be produced silently (`prestart` uses `--warn`). Still
+  export the var before `yarn build` / `yarn start` — see the dedicated section under « Frontend gotchas ».
 
 ### What can and cannot be verified here
 
-- **Frontend: fully verifiable.** `yarn build` compiles and `yarn test:ci` runs green (8 suites / 37 tests).
+- **Frontend: fully verifiable.** `yarn build` compiles and `yarn test:ci` runs green (19 suites / 404 tests).
 - **Backend: NOT runnable in this environment.** `MONGO_URL` points at `mongodb://localhost:27017` and there is no
   local `mongod`, `mongosh`, `docker` or `podman`, and no passwordless sudo to install one. `pytest` therefore fails
   with `ConnectionError` on every DB-touching test (the pure-logic ones still pass). **Do not read those failures as
@@ -104,11 +106,13 @@ subsiste.
 
 Alias `@` → `src` (webpack alias `craco.config.js:106-108`, mirrored in `jsconfig.json` and jest `moduleNameMapper`).
 
-### `REACT_APP_BACKEND_URL` is build-time and fails *silently*
+### `REACT_APP_BACKEND_URL` is build-time (guarded by `prebuild` since T1.5)
 
-CRA inlines `process.env.*` at build. **If it is missing the build still succeeds** and the bundle contains
-`baseURL: "undefined/api"` — axios treats it as relative, the app calls `/undefined/api` on the current origin, and
-the home page white-screens (`Home.js:243`, `s.filter is not a function`). No error boundary.
+CRA inlines `process.env.*` at build. If the variable were missing, the build would still succeed and the bundle
+would contain `baseURL: "undefined/api"` — axios treats it as relative, the app calls `/undefined/api` on the current
+origin, and the home page white-screens (`Home.js:243`, `s.filter is not a function`). No error boundary. **This can
+no longer happen silently:** `prebuild` runs `scripts/check-backend-url.mjs --strict` and fails (exit 1, verified)
+when the variable is absent; `prestart` uses `--warn` and only warns.
 
 `craco.config.js` calls `dotenv.config()` but that only populates the *craco* process, not the app bundle. Set the
 var before `yarn build` / `yarn start`. Only two consumers: `src/lib/api.js:4` and `src/components/AuthCallback.js:9`.
@@ -152,11 +156,13 @@ yarn test --watchAll=false src/lib/api.test.js
 
 ### i18n
 
-`src/i18n/translations.js` = one `{ fr, en }` object, 20 namespaces. Currently **690/690 in parity, with no automated
-parity test** — keep it that way by hand. `t(path, vars)` resolves a dot path and **falls back to the path string
-itself** on a miss, so a typo renders `checkout.foo` on screen. `localized(obj, field, lang)` is for API-supplied
-content. `document.documentElement.lang` is set only inside `setLang` (`LanguageContext.js:11`), **not on initial
-load** — it stays `"fr"` even when `mgs_lang` is `en`.
+`src/i18n/translations.js` = one `{ fr, en }` object, 23 namespaces. Currently **807/807 in parity, enforced by
+`src/sdui/i18n-parity.test.js`** (fails on any single-side key addition). `t(path, vars)` resolves a dot path and
+**falls back to the path string itself** on a miss, so a typo renders `checkout.foo` on screen. `localized(obj,
+field, lang)` is for API-supplied content. `document.documentElement.lang` is set only inside `setLang`
+(`LanguageContext.js:11`), **not on initial load** — it stays `"fr"` even when `mgs_lang` is `en`.
+
+`src/sdui/` renders server-driven admin screens per the `aluu-admin` contract (which lives outside the repo, read-only, at `../contracts/aluu-admin/`; fixtures mirrored in `src/sdui/__fixtures__/`, admin screens mounted by `src/pages/admin/AdminSduiRoutes.js`).
 
 `public/sw.js` is **push-only** — no `fetch` handler, no caching — and is registered only from the admin push page.
 `public/manifest.json` has `start_url: "/admin"` and colours that do not match the app palette.
