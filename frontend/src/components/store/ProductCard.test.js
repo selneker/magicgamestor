@@ -177,20 +177,33 @@ test("Produit Populaire : le badge « Populaire » (flamme) reste affiche", asyn
   } finally { await unmountCard(container, root); }
 });
 
-// La pastille de prix peint un fond blanc FIXE (en sombre, `.bg-white` est
-// force a #FFFFFF par la regle « Neon product cards » d'index.css) : son texte
-// doit etre une encre fixe, sinon il suit le theme et devient creme sur blanc
-// (1,12:1). Le test verrouille le couple fond/avant-plan.
-test("Carte disponible : le prix est pose sur un fond fixe -> texte d'encre fixe", async () => {
+// La pastille de prix suit le theme AVEC la carte (MGS-FE-CARDS-20261104-02
+// étape 2) : son texte vient du jeton `--card-ink` (crème en sombre), plus
+// jamais de `text-ink` fixe — la surface et le texte changent ENSEMBLE.
+test("Carte disponible : la pastille utilise le jeton --card-ink (pas de texte fixe)", async () => {
   const { container, root } = await mountCard(PUBG);
   try {
     const prix = [...container.querySelectorAll("span")].find((s) => s.textContent.trim() === "900 Ar");
     expect(prix).toBeTruthy();
     const pastille = prix.closest("div[class*='card-pill-bg']");
     expect(pastille).toBeTruthy();
-    expect(pastille.className).toContain("text-ink");
+    expect(pastille.className).toContain("text-[color:var(--card-ink)]");
+    expect(pastille.className).not.toContain("text-ink");
     expect(pastille.className).not.toContain("text-foreground");
     expect(pastille.className).toContain("border-2");
+  } finally { await unmountCard(container, root); }
+});
+
+// Étape 2 : le bouton rond d'achat et l'anneau de focus passent par les jetons
+// de la carte (néon + icône noire en sombre, encre + icône néon en clair).
+test("CTA et focus de la carte passent par les jetons --card-cta-* / --card-focus", async () => {
+  const { container, root } = await mountCard(PUBG);
+  try {
+    const addBtn = byLabel(container, "Ajouter au panier : 60 UC");
+    expect(addBtn.className).toContain("bg-[color:var(--card-cta-bg)]");
+    expect(addBtn.className).toContain("border-[color:var(--card-cta-bg)]");
+    expect(addBtn.className).toContain("text-[color:var(--card-cta-fg)]");
+    expect(addBtn.className).toContain("outline-[color:var(--card-focus)]");
   } finally { await unmountCard(container, root); }
 });
 

@@ -43,14 +43,19 @@
         --neo-card-bg: #D4FF00;
         --neo-text: #111111;
         --neo-border: #111111;
-        /* Carte produit : surfaces ET avant-plans FIXES (un texte qui suit le
-           theme ne doit jamais etre pose sur une surface fixe). Seul le theme
-           change la couleur de l'ombre et de l'anneau de focus. */
-        --card-surface: hsl(var(--cream));   /* #F4F3EE, creme figee */
-        --card-pill-bg: #FFFFFF;            /* pastille de prix : blanc fige */
-        --card-badge-bg: var(--neo-card-bg); /* badge : le meme neon que bg-neo */
-        --card-shadow: var(--neo-border);   /* ombre dure : encre en clair */
-        --card-focus: var(--neo-border);    /* anneau de focus : encre en clair */
+        /* Carte produit (MGS-FE-CARDS-20261104-02) : la surface et le texte
+           changent ENSEMBLE selon le theme — aucun texte fixe pose sur une
+           surface qui change. En clair : carte creme, encre #111111. */
+        --card-surface: hsl(var(--cream));
+        --card-ink: #111111;
+        --card-ink-muted: hsl(0 0% 7% / .7);
+        --card-border: var(--neo-border);
+        --card-pill-bg: #FFFFFF;
+        --card-cta-bg: #111111;
+        --card-cta-fg: var(--neo-card-bg);
+        --card-badge-bg: var(--neo-card-bg);
+        --card-shadow: var(--neo-border);
+        --card-focus: var(--neo-border);
     }
     .dark {
         --background: 0 0% 17%;        /* #2B2B2B */
@@ -83,13 +88,17 @@
         --neo-card-bg: #D4FF00;
         --neo-text: #111111;
         --neo-border: #111111;
-        /* En sombre, la carte reste proche de la surface de page pour limiter
-           le contraste, tout en gardant une pastille lisible et une ombre discrète. */
-        --card-surface: hsl(0 0% 23%);
-        --card-pill-bg: hsl(0 0% 29%);
+        /* Carte produit en sombre (MGS-FE-CARDS-20261104-02) : carte grise
+           #333, texte creme, pastille #1F1F1F, bouton neon a icone noire. */
+        --card-surface: hsl(var(--card));
         --card-ink: hsl(var(--cream));
-        --card-border: hsl(var(--cream) / .5);
-        --card-shadow: hsl(0 0% 0% / .28);
+        --card-ink-muted: hsl(var(--cream) / .72);
+        --card-border: hsl(var(--cream) / .28);
+        --card-pill-bg: #1F1F1F;
+        --card-cta-bg: var(--neo-card-bg);
+        --card-cta-fg: #111111;
+        --card-badge-bg: var(--neo-card-bg);
+        --card-shadow: var(--neo-card-bg);
         --card-focus: var(--neo-card-bg);
     }
     * { border-color: var(--rule); }
