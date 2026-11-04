@@ -66,6 +66,9 @@ export function ProductCard({ product, index = 0, badge }) {
   const figure = valueUnit.value;
   const unit = valueUnit.unit;
   const figureLength = figure ? figure.toString().length : 0;
+  // Étiquette de catégorie des cartes SANS montant (MGS-FE-CARDS-20261104-02) :
+  // prime/prime_plus → « abonnement », evo → « pack évolutif », reste → « pack ».
+  const categoryKey = product.type === "prime" || product.type === "prime_plus" ? "card.category.subscription" : product.type === "evo" ? "card.category.evo" : "card.category.pack";
   const context = badge || (product.popular ? "popular" : product.type === "evo" ? "evo" : "offer");
   const contextIcon = context === "popular" ? "flame" : context === "evo" ? "crown" : product.type === "prime" || product.type === "prime_plus" ? "bolt" : "cart";
   const contextLabel = context === "popular" ? "Populaire" : context === "evo" ? "Elite Pack" : product.type === "prime_plus" ? "Abonnement" : product.type === "prime" ? "Abonnement" : `Pack ${currencyLabel}`;
@@ -98,7 +101,7 @@ export function ProductCard({ product, index = 0, badge }) {
   };
 
   return (
-    <article data-testid={`product-card-${product.slug}`} className={`product-card group relative flex min-w-0 min-h-[260px] flex-col rounded-[28px] border-2 border-[color:var(--card-border)] bg-[color:var(--card-surface)] p-3 sm:p-5 shadow-none transition duration-200 ease-out hover:shadow-[4px_4px_0_var(--card-shadow)] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
+    <article data-testid={`product-card-${product.slug}`} className={`product-card group relative flex min-w-0 h-full mgs-card flex-col rounded-[28px] border-2 border-[color:var(--card-border)] bg-[color:var(--card-surface)] p-3 sm:p-5 shadow-none transition duration-200 ease-out hover:shadow-[4px_4px_0_var(--card-shadow)] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
       <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-[28px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[color:var(--card-focus)]" aria-label={product.name || product.slug || "Produit"} />
       <div className="relative z-10 flex h-full flex-col text-[color:var(--card-ink)]">
         <div className="flex items-start justify-between gap-1.5 sm:gap-2">
@@ -107,17 +110,28 @@ export function ProductCard({ product, index = 0, badge }) {
               <span data-testid={`card-context-${product.slug}`} className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--card-border)] bg-[color:var(--card-badge-bg)] px-3 py-1 font-body text-[10px] font-bold uppercase leading-none tracking-wider text-ink text-[color:var(--neo-text)]"><Icon name={contextIcon} className="h-3 w-3" />{contextLabel}</span>
             )}
           </div>
-          <button type="button" aria-label={`${favorites.includes(product.id) ? t("product.removeFavorite") : t("product.addFavorite")} : ${product.name || product.slug}`} aria-pressed={favorites.includes(product.id)} onClick={handleToggleFavorite} className={`grid aspect-square h-8 w-8 shrink-0 place-items-center !rounded-full border border-ink bg-ink text-white transition duration-150 hover:scale-105 hover:bg-red-500 active:scale-95 aria-[pressed=true]:bg-red-500 aria-[pressed=true]:[&_svg]:fill-white ${focus}`}><Icon name="heart" /></button>
+          <button type="button" aria-label={`${favorites.includes(product.id) ? t("product.removeFavorite") : t("product.addFavorite")} : ${product.name || product.slug}`} aria-pressed={favorites.includes(product.id)} onClick={handleToggleFavorite} className={`relative before:absolute before:-inset-1.5 before:content-[''] grid aspect-square h-8 w-8 shrink-0 place-items-center !rounded-full border border-ink bg-ink text-white transition duration-150 hover:scale-105 hover:bg-red-500 active:scale-95 aria-[pressed=true]:bg-red-500 aria-[pressed=true]:[&_svg]:fill-white ${focus}`}><Icon name="heart" /></button>
         </div>
 
-        <h2 className="mt-3 line-clamp-2 min-h-[2.75rem] break-words font-display text-sm font-extrabold leading-tight tracking-tight sm:mt-4 sm:min-h-[3.5rem] sm:text-lg">{product.name || product.slug}</h2>
-        {figure ? (
-          <p className={"mt-1 flex min-w-0 items-baseline gap-1 font-display font-extrabold tracking-tighter " + (figureLength >= 5 ? "text-2xl min-[400px]:text-3xl sm:text-4xl" : figureLength >= 4 ? "text-3xl min-[400px]:text-4xl sm:text-5xl" : "text-4xl min-[400px]:text-5xl sm:text-6xl")}>
-            {/* Le montant ne doit JAMAIS être coupé : c'est la vedette. */}
-            <span className="shrink-0 leading-none">{figure}</span>
-            <span className={"min-w-0 truncate font-bold uppercase tracking-tight text-[color:var(--card-ink-muted)] " + (unit.length > 4 ? "text-[11px] sm:text-base" : "text-sm sm:text-xl")}>{unit}</span>
-          </p>
-        ) : null}
+        {hasFigure ? (
+          // Carte monnaie : UNE seule vedette — le montant. Le nom du produit
+          // reste accessible aux lecteurs d'écran uniquement (MGS-FE-CARDS-20261104-02).
+          <>
+            <h2 className="sr-only">{product.name || product.slug}</h2>
+            <p className={"mt-1 flex min-w-0 items-baseline gap-1 font-display font-extrabold tracking-tighter " + (figureLength >= 5 ? "text-2xl min-[400px]:text-3xl sm:text-4xl" : figureLength >= 4 ? "text-3xl min-[400px]:text-4xl sm:text-5xl" : "text-4xl min-[400px]:text-5xl sm:text-6xl")}>
+              {/* Le montant ne doit JAMAIS être coupé : c'est la vedette. */}
+              <span className="shrink-0 leading-none">{figure}</span>
+              <span className={"min-w-0 truncate font-bold uppercase tracking-tight text-[color:var(--card-ink-muted)] " + (unit.length > 4 ? "text-[11px] sm:text-base" : "text-sm sm:text-xl")}>{unit}</span>
+            </p>
+          </>
+        ) : (
+          // Carte pack (sans montant) : le titre est la vedette, précédé d'une
+          // étiquette de catégorie discrète. Aucune hauteur minimale.
+          <>
+            <p className="mt-3 font-body text-[10px] font-bold uppercase tracking-[0.08em] text-[color:var(--card-ink-muted)] sm:text-xs">{t(categoryKey)}</p>
+            <h2 className="mt-1 line-clamp-2 break-words font-display text-[18px] font-extrabold leading-5 tracking-tight [text-wrap:balance] sm:text-[20px] sm:leading-6">{product.name || product.slug}</h2>
+          </>
+        )}
 
         {showDiscountLine ? (
           <div className="mt-auto flex items-center gap-2 pb-1.5 pt-2">
@@ -145,9 +159,9 @@ export function ProductCard({ product, index = 0, badge }) {
           ) : (
             <>
               {/* Le prix ne doit JAMAIS être coupé : whitespace-nowrap, pas de truncate.
-                  Le badge de remise est sorti de la pastille (ligne au-dessus). */}
-              <div className="flex min-w-0 flex-1 items-center gap-1"><span className="min-w-0 whitespace-nowrap font-display text-[clamp(0.78rem,4.2vw,1.125rem)] font-extrabold leading-none tracking-[-0.04em] sm:text-2xl">{formatAr(product.price)}</span></div>
-              <button type="button" aria-label={`Ajouter au panier : ${product.name || product.slug}`} onClick={handleAdd} className={`grid aspect-square h-10 w-10 shrink-0 place-items-center !rounded-full border-2 border-[color:var(--card-cta-bg)] bg-[color:var(--card-cta-bg)] text-[color:var(--card-cta-fg)] transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
+                  mgs-card-price : 14px en container query sous 170px de carte (index.css). */}
+              <div className="flex min-w-0 flex-1 items-center gap-1"><span className="mgs-card-price min-w-0 whitespace-nowrap font-display font-extrabold leading-none tracking-[-0.04em] text-base sm:text-2xl">{formatAr(product.price)}</span></div>
+              <button type="button" aria-label={`Ajouter au panier : ${product.name || product.slug}`} onClick={handleAdd} className={`relative before:absolute before:-inset-0.5 before:content-[''] grid aspect-square h-10 w-10 shrink-0 place-items-center !rounded-full border-2 border-[color:var(--card-cta-bg)] bg-[color:var(--card-cta-bg)] text-[color:var(--card-cta-fg)] transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
                 <Icon name={actionIconName} />
               </button>
             </>

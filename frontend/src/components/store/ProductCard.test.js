@@ -277,3 +277,80 @@ test("Sans remise : la pastille garde « mt-auto » (collée en bas)", async () 
     expect(container.querySelector('[data-testid^="card-discount-"]')).toBeNull();
   } finally { await unmountCard(container, root); }
 });
+
+// --- MGS-FE-CARDS-20261104-02 étape 3 : une seule vedette, carte compacte, zones 44 px ---
+
+test("Carte monnaie : plus de titre visible, le nom passe en sr-only", async () => {
+  const { container, root } = await mountCard(PUBG);
+  try {
+    const h2 = container.querySelector("h2");
+    expect(h2).toBeTruthy();
+    expect(h2.className).toContain("sr-only");
+    expect(h2.textContent).toContain("60 UC");
+    // Le montant reste la vedette visible.
+    const figureP = [...container.querySelectorAll("p")].find((p) => p.textContent.includes("60"));
+    expect(figureP).toBeTruthy();
+  } finally { await unmountCard(container, root); }
+});
+
+test("Carte pack : étiquette de catégorie + titre vedette, sans hauteur minimale", async () => {
+  const PACK = { id: "pack-frag", slug: "pack-frag", name: "Fragments matériaux", type: "material", price: 5000, game_id: "pubg-mobile", purchasable: true };
+  const { container, root } = await mountCard(PACK);
+  try {
+    const label = [...container.querySelectorAll("p")].find((p) => p.textContent === "card.category.pack");
+    expect(label).toBeTruthy();
+    expect(label.className).toContain("uppercase");
+    expect(label.className).toContain("text-[color:var(--card-ink-muted)]");
+    const h2 = container.querySelector("h2");
+    expect(h2.textContent).toContain("Fragments matériaux");
+    expect(h2.className).toContain("line-clamp-2");
+    expect(h2.className).toContain("[text-wrap:balance]");
+    expect(h2.className).not.toContain("min-h");
+    const article = container.querySelector("article");
+    expect(article.className).not.toContain("min-h-[260px]");
+    expect(article.className).toContain("h-full");
+  } finally { await unmountCard(container, root); }
+});
+
+test("Mapping des étiquettes : prime sans durée → « abonnement »", async () => {
+  const PRIME_ND = { id: "prime-nd", slug: "prime-nd", name: "Prime 7 jours", type: "prime", price: 2500, game_id: "pubg-mobile", purchasable: true };
+  const { container, root } = await mountCard(PRIME_ND);
+  try {
+    expect([...container.querySelectorAll("p")].some((p) => p.textContent === "card.category.subscription")).toBe(true);
+  } finally { await unmountCard(container, root); }
+});
+
+test("Mapping des étiquettes : evo → « pack évolutif »", async () => {
+  const EVO = { id: "evo-pack", slug: "evo-pack", name: "Pack évolutif", type: "evo", price: 19000, game_id: "pubg-mobile", purchasable: true };
+  const { container, root } = await mountCard(EVO);
+  try {
+    expect([...container.querySelectorAll("p")].some((p) => p.textContent === "card.category.evo")).toBe(true);
+    // L'evo garde son icône « panier ».
+    expect(byLabel(container, "Ajouter au panier : Pack évolutif").querySelector("circle")).toBeTruthy();
+  } finally { await unmountCard(container, root); }
+});
+
+test("Zones tactiles 44 px : cœur et bouton rond étendus par pseudo-élément", async () => {
+  const { container, root } = await mountCard(PUBG);
+  try {
+    const heart = container.querySelector("button[aria-pressed]");
+    expect(heart.className).toContain("before:-inset-1.5");
+    expect(heart.className).toContain("before:content-['']");
+    const addBtn = byLabel(container, "Ajouter au panier : 60 UC");
+    expect(addBtn.className).toContain("before:-inset-0.5");
+    expect(addBtn.className).toContain("before:content-['']");
+  } finally { await unmountCard(container, root); }
+});
+
+test("Container query : l'article porte mgs-card et le prix mgs-card-price", async () => {
+  const { container, root } = await mountCard(PUBG);
+  try {
+    const article = container.querySelector("article");
+    expect(article.className).toContain("mgs-card");
+    const prix = [...container.querySelectorAll("span")].find((s) => s.textContent.trim() === "900 Ar");
+    expect(prix.className).toContain("mgs-card-price");
+    expect(prix.className).toContain("text-base");
+    expect(prix.className).toContain("sm:text-2xl");
+    expect(prix.className).not.toContain("clamp");
+  } finally { await unmountCard(container, root); }
+});

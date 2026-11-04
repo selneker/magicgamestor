@@ -119,6 +119,12 @@
     :focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: 2px; }
 }
 
+/* MGS-FE-CARDS-20261104-02 : le prix ne chevauche jamais le bouton sur une carte étroite */
+.mgs-card { container-type: inline-size; }
+@container (max-width: 170px) {
+  .mgs-card-price { font-size: 14px; }
+}
+
 @layer utilities {
     /* Editorial building blocks */
     .panel { border: 2px solid hsl(var(--foreground)); background: hsl(var(--card)); border-radius: 8px; box-shadow: 5px 5px 0 hsl(var(--foreground) / .22); }
