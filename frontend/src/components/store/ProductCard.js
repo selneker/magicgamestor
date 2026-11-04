@@ -3,7 +3,7 @@ import { useCart, SUBSCRIPTION_TYPES } from "@/context/CartContext";
 import { useFavorites } from "@/lib/favorites";
 import { useLang } from "@/context/LanguageContext";
 import { useGames } from "@/context/GameContext";
-import { currencyOf, gameOf, typeLabel as gameTypeLabel } from "@/lib/catalog";
+import { currencyOf, gameOf, productFigure, typeLabel as gameTypeLabel } from "@/lib/catalog";
 import { formatAr } from "@/lib/api";
 import { addFeedback } from "@/context/CartContext";
 import { toast } from "sonner";
@@ -55,8 +55,16 @@ export function ProductCard({ product, index = 0, badge }) {
   const price = Number(product.price);
   const discount = oldPrice > price ? Math.round((1 - price / oldPrice) * 100) : 0;
   const showDiscount = discount >= 5;
-  const figure = product.type === "uc" ? product.uc_amount : product.duration_months;
-  const unit = product.type === "uc" ? "UC" : product.duration_months ? "mois" : "";
+  // Ligne de remise au-dessus de la pastille (badge + ancien prix barre) :
+  // la pastille de prix reste reservee au prix courant.
+  const showDiscountLine = available && showDiscount;
+  // Montant vedette : toute monnaie de jeu (PUBG « UC », Free Fire « Diamants »,
+  // CODM « CP »…) via productFigure, pas seulement `type === "uc"`.
+  const isCurrency = Boolean(product.uc_amount);
+  const hasFigure = isCurrency || Boolean(product.duration_months);
+  const valueUnit = hasFigure ? productFigure(product, game, lang) : { value: null, unit: "" };
+  const figure = valueUnit.value;
+  const unit = valueUnit.unit;
   const figureLength = figure ? figure.toString().length : 0;
   const context = badge || (product.popular ? "popular" : product.type === "evo" ? "evo" : "offer");
   const contextIcon = context === "popular" ? "flame" : context === "evo" ? "crown" : product.type === "prime" || product.type === "prime_plus" ? "bolt" : "cart";
@@ -65,7 +73,8 @@ export function ProductCard({ product, index = 0, badge }) {
   // plus que « Populaire » (flamme), la remise et « Indisponible ».
   const showPopular = context === "popular";
   const focus = "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-ink";
-  const actionIconName = product.type === "uc" ? "plus" : product.type === "evo" ? "cart" : "arrow";
+  // « + » dès que la carte affiche une monnaie, quel que soit le jeu.
+  const actionIconName = isCurrency ? "plus" : product.type === "evo" ? "cart" : "arrow";
 
   const handleAdd = () => {
     const addResult = add(product);
@@ -104,15 +113,23 @@ export function ProductCard({ product, index = 0, badge }) {
         <h2 className="mt-3 line-clamp-2 min-h-[2.75rem] break-words font-display text-sm font-extrabold leading-tight tracking-tight sm:mt-4 sm:min-h-[3.5rem] sm:text-lg">{product.name || product.slug}</h2>
         {figure ? (
           <p className={"mt-1 flex min-w-0 items-baseline gap-1 font-display font-extrabold tracking-tighter " + (figureLength >= 5 ? "text-2xl min-[400px]:text-3xl sm:text-4xl" : figureLength >= 4 ? "text-3xl min-[400px]:text-4xl sm:text-5xl" : "text-4xl min-[400px]:text-5xl sm:text-6xl")}>
-            <span className="min-w-0 truncate leading-none">{figure}</span>
-            <span className="shrink-0 text-sm font-bold uppercase tracking-tight text-[color:var(--card-ink)] opacity-70 sm:text-xl">{unit}</span>
+            {/* Le montant ne doit JAMAIS être coupé : c'est la vedette. */}
+            <span className="shrink-0 leading-none">{figure}</span>
+            <span className={"min-w-0 truncate font-bold uppercase tracking-tight " + (unit.length > 4 ? "text-[11px] sm:text-base" : "text-sm sm:text-xl")}>{unit}</span>
           </p>
+        ) : null}
+
+        {showDiscountLine ? (
+          <div className="mt-auto flex items-center gap-2 pb-1.5 pt-2">
+            <span data-testid={`card-discount-${product.slug}`} className="shrink-0 rounded-full border border-ink bg-neo px-2 py-0.5 font-body text-[11px] font-bold leading-4 text-ink">-{discount}%</span>
+            <span className="min-w-0 font-body text-xs font-bold line-through">{formatAr(oldPrice)}</span>
+          </div>
         ) : null}
 
         {/* La pastille de prix peint un fond blanc FIXE (`--card-pill-bg`) : son
             texte doit donc etre une encre fixe (`text-ink`), sinon il suit le
             theme et tombe a 1,12:1 sur le blanc en mode sombre. */}
-        <div className={`mt-auto flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border-2 border-[color:var(--card-border)] sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-[color:var(--card-pill-bg)] py-1 pl-2 pr-1 text-ink text-[color:var(--card-ink)] sm:pl-3" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
+        <div className={`${showDiscountLine ? "" : "mt-auto"} flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border-2 border-[color:var(--card-border)] sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-[color:var(--card-pill-bg)] py-1 pl-2 pr-1 text-ink text-[color:var(--card-ink)] sm:pl-3" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
           {!available ? (
             <span className="font-body text-sm font-bold uppercase tracking-wide">Indisponible</span>
           ) : qty > 0 ? (
@@ -127,7 +144,9 @@ export function ProductCard({ product, index = 0, badge }) {
             </>
           ) : (
             <>
-              <div className="flex min-w-0 flex-1 items-center gap-1"><span className="min-w-0 truncate font-display text-[clamp(0.78rem,4.2vw,1.125rem)] font-extrabold leading-none tracking-[-0.04em] sm:text-2xl">{formatAr(product.price)}</span>{showDiscount ? <span className="shrink-0 rounded-full border border-ink bg-neo px-1.5 py-0.5 text-[color:var(--neo-text)] font-body text-[9px] font-bold leading-3 sm:px-2 sm:text-[11px] sm:leading-4">-{discount}%</span> : null}</div>
+              {/* Le prix ne doit JAMAIS être coupé : whitespace-nowrap, pas de truncate.
+                  Le badge de remise est sorti de la pastille (ligne au-dessus). */}
+              <div className="flex min-w-0 flex-1 items-center gap-1"><span className="min-w-0 whitespace-nowrap font-display text-[clamp(0.78rem,4.2vw,1.125rem)] font-extrabold leading-none tracking-[-0.04em] sm:text-2xl">{formatAr(product.price)}</span></div>
               <button type="button" aria-label={`Ajouter au panier : ${product.name || product.slug}`} onClick={handleAdd} className={`grid aspect-square h-10 w-10 shrink-0 place-items-center !rounded-full border-2 border-ink bg-ink text-neo transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
                 <Icon name={actionIconName} />
               </button>

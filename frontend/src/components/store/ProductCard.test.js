@@ -193,3 +193,74 @@ test("Carte disponible : le prix est pose sur un fond fixe -> texte d'encre fixe
     expect(pastille.className).toContain("border-2");
   } finally { await unmountCard(container, root); }
 });
+
+// --- MGS-FE-CARDS-20261104-02 étape 1 : montant pour toutes les monnaies, prix complet ---
+
+// Le montant vedette vient de productFigure (toute monnaie de jeu), plus seulement
+// de type === "uc" : Free Fire doit afficher « 310 » + « Diamants » comme PUBG.
+test("Free Fire : le montant « 310 » et l'unité « Diamants » sont la vedette", async () => {
+  const { container, root } = await mountCard(FF);
+  try {
+    const figureP = [...container.querySelectorAll("p")].find((p) => p.textContent.includes("310"));
+    expect(figureP).toBeTruthy();
+    const [montant, unite] = [...figureP.querySelectorAll("span")];
+    // Le montant n'est JAMAIS coupé : shrink-0, sans truncate.
+    expect(montant.textContent).toBe("310");
+    expect(montant.className).toContain("shrink-0");
+    expect(montant.className).not.toContain("truncate");
+    // L'unité vient de la monnaie du jeu (currency_label), pas d'un « UC » codé en dur.
+    expect(unite.textContent).toBe("Diamants");
+    expect(unite.className).toContain("truncate");
+  } finally { await unmountCard(container, root); }
+});
+
+test("Free Fire : le bouton d'achat est « + » (monnaie), comme pour PUBG", async () => {
+  const { container, root } = await mountCard(FF);
+  try {
+    const addBtn = byLabel(container, "Ajouter au panier : 310 Diamants");
+    expect(addBtn).toBeTruthy();
+    // Chemin du « + » (ICONS.plus) : toute monnaie de jeu donne « + ».
+    expect(addBtn.querySelector('path[d="M12 5v14M5 12h14"]')).toBeTruthy();
+  } finally { await unmountCard(container, root); }
+});
+
+test("Le prix complet n'est jamais coupé : whitespace-nowrap, pas de truncate", async () => {
+  const { container, root } = await mountCard(PUBG);
+  try {
+    const prix = [...container.querySelectorAll("span")].find((s) => s.textContent.trim() === "900 Ar");
+    expect(prix).toBeTruthy();
+    expect(prix.className).toContain("whitespace-nowrap");
+    expect(prix.className).not.toContain("truncate");
+  } finally { await unmountCard(container, root); }
+});
+
+test("La remise est hors de la pastille : badge + ancien prix barré au-dessus", async () => {
+  const PROMO = { ...FF, id: "ff-promo", slug: "ff-promo", name: "310 Diamants promo", old_price: 3000 };
+  const { container, root } = await mountCard(PROMO);
+  try {
+    const badge = container.querySelector('[data-testid="card-discount-ff-promo"]');
+    expect(badge).toBeTruthy();
+    expect(badge.textContent).toContain("-17%");
+    // Le badge n'est PAS dans la pastille de prix.
+    expect(badge.closest("div[class*='card-pill-bg']")).toBeNull();
+    // Sur la même ligne : l'ancien prix, barré.
+    const ligne = badge.parentElement;
+    const ancien = [...ligne.querySelectorAll("span")].find((s) => s.textContent === "3000 Ar");
+    expect(ancien).toBeTruthy();
+    expect(ancien.className).toContain("line-through");
+    // La pastille n'a « mt-auto » que s'il n'y a pas de ligne de remise.
+    const pastille = badge.closest("article").querySelector("div[class*='card-pill-bg']");
+    expect(pastille).toBeTruthy();
+    expect(pastille.className).not.toContain("mt-auto");
+  } finally { await unmountCard(container, root); }
+});
+
+test("Sans remise : la pastille garde « mt-auto » (collée en bas)", async () => {
+  const { container, root } = await mountCard(PUBG);
+  try {
+    const pastille = container.querySelector("div[class*='card-pill-bg']");
+    expect(pastille).toBeTruthy();
+    expect(pastille.className).toContain("mt-auto");
+    expect(container.querySelector('[data-testid^="card-discount-"]')).toBeNull();
+  } finally { await unmountCard(container, root); }
+});
