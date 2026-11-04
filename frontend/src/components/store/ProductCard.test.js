@@ -190,7 +190,24 @@ test("Carte disponible : la pastille utilise le jeton --card-ink (pas de texte f
     expect(pastille.className).toContain("text-[color:var(--card-ink)]");
     expect(pastille.className).not.toContain("text-ink");
     expect(pastille.className).not.toContain("text-foreground");
-    expect(pastille.className).toContain("border-2");
+    expect(pastille.className).toContain("border-[color:var(--card-border)]");
+    expect(pastille.className).not.toContain("text-ink");
+    expect(pastille.className).not.toContain("text-foreground");
+    // MGS-FE-CARDS-20261104-03 : bordure fine (1px), plus de border-2.
+    expect(pastille.className).not.toContain("border-2");
+  } finally { await unmountCard(container, root); }
+});
+
+// MGS-FE-CARDS-20261104-03 : la carte elle-même porte une bordure fine
+// (« border »), pas une bordure épaisse (« border-2 »).
+test("L'article porte une bordure fine (border) et pas border-2", async () => {
+  const { container, root } = await mountCard(PUBG);
+  try {
+    const article = container.querySelector("article");
+    expect(article).toBeTruthy();
+    expect(article.className).toContain("border");
+    expect(article.className).toContain("border-[color:var(--card-border)]");
+    expect(article.className).not.toContain("border-2");
   } finally { await unmountCard(container, root); }
 });
 
