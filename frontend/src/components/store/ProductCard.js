@@ -76,8 +76,8 @@ export function ProductCard({ product, index = 0, badge }) {
   // plus que « Populaire » (flamme), la remise et « Indisponible ».
   const showPopular = context === "popular";
   const focus = "focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[color:var(--card-focus)]";
-  // « + » dès que la carte affiche une monnaie, quel que soit le jeu.
-  const actionIconName = isCurrency ? "plus" : product.type === "evo" ? "cart" : "arrow";
+  // « + » sur toutes les pastilles (modèle visuel -02B), l'evo garde son panier.
+  const actionIconName = product.type === "evo" ? "cart" : "plus";
 
   const handleAdd = () => {
     const addResult = add(product);
@@ -107,10 +107,10 @@ export function ProductCard({ product, index = 0, badge }) {
         <div className="flex items-start justify-between gap-1.5 sm:gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-3">
             {showPopular && (
-              <span data-testid={`card-context-${product.slug}`} className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--card-border)] bg-[color:var(--card-badge-bg)] px-3 py-1 font-body text-[10px] font-bold uppercase leading-none tracking-wider text-ink text-[color:var(--neo-text)]"><Icon name={contextIcon} className="h-3 w-3" />{contextLabel}</span>
+              <span data-testid={`card-context-${product.slug}`} className="inline-flex items-center gap-1.5 rounded-full border border-ink bg-[color:var(--card-badge-bg)] px-[9px] py-1 font-body text-[10px] font-bold uppercase leading-none tracking-[0.08em] text-ink text-[color:var(--neo-text)]"><Icon name={contextIcon} className="h-3 w-3" />{contextLabel}</span>
             )}
           </div>
-          <button type="button" aria-label={`${favorites.includes(product.id) ? t("product.removeFavorite") : t("product.addFavorite")} : ${product.name || product.slug}`} aria-pressed={favorites.includes(product.id)} onClick={handleToggleFavorite} className={`relative before:absolute before:-inset-1.5 before:content-[''] grid aspect-square h-8 w-8 shrink-0 place-items-center !rounded-full border border-ink bg-ink text-white transition duration-150 hover:scale-105 hover:bg-red-500 active:scale-95 aria-[pressed=true]:bg-red-500 aria-[pressed=true]:[&_svg]:fill-white ${focus}`}><Icon name="heart" /></button>
+          <button type="button" aria-label={`${favorites.includes(product.id) ? t("product.removeFavorite") : t("product.addFavorite")} : ${product.name || product.slug}`} aria-pressed={favorites.includes(product.id)} onClick={handleToggleFavorite} className={`relative before:absolute before:-inset-1.5 before:content-[''] grid aspect-square h-8 w-8 shrink-0 place-items-center !rounded-full border border-ink bg-ink text-white transition duration-150 hover:scale-105 hover:bg-red-500 active:scale-95 aria-[pressed=true]:bg-red-500 aria-[pressed=true]:[&_svg]:fill-white ${focus}`}><Icon name="heart" className="h-4 w-4" /></button>
         </div>
 
         {hasFigure ? (
@@ -118,32 +118,37 @@ export function ProductCard({ product, index = 0, badge }) {
           // reste accessible aux lecteurs d'écran uniquement (MGS-FE-CARDS-20261104-02).
           <>
             <h2 className="sr-only">{product.name || product.slug}</h2>
-            <p className={"mt-1 flex min-w-0 items-baseline gap-1 font-display font-extrabold tracking-tighter " + (figureLength >= 5 ? "text-2xl min-[400px]:text-3xl sm:text-4xl" : figureLength >= 4 ? "text-3xl min-[400px]:text-4xl sm:text-5xl" : "text-4xl min-[400px]:text-5xl sm:text-6xl")}>
+            <p className={"mt-2 flex min-w-0 items-baseline gap-1 font-display font-extrabold tracking-tighter " + (figureLength >= 5 ? "text-2xl min-[400px]:text-3xl sm:text-4xl" : figureLength >= 4 ? "text-3xl min-[400px]:text-4xl sm:text-5xl" : "text-4xl min-[400px]:text-5xl sm:text-6xl")}>
               {/* Le montant ne doit JAMAIS être coupé : c'est la vedette. */}
               <span className="shrink-0 leading-none">{figure}</span>
-              <span className={"min-w-0 truncate font-bold uppercase tracking-tight text-[color:var(--card-ink-muted)] " + (unit.length > 4 ? "text-[11px] sm:text-base" : "text-sm sm:text-xl")}>{unit}</span>
+              {/* Unité : 11 px / interligne 1 comme le modèle — sans leading-none
+                  elle hérite du 40 px du text-4xl et gonfle le bloc vedette. */}
+              <span className={"min-w-0 truncate font-bold uppercase leading-none tracking-[-0.01em] text-[color:var(--card-ink-muted)] text-[11px] " + (unit.length > 4 ? "sm:text-base" : "sm:text-xl")}>{unit}</span>
             </p>
           </>
         ) : (
           // Carte pack (sans montant) : le titre est la vedette, précédé d'une
           // étiquette de catégorie discrète. Aucune hauteur minimale.
           <>
-            <p className="mt-3 font-body text-[10px] font-bold uppercase tracking-[0.08em] text-[color:var(--card-ink-muted)] sm:text-xs">{t(categoryKey)}</p>
-            <h2 className="mt-1 line-clamp-2 break-words font-display text-[18px] font-extrabold leading-5 tracking-tight [text-wrap:balance] sm:text-[20px] sm:leading-6">{product.name || product.slug}</h2>
+            <p className="mt-3 font-body text-[10px] font-bold uppercase leading-3 tracking-[0.08em] text-[color:var(--card-ink-muted)] sm:text-xs">{t(categoryKey)}</p>
+            <h2 className="mt-1 line-clamp-2 break-words font-display text-[18px] font-extrabold leading-5 tracking-[-0.02em] [text-wrap:balance] sm:text-[20px] sm:leading-6">{product.name || product.slug}</h2>
           </>
         )}
 
-        {showDiscountLine ? (
-          <div className="mt-auto flex items-center gap-2 pb-1.5 pt-2">
-            <span data-testid={`card-discount-${product.slug}`} className="shrink-0 rounded-full border border-ink bg-neo px-2 py-0.5 font-body text-[11px] font-bold leading-4 text-ink">-{discount}%</span>
-            <span className="min-w-0 font-body text-xs font-bold line-through text-[color:var(--card-ink-muted)]">{formatAr(oldPrice)}</span>
-          </div>
-        ) : null}
+        {/* Bloc du bas (MGS-FE-CARDS-20261104-02B) : comme le `.mc-bottom` du
+            modèle — mt-auto + 12 px au-dessus, remise puis pastille. */}
+        <div className="mt-auto pt-3">
+          {showDiscountLine ? (
+            <div className="flex items-center gap-2 pb-1.5">
+              <span data-testid={`card-discount-${product.slug}`} className="shrink-0 rounded-full border border-ink bg-neo px-2 py-0.5 font-body text-[11px] font-bold leading-4 text-ink">-{discount}%</span>
+              <span className="min-w-0 font-body text-xs font-semibold line-through text-[color:var(--card-ink-muted)]">{formatAr(oldPrice)}</span>
+            </div>
+          ) : null}
 
         {/* La pastille de prix peint un fond blanc FIXE (`--card-pill-bg`) : son
             texte doit donc etre une encre fixe (`text-ink`), sinon il suit le
             theme et tombe a 1,12:1 sur le blanc en mode sombre. */}
-        <div className={`${showDiscountLine ? "" : "mt-auto"} flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border-2 border-[color:var(--card-border)] sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-[color:var(--card-pill-bg)] py-1 pl-2 pr-1 text-[color:var(--card-ink)] sm:pl-3" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
+        <div className={`flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border-2 border-[color:var(--card-border)] sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-[color:var(--card-pill-bg)] py-1 pl-3 pr-0.5 text-[color:var(--card-ink)]" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
           {!available ? (
             <span className="font-body text-sm font-bold uppercase tracking-wide">Indisponible</span>
           ) : qty > 0 ? (
@@ -160,12 +165,13 @@ export function ProductCard({ product, index = 0, badge }) {
             <>
               {/* Le prix ne doit JAMAIS être coupé : whitespace-nowrap, pas de truncate.
                   mgs-card-price : 14px en container query sous 170px de carte (index.css). */}
-              <div className="flex min-w-0 flex-1 items-center gap-1"><span className="mgs-card-price min-w-0 whitespace-nowrap font-display font-extrabold leading-none tracking-[-0.04em] text-base sm:text-2xl">{formatAr(product.price)}</span></div>
-              <button type="button" aria-label={`Ajouter au panier : ${product.name || product.slug}`} onClick={handleAdd} className={`relative before:absolute before:-inset-0.5 before:content-[''] grid aspect-square h-10 w-10 shrink-0 place-items-center !rounded-full border-2 border-[color:var(--card-cta-bg)] bg-[color:var(--card-cta-bg)] text-[color:var(--card-cta-fg)] transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
+              <div className="flex min-w-0 flex-1 items-center gap-1"><span className="mgs-card-price min-w-0 whitespace-nowrap font-display font-extrabold leading-none tracking-normal text-base sm:text-2xl">{formatAr(product.price)}</span></div>
+              <button type="button" aria-label={`Ajouter au panier : ${product.name || product.slug}`} onClick={handleAdd} className={`relative before:absolute before:-inset-0.5 before:content-[''] grid aspect-square h-10 w-10 shrink-0 place-items-center !rounded-full bg-[color:var(--card-cta-bg)] text-[color:var(--card-cta-fg)] transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
                 <Icon name={actionIconName} />
               </button>
             </>
           )}
+        </div>
         </div>
       </div>
     </article>

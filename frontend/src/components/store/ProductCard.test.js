@@ -201,7 +201,8 @@ test("CTA et focus de la carte passent par les jetons --card-cta-* / --card-focu
   try {
     const addBtn = byLabel(container, "Ajouter au panier : 60 UC");
     expect(addBtn.className).toContain("bg-[color:var(--card-cta-bg)]");
-    expect(addBtn.className).toContain("border-[color:var(--card-cta-bg)]");
+    // Modèle : le bouton rond n'a PAS de bordure (même couleur que le fond).
+    expect(addBtn.className).not.toContain("border-2");
     expect(addBtn.className).toContain("text-[color:var(--card-cta-fg)]");
     expect(addBtn.className).toContain("outline-[color:var(--card-focus)]");
   } finally { await unmountCard(container, root); }
@@ -268,13 +269,54 @@ test("La remise est hors de la pastille : badge + ancien prix barré au-dessus",
   } finally { await unmountCard(container, root); }
 });
 
-test("Sans remise : la pastille garde « mt-auto » (collée en bas)", async () => {
+test("Sans remise : le bloc du bas garde « mt-auto » (collé en bas)", async () => {
   const { container, root } = await mountCard(PUBG);
   try {
     const pastille = container.querySelector("div[class*='card-pill-bg']");
     expect(pastille).toBeTruthy();
-    expect(pastille.className).toContain("mt-auto");
+    // MGS-FE-CARDS-20261104-02B : le mt-auto + le 12 px du modèle vivent sur
+    // le bloc du bas (wrapper), plus sur la pastille elle-même.
+    const bloc = pastille.parentElement;
+    expect(bloc.className).toContain("mt-auto");
+    expect(bloc.className).toContain("pt-3");
+    expect(pastille.className).not.toContain("mt-auto");
     expect(container.querySelector('[data-testid^="card-discount-"]')).toBeNull();
+  } finally { await unmountCard(container, root); }
+});
+
+// --- MGS-FE-CARDS-20261104-02B : alignement sur le modèle visuel ---
+
+test("Alignement modèle : unité 11px/leading-none, vedette mt-2, cœur 16px", async () => {
+  const { container, root } = await mountCard(FF);
+  try {
+    const figP = [...container.querySelectorAll("p")].find((p) => p.querySelector("span.shrink-0"));
+    expect(figP.className).toContain("mt-2");
+    const unite = figP.querySelector("span.min-w-0");
+    expect(unite.className).toContain("text-[11px]");
+    expect(unite.className).toContain("leading-none");
+    expect(unite.className).not.toContain("text-sm");
+    const heart = container.querySelector("button[aria-pressed]");
+    expect(heart.querySelector("svg").getAttribute("class")).toContain("h-4 w-4");
+  } finally { await unmountCard(container, root); }
+});
+
+test("Alignement modèle : la pastille d'un pack sans montant porte « + »", async () => {
+  const PACK = { id: "pack-frag", slug: "pack-frag", name: "Fragments matériaux", type: "material", price: 5000, game_id: "pubg-mobile", purchasable: true };
+  const { container, root } = await mountCard(PACK);
+  try {
+    const addBtn = byLabel(container, "Ajouter au panier : Fragments matériaux");
+    expect(addBtn.querySelector('path[d="M12 5v14M5 12h14"]')).toBeTruthy();
+  } finally { await unmountCard(container, root); }
+});
+
+test("Alignement modèle : badge « Populaire » bordure encre fixe, padding 9px, 0,08em", async () => {
+  const { container, root } = await mountCard(PUBG_POP);
+  try {
+    const badge = container.querySelector('[data-testid^="card-context-"]');
+    expect(badge.className).toContain("border-ink");
+    expect(badge.className).not.toContain("card-border");
+    expect(badge.className).toContain("px-[9px]");
+    expect(badge.className).toContain("tracking-[0.08em]");
   } finally { await unmountCard(container, root); }
 });
 
