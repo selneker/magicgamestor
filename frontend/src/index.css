@@ -49,7 +49,7 @@
         --card-surface: hsl(var(--cream));
         --card-ink: #111111;
         --card-ink-muted: hsl(0 0% 7% / .7);
-        --card-border: var(--neo-border);
+        --card-border: hsl(0 0% 7% / .35);
         --card-pill-bg: #FFFFFF;
         --card-cta-bg: #111111;
         --card-cta-fg: var(--neo-card-bg);
@@ -93,7 +93,7 @@
         --card-surface: hsl(var(--card));
         --card-ink: hsl(var(--cream));
         --card-ink-muted: hsl(var(--cream) / .72);
-        --card-border: hsl(var(--cream) / .28);
+        --card-border: hsl(var(--cream) / .16);
         --card-pill-bg: #1F1F1F;
         --card-cta-bg: var(--neo-card-bg);
         --card-cta-fg: #111111;

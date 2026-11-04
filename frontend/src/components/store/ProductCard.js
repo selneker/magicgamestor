@@ -101,7 +101,7 @@ export function ProductCard({ product, index = 0, badge }) {
   };
 
   return (
-    <article data-testid={`product-card-${product.slug}`} className={`product-card group relative flex min-w-0 h-full mgs-card flex-col rounded-[28px] border-2 border-[color:var(--card-border)] bg-[color:var(--card-surface)] p-3 sm:p-5 shadow-none transition duration-200 ease-out hover:shadow-[4px_4px_0_var(--card-shadow)] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
+    <article data-testid={`product-card-${product.slug}`} className={`product-card group relative flex min-w-0 h-full mgs-card flex-col rounded-[28px] border border-[color:var(--card-border)] bg-[color:var(--card-surface)] p-3 sm:p-5 shadow-none transition duration-200 ease-out hover:shadow-[4px_4px_0_var(--card-shadow)] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
       <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-[28px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[color:var(--card-focus)]" aria-label={product.name || product.slug || "Produit"} />
       <div className="relative z-10 flex h-full flex-col text-[color:var(--card-ink)]">
         <div className="flex items-start justify-between gap-1.5 sm:gap-2">
@@ -148,7 +148,7 @@ export function ProductCard({ product, index = 0, badge }) {
         {/* La pastille de prix peint un fond blanc FIXE (`--card-pill-bg`) : son
             texte doit donc etre une encre fixe (`text-ink`), sinon il suit le
             theme et tombe a 1,12:1 sur le blanc en mode sombre. */}
-        <div className={`flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border-2 border-[color:var(--card-border)] sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-[color:var(--card-pill-bg)] py-1 pl-3 pr-0.5 text-[color:var(--card-ink)]" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
+        <div className={`flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border border-[color:var(--card-border)] sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-[color:var(--card-pill-bg)] py-1 pl-3 pr-0.5 text-[color:var(--card-ink)]" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
           {!available ? (
             <span className="font-body text-sm font-bold uppercase tracking-wide">Indisponible</span>
           ) : qty > 0 ? (
