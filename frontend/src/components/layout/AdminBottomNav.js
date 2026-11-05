@@ -12,7 +12,7 @@ import { adminBarItems, adminMoreItems, adminBadge, useFzrAlerts } from "@/lib/a
 // Android pattern: 4 primary destinations + a `More` sheet grouping the rest
 // (including Jeux, which had no mobile entry before the unification).
 export function AdminBottomNav() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const { can, logout } = useAuth();
   const { count } = useChat();
   const { t } = useLang();
@@ -20,6 +20,9 @@ export function AdminBottomNav() {
   const [moreOpen, setMoreOpen] = useState(false);
 
   if (!pathname.startsWith("/admin")) return null;
+  // Conversation admin ouverte (MGS-FE-ADMIN-20261105-02) : l'écran
+  // conversation est plein écran, la barre du bas est masquée.
+  if (pathname.startsWith("/admin/messages") && new URLSearchParams(search).has("c")) return null;
 
   const counts = { chat: count, fzr: fzrAlerts };
   const primary = adminBarItems(can);

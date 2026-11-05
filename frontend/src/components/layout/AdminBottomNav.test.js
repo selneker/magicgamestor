@@ -7,6 +7,7 @@ import { AdminBottomNav } from "./AdminBottomNav";
 // (react-router-dom est moqué comme dans les autres tests : le vrai paquet v7
 // ne se résout pas sous jest)
 let mockPathname = "/admin";
+let mockSearch = "";
 let mockCan = () => true;
 
 jest.mock("react-router-dom", () => {
@@ -15,7 +16,7 @@ jest.mock("react-router-dom", () => {
   return {
     Link: Anchor,
     NavLink: Anchor,
-    useLocation: () => ({ pathname: mockPathname }),
+    useLocation: () => ({ pathname: mockPathname, search: mockSearch }),
   };
 });
 jest.mock("framer-motion", () => {
@@ -42,6 +43,7 @@ global.IS_REACT_ACT_ENVIRONMENT = true;
 
 beforeEach(() => {
   mockPathname = "/admin";
+  mockSearch = "";
   mockCan = () => true;
   const { api } = require("@/lib/api");
   api.get.mockReset();
@@ -117,6 +119,18 @@ test("hors /admin, la barre ne rend rien", async () => {
   mockPathname = "/";
   const { container, root } = await mountNav();
   expect(container.querySelector('[data-testid="admin-bottom-nav"]')).toBeNull();
+  await act(async () => root.unmount());
+});
+
+test("conversation admin ouverte (/admin/messages?c=) : la barre du bas est masquée", async () => {
+  mockPathname = "/admin/messages";
+  mockSearch = "?c=c1";
+  const { container, root } = await mountNav();
+  expect(container.querySelector('[data-testid="admin-bottom-nav-wrapper"]')).toBeNull();
+  // Sans conversation ouverte, la barre revient.
+  mockSearch = "";
+  await act(async () => { root.render(<AdminBottomNav />); });
+  expect(container.querySelector('[data-testid="admin-bottom-nav-wrapper"]')).not.toBeNull();
   await act(async () => root.unmount());
 });
 
