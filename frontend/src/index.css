@@ -56,6 +56,10 @@
         --card-badge-bg: var(--neo-card-bg);
         --card-shadow: var(--neo-border);
         --card-focus: var(--neo-border);
+        /* Admin (MGS-FE-ADMIN-20261105-02) : texte atténué des pages admin.
+           Même logique que --card-ink-muted : en clair l'encre s'atténue, en
+           sombre c'est la crème (>= .72 d'opacité pour rester >= 4.5:1). */
+        --admin-ink-muted: hsl(0 0% 7% / .72);
     }
     .dark {
         --background: 0 0% 17%;        /* #2B2B2B */
@@ -97,6 +101,7 @@
         --card-pill-bg: #1F1F1F;
         --card-cta-bg: var(--neo-card-bg);
         --card-cta-fg: #111111;
+        --admin-ink-muted: hsl(var(--cream) / .75);
         --card-badge-bg: var(--neo-card-bg);
         --card-shadow: var(--neo-card-bg);
         --card-focus: var(--neo-card-bg);

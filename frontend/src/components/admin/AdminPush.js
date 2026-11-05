@@ -76,7 +76,7 @@ export const AdminPush = () => {
       <Bell className="h-4 w-4" strokeWidth={2} />
       <p className="text-[11px] font-black uppercase tracking-[0.12em]" data-testid="push-status" aria-live="polite">
         Notifications
-        <span className={`ml-2 inline-block border border-foreground px-1.5 py-0.5 ${state === "activées" ? "bg-primary text-[#0A0A0A]" : "text-muted-foreground"}`}>{supported() ? state : "non disponibles"}</span>
+        <span className={`ml-2 inline-block border border-foreground px-1.5 py-0.5 ${state === "activées" ? "bg-primary text-[#0A0A0A]" : "text-[color:var(--admin-ink-muted)]"}`}>{supported() ? state : "non disponibles"}</span>
       </p>
       {supported() && state !== "activées" && <Button type="button" size="sm" disabled={busy || !config?.configured || state === "refusées"} onClick={enable} data-testid="push-enable">Activer</Button>}
       {state === "activées" && <>

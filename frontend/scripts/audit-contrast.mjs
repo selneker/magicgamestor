@@ -210,8 +210,50 @@ const ORDER = {
 };
 
 const USER = { user_id: "u1", email: "client@exemple.test", name: "Client", roles: [], permissions: [] };
+// Variante admin pour les pages /admin/* (ProtectedRoute exige role admin ;
+// « users.manage » rend l'entrée Utilisateurs visible comme en production).
+const ADMIN_USER = { user_id: "u1", email: "admin@exemple.test", name: "Admin", role: "admin", permissions: ["users.manage"] };
+
+const ADMIN_STATS = {
+  revenue: 0, total_orders: 0, customers: 0, pending_payment_count: 0, pending_payment_usd: 0,
+  status_count: { paid: 0, awaiting_verification: 0, delivered: 0 }, daily: [], top_products: [], by_method: {},
+};
+
+// Messages admin (MGS-FE-ADMIN-20261105-02) : la liste (badge non lus, textes
+// atténués) et une conversation ouverte (libellés, dates, bulles) rendent
+// réellement pendant l'audit — avant, la page ne montrait que son bloc d'erreur.
+const CHAT_CONVERSATIONS = [
+  { id: "c1", user_name: "Pipa Nilsen", user_email: "pipa.nilsen@example.com", last_message: "Bonjour, j'ai une question sur ma commande.", updated_at: "2026-11-05T10:00:00Z", unread_count: 2 },
+  { id: "c2", user_name: "Alex Rakoto", user_email: "alex.rakoto@example.com", last_message: "Merci !", updated_at: "2026-11-04T09:00:00Z", unread_count: 0 },
+];
+const CHAT_THREAD = {
+  conversation: { id: "c1", user_name: "Pipa Nilsen" },
+  messages: [
+    { id: "m1", sender_role: "customer", text: "Bonjour, j'ai une question sur ma commande.", created_at: "2026-11-05T09:59:00Z", read: false },
+    { id: "m2", sender_role: "admin", text: "Bonjour ! Comment pouvons-nous vous aider ?", created_at: "2026-11-05T10:00:00Z", read: true },
+  ],
+  has_more: false,
+};
 
 const mockApi = (pathname) => {
+  // Pages admin : formes minimales mais typées (objets là où les pages
+  // accèdent à des champs, tableaux ailleurs), pour que chaque page rende
+  // réellement son interface.
+  if (pathname.startsWith("/admin") || pathname.startsWith("/crypto/admin") || pathname.startsWith("/loyalty/admin") || pathname.startsWith("/payments/admin")) {
+    if (pathname.includes("/admin/stats")) return ADMIN_STATS;
+    if (pathname.includes("/admin/users")) return { items: [], total: 0, page: 1, page_size: 20 };
+    if (pathname.includes("/admin/fazercards/price-alerts")) return { alerts: [], unacknowledged: 0 };
+    if (pathname.includes("/admin/fazercards/settings")) return { fzr_auto: false };
+    if (pathname.includes("/admin/fazercards/mappings")) return { products: [] };
+    if (pathname.includes("/admin/fazercards/coverage")) return { offers: [] };
+    if (pathname.includes("/admin/fazercards/uc-audit")) return { rows: [] };
+    if (pathname.includes("/admin/push/config")) return { configured: false };
+    if (pathname.includes("/payments/admin/settings")) return { payment_fees: {} };
+    if (pathname.includes("/loyalty/admin/settings")) return { enabled: false, transfers_enabled: false };
+    return [];
+  }
+  if (pathname.includes("/chat/conversations") && pathname.endsWith("/messages")) return CHAT_THREAD;
+  if (pathname.includes("/chat/conversations")) return { items: CHAT_CONVERSATIONS, has_more: false };
   if (pathname.endsWith("/games")) return GAMES;
   if (pathname.includes("/payments/config")) return PAYMENT_CONFIG;
   if (pathname.includes("/payments/initiate")) return { simulated: true, payment_url: null, attempt: 1 };
@@ -275,6 +317,21 @@ const PAGES = [
     pubgVerify: { status: 503 } },
   { name: "fidelite-pubg-html", path: "/compte/points", step: "pubg-fidelite", loggedIn: true,
     pubgVerify: { html: true } },
+  // Pages admin : la navigation (sidebar desktop / barre mobile) et chaque
+  // route /admin/* sont auditees en clair et en sombre (MGS-FE-ADMIN-20261105-01).
+  { name: "admin-dashboard", path: "/admin", loggedIn: true, admin: true },
+  { name: "admin-commandes", path: "/admin/commandes", loggedIn: true, admin: true },
+  { name: "admin-catalogue", path: "/admin/catalogue", loggedIn: true, admin: true },
+  { name: "admin-jeux", path: "/admin/jeux", loggedIn: true, admin: true },
+  { name: "admin-fournisseur", path: "/admin/fournisseur", loggedIn: true, admin: true },
+  { name: "admin-paiements", path: "/admin/paiements", loggedIn: true, admin: true },
+  { name: "admin-evenements", path: "/admin/evenements", loggedIn: true, admin: true },
+  { name: "admin-messages", path: "/admin/messages", loggedIn: true, admin: true },
+  // Conversation ouverte (?c=) : la bulle client, les libellés et les dates de
+  // ChatThread sont mesurés (MGS-FE-ADMIN-20261105-02).
+  { name: "admin-messages-conversation", path: "/admin/messages?c=c1", loggedIn: true, admin: true },
+  { name: "admin-fidelite", path: "/admin/fidelite", loggedIn: true, admin: true },
+  { name: "admin-utilisateurs", path: "/admin/utilisateurs", loggedIn: true, admin: true },
 ];
 
 const VIEWPORTS = [
@@ -538,10 +595,11 @@ const run = async () => {
         await pg.route("**/api/**", (route) => {
           const p = new URL(route.request().url()).pathname;
           if (p.includes("/auth/me")) {
+            const authenticated = page.loggedIn && page.admin ? ADMIN_USER : page.loggedIn ? USER : {};
             return route.fulfill({
               status: page.loggedIn ? 200 : 401,
               contentType: "application/json",
-              body: JSON.stringify(page.loggedIn ? USER : {}),
+              body: JSON.stringify(authenticated),
             });
           }
           // Verification PUBG Mobile (parcours historique) : le meme contrat

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
-import { CalendarRange, Coins, Download, Gamepad2, LayoutDashboard, Package, PlugZap, ReceiptText, MessageCircle, Users, Wallet } from "lucide-react";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { Download } from "lucide-react";
 import { AdminPush } from "@/components/admin/AdminPush";
 import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
+import { adminSidebarGroups, adminBadge, useFzrAlerts } from "@/lib/adminNav";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 
@@ -13,34 +14,23 @@ export default function AdminLayout() {
   const { t } = useLang();
   const { count } = useChat();
   const { can } = useAuth();
+  const { pathname } = useLocation();
   const [online, setOnline] = useState(false);
-  const [fzrAlerts, setFzrAlerts] = useState(0);
+  const fzrAlerts = useFzrAlerts();
   useEffect(() => {
     const meta = document.querySelector('meta[name="robots"]');
     meta?.setAttribute("content", "noindex,nofollow");
     return () => meta?.setAttribute("content", "index,follow");
   }, []);
   useEffect(() => { api.get("/settings/status").then((r) => setOnline(r.data.online)).catch(() => {}); }, []);
-  useEffect(() => { api.get("/admin/fazercards/price-alerts", { params: { limit: 1 } }).then((r) => setFzrAlerts(r.data.unacknowledged)).catch(() => {}); }, []);
   const toggle = async (v) => { setOnline(v); await api.post("/admin/status", { online: v }).catch(() => setOnline(!v)); };
-  const tabs = [
-    ["/admin", LayoutDashboard, t("admin.dashboard"), "admin-tab-dashboard", true],
-    ["/admin/commandes", ReceiptText, t("admin.orders"), "admin-tab-orders"],
-    ["/admin/catalogue", Package, t("admin.products"), "admin-tab-products"],
-    ["/admin/jeux", Gamepad2, t("admin.games"), "admin-tab-games"],
-    ["/admin/fournisseur", PlugZap, `${t("admin.fzr.tab")}${fzrAlerts ? ` (${fzrAlerts})` : ""}`, "admin-tab-fzr"],
-    ["/admin/paiements", Wallet, t("admin.paymentsTitle"), "admin-tab-payments"],
-    ["/admin/evenements", CalendarRange, t("admin.events"), "admin-tab-events"],
-    ["/admin/messages", MessageCircle, `Chat${count ? ` (${count})` : ""}`, "admin-tab-chat"],
-    ["/admin/fidelite", Coins, "Fidélité", "admin-tab-loyalty"],
-    ...(can("users.manage") ? [["/admin/utilisateurs", Users, "Utilisateurs", "admin-tab-users"]] : []),
-  ];
+  const groups = adminSidebarGroups(can);
   const exportCsv = async () => {
     const { data } = await api.get("/admin/export", { responseType: "blob" });
     const url = URL.createObjectURL(data); const a = document.createElement("a"); a.href = url; a.download = "orders.csv"; a.click(); URL.revokeObjectURL(url);
   };
   return (
-    <div className="pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-6 md:pb-16" data-testid="admin-layout">
+    <div className="pb-[calc(56px+env(safe-area-inset-bottom))] pt-6 lg:pb-16" data-testid="admin-layout">
       <div className="flex flex-wrap items-center gap-4 border-b border-foreground pb-4">
         <div><p className="eyebrow">Magic Game Store</p><h1 className="font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">{t("nav.admin")}</h1></div>
         <label className="ml-auto flex items-center gap-2 border border-foreground bg-card px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em]">
@@ -51,12 +41,46 @@ export default function AdminLayout() {
         <Button asChild variant="ghost" size="sm" className="rounded-full"><Link to="/">{t("nav.shop")}</Link></Button>
       </div>
       <AdminPush />
-      <nav className="no-scrollbar mt-6 hidden gap-2 overflow-x-auto md:flex">
-        {tabs.map(([to, Icon, label, id, end]) => (
-          <NavLink key={to} to={to} end={end} data-testid={id} className={({ isActive }) => `inline-flex shrink-0 items-center gap-2 border border-foreground px-4 py-2 text-[11px] font-black uppercase tracking-[0.12em] transition-colors ${isActive ? "bg-primary text-[#0A0A0A]" : "bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`}><Icon className="h-3.5 w-3.5" strokeWidth={2} />{label}</NavLink>
-        ))}
-      </nav>
-      <div className="mt-6"><Outlet /></div>
+      <div className="mt-6 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-8">
+        {/* Sidebar desktop (>=1024px) : unique navigation desktop, toutes les
+            pages accessibles sans scroll horizontal. Source : ADMIN_NAV. */}
+        <aside className="hidden lg:block">
+          <nav className="sticky top-20 space-y-6 pb-4" data-testid="admin-sidebar" aria-label={t("nav.admin")}>
+            {groups.map((g) => (
+              <div key={g.key}>
+                <p className="eyebrow mb-2">{t(g.labelKey)}</p>
+                <ul className="space-y-1">
+                  {g.items.map((e) => {
+                    const badge = adminBadge(e, { chat: count, fzr: fzrAlerts });
+                    const Icon = e.icon;
+                    const isActive = e.end ? pathname === e.path : pathname.startsWith(e.path);
+                    return (
+                      <li key={e.key}>
+                        <NavLink
+                          to={e.path}
+                          end={e.end}
+                          aria-current={isActive ? "page" : undefined}
+                          data-testid={`admin-nav-${e.key}`}
+                          className={`flex min-h-[40px] items-center gap-2.5 rounded-[10px] px-3 text-[12px] font-semibold transition-colors ${
+                            isActive ? "bg-primary text-ink" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          }`}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" strokeWidth={2} />
+                          <span className="flex-1 truncate">{t(e.labelKey)}</span>
+                          {badge > 0 && (isActive
+                            ? <span className="ml-auto text-[11px] font-black text-ink">{badge}</span>
+                            : <span className="ml-auto rounded-full bg-foreground px-1.5 text-center text-[10px] font-black leading-[18px] text-background">{badge}</span>)}
+                        </NavLink>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </nav>
+        </aside>
+        <div className="min-w-0"><Outlet /></div>
+      </div>
     </div>
   );
 }
