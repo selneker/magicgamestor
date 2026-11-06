@@ -18,7 +18,7 @@ jest.mock("react-router-dom", () => {
     useLocation: () => ({ pathname: mockPathname }),
   };
 });
-jest.mock("@/components/admin/AdminPush", () => ({ AdminPush: () => null }));
+jest.mock("@/components/admin/AdminPush", () => ({ AdminPushPage: () => null, AdminPushBadge: () => null }));
 jest.mock("@/lib/api", () => ({ api: { get: jest.fn(), post: jest.fn() } }));
 jest.mock("@/context/LanguageContext", () => ({
   useLang: () => ({
@@ -55,17 +55,21 @@ async function mountLayout() {
   return { container, root };
 }
 
-test("sidebar desktop : les 10 entrées sont présentes et groupées, plus aucun onglet horizontal", async () => {
+test("sidebar desktop : les 11 entrées sont présentes et groupées, plus aucun onglet horizontal", async () => {
   const { container, root } = await mountLayout();
   const sidebar = container.querySelector('[data-testid="admin-sidebar"]');
   expect(sidebar).not.toBeNull();
   const expected = [
     "dashboard", "orders", "payments", "chat", // Opérations
     "catalogue", "games", "events", "loyalty", // Boutique
-    "fournisseur", "users", // Système
+    "fournisseur", "users", "notifications", // Système
   ];
   const ids = Array.from(sidebar.querySelectorAll('[data-testid^="admin-nav-"]')).map((el) => el.getAttribute("data-testid"));
   expect(ids).toEqual(expected.map((k) => `admin-nav-${k}`));
+  // PL-NOTIF-2B : l'encadré de configuration push a quitté le layout —
+  // ni l'encadré ni une ligne de journal ne doivent apparaître ici.
+  expect(container.querySelector('[data-testid="admin-push"]')).toBeNull();
+  expect(container.querySelector('[data-testid="push-alert"]')).toBeNull();
   // L'ancienne barre d'onglets débordante a disparu.
   expect(container.querySelector('[data-testid="admin-tab-dashboard"]')).toBeNull();
   expect(container.querySelector(".overflow-x-auto")).toBeNull();

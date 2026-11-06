@@ -35,6 +35,7 @@ import AdminEvents from "@/pages/admin/AdminEvents";
 import AdminLoyalty from "@/pages/admin/AdminLoyalty";
 import AdminUsers from "@/pages/admin/AdminUsers";
 import AdminPayments from "@/pages/admin/AdminPayments";
+import AdminNotifications from "@/pages/admin/AdminNotifications";
 
 function AppRouter() {
   return (
@@ -74,6 +75,7 @@ function AppRouter() {
             <Route path="utilisateurs" element={<AdminUsers />} />
             <Route path="paiements" element={<AdminPayments />} />
             <Route path="paiements/binance" element={<Navigate to="/admin/paiements" replace />} />
+            <Route path="notifications" element={<AdminNotifications />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

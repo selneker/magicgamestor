@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { Download, Home, LogOut } from "lucide-react";
-import { AdminPush } from "@/components/admin/AdminPush";
+import { AdminPushBadge } from "@/components/admin/AdminPush";
 import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
@@ -40,7 +40,10 @@ export default function AdminLayout() {
         <Button variant="outline" size="sm" className="rounded-full" onClick={exportCsv} data-testid="admin-export"><Download className="mr-1 h-4 w-4" />{t("admin.export")}</Button>
         <Button asChild variant="ghost" size="sm" className="rounded-full"><Link to="/">{t("nav.shop")}</Link></Button>
       </div>
-      <AdminPush />
+      {/* PL-NOTIF-2B : l'encadré de configuration a déménagé sur sa page
+          (/admin/notifications) ; ici, seulement une pastille s'il y a un
+          problème — rien quand tout va bien. */}
+      <AdminPushBadge />
       <div className="mt-6 lg:grid lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-8">
         {/* Sidebar desktop (>=1024px) : unique navigation desktop, toutes les
             pages accessibles sans scroll horizontal. Source : ADMIN_NAV.
