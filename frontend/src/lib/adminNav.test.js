@@ -20,6 +20,7 @@ const EXPECTED_PATHS = [
   "/admin/messages",
   "/admin/fidelite",
   "/admin/utilisateurs",
+  "/admin/notifications",
 ];
 
 const resolve = (lang, path) =>
@@ -71,7 +72,7 @@ describe("ADMIN_NAV — source de vérité unique", () => {
   test("la barre mobile affiche Accueil, Commandes, Catalogue, Chat — le reste va dans Plus", () => {
     expect(adminBarItems(canAll).map((e) => e.key)).toEqual(["dashboard", "orders", "catalogue", "chat"]);
     expect(adminMoreItems(canAll).map((e) => e.key)).toEqual([
-      "games", "fournisseur", "payments", "events", "loyalty", "users",
+      "games", "fournisseur", "payments", "events", "loyalty", "users", "notifications",
     ]);
   });
 
@@ -80,7 +81,7 @@ describe("ADMIN_NAV — source de vérité unique", () => {
     expect(groups.map((g) => g.key)).toEqual(["ops", "shop", "system"]);
     expect(groups[0].items.map((e) => e.key)).toEqual(["dashboard", "orders", "payments", "chat"]);
     expect(groups[1].items.map((e) => e.key)).toEqual(["catalogue", "games", "events", "loyalty"]);
-    expect(groups[2].items.map((e) => e.key)).toEqual(["fournisseur", "users"]);
+    expect(groups[2].items.map((e) => e.key)).toEqual(["fournisseur", "users", "notifications"]);
   });
 
   test("Utilisateurs exige la permission users.manage et disparaît sans elle", () => {

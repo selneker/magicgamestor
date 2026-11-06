@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CalendarRange, Coins, Gamepad2, LayoutDashboard, MessageCircle, Package, PlugZap, ReceiptText, Users, Wallet } from "lucide-react";
+import { CalendarRange, Bell, Coins, Gamepad2, LayoutDashboard, MessageCircle, Package, PlugZap, ReceiptText, Users, Wallet } from "lucide-react";
 import { api } from "@/lib/api";
 
 // Source de vérité unique de la navigation admin (MGS-FE-ADMIN-20261105-01).
@@ -30,6 +30,7 @@ export const ADMIN_NAV = [
   { key: "events", labelKey: "admin.events", shortLabelKey: "admin.events", icon: CalendarRange, path: "/admin/evenements", group: "shop", mobile: "more", moreOrder: 4 },
   { key: "loyalty", labelKey: "admin.loyalty", shortLabelKey: "admin.loyalty", icon: Coins, path: "/admin/fidelite", group: "shop", mobile: "more", moreOrder: 5 },
   { key: "users", labelKey: "admin.users", shortLabelKey: "admin.users", icon: Users, path: "/admin/utilisateurs", group: "system", mobile: "more", moreOrder: 6, permission: "users.manage" },
+  { key: "notifications", labelKey: "admin.push.title", shortLabelKey: "admin.push.title", icon: Bell, path: "/admin/notifications", group: "system", mobile: "more", moreOrder: 7 },
 ];
 
 // Groupes de la sidebar desktop, dans l'ordre d'affichage.

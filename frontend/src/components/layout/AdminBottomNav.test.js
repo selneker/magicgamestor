@@ -95,9 +95,10 @@ test("menu Plus : Jeux, Fournisseur, Paiements, Événements, Fidélité, Utilis
     ["admin-bnav-events", "/admin/evenements"],
     ["admin-bnav-loyalty", "/admin/fidelite"],
     ["admin-bnav-users", "/admin/utilisateurs"],
+    ["admin-bnav-notifications", "/admin/notifications"],
   ];
   const items = Array.from(sheet.querySelectorAll("li [data-testid]")).map((el) => [el.getAttribute("data-testid"), el.getAttribute("href")]);
-  expect(items.slice(0, 6)).toEqual(expected);
+  expect(items.slice(0, 7)).toEqual(expected);
   expect(items.map(([id]) => id)).toContain("admin-bnav-go-shop");
   expect(items.map(([id]) => id)).toContain("admin-bnav-logout");
   // Badge Fournisseur (alertes prix) affiché aussi dans le menu Plus.
