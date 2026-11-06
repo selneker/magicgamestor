@@ -19,7 +19,7 @@ from services import loyalty, mailer
 from services import payments as gw
 from services.fulfillment import on_order_paid
 from services.fzr_mapping import purchase_blocked, supplier_cost_usd
-from services.push import notify_new_order
+from services.notifications import notify_new_order
 
 router = APIRouter(tags=["orders"])
 PUBLIC = {"_id": 0}

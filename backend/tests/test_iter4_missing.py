@@ -392,11 +392,15 @@ class TestPushService:
                 self.keys = d["keys"]
                 self.updated_at = d["updated_at"]
 
+        from services import notifications
+
         with patch.object(push_service, "db", FakeDB()), \
              patch.object(push_service, "send_push", fake_send_push), \
+             patch.object(push_service, "configured", lambda: True), \
+             patch.object(notifications, "db", FakeDB()), \
              patch.object(push_service, "PushSubscription", MagicMock(from_mongo=_DuckSub)):
             order = {"id": "o1", "order_number": "MGS-ABCDEF", "total": 12000}
-            asyncio.run(push_service.notify_new_order(order))
+            asyncio.run(notifications.notify_new_order(order))
 
         # Only admin subscription got the push
         assert [e for e, _ in sent_to] == [admin_sub_doc["endpoint"]]

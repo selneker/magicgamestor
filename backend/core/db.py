@@ -42,6 +42,12 @@ async def ensure_indexes():
     await db.chat_messages.create_index([("conversation_id", 1), ("sender_role", 1), ("read", 1)])
     await db.push_subscriptions.create_index("endpoint", unique=True)
     await db.push_subscriptions.create_index("user_id")
+    # PL-NOTIF-1 : journal des alertes admin. TTL (30 j par défaut, ALERT_LOG_TTL_DAYS) et
+    # déduplication par (event, dedupe_key) — les lignes sans clé ne sont jamais dédoublonnées.
+    from services.notifications import alert_log_ttl_seconds
+    await db.alert_log.create_index("created_at", expireAfterSeconds=alert_log_ttl_seconds(), name="alert_log_ttl")
+    await db.alert_log.create_index([("event", 1), ("dedupe_key", 1)], unique=True, name="alert_log_dedupe",
+                                    partialFilterExpression={"dedupe_key": {"$type": "string"}})
     # Payments: one document per payment ATTEMPT (legacy docs = attempt 1, client_ref == order_number).
     await _drop_if_exists(db.payments, "order_id_1")
     await db.payments.create_index([("order_id", 1), ("created_at", -1)])
