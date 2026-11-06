@@ -6,6 +6,7 @@ import AdminLayout from "./AdminLayout";
 // (source de vérité unique) et remplace la barre d'onglets qui débordait.
 let mockPathname = "/admin";
 let mockCan = () => true;
+let mockLogout = jest.fn();
 
 jest.mock("react-router-dom", () => {
   const React = require("react");
@@ -26,7 +27,7 @@ jest.mock("@/context/LanguageContext", () => ({
   }),
 }));
 jest.mock("@/context/AuthContext", () => ({
-  useAuth: () => ({ can: (...a) => mockCan(...a) }),
+  useAuth: () => ({ can: (...a) => mockCan(...a), logout: mockLogout }),
 }));
 jest.mock("@/context/ChatContext", () => ({ useChat: () => ({ count: 7 }) }));
 
@@ -35,6 +36,7 @@ global.IS_REACT_ACT_ENVIRONMENT = true;
 beforeEach(() => {
   mockPathname = "/admin";
   mockCan = () => true;
+  mockLogout = jest.fn();
   const { api } = require("@/lib/api");
   api.get.mockReset();
   api.get.mockImplementation((url) => {
@@ -62,7 +64,7 @@ test("sidebar desktop : les 10 entrées sont présentes et groupées, plus aucun
     "catalogue", "games", "events", "loyalty", // Boutique
     "fournisseur", "users", // Système
   ];
-  const ids = Array.from(sidebar.querySelectorAll("[data-testid]")).map((el) => el.getAttribute("data-testid"));
+  const ids = Array.from(sidebar.querySelectorAll('[data-testid^="admin-nav-"]')).map((el) => el.getAttribute("data-testid"));
   expect(ids).toEqual(expected.map((k) => `admin-nav-${k}`));
   // L'ancienne barre d'onglets débordante a disparu.
   expect(container.querySelector('[data-testid="admin-tab-dashboard"]')).toBeNull();
@@ -112,5 +114,48 @@ test("le contenu de page reçoit un padding-bottom égal à la barre mobile (56p
   const layout = container.querySelector('[data-testid="admin-layout"]');
   expect(layout.className).toContain("pb-[calc(56px+env(safe-area-inset-bottom))]");
   expect(layout.className).toContain("lg:pb-16");
+  await act(async () => root.unmount());
+});
+
+test("sidebar épinglée : sticky sous l'en-tête, hauteur viewport, scroll propre", async () => {
+  const { container, root } = await mountLayout();
+  const sidebar = container.querySelector('[data-testid="admin-sidebar"]');
+  // Épinglage : sticky calé sous l'en-tête (h-16) et hauteur = viewport - top - 16px.
+  expect(sidebar.className).toContain("sticky");
+  expect(sidebar.className).toContain("top-16");
+  expect(sidebar.className).toContain("h-[calc(100dvh-4rem-16px)]");
+  // Scroll vertical propre, confiné, scrollbar fine — uniquement sur les groupes.
+  const scroll = sidebar.querySelector(".overflow-y-auto");
+  expect(scroll).not.toBeNull();
+  expect(scroll.className).toContain("overscroll-contain");
+  expect(scroll.className).toContain("[scrollbar-width:thin]");
+  expect(scroll.querySelector('[data-testid="admin-nav-dashboard"]')).not.toBeNull();
+  await act(async () => root.unmount());
+});
+
+test("pied de sidebar fixe : Boutique et Déconnexion hors de la zone scrollée", async () => {
+  const { container, root } = await mountLayout();
+  const sidebar = container.querySelector('[data-testid="admin-sidebar"]');
+  const scroll = sidebar.querySelector(".overflow-y-auto");
+  const shop = sidebar.querySelector('[data-testid="admin-sidebar-shop"]');
+  const logoutBtn = sidebar.querySelector('[data-testid="admin-sidebar-logout"]');
+  expect(shop).not.toBeNull();
+  expect(logoutBtn).not.toBeNull();
+  // Hors de la zone qui défile.
+  expect(scroll.contains(shop)).toBe(false);
+  expect(scroll.contains(logoutBtn)).toBe(false);
+  // Mêmes chaînes t() que le menu Plus mobile.
+  expect(shop.textContent).toContain("Boutique");
+  expect(logoutBtn.textContent).toContain("Déconnexion");
+  // Déconnexion en couleur danger (lisible clair + sombre, tokens --destructive).
+  expect(logoutBtn.className).toContain("text-destructive");
+  await act(async () => root.unmount());
+});
+
+test("Déconnexion déclenche logout() du contexte auth", async () => {
+  const { container, root } = await mountLayout();
+  const logoutBtn = container.querySelector('[data-testid="admin-sidebar-logout"]');
+  await act(async () => { logoutBtn.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  expect(mockLogout).toHaveBeenCalledTimes(1);
   await act(async () => root.unmount());
 });
