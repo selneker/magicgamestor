@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Bell, BellOff, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -182,6 +182,7 @@ export const AdminPushPage = () => {
 export const AdminPushBadge = () => {
   const { t } = useLang();
   const s = usePushSync();
+  const { pathname } = useLocation();
   useEffect(() => {
     pushSync.ensureStarted();
   }, []);
@@ -195,7 +196,8 @@ export const AdminPushBadge = () => {
       s.sync.state === "failed" ||
       (s.deviceSynced === true && s.status?.push_subscriptions === 0));
 
-  if (!problem) return null;
+  // La page Notifications montre déjà l'état complet : pas de pastille là-bas.
+  if (!problem || pathname === "/admin/notifications") return null;
   return (
     <Link
       to="/admin/notifications"
