@@ -163,6 +163,11 @@
     .product-card-lift:hover { transform: translate(-3px, -3px); box-shadow: 5px 5px 0 hsl(var(--foreground) / .25); border-color: var(--rule-strong); }
     .dark .product-card-lift:hover { box-shadow: 5px 5px 0 hsl(var(--primary) / .55); }
     .glass { @apply bg-background/85 backdrop-blur-xl; }
+    /* En sombre uniquement : 15% de transparence laissaient passer un contenu
+       clair (lime) sous l'en-tête maintenant réellement épinglé — lien
+       atténué mesuré à 4.28:1 (audit catalogue 1440 sombre). À 5%, le pire
+       cas (lime plein sous le verre) reste ≥ 5:1. */
+    .dark .glass { @apply bg-background/95; }
     /* Neubrutalist rhythm: crisp panels, offset shadows, and intentional hard edges. */
     .brutal-panel { border: 2px solid hsl(var(--foreground)); box-shadow: 5px 5px 0 hsl(var(--foreground)); }
     .brutal-button { border: 2px solid hsl(var(--foreground)); box-shadow: 3px 3px 0 hsl(var(--foreground)); transition: transform .18s ease, box-shadow .18s ease; }
@@ -275,3 +280,14 @@
 .recharts-cartesian-axis-tick text { fill: hsl(var(--muted-foreground)); }
 
 [data-debug-wrapper="true"] { display: contents !important; }
+
+/* Épinglage (position:sticky) : overflow-x:hidden calcule overflow-y:auto et
+   fait de la coquille Layout un scrollport qui ne défile jamais — tout
+   position:sticky à l'intérieur (header du site, sidebar admin) se calait sur
+   ce conteneur au lieu du viewport et ne collait donc jamais au défilement.
+   overflow:clip clippe sans créer de scrollport ; les navigateurs sans
+   support ignorent la déclaration (comportement actuel, sans régression).
+   Sélecteur volontairement scoping à la coquille Layout : les primitives
+   Radix (select, dropdown…) utilisent leur propre overflow-x-hidden comme
+   conteneur de scroll voulu et ne doivent pas changer. */
+.min-h-screen.bg-background.overflow-x-hidden { overflow-x: clip !important; }
