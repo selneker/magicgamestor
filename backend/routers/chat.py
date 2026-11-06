@@ -5,7 +5,7 @@ from pymongo.errors import DuplicateKeyError
 from core.db import db
 from core.security import get_current_user, has_permission
 from models.messaging import Conversation, Message
-from services.push import notify_new_message
+from services.notifications import notify_new_message
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 

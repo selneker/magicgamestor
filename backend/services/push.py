@@ -28,6 +28,27 @@ def endpoint_hosts() -> str:
     return (os.environ.get("PUSH_ENDPOINT_HOSTS") or DEFAULT_ENDPOINT_HOSTS).strip()
 
 
+def _env_number(name: str, default, cast):
+    try:
+        return cast(os.environ.get(name, default))
+    except ValueError:
+        return cast(default)
+
+
+def ttl_seconds() -> int:
+    """Durée de vie côté service Push : un téléphone verrouillé doit recevoir l'alerte plus tard."""
+    return max(0, _env_number("PUSH_TTL_S", 86400, int))
+
+
+def urgency() -> str:
+    return (os.environ.get("PUSH_URGENCY") or "high").strip() or "high"
+
+
+def timeout_seconds() -> float:
+    """Délai maximal d'un envoi : une alerte ne doit jamais bloquer le serveur."""
+    return max(1.0, _env_number("PUSH_TIMEOUT_S", 10, float))
+
+
 def configured():
     return bool(private_key() and os.environ.get("VAPID_PUBLIC_KEY") and os.environ.get("VAPID_SUBJECT"))
 
@@ -59,13 +80,20 @@ def _send(subscription, payload):
     validate_endpoint(subscription.endpoint)
     vapid = _vapid()
     with NoRedirectSession() as session:
+        # `urgency` n'a pas de paramètre dédié dans pywebpush 2.5.0 (vérifié) : il part en en-tête,
+        # transmis tel quel au POST par WebPusher.send.
         webpush(subscription_info={"endpoint": subscription.endpoint, "keys": subscription.keys},
                 data=json.dumps(payload, ensure_ascii=False), vapid_private_key=vapid,
-                vapid_claims={"sub": os.environ["VAPID_SUBJECT"]}, ttl=86400, timeout=10,
-                requests_session=session)
+                vapid_claims={"sub": os.environ["VAPID_SUBJECT"]}, ttl=ttl_seconds(),
+                timeout=timeout_seconds(), headers={"urgency": urgency()}, requests_session=session)
 
 
-async def send_push(subscription, payload):
+def _reason(out: dict | None, code: str) -> None:
+    if out is not None:
+        out["code"] = code
+
+
+async def send_push(subscription, payload, reason: dict | None = None):
     try:
         await asyncio.to_thread(_send, subscription, payload)
         return "sent"
@@ -73,38 +101,33 @@ async def send_push(subscription, payload):
         code = getattr(exc.response, "status_code", None)
         if code in (404, 410):
             await db.push_subscriptions.delete_one({"_id": subscription.id, "updated_at": subscription.updated_at})
+            _reason(reason, "subscription_gone")
             return "expired"
+        _reason(reason, "send_error")
         logger.warning("Push failed (status=%s)", code)
     except Exception as exc:
         # Exceptions may contain endpoint tokens: log their type only.
+        _reason(reason, "timeout" if isinstance(exc, (TimeoutError, requests.Timeout)) else "send_error")
         logger.warning("Push failed (%s)", type(exc).__name__)
     return "failed"
 
 
-async def _dispatch_to_admins(payload):
-    try:
-        async for doc in db.push_subscriptions.find({}):
-            subscription = PushSubscription.from_mongo(doc)
-            if await db.users.find_one({"user_id": subscription.user_id, "role": "admin"}, {"_id": 1}):
-                await send_push(subscription, payload)
-            else:
-                await db.push_subscriptions.delete_one({"_id": subscription.id})
-    except Exception as exc:
-        logger.warning("Push dispatch failed (%s)", type(exc).__name__)
+async def dispatch_to_admins(payload) -> dict:
+    """Envoie à tous les abonnements des comptes admin ; retourne les compteurs et les raisons.
 
-
-async def notify_new_order(order):
-    if not configured():
-        return
-    payload = {"title": "Magic Game Store", "body": f"Nouvelle commande {order['order_number']}\n{order['total']:,} Ar".replace(",", " "),
-               "orderId": order["id"], "url": f"/admin/commandes?order={order['id']}"}
-    await _dispatch_to_admins(payload)
-
-
-async def notify_new_message(conversation_id, sender_name, text):
-    if not configured():
-        return
-    preview = text if len(text) <= 80 else text[:77] + "…"
-    payload = {"title": "Magic Game Store", "body": f"Nouveau message de {sender_name}\n{preview}",
-               "tag": f"chat-{conversation_id}", "url": "/admin/messages"}
-    await _dispatch_to_admins(payload)
+    Une erreur d'abonnement ou de transport est comptée, jamais masquée : le journal d'alertes
+    la rend visible. Les exceptions de la base remontent à l'appelant (`services.notifications`).
+    """
+    counts = {"targeted": 0, "sent": 0, "expired": 0, "failed": 0, "reasons": []}
+    async for doc in db.push_subscriptions.find({}):
+        subscription = PushSubscription.from_mongo(doc)
+        if not await db.users.find_one({"user_id": subscription.user_id, "role": "admin"}, {"_id": 1}):
+            await db.push_subscriptions.delete_one({"_id": subscription.id})
+            continue
+        counts["targeted"] += 1
+        reason = {}
+        result = await send_push(subscription, payload, reason)
+        counts["expired" if result == "expired" else "sent" if result == "sent" else "failed"] += 1
+        if result != "sent" and reason.get("code"):
+            counts["reasons"].append(reason["code"])
+    return counts
