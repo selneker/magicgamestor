@@ -1,6 +1,32 @@
 /* Push-only worker: no offline cache and no interception of API/payment requests. */
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+
+// Réabonnement automatique après rotation/perte de l'abonnement push
+// (pushsubscriptionchange) : réabonne avec la même clé VAPID puis réenvoie
+// l'abonnement au serveur avec les cookies. Échec silencieux : la
+// synchronisation au prochain chargement de l'admin rattrape.
+async function resubscribe(oldSubscription) {
+  try {
+    const reg = self.registration;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const key = oldSubscription && oldSubscription.options && oldSubscription.options.applicationServerKey;
+      if (!key) return; // pas de clé connue : le prochain chargement de l'admin resynchronise
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+    }
+    await fetch('/api/admin/push/subscriptions', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sub.toJSON()),
+    });
+  } catch (_) { /* silencieux */ }
+}
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil(resubscribe(event.oldSubscription));
+});
+
 self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (_) {}
