@@ -47,9 +47,58 @@ def _required_field_keys(offers: dict) -> list[str]:
     return [f["key"] for f in (offers.get("fields") or []) if f.get("key")]
 
 
+# Correspondance de NOMS de champs : le jeu nomme ses champs d'identité comme il l'entend
+# (`zone_id`), l'offre FazerCards peut en exiger un autre nom (`server_id`). Seule la CLÉ change :
+# la valeur transmise reste EXACTEMENT celle saisie par le client puis validée par le préflight.
+# Table volontairement fermée : une clé exigée sans correspondance connue reste « manquante » (409).
+PROVIDER_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
+    "server_id": ("zone_id", "server"),
+}
+
+
+def _provider_field_value(key: str, fields: dict | None) -> str | None:
+    """Valeur d'un champ exigé par l'offre, lue dans l'identité du jeu.
+
+    La clé EXACTE est prioritaire ; à défaut, un alias déclaré fournit sa valeur. `None` quand
+    rien n'est renseigné : aucune valeur n'est inventée ni empruntée à un autre champ.
+    """
+    fields = fields or {}
+    for candidate in (key, *PROVIDER_FIELD_ALIASES.get(key, ())):
+        value = str(fields.get(candidate) or "").strip()
+        if value:
+            return value
+    return None
+
+
 def _missing_required_field_keys(required: list[str], fields: dict | None) -> list[str]:
     """Clés exigées absentes ou vides : elles ne peuvent pas être « validées » (aucune invention)."""
-    return [k for k in required if not str((fields or {}).get(k) or "").strip()]
+    return [k for k in required if _provider_field_value(k, fields) is None]
+
+
+def _provider_identity_fields(required: list[str], fields: dict | None) -> dict:
+    """Champs à transmettre au fournisseur, nommés comme les clés EXIGÉES par l'offre.
+
+    - chaque clé exigée porte la valeur du champ correspondant (clé exacte, sinon alias) ;
+    - un champ validé que l'offre ne réclame pas est conservé tel quel ;
+    - un champ dont la valeur part déjà sous un autre nom n'est pas dupliqué.
+    Aucune valeur n'est créée : seuls des noms changent.
+    """
+    validated = {k: v for k, v in (fields or {}).items() if str(v or "").strip()}
+    if not required:
+        return validated
+    payload: dict[str, str] = {}
+    consumed: set[str] = set()
+    for key in required:
+        value = _provider_field_value(key, validated)
+        if value is None:  # déjà refusé en amont par _missing_required_field_keys
+            continue
+        payload[key] = value
+        consumed.add(key)
+        consumed.update(a for a in PROVIDER_FIELD_ALIASES.get(key, ()) if a in validated)
+    for key, value in validated.items():
+        if key not in payload and key not in consumed:
+            payload[key] = value
+    return payload
 
 
 async def _record_verification(order_id: str, provider, validation) -> None:
@@ -234,7 +283,10 @@ async def preflight(order_id: str) -> dict:
             raise HTTPException(
                 status_code=409,
                 detail=f"Champ « {missing[0]} » manquant pour ce jeu : commande non envoyée.")
-        declared = list((validated_fields or {}).keys())
+        # Champs RÉELLEMENT envoyés : mêmes valeurs que celles validées, nommées comme l'offre
+        # les attend (ex. `zone_id` -> `server_id`). Aucune invention, aucune valeur dupliquée.
+        provider_fields = _provider_identity_fields(field_keys, validated_fields)
+        declared = list(provider_fields.keys())
         # Clé de champ de référence : on utilise le champ DÉCLARÉ par le jeu s'il correspond
         # à ce qu'attend le fournisseur. Aucune hypothèse `player_id` universelle.
         matched = [k for k in declared if k in field_keys]
@@ -246,7 +298,7 @@ async def preflight(order_id: str) -> dict:
             "offer_id": u["offer_id"], "offer_name": offer["name"], "price_usd": offer["price_usd"],
             "field_key": field_key, "idempotency_key": u["idempotency_key"], "retry": bool(record),
             # Champs RÉELLEMENT validés ci-dessus : c'est ce dictionnaire qui part chez FazerCards.
-            "identity_fields": validated_fields,
+            "identity_fields": provider_fields,
         })
     if not lines:
         raise HTTPException(status_code=409, detail=skipped[-1]["reason"] if skipped else "Aucune ligne éligible.")
