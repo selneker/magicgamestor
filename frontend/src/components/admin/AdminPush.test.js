@@ -46,11 +46,13 @@ jest.mock("@/lib/api", () => ({
   api: { get: jest.fn(), post: jest.fn(), delete: jest.fn() },
 }));
 // react-router-dom v7 ne résout pas sous jest (voir Header.test.js) — la
-// pastille est rendue comme un <a href> équivalent.
+// pastille est rendue comme un <a href> équivalent et useLocation est simulé.
+let mockPathname = "/admin";
 jest.mock("react-router-dom", () => {
   const React = require("react");
   return {
     Link: ({ to, children, ...props }) => React.createElement("a", { ...props, href: to }, children),
+    useLocation: () => ({ pathname: mockPathname }),
   };
 });
 jest.mock("@/context/LanguageContext", () => ({
@@ -102,6 +104,7 @@ const deferred = () => {
 };
 
 beforeEach(() => {
+  mockPathname = "/admin";
   pushSync.__testReset();
   api.get.mockImplementation(defaultGet);
   api.post.mockResolvedValue({ data: { registered: true } });
@@ -502,6 +505,54 @@ describe("pastille du tableau de bord", () => {
     const { container } = await mountBadge();
     await drain();
     expect(container.querySelector('[data-testid="admin-push-badge"]')).toBeNull();
+  });
+
+  // PL-NOTIF-2C : la page Notifications montre déjà l'état complet.
+  test("masquée sur la page Notifications elle-même, même en cas de problème", async () => {
+    mockPathname = "/admin/notifications";
+    setupBrowser({ permission: "default", subscription: null });
+    const { container } = await mountBadge();
+    await flush();
+    expect(container.querySelector('[data-testid="admin-push-badge"]')).toBeNull();
+  });
+
+  test("présente sur une autre page admin pour le même problème", async () => {
+    setupBrowser({ permission: "default", subscription: null });
+    const { container } = await mountBadge();
+    await flush();
+    expect(container.querySelector('[data-testid="admin-push-badge"]')).not.toBeNull();
+  });
+
+  test("compteur relu après synchro réussie : count 0 → 2, pastille disparaît", async () => {
+    setupBrowser({ permission: "granted", subscription: makeSub() });
+    let statusCalls = 0;
+    api.get.mockImplementation((url) => {
+      if (url === "/admin/notifications/status") {
+        statusCalls += 1;
+        return Promise.resolve({ data: statusCalls === 1 ? STATUS_ZERO : STATUS });
+      }
+      if (url === "/admin/push/config") return Promise.resolve({ data: { configured: true, public_key: PUBLIC_KEY } });
+      return Promise.resolve({ data: {} });
+    });
+    const { container } = await mountPage();
+    await flush();
+    // Le POST a réussi puis le statut a été relu : le compteur reflète le serveur.
+    expect(postCalls("/admin/push/subscriptions")).toHaveLength(1);
+    expect(text(container, "push-devices-count")).toContain("2 appareil(s) abonné(s)");
+    expect(container.querySelector('[data-testid="admin-push-badge"]')).toBeNull();
+  });
+
+  test("count toujours 0 après relecture : pastille présente", async () => {
+    setupBrowser({ permission: "granted", subscription: makeSub() });
+    api.get.mockImplementation((url) => {
+      if (url === "/admin/notifications/status") return Promise.resolve({ data: STATUS_ZERO });
+      if (url === "/admin/push/config") return Promise.resolve({ data: { configured: true, public_key: PUBLIC_KEY } });
+      return Promise.resolve({ data: {} });
+    });
+    const { container } = await mountBadge();
+    await flush();
+    expect(postCalls("/admin/push/subscriptions")).toHaveLength(1); // synchro réussie…
+    expect(container.querySelector('[data-testid="admin-push-badge"]')).not.toBeNull(); // …mais 0 abonné côté serveur
   });
 });
 

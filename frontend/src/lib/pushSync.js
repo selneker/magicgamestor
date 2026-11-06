@@ -148,6 +148,9 @@ const syncNow = async () => {
     set({ deviceSynced: true, off: false });
     setSync({ state: "ok", code: null, cat: "none" });
     retryUsed = false;
+    // Le statut a été lu AVANT l'inscription : sans relecture, le compteur
+    // d'appareils et la pastille resteraient sur l'ancien compte (PL-NOTIF-2C).
+    refreshStatus().catch(() => {});
   } catch (e) {
     const { cat, code } = categorizeSyncError(e);
     if (Notification.permission === "granted") set({ deviceSynced: false });
