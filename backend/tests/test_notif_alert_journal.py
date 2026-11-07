@@ -644,8 +644,9 @@ def test_status_route_returns_no_secret():
     with patch.object(notifications_router, "db", db), patch.object(push, "db", db), \
          patch.object(push, "configured", lambda: True):
         payload = _run(notifications_router.status(user={"role": "admin"}))
-    assert set(payload) == {"vapid_configured", "push_subscriptions", "alerts"}
+    assert set(payload) == {"vapid_configured", "telegram_configured", "push_subscriptions", "alerts"}
     assert payload["vapid_configured"] is True
+    assert payload["telegram_configured"] is False
     assert payload["push_subscriptions"] == 1
     assert len(payload["alerts"]) == 1
     assert set(payload["alerts"][0]) == {"_id", "created_at", "event", "channel", "status", "reason"}
@@ -664,8 +665,10 @@ def test_test_route_uses_the_same_path_and_returns_details():
     finally:
         _stop(stack)
     assert result["event"] == "test"
-    assert set(result) == {"id", "event", "channel", "status", "reason", "targeted", "sent", "removed", "failed"}
+    assert set(result) == {"id", "event", "channel", "status", "reason", "targeted", "sent", "removed",
+                           "failed", "telegram"}
     assert (result["status"], result["reason"]) == ("skipped", "no_subscription")
+    assert result["telegram"] == {"status": "skipped", "reason": "telegram_not_configured"}
 
 
 # --------------------------------------------------------------------------- #

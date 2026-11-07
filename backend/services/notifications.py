@@ -3,7 +3,8 @@
 Une ligne de journal est écrite en `pending` AVANT l'envoi, puis passée en `sent`, `failed` ou
 `skipped` : une coupure du processus laisse une trace au lieu d'une alerte silencieusement perdue.
 `notify_admin` ne lève jamais — l'issue d'une commande ou d'un message client ne dépend jamais de
-l'alerte. Le canal Telegram (PL-NOTIF-4) s'ajoutera dans `CHANNELS` sans toucher aux appelants.
+l'alerte. Le canal Telegram (PL-NOTIF-5) est un second canal indépendant : sa propre ligne de
+journal, sa propre clé de déduplication, et l'échec de l'un ne change jamais le statut de l'autre.
 """
 import asyncio
 import logging
@@ -15,12 +16,13 @@ from pymongo.errors import DuplicateKeyError
 
 from core.db import db
 from models.notification import AlertLog
-from services import push
+from services import push, telegram
 
 logger = logging.getLogger("mgs.notifications")
 
-# Canaux d'alerte. « push » aujourd'hui ; un 2e canal = un nom ici + un `_send_<canal>`.
-CHANNELS = ("push",)
+# Canaux d'alerte. Un canal = un nom ici + un `_send_<canal>` ; le journal garde une ligne par canal.
+CHANNELS = ("push", "telegram")
+ZERO_COUNTS = {"targeted": 0, "sent": 0, "removed": 0, "failed": 0}
 DEFAULT_LOG_TTL_DAYS = 30
 
 # Reprise (`retry_pending`) : la charge utile n'est pas stockée (aucune donnée de client dans le
@@ -92,46 +94,89 @@ async def _send_push(payload: dict) -> tuple[str, str | None, dict[str, int]]:
     return "failed", "subscription_gone", counts
 
 
+async def _send_telegram(payload: dict) -> tuple[str, str | None, dict[str, int]]:
+    """Canal de secours : texte brut, un seul destinataire, aucune exception ne remonte."""
+    counts = dict(ZERO_COUNTS)
+    text = telegram.format_message(payload.get("title"), payload.get("body"))
+    status, reason = await telegram.send_message(text)
+    if status == "sent":
+        counts.update(targeted=1, sent=1)
+    elif status == "failed":
+        counts.update(targeted=1, failed=1)
+    return status, reason, counts
+
+
+def _send_for(channel: str, payload: dict) -> Any:
+    """Un canal = une fonction d'envoi. Un nom inconnu est une erreur de programmation, pas un secret."""
+    return _send_telegram(payload) if channel == "telegram" else _send_push(payload)
+
+
 async def _deliver(row: dict, payload: dict | None = None) -> dict[str, Any]:
-    """Livre une ligne du journal (création ou reprise). Écrit l'état final, ne lève jamais."""
+    """Livre une ligne du journal (création ou reprise) sur SON canal. Écrit l'état final, ne lève jamais."""
     if payload is None:
         known = RETRY_ALERTS.get(row.get("event") or "")
         payload = {"title": "Magic Game Store", "body": known[0], "url": known[1]} if known else None
         if payload is None:
-            return await _close(row, "skipped", "unknown_event", {"targeted": 0, "sent": 0, "removed": 0, "failed": 0})
-    status, reason, counts = await _send_push(payload)
+            return await _close(row, "skipped", "unknown_event", dict(ZERO_COUNTS))
+    status, reason, counts = await _send_for(row.get("channel") or "push", payload)
     return await _close(row, status, reason, counts)
 
 
+async def _open_channel(row: dict, payload: dict) -> dict[str, Any]:
+    """Écrit la ligne `pending` puis livre. Un doublon est propre au canal (clé distincte)."""
+    try:
+        await db.alert_log.insert_one(row)
+    except DuplicateKeyError:
+        return _result(row, "skipped", "duplicate", dict(ZERO_COUNTS))
+    except Exception as exc:  # type: ignore[attr-defined]
+        # Journal indisponible : on alerte quand même (l'observabilité ne coupe pas les alertes).
+        logger.warning("Journal des alertes injoignable (%s)", type(exc).__name__)
+    return await _deliver(row, payload)
+
+
 async def notify_admin(event: str, title: str, body: str, url: str, dedupe_key: str | None = None,
-                       order_ref: str | None = None, tag: str | None = None) -> dict[str, Any]:
-    """Alerte les administrateurs, en journalisant la tentative. Ne lève jamais.
+                       order_ref: str | None = None, tag: str | None = None,
+                       include_channels: bool = False) -> dict[str, Any]:
+    """Alerte les administrateurs, en journalisant la tentative par canal. Ne lève jamais.
 
     Args:
         event: Nom stable de l'événement (`order_created`, `chat_message`, `test`, …).
         title/body/url: Contenu affiché par l'appareil (jamais stocké dans le journal).
-        dedupe_key: Clé optionnelle : un même événement+clé n'est jamais envoyé deux fois.
+        dedupe_key: Clé optionnelle : un même événement+clé n'est jamais envoyé deux fois par canal.
         order_ref: Référence courte de commande (numéro public), jamais un nom ni un identifiant joueur.
         tag: Étiquette de regroupement côté appareil (une notification par commande / conversation).
+        include_channels: Ajoute le résultat du canal Telegram à la réponse (`/admin/notifications/test`).
 
     Returns:
-        État de la tentative : `status`, `reason` et compteurs (visés/livrés/supprimés/échoués).
+        État de la tentative Push : `status`, `reason` et compteurs (visés/livrés/supprimés/échoués).
+        Avec `include_channels`, la même forme sous `telegram` pour le canal de secours.
     """
-    row = AlertLog(event=event, dedupe_key=dedupe_key, order_ref=order_ref).to_mongo()
-    try:
-        await db.alert_log.insert_one(row)
-    except DuplicateKeyError:
-        return _result(row, "skipped", "duplicate", {"targeted": 0, "sent": 0, "removed": 0, "failed": 0})
-    except Exception as exc:  # type: ignore[attr-defined]
-        # Journal indisponible : on alerte quand même (l'observabilité ne coupe pas les alertes).
-        logger.warning("Journal des alertes injoignable (%s)", type(exc).__name__)
-    return await _deliver(row, {"title": title, "body": body, "url": url,
-                                **({"tag": tag} if tag else {})})
+    payload = {"title": title, "body": body, "url": url, **({"tag": tag} if tag else {})}
+    push_row = AlertLog(event=event, dedupe_key=dedupe_key, order_ref=order_ref).to_mongo()
+    # Les deux canaux sont indépendants : une clé préfixée par canal évite de modifier l'index
+    # unique existant `(event, dedupe_key)` et n'altère aucune ligne push déjà écrite.
+    tasks = [_open_channel(push_row, payload)]
+    if telegram.enabled_for(event):
+        telegram_row = AlertLog(event=event, channel="telegram", order_ref=order_ref,
+                                dedupe_key=f"tg:{dedupe_key}" if dedupe_key else None).to_mongo()
+        tasks.append(_open_channel(telegram_row, payload))
+    results = await asyncio.gather(*tasks)
+    result = results[0]
+    if not include_channels:
+        return result
+    if len(results) > 1:
+        telegram_result = {"status": results[1]["status"], "reason": results[1]["reason"]}
+    else:
+        reason = "telegram_not_configured" if not telegram.configured() else "event_disabled"
+        telegram_result = {"status": "skipped", "reason": reason}
+    return {**result, "telegram": telegram_result}
 
 
 async def retry_pending(older_than_s: int = 60, limit: int = 20) -> list[dict[str, Any]]:
-    """Reprend les lignes `pending` plus vieilles que `older_than_s`. Non branché (PL-NOTIF-5).
+    """Reprend les lignes `pending` plus vieilles que `older_than_s`. Non branché en production.
 
+    Chaque ligne est livrée sur son propre canal (`channel` du journal) : une ligne Telegram
+    interrompue est donc reprise sans toucher au Push, et inversement.
     Idempotent : une ligne reprise passe à un état final, donc une 2e passe ne la renvoie pas.
     """
     cutoff = _now() - timedelta(seconds=max(0, older_than_s))
