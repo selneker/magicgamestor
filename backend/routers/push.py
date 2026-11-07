@@ -66,10 +66,17 @@ async def subscribe(body: SubscriptionIn, user=Depends(require_admin)):
     subscription = PushSubscription(user_id=user["user_id"], endpoint=body.endpoint, keys=body.keys.model_dump())
     doc = subscription.to_mongo()
     doc.pop("_id")
+    owner = await db.push_subscriptions.find_one({"endpoint": body.endpoint}, {"_id": 0, "user_id": 1})
+    if owner and owner["user_id"] != user["user_id"]:
+        raise HTTPException(status_code=409, detail="Cette souscription Push appartient déjà à un autre compte.")
+    query = {"endpoint": body.endpoint, "user_id": user["user_id"]}
     try:
-        await db.push_subscriptions.update_one({"endpoint": body.endpoint}, {"$set": doc, "$setOnInsert": {"_id": subscription.id}}, upsert=True)
+        await db.push_subscriptions.update_one(query, {"$set": doc, "$setOnInsert": {"_id": subscription.id}}, upsert=True)
     except DuplicateKeyError:
-        await db.push_subscriptions.update_one({"endpoint": body.endpoint}, {"$set": doc})
+        owner = await db.push_subscriptions.find_one({"endpoint": body.endpoint}, {"_id": 0, "user_id": 1})
+        if owner and owner["user_id"] != user["user_id"]:
+            raise HTTPException(status_code=409, detail="Cette souscription Push appartient déjà à un autre compte.")
+        await db.push_subscriptions.update_one(query, {"$set": doc})
     return {"registered": True}
 
 
