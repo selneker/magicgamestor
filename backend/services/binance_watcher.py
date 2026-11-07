@@ -1,9 +1,11 @@
 """BinancePaymentWatcher: matches Binance CEX USDT deposits to open CryptoPayments, then reuses the existing paid flow."""
 import asyncio
 import logging
+import math
+import os
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 
 from pymongo import ReturnDocument
@@ -18,6 +20,8 @@ logger = logging.getLogger("mgs.binance_watcher")
 POLL_INTERVAL_S = 30
 MIN_GAP_S = 10
 LOOKBACK = timedelta(hours=6)
+LOOKBACK_MAX_ENV = "BINANCE_LOOKBACK_MAX_H"
+DEFAULT_LOOKBACK_MAX_H = 48
 DETECTED_GRACE = timedelta(hours=2)
 CASE_INSENSITIVE = ("BEP20", "APTOS")  # hex addresses
 _lock = asyncio.Lock()
@@ -26,6 +30,51 @@ _last = {"at": 0.0}
 
 def _ms(value: str) -> int:
     return int(datetime.fromisoformat(value).timestamp() * 1000)
+
+
+def _started_at(value) -> datetime | None:
+    """`created_at` normalisé en UTC ; None si illisible (le repli décide alors de la fenêtre)."""
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        try:
+            dt = datetime.fromisoformat(str(value))
+        except (TypeError, ValueError):
+            return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def lookback_max() -> timedelta:
+    """Plafond de la fenêtre : `BINANCE_LOOKBACK_MAX_H` heures (48 par défaut), jamais moins de `LOOKBACK`."""
+    try:
+        hours = float(os.environ.get(LOOKBACK_MAX_ENV, DEFAULT_LOOKBACK_MAX_H))
+    except (TypeError, ValueError):
+        hours = DEFAULT_LOOKBACK_MAX_H
+    if not math.isfinite(hours) or hours <= 0:  # inf, nan, 0 ou négatif -> défaut
+        hours = DEFAULT_LOOKBACK_MAX_H
+    return timedelta(hours=max(hours, LOOKBACK.total_seconds() / 3600))
+
+
+async def search_since(now: datetime | None = None) -> datetime:
+    """Borne basse de la recherche de dépôts : `now - LOOKBACK` élargie au plus ancien paiement ouvert.
+
+    Sans élargissement, un dépôt arrivé pendant une veille de l'hébergeur (Render Free) sort de la
+    fenêtre de 6 h et n'est jamais rapproché. La borne ne dépasse jamais `lookback_max()` et toute
+    lecture en échec retombe sur `now - LOOKBACK` : cette fonction ne lève jamais.
+    """
+    reference = now or crypto.now()
+    fallback = reference - LOOKBACK
+    try:
+        # Index `(status, expires_at)` : filtré sur le statut, tri sur les seuls paiements ouverts (peu nombreux).
+        oldest = await db.crypto_payments.find_one(
+            {"status": {"$in": list(crypto.OPEN)}}, {"_id": 0, "created_at": 1}, sort=[("created_at", 1)])
+    except Exception as exc:  # une lecture cassée ne doit jamais arrêter le watcher
+        logger.warning("Binance search window unavailable (%s)", type(exc).__name__)
+        return fallback
+    started = _started_at((oldest or {}).get("created_at"))
+    if started is None:
+        return fallback
+    return max(reference - lookback_max(), min(fallback, started))
 
 
 def _amount_key(raw) -> str | None:
@@ -171,7 +220,7 @@ async def check_once(force: bool = False) -> dict:
         if not force and time.monotonic() - _last["at"] < MIN_GAP_S:
             return {"ran": False, "reason": "throttled"}
         _last["at"] = time.monotonic()
-        since = crypto.now() - LOOKBACK
+        since = await search_since()
         busy = await db.crypto_payments.find_one({"$or": [{"slot_open": True}, {"updated_at": {"$gte": crypto.iso(since)}}]}, {"_id": 1})
         results: dict[str, int] = {}
         if busy:
