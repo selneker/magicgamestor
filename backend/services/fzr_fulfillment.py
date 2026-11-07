@@ -19,7 +19,7 @@ from fastapi import HTTPException
 from core.audit import audit
 from core.db import db
 from core.games import DEFAULT_GAME_ID
-from services import fazercards, fzr_mapping, providers
+from services import fazercards, fzr_mapping, notifications, providers
 from services.providers.base import OrderStatus
 
 logger = logging.getLogger("mgs.fzr")
@@ -462,8 +462,14 @@ async def auto_fulfill(order: dict):
     except HTTPException as exc:
         logger.warning("fzr auto fulfillment refused for %s: %s", order.get("order_number"), exc.detail)
         await audit("fzr.auto_fulfill_refused", "auto", order.get("id"), {"detail": str(exc.detail)[:200]})
+        notifications.schedule(None, notifications.notify_delivery_blocked,
+                               order.get("id"), order.get("order_number"), f"http_{exc.status_code}",
+                               f"envoi automatique refusé ({exc.status_code})")
     except Exception as exc:
         logger.warning("fzr auto fulfillment error for %s (%s)", order.get("order_number"), type(exc).__name__)
+        notifications.schedule(None, notifications.notify_delivery_blocked,
+                               order.get("id"), order.get("order_number"), "error",
+                               "échec de l'envoi automatique")
 
 
 async def apply_webhook_event(event: dict) -> dict:

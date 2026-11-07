@@ -5,6 +5,7 @@ Une ligne de journal est écrite en `pending` AVANT l'envoi, puis passée en `se
 `notify_admin` ne lève jamais — l'issue d'une commande ou d'un message client ne dépend jamais de
 l'alerte. Le canal Telegram (PL-NOTIF-4) s'ajoutera dans `CHANNELS` sans toucher aux appelants.
 """
+import asyncio
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -28,6 +29,13 @@ RETRY_ALERTS = {
     "order_created": ("Nouvelle commande (rappel)", "/admin/commandes"),
     "chat_message": ("Nouveau message client (rappel)", "/admin/messages"),
     "test": ("Test des notifications (rappel)", "/admin/commandes"),
+    "order_paid": ("Commande payée (rappel)", "/admin/commandes"),
+    "payment_failed": ("Paiement échoué (rappel)", "/admin/commandes"),
+    "payment_expired": ("Paiement expiré (rappel)", "/admin/commandes"),
+    "delivery_blocked": ("Livraison bloquée (rappel)", "/admin/commandes"),
+    "crypto_unmatched": ("Dépôt crypto non rapproché (rappel)", "/admin/paiements"),
+    "amount_mismatch": ("Écart de montant (rappel)", "/admin/commandes"),
+    "late_success": ("Succès tardif — revue manuelle (rappel)", "/admin/commandes"),
 }
 
 
@@ -151,3 +159,165 @@ async def notify_new_message(conversation_id: str, sender_name: str, text: str) 
     await notify_admin(event="chat_message", title="Magic Game Store",
                        body=f"Nouveau message de {sender_name}\n{preview}",
                        url="/admin/messages", tag=f"chat-{conversation_id}")
+
+
+# --------------------------------------------------------------------------- #
+# PL-NOTIF-3 — alertes des événements critiques (paiement, livraison, crypto).
+#
+# Chaque appel est planifié APRÈS l'écriture de l'état (voir `schedule`), ne lève jamais et ne
+# contient aucune donnée personnelle : au plus un numéro de commande court, un libellé produit,
+# un montant, une passerelle et un motif court.
+# --------------------------------------------------------------------------- #
+# Sources internes : une simulation de test ou une validation faite par l'admin ne sont pas des
+# événements à pousser — l'admin est déjà devant son écran.
+INTERNAL_PAYMENT_SOURCES = ("simulation", "manual")
+ADMIN_ORDERS_URL = "/admin/commandes"
+ADMIN_PAYMENTS_URL = "/admin/paiements"
+
+# Motifs Binance -> libellé admin court (les slugs internes ne sont jamais affichés).
+CRYPTO_REASONS = {
+    "duplicate_tx": "transaction en double",
+    "wrong_network": "mauvais réseau",
+    "wrong_address": "adresse incorrecte",
+    "wrong_memo": "mémo incorrect",
+    "payment_expired": "paiement expiré",
+    "amount_not_matching": "montant non concordant",
+    "outside_payment_window": "hors fenêtre de paiement",
+    "rejected_by_binance": "dépôt rejeté par Binance",
+    "unsupported_network": "réseau non pris en charge",
+    "unknown_transaction": "transaction inconnue",
+    "expired": "paiement expiré, aucun dépôt reçu",
+    "detected_not_credited": "dépôt détecté mais non crédité",
+}
+
+
+def _is_internal(source: str | None) -> bool:
+    source = source or ""
+    return source in INTERNAL_PAYMENT_SOURCES or source.startswith("admin:")
+
+
+def _amount(total: Any) -> str:
+    try:
+        return f"{int(total):,} Ar".replace(",", " ")
+    except (TypeError, ValueError):
+        return "montant inconnu"
+
+
+def _line(*parts: str | None) -> str:
+    return " · ".join(str(part) for part in parts if part)
+
+
+async def _product_label(order_id: str) -> str:
+    """Libellé catalogue (jamais un pseudo ni un identifiant de joueur), vide si illisible."""
+    try:
+        order = await db.orders.find_one({"id": order_id}, {"_id": 0, "items.name": 1})
+    except Exception as exc:  # type: ignore[attr-defined]
+        logger.warning("Libellé produit illisible (%s)", type(exc).__name__)
+        return ""
+    names = [str(item["name"]) for item in (order or {}).get("items") or [] if item.get("name")]
+    return ", ".join(names[:2]) + ("…" if len(names) > 2 else "")
+
+
+async def _critical(event: str, title: str, body: str, url: str, dedupe_key: str | None,
+                    order_ref: str | None = None, tag: str | None = None) -> None:
+    """Alerte critique : journal + push, et aucune exception ne remonte à l'appelant."""
+    try:
+        await notify_admin(event=event, title=title, body=body, url=url, dedupe_key=dedupe_key,
+                           order_ref=order_ref, tag=tag)
+    except Exception as exc:  # type: ignore[attr-defined]
+        logger.warning("Alerte %s non envoyée (%s)", event, type(exc).__name__)
+
+
+async def notify_order_paid(order_id: str, ref: str, total: Any, gateway: str | None, source: str) -> None:
+    """Commande réellement passée à « payée » (jamais une simulation ni une validation admin)."""
+    if _is_internal(source):
+        return
+    ref = ref or order_id
+    await _critical("order_paid", "Commande payée",
+                    _line(f"Commande {ref} payée", _amount(total), await _product_label(order_id), gateway),
+                    ADMIN_ORDERS_URL, f"paid:{ref}", order_ref=ref, tag=order_id)
+
+
+async def notify_payment_failed(order_id: str, ref: str, gateway: str | None, source: str) -> None:
+    """Paiement échoué ou refusé par la passerelle."""
+    if _is_internal(source):
+        return
+    ref = ref or order_id
+    await _critical("payment_failed", "Paiement échoué",
+                    _line(f"Commande {ref} : paiement refusé", gateway),
+                    ADMIN_ORDERS_URL, f"payfail:{ref}", order_ref=ref, tag=order_id)
+
+
+async def notify_payment_expired(order_id: str, ref: str, gateway: str | None, source: str) -> None:
+    """Paiement expiré avant règlement."""
+    if _is_internal(source):
+        return
+    ref = ref or order_id
+    await _critical("payment_expired", "Paiement expiré",
+                    _line(f"Commande {ref} : paiement expiré", gateway),
+                    ADMIN_ORDERS_URL, f"payexp:{ref}", order_ref=ref, tag=order_id)
+
+
+async def notify_late_success(order_id: str, ref: str, gateway: str | None) -> None:
+    """Succès reçu après l'échéance interne : revue manuelle obligatoire."""
+    ref = ref or order_id
+    await _critical("late_success", "Succès tardif",
+                    _line(f"Commande {ref} : succès tardif, revue manuelle", gateway),
+                    ADMIN_ORDERS_URL, f"mismatch:{ref}", order_ref=ref, tag=order_id)
+
+
+async def notify_amount_mismatch(order_id: str, ref: str, gateway: str | None) -> None:
+    """Montant reçu différent du montant attendu."""
+    ref = ref or order_id
+    await _critical("amount_mismatch", "Écart de montant",
+                    _line(f"Commande {ref} : montant reçu différent", gateway),
+                    ADMIN_ORDERS_URL, f"mismatch:{ref}", order_ref=ref, tag=order_id)
+
+
+async def notify_delivery_blocked(order_id: str | None, ref: str | None, code: str, motif: str) -> None:
+    """Livraison automatique refusée ou échouée (`code` court et stable, sans identité)."""
+    ref = str(ref or order_id or "")
+    await _critical("delivery_blocked", "Livraison bloquée",
+                    _line(f"Commande {ref}" if ref else "Commande", motif),
+                    ADMIN_ORDERS_URL, f"delblock:{ref}:{code}", order_ref=ref or None, tag=order_id)
+
+
+async def notify_crypto_unmatched(reason: str, amount: Any = None, coin: str | None = None,
+                                  short_ref: str = "") -> None:
+    """Dépôt Binance non rapproché, non crédité ou expiré (aucune adresse, aucun tx complet)."""
+    money = f"{amount} {coin}" if amount is not None and coin else "montant inconnu"
+    await _critical("crypto_unmatched", "Dépôt crypto non rapproché",
+                    _line(CRYPTO_REASONS.get(reason, "dépôt non rapproché"), money),
+                    ADMIN_PAYMENTS_URL, f"crypto:{short_ref}" if short_ref else None)
+
+
+_DETACHED: set["asyncio.Task"] = set()
+
+
+def _detached_done(task: "asyncio.Task") -> None:
+    _DETACHED.discard(task)
+    if not task.cancelled() and task.exception() is not None:
+        logger.warning("Alerte détachée en échec (%s)", type(task.exception()).__name__)
+
+
+def schedule(background: Any | None, func, *args) -> None:
+    """Planifie une alerte sans l'attendre : `BackgroundTasks` si présent, sinon tâche détachée.
+
+    Une alerte ne doit jamais retarder ni modifier une réponse HTTP ; une panne de planification
+    est journalisée et rien ne remonte à l'appelant.
+    """
+    try:
+        if background is not None:
+            background.add_task(func, *args)
+            return
+        task = asyncio.get_running_loop().create_task(func(*args))
+        _DETACHED.add(task)
+        task.add_done_callback(_detached_done)
+    except Exception as exc:  # type: ignore[attr-defined]
+        logger.warning("Alerte non planifiée (%s)", type(exc).__name__)
+
+
+async def flush_detached() -> None:
+    """Attend les alertes détachées en cours (arrêt propre, tests)."""
+    while _DETACHED:
+        await asyncio.gather(*list(_DETACHED), return_exceptions=True)

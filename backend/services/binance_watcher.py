@@ -11,7 +11,7 @@ from pymongo.errors import DuplicateKeyError
 
 from core.audit import audit
 from core.db import db
-from services import binance, crypto
+from services import binance, crypto, notifications
 from services.fulfillment import on_order_paid
 
 logger = logging.getLogger("mgs.binance_watcher")
@@ -51,6 +51,9 @@ async def _unmatched(dep: dict, reason: str, payment_id: str | None = None) -> s
         logger.warning("Unmatched Binance deposit %s (%s) — admin review", dep.get("txId"), reason)
     except DuplicateKeyError:
         pass
+    notifications.schedule(None, notifications.notify_crypto_unmatched,
+                           reason, dep.get("amount"), dep.get("coin"),
+                           str(dep.get("id") or dep.get("txId") or "")[:16])
     return reason
 
 
@@ -66,6 +69,8 @@ async def _fail(payment: dict, reason: str):
     if await _set_order_status(payment["order_id"], "expired", ("pending_payment",)):
         await release_subscription_locks(payment["order_id"])
     await audit("crypto.failed", "binance-watcher", payment["order_id"], {"payment_id": payment["id"], "reason": reason})
+    notifications.schedule(None, notifications.notify_crypto_unmatched,
+                           reason, payment.get("amount_usdt"), "USDT", str(payment["id"])[:16])
 
 
 async def expire_due():
@@ -105,6 +110,9 @@ async def _confirm(payment: dict, dep: dict) -> str:
     from routers.payments import _set_order_status  # existing guarded pending→paid transition
     if await _set_order_status(won["order_id"], "paid", ("pending_payment",), {"paid_attempt_ref": won["id"], "paid_at": crypto.iso()}):
         await on_order_paid(won["order_id"], won["id"], "binance")
+        notifications.schedule(None, notifications.notify_order_paid,
+                               won["order_id"], won.get("order_number"), won.get("amount_ar"),
+                               "binance", "binance")
     else:
         await audit("crypto.confirmed_without_order_transition", "binance-watcher", won["order_id"], {"payment_id": won["id"], "tx_hash": tx})
     return "confirmed"

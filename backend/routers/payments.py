@@ -13,6 +13,7 @@ from core.audit import audit
 from core.db import db
 from core.security import ADMIN_ROLES, get_optional_user, require_admin, require_permission, require_super_admin
 from services import fees
+from services import notifications
 from services import payments as gw
 from services.fulfillment import on_order_paid, on_payment_failed
 
@@ -97,6 +98,9 @@ async def expire_attempt(attempt: dict, background: BackgroundTasks | None = Non
             await audit("payment.expired", "system", attempt["order_id"], {"client_ref": attempt["client_ref"]})
             if background is not None:
                 background.add_task(on_payment_failed, attempt["order_id"], "expired")
+            notifications.schedule(background, notifications.notify_payment_expired,
+                                   attempt["order_id"], attempt.get("order_number"), attempt.get("gateway"),
+                                   "simulation" if attempt.get("simulated") else "system")
     return res
 
 
@@ -130,6 +134,9 @@ async def apply_status(attempt: dict, raw_status: str, source: str, background: 
                 background.add_task(on_order_paid, order_id, ref, source)
             else:
                 await on_order_paid(order_id, ref, source)
+            notifications.schedule(background, notifications.notify_order_paid,
+                                   order_id, attempt.get("order_number"), attempt.get("amount"),
+                                   attempt.get("gateway"), source)
         else:
             await audit("payment.completed_without_order_transition", source, order_id, {"client_ref": ref})
     else:
@@ -140,6 +147,8 @@ async def apply_status(attempt: dict, raw_status: str, source: str, background: 
             await audit("payment.failed", source, order_id, {"client_ref": ref})
             if background is not None:
                 background.add_task(on_payment_failed, order_id, "failed")
+            notifications.schedule(background, notifications.notify_payment_failed,
+                                   order_id, attempt.get("order_number"), attempt.get("gateway"), source)
     return won
 
 
@@ -156,6 +165,8 @@ async def record_late_success(attempt: dict, source: str, extra: dict | None = N
         "updated_at": _iso()}})
     logger.warning("LATE SUCCESS for %s (order %s): funds received after deadline, manual review required", attempt["client_ref"], attempt["order_number"])
     await audit("payment.late_success", source, attempt["order_id"], {"client_ref": attempt["client_ref"], "amount": attempt["amount"]})
+    notifications.schedule(None, notifications.notify_late_success,
+                           attempt["order_id"], attempt.get("order_number"), attempt.get("gateway"))
     return won
 
 
@@ -276,6 +287,8 @@ async def status(order_id: str, background: BackgroundTasks):
             await db.payments.update_one({"client_ref": attempt["client_ref"]}, {"$set": {"last_lookup": data, "papi_reference": data.get("papiPaymentReference")}})
             if gw.link_to_status(data) == "completed" and data.get("amount") is not None and int(float(data["amount"])) != int(attempt["amount"]):
                 await audit("payment.amount_mismatch", "lookup", order_id, {"client_ref": attempt["client_ref"], "expected": attempt["amount"], "got": data["amount"]})
+                notifications.schedule(background, notifications.notify_amount_mismatch,
+                                       order_id, attempt.get("order_number"), attempt.get("gateway"))
             else:
                 attempt = await apply_status(attempt, gw.link_to_status(data), "lookup", background)
     order = await db.orders.find_one({"id": order_id}, {"_id": 0, "status": 1, "order_number": 1})
@@ -326,6 +339,8 @@ async def papi_notification(request: Request, background: BackgroundTasks):
         if received != int(attempt["amount"]):
             await db.payments.update_one({"client_ref": ref}, {"$set": {"amount_mismatch": {"expected": attempt["amount"], "received": received, "at": _iso()}}})
             await audit("payment.amount_mismatch", "papi", attempt["order_id"], {"client_ref": ref, "expected": attempt["amount"], "received": received})
+            notifications.schedule(background, notifications.notify_amount_mismatch,
+                                   attempt["order_id"], attempt.get("order_number"), attempt.get("gateway"))
             raise HTTPException(status_code=400, detail="Amount mismatch")
     extra = {"callback": body, "papi_reference": body.get("paymentReference"), "paid_with": body.get("paymentMethod")}
     await db.payments.update_one({"client_ref": ref}, {"$set": {"callback": body, "papi_reference": body.get("paymentReference"), "paid_with": body.get("paymentMethod")}})
