@@ -10,6 +10,7 @@ from py_vapid import Vapid
 from pywebpush import WebPushException, webpush
 
 from core.db import db
+from core.security import ADMIN_ROLES
 from models.messaging import PushSubscription
 
 logger = logging.getLogger("mgs.push")
@@ -112,17 +113,26 @@ async def send_push(subscription, payload, reason: dict | None = None):
     return "failed"
 
 
+async def admin_user_ids() -> set[str]:
+    """Détenteurs d'un rôle admin, en une seule requête (même règle que `require_admin`)."""
+    return {doc["user_id"] async for doc in db.users.find(
+        {"role": {"$in": list(ADMIN_ROLES)}}, {"_id": 0, "user_id": 1})}
+
+
 async def dispatch_to_admins(payload) -> dict:
     """Envoie à tous les abonnements des comptes admin ; retourne les compteurs et les raisons.
 
+    Un abonnement dont le détenteur n'est pas admin est ignoré, jamais supprimé : seul le service
+    Push (404/410) ou une désinscription explicite retire un abonnement.
     Une erreur d'abonnement ou de transport est comptée, jamais masquée : le journal d'alertes
     la rend visible. Les exceptions de la base remontent à l'appelant (`services.notifications`).
     """
-    counts = {"targeted": 0, "sent": 0, "expired": 0, "failed": 0, "reasons": []}
+    counts = {"targeted": 0, "sent": 0, "expired": 0, "failed": 0, "ignored": 0, "reasons": []}
+    admins = await admin_user_ids()
     async for doc in db.push_subscriptions.find({}):
         subscription = PushSubscription.from_mongo(doc)
-        if not await db.users.find_one({"user_id": subscription.user_id, "role": "admin"}, {"_id": 1}):
-            await db.push_subscriptions.delete_one({"_id": subscription.id})
+        if subscription.user_id not in admins:
+            counts["ignored"] += 1
             continue
         counts["targeted"] += 1
         reason = {}

@@ -77,6 +77,9 @@ def _matches(doc, query):
         if isinstance(value, dict) and "$lte" in value:
             if not doc.get(key) <= value["$lte"]:
                 return False
+        elif isinstance(value, dict) and "$in" in value:
+            if doc.get(key) not in value["$in"]:
+                return False
         elif doc.get(key) != value:
             return False
     return True
@@ -121,13 +124,15 @@ class FakeSubs:
 
 
 class FakeUsers:
-    def __init__(self, admin_ids=()):
-        self.admin_ids = set(admin_ids)
+    def __init__(self, admin_ids=(), roles=None):
+        self.roles = dict(roles or {uid: "admin" for uid in admin_ids})
 
-    async def find_one(self, query, *args, **kwargs):
-        if query.get("role") == "admin" and query.get("user_id") in self.admin_ids:
-            return {"_id": "u"}
-        return None
+    def find(self, query=None, projection=None):
+        wanted = ((query or {}).get("role") or {}).get("$in") or []
+        docs = [{"user_id": uid, "role": role} for uid, role in self.roles.items() if role in wanted]
+        if projection:
+            docs = [{k: d.get(k) for k, keep in projection.items() if keep} for d in docs]
+        return _Cursor(docs)
 
 
 class FakeOrdersRead:
@@ -141,9 +146,9 @@ class FakeOrdersRead:
 
 
 class FakeDB:
-    def __init__(self, subs=(), admins=(), fail_journal=False, order=None):
+    def __init__(self, subs=(), admins=(), fail_journal=False, order=None, roles=None):
         self.push_subscriptions = FakeSubs(subs)
-        self.users = FakeUsers(admins)
+        self.users = FakeUsers(admins, roles)
         self.alert_log = FakeAlertLog(fail_insert=fail_journal)
         self.orders = FakeOrdersRead(order)
 

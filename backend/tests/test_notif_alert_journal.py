@@ -4,6 +4,7 @@ Aucun réseau, aucun Mongo, aucune lecture de `backend/.env` : les collections e
 sont simulés. Aucune donnée réelle (ni e-mail, ni pseudo, ni identifiant de joueur) n'est utilisée.
 """
 import asyncio
+import base64
 import inspect
 import json
 import time
@@ -11,6 +12,8 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi.routing import APIRoute
 from pymongo.errors import DuplicateKeyError
 from requests.exceptions import Timeout
@@ -18,10 +21,11 @@ from starlette.background import BackgroundTasks
 from starlette.requests import Request
 from pywebpush import WebPushException
 
-from core.security import require_admin
+from core.security import ADMIN_ROLES, require_admin
 from routers import chat as chat_router
 from routers import notifications as notifications_router
 from routers import orders as orders_router
+from routers import push as push_router
 from services import notifications, push
 
 
@@ -64,6 +68,9 @@ def _matches(doc, query):
     for key, value in (query or {}).items():
         if isinstance(value, dict) and "$lte" in value:
             if not doc.get(key) <= value["$lte"]:
+                return False
+        elif isinstance(value, dict) and "$in" in value:
+            if doc.get(key) not in value["$in"]:
                 return False
         elif doc.get(key) != value:
             return False
@@ -113,21 +120,36 @@ class FakeSubs:
     async def count_documents(self, query):
         return len([d for d in self.docs if _matches(d, query)])
 
+    async def update_one(self, query, update, upsert=False):
+        for doc in self.docs:
+            if _matches(doc, query):
+                doc.update(update.get("$set") or {})
+                return
+        if upsert:
+            self.docs.append({**{k: v for k, v in query.items() if not isinstance(v, dict)},
+                              **(update.get("$setOnInsert") or {}), **(update.get("$set") or {})})
+
 
 class FakeUsers:
-    def __init__(self, admin_ids=()):
-        self.admin_ids = set(admin_ids)
+    def __init__(self, admin_ids=(), roles=None):
+        self.roles = dict(roles or {uid: "admin" for uid in admin_ids})
+
+    def find(self, query=None, projection=None):
+        wanted = ((query or {}).get("role") or {}).get("$in") or []
+        docs = [{"user_id": uid, "role": role} for uid, role in self.roles.items() if role in wanted]
+        if projection:
+            docs = [{k: d.get(k) for k, keep in projection.items() if keep} for d in docs]
+        return _Cursor(docs)
 
     async def find_one(self, query, *args, **kwargs):
-        if query.get("role") == "admin" and query.get("user_id") in self.admin_ids:
-            return {"_id": "u"}
-        return None
+        user_id = (query or {}).get("user_id")
+        return {"user_id": user_id} if self.roles.get(user_id) == (query or {}).get("role") else None
 
 
 class FakeDB:
-    def __init__(self, subs=(), admins=(), fail_journal=False):
+    def __init__(self, subs=(), admins=(), fail_journal=False, roles=None):
         self.push_subscriptions = FakeSubs(subs)
-        self.users = FakeUsers(admins)
+        self.users = FakeUsers(admins, roles)
         self.alert_log = FakeAlertLog(fail_insert=fail_journal)
 
 
@@ -183,8 +205,8 @@ def test_success_is_journaled_sent_with_counters():
     row = db.alert_log.docs[0]
     assert (row["event"], row["channel"], row["status"], row["reason"]) == ("order_created", "push", "sent", None)
     assert row["order_ref"] == "MGS-AAA" and row["attempts"] == 1
-    # L'abonnement d'un compte non admin est nettoyé, comme avant.
-    assert [s["_id"] for s in db.push_subscriptions.docs] == ["s1", "s2"]
+    # L'abonnement d'un compte non admin est ignoré, jamais supprimé (PL-NOTIF-2D).
+    assert [s["_id"] for s in db.push_subscriptions.docs] == ["s1", "s2", "s3"]
 
 
 def test_gone_subscription_is_removed_and_journaled():
@@ -259,6 +281,88 @@ def test_no_subscription_is_skipped():
         _stop(stack)
     assert (result["status"], result["reason"]) == ("skipped", "no_subscription")
     assert db.alert_log.docs[0]["reason"] == "no_subscription"
+
+
+# --------------------------------------------------------------------------- #
+# PL-NOTIF-2D — destinataires : même règle que `require_admin`, sans suppression
+# --------------------------------------------------------------------------- #
+def _valid_push_keys():
+    public = ec.generate_private_key(ec.SECP256R1()).public_key()
+    p256dh = base64.urlsafe_b64encode(public.public_bytes(
+        serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)).rstrip(b"=").decode()
+    return {"p256dh": p256dh, "auth": base64.urlsafe_b64encode(b"0123456789abcdef").rstrip(b"=").decode()}
+
+
+@pytest.mark.parametrize("role", list(ADMIN_ROLES))
+def test_every_admin_role_is_targeted_once_and_kept(role):
+    db = FakeDB(subs=[_sub("s1", "staff1")], roles={"staff1": role})
+    sent = []
+    stack = _patched(db, send=lambda sub, payload: sent.append(payload))
+    _with(stack)
+    try:
+        result = _run(notifications.notify_admin("test", "T", "B", "/admin/commandes"))
+    finally:
+        _stop(stack)
+    assert (result["status"], result["targeted"], result["sent"]) == ("sent", 1, 1)
+    assert len(sent) == 1
+    assert [s["_id"] for s in db.push_subscriptions.docs] == ["s1"]  # jamais supprimé
+
+
+def test_non_admin_subscriptions_are_ignored_and_kept():
+    db = FakeDB(subs=[_sub("s1", "cust1"), _sub("s2", "ghost")], roles={"cust1": "customer"})
+    sent = []
+    stack = _patched(db, send=lambda sub, payload: sent.append(payload))
+    _with(stack)
+    try:
+        result = _run(notifications.notify_admin("test", "T", "B", "/admin/commandes"))
+    finally:
+        _stop(stack)
+    assert (result["status"], result["reason"], result["targeted"]) == ("skipped", "no_admin_subscription", 0)
+    assert sent == []
+    assert [s["_id"] for s in db.push_subscriptions.docs] == ["s1", "s2"]
+
+
+def test_two_devices_of_the_same_admin_are_both_targeted():
+    db = FakeDB(subs=[_sub("s1", "adm1"), _sub("s2", "adm1")], admins=["adm1"])
+    sent = []
+    stack = _patched(db, send=lambda sub, payload: sent.append(payload))
+    _with(stack)
+    try:
+        result = _run(notifications.notify_admin("test", "T", "B", "/admin/commandes"))
+    finally:
+        _stop(stack)
+    assert (result["targeted"], result["sent"]) == (2, 2)
+    assert len(sent) == 2
+
+
+def test_status_counts_only_admin_subscriptions():
+    db = FakeDB(subs=[_sub("s1", "adm1"), _sub("s2", "cust1")],
+                roles={"adm1": "admin", "cust1": "customer"})
+    with patch.object(notifications_router, "db", db), patch.object(push, "db", db), \
+         patch.object(push, "configured", lambda: True):
+        payload = _run(notifications_router.status(user={"role": "admin"}))
+    assert payload["push_subscriptions"] == 1
+
+
+def test_register_then_two_test_sends_keep_the_counter():
+    db = FakeDB(admins=["adm1"])
+    sent = []
+    user = {"user_id": "adm1", "role": "admin"}
+    stack = [patch.object(push, "db", db), patch.object(notifications, "db", db),
+             patch.object(push_router, "db", db), patch.object(notifications_router, "db", db),
+             patch.object(push, "configured", lambda: True), patch.object(push_router, "configured", lambda: True),
+             patch.object(push, "_send", lambda sub, payload: sent.append(payload))]
+    _with(stack)
+    try:
+        endpoint = "https://fcm.googleapis.com/fcm/send/x"
+        _run(push_router.subscribe(push_router.SubscriptionIn(endpoint=endpoint, keys=_valid_push_keys()), user=user))
+        first = _run(notifications_router.test(user=user))
+        counter = _run(notifications_router.status(user=user))["push_subscriptions"]
+        second = _run(notifications_router.test(user=user))
+    finally:
+        _stop(stack)
+    assert (first["status"], second["status"]) == ("sent", "sent")
+    assert counter == 1 and len(db.push_subscriptions.docs) == 1 and len(sent) == 2
 
 
 # --------------------------------------------------------------------------- #
@@ -537,7 +641,8 @@ def test_status_route_returns_no_secret():
     db = FakeDB(subs=[_sub("s1", "adm1")], admins=["adm1"])
     db.alert_log.docs = [{"_id": "a1", "created_at": _now(), "event": "order_created", "channel": "push",
                           "status": "sent", "reason": None, "order_ref": "MGS-AAA"}]
-    with patch.object(notifications_router, "db", db), patch.object(push, "configured", lambda: True):
+    with patch.object(notifications_router, "db", db), patch.object(push, "db", db), \
+         patch.object(push, "configured", lambda: True):
         payload = _run(notifications_router.status(user={"role": "admin"}))
     assert set(payload) == {"vapid_configured", "push_subscriptions", "alerts"}
     assert payload["vapid_configured"] is True
