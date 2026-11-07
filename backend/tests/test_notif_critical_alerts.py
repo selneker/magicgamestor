@@ -14,6 +14,7 @@ import pytest
 from fastapi import HTTPException
 from pymongo.errors import DuplicateKeyError
 from starlette.background import BackgroundTasks
+from starlette.requests import Request
 
 from routers import fiveone as fiveone_router
 from routers import orders as orders_router
@@ -235,11 +236,20 @@ class FakeAudit:
         self.docs.append(dict(doc))
 
 
+class FakeEvents:
+    def __init__(self):
+        self.docs = []
+
+    async def insert_one(self, doc):
+        self.docs.append(dict(doc))
+
+
 class FlowDB:
     def __init__(self, attempt, order):
         self.payments = FakePayments(attempt)
         self.orders = FakeOrders(order)
         self.audit_logs = FakeAudit()
+        self.payment_events = FakeEvents()
 
 
 def _attempt(**over):
@@ -270,6 +280,18 @@ def _patch_flow(db):
             patch.object(orders_router, "db", db), patch.object(notifications, "db", db),
             patch("core.audit.db", db), patch.object(binance_watcher, "db", db),
             patch.object(orders_router, "release_subscription_locks", AsyncMock())]
+
+
+def _post_request(payload, headers=()):
+    """Requête Starlette minimale : les webhooks lisent le corps brut."""
+    raw = json.dumps(payload).encode()
+
+    async def receive():
+        return {"type": "http.request", "body": raw, "more_body": False}
+
+    scope = {"type": "http", "method": "POST", "path": "/api/payments/webhook",
+             "query_string": b"", "headers": list(headers)}
+    return Request(scope, receive)
 
 
 # --------------------------------------------------------------------------- #
@@ -356,7 +378,8 @@ def test_payment_failed_alerted_once_and_replay_is_silent():
     assert notify.await_args.kwargs["dedupe_key"] == "payfail:MGS-1"
 
 
-def test_payment_expired_alerted_once_and_replay_is_silent():
+def test_payment_expired_alerted_once_and_replay_is_silent(monkeypatch):
+    monkeypatch.setenv("ALERT_PAYMENT_EXPIRED", "true")
     db = _flow(attempt=_attempt(expires_at=_iso(-1)))
     notify = AsyncMock()
     first_bg, replay_bg = BackgroundTasks(), BackgroundTasks()
@@ -364,12 +387,16 @@ def test_payment_expired_alerted_once_and_replay_is_silent():
              patch.object(payments_router, "on_payment_failed", AsyncMock())] + _patch_flow(db)
     _with(tasks)
     try:
-        first = _run(payments_router.expire_attempt(_attempt(expires_at=_iso(-1)), first_bg))
-        _run(first_bg())
-        second = _run(payments_router.expire_attempt(_attempt(expires_at=_iso(-1)), replay_bg))
-        _run(replay_bg())
+        async def scenario():
+            first = await payments_router.expire_attempt(_attempt(expires_at=_iso(-1)), first_bg)
+            await notifications.flush_detached()
+            second = await payments_router.expire_attempt(_attempt(expires_at=_iso(-1)), replay_bg)
+            await notifications.flush_detached()
+            return first, second
+        first, second = _run(scenario())
     finally:
         _stop(tasks)
+    # Détachée : la tâche de fond n'est jamais exécutée ici, l'alerte part quand même.
     assert first["status"] == "expired" and second["status"] == "expired"
     assert db.orders.doc["status"] == "expired"
     assert notify.await_count == 1
@@ -377,7 +404,38 @@ def test_payment_expired_alerted_once_and_replay_is_silent():
     assert notify.await_args.kwargs["dedupe_key"] == "payexp:MGS-1"
 
 
-def test_payment_expired_not_alerted_for_simulated_attempt():
+def test_payment_expired_silent_by_default(monkeypatch):
+    monkeypatch.delenv("ALERT_PAYMENT_EXPIRED", raising=False)
+    db = _my_alert_db(order=_order())
+    sent = []
+    tasks = _patched(db, send=lambda sub, payload: sent.append(payload))
+    _with(tasks)
+    try:
+        _run(notifications.notify_payment_expired("o1", "MGS-1", "papi", "system"))
+    finally:
+        _stop(tasks)
+    assert sent == [] and db.alert_log.docs == []
+
+
+def test_payment_expired_enabled_by_env_alerts_once(monkeypatch):
+    monkeypatch.setenv("ALERT_PAYMENT_EXPIRED", "yes")
+    db = _my_alert_db(order=_order())
+    sent = []
+    tasks = _patched(db, send=lambda sub, payload: sent.append(payload))
+    _with(tasks)
+    try:
+        _run(notifications.notify_payment_expired("o1", "MGS-1", "papi", "system"))
+        _run(notifications.notify_payment_expired("o1", "MGS-1", "papi", "system"))  # rejeu
+    finally:
+        _stop(tasks)
+    assert len(sent) == 1
+    assert len(db.alert_log.docs) == 1
+    assert db.alert_log.docs[0]["event"] == "payment_expired"
+    assert db.alert_log.docs[0]["dedupe_key"] == "payexp:MGS-1"
+
+
+def test_payment_expired_not_alerted_for_simulated_attempt(monkeypatch):
+    monkeypatch.setenv("ALERT_PAYMENT_EXPIRED", "true")
     db = _flow(attempt=_attempt(simulated=True, expires_at=_iso(-1)))
     notify = AsyncMock()
     background = BackgroundTasks()
@@ -385,8 +443,10 @@ def test_payment_expired_not_alerted_for_simulated_attempt():
              patch.object(payments_router, "on_payment_failed", AsyncMock())] + _patch_flow(db)
     _with(tasks)
     try:
-        _run(payments_router.expire_attempt(_attempt(simulated=True, expires_at=_iso(-1)), background))
-        _run(background())
+        async def scenario():
+            await payments_router.expire_attempt(_attempt(simulated=True, expires_at=_iso(-1)), background)
+            await notifications.flush_detached()
+        _run(scenario())
     finally:
         _stop(tasks)
     assert notify.await_count == 0
@@ -431,6 +491,76 @@ def test_amount_mismatch_lookup_alerts_without_changing_result():
         _stop(tasks)
     assert result["status"] == "pending"  # comportement existant : aucun statut touché
     assert db.payments.doc["status"] == "pending"
+    assert notify.await_count == 1
+    assert notify.await_args.kwargs["event"] == "amount_mismatch"
+    assert notify.await_args.kwargs["dedupe_key"] == "mismatch:MGS-1"
+
+
+def test_background_task_added_before_raise_is_never_run():
+    """Étape 0 : avec `BackgroundTasks`, une tâche ajoutée avant un `raise` est perdue."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    app = FastAPI()
+    ran = []
+
+    @app.get("/boom")
+    async def boom(background: BackgroundTasks):
+        background.add_task(ran.append, "task")
+        raise HTTPException(status_code=400, detail="boom")
+
+    assert TestClient(app).get("/boom").status_code == 400
+    assert ran == []
+
+
+def test_amount_mismatch_alerted_when_fiveone_webhook_raises():
+    db = _flow(attempt=_attempt(gateway="fiveone", provider_ref="F-1", amount=12000))
+    notify = AsyncMock()
+    request = _post_request(
+        {"id": "evt-1", "data": {"id": "F-1", "reference": "MGS-1-1", "status": "completed", "amount": 999}},
+        [(b"x-fiveone-signature", b"sig")])
+    tasks = [patch.object(notifications, "notify_admin", notify),
+             patch.object(fiveone_router.fiveone, "verify_signature", lambda raw, sig: True)] + _patch_flow(db)
+    _with(tasks)
+    try:
+        async def scenario():
+            with pytest.raises(HTTPException) as caught:
+                await fiveone_router.webhook(request, BackgroundTasks())
+            await notifications.flush_detached()  # le serveur n'exécuterait jamais la tâche de fond
+            return caught.value
+        error = _run(scenario())
+    finally:
+        _stop(tasks)
+    assert error.status_code == 400 and error.detail == "Amount mismatch"
+    assert db.payments.doc["status"] == "pending"  # comportement existant : aucun statut touché
+    assert any(d["action"] == "payment.amount_mismatch" for d in db.audit_logs.docs)
+    assert notify.await_count == 1
+    assert notify.await_args.kwargs["event"] == "amount_mismatch"
+    assert notify.await_args.kwargs["dedupe_key"] == "mismatch:MGS-1"
+
+
+def test_amount_mismatch_alerted_when_papi_webhook_raises():
+    db = _flow(attempt=_attempt(amount=12000))
+    notify = AsyncMock()
+    request = _post_request(
+        {"merchantPaymentReference": "MGS-1-1", "paymentStatus": "completed", "amount": 999,
+         "paymentReference": "P-1"},
+        [(b"x-papi-signature", b"sig")])
+    tasks = [patch.object(notifications, "notify_admin", notify),
+             patch.object(payments_router.gw, "verify_papi_signature", lambda raw, sig: True)] + _patch_flow(db)
+    _with(tasks)
+    try:
+        async def scenario():
+            with pytest.raises(HTTPException) as caught:
+                await payments_router.papi_notification(request, BackgroundTasks())
+            await notifications.flush_detached()
+            return caught.value
+        error = _run(scenario())
+    finally:
+        _stop(tasks)
+    assert error.status_code == 400 and error.detail == "Amount mismatch"
+    assert db.payments.doc["status"] == "pending"
+    assert any(d["action"] == "payment.amount_mismatch" for d in db.audit_logs.docs)
     assert notify.await_count == 1
     assert notify.await_args.kwargs["event"] == "amount_mismatch"
     assert notify.await_args.kwargs["dedupe_key"] == "mismatch:MGS-1"
@@ -683,7 +813,8 @@ def test_delivery_result_unchanged_when_alert_raises():
 # --------------------------------------------------------------------------- #
 # Aucune donnée personnelle ni secret dans le titre, le corps ou le journal
 # --------------------------------------------------------------------------- #
-def test_alert_payloads_and_journal_hold_no_customer_data():
+def test_alert_payloads_and_journal_hold_no_customer_data(monkeypatch):
+    monkeypatch.setenv("ALERT_PAYMENT_EXPIRED", "true")
     order = _order()
     db = _my_alert_db(order=order)
     payloads = []

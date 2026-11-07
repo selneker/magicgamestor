@@ -141,7 +141,7 @@ async def webhook(request: Request, background: BackgroundTasks):
             raise HTTPException(status_code=400, detail="Invalid amount")
         if received != int(attempt["amount"]):
             await audit("payment.amount_mismatch", "fiveone", attempt["order_id"], {"client_ref": attempt["client_ref"], "expected": attempt["amount"], "received": received})
-            notifications.schedule(background, notifications.notify_amount_mismatch,
+            notifications.schedule(None, notifications.notify_amount_mismatch,
                                    attempt["order_id"], attempt.get("order_number"), "fiveone")
             raise HTTPException(status_code=400, detail="Amount mismatch")
     extra = {"fiveone_reference": data.get("fiveonepay_reference"), "paid_with": data.get("operator")}

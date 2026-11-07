@@ -248,9 +248,14 @@ async def notify_payment_failed(order_id: str, ref: str, gateway: str | None, so
                     ADMIN_ORDERS_URL, f"payfail:{ref}", order_ref=ref, tag=order_id)
 
 
+def _payment_expired_enabled() -> bool:
+    """`ALERT_PAYMENT_EXPIRED` lu à l'appel : une tentative abandonnée est du bruit, pas une alerte."""
+    return os.environ.get("ALERT_PAYMENT_EXPIRED", "").strip().lower() in ("1", "true", "yes", "on")
+
+
 async def notify_payment_expired(order_id: str, ref: str, gateway: str | None, source: str) -> None:
-    """Paiement expiré avant règlement."""
-    if _is_internal(source):
+    """Paiement expiré avant règlement (silencieux sauf si `ALERT_PAYMENT_EXPIRED` est vrai)."""
+    if _is_internal(source) or not _payment_expired_enabled():
         return
     ref = ref or order_id
     await _critical("payment_expired", "Paiement expiré",
