@@ -17,9 +17,10 @@ ALERT_FIELDS = {"_id": 1, "created_at": 1, "event": 1, "channel": 1, "status": 1
 
 @router.get("/status")
 async def status(user=Depends(require_admin)):
+    admin_ids = await push.admin_user_ids()
     return {
         "vapid_configured": push.configured(),
-        "push_subscriptions": await db.push_subscriptions.count_documents({}),
+        "push_subscriptions": await db.push_subscriptions.count_documents({"user_id": {"$in": list(admin_ids)}}),
         "alerts": await db.alert_log.find({}, ALERT_FIELDS).sort("created_at", -1).limit(20).to_list(20),
     }
 

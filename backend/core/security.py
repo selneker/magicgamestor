@@ -28,8 +28,13 @@ def is_super_admin(user: dict | None) -> bool:
     return bool(user) and user.get("role") == SUPER_ADMIN
 
 
+def is_admin_user(user: dict | None) -> bool:
+    """Règle unique d'accès staff : mêmes rôles pour l'API et pour les destinataires des alertes."""
+    return bool(user) and user.get("role") in ADMIN_ROLES
+
+
 def has_permission(user: dict | None, permission: str) -> bool:
-    if not user or user.get("role") not in ADMIN_ROLES:
+    if not is_admin_user(user):
         return False
     if is_super_admin(user):
         return True
@@ -231,7 +236,7 @@ async def get_optional_user(request: Request):
 async def require_admin(request: Request) -> dict:
     """Any staff account (delegated admin or super admin). Blocked/deleted users never resolve."""
     user = await get_current_user(request)
-    if user.get("role") not in ADMIN_ROLES:
+    if not is_admin_user(user):
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
 

@@ -81,7 +81,8 @@ async def _send_push(payload: dict) -> tuple[str, str | None, dict[str, int]]:
     counts.update(targeted=dispatched["targeted"], sent=dispatched["sent"],
                   removed=dispatched["expired"], failed=dispatched["failed"])
     if not counts["targeted"]:
-        return "skipped", "no_subscription", counts
+        # Des abonnements existent mais aucun n'appartient à un admin : ce n'est pas « aucun abonnement ».
+        return "skipped", ("no_admin_subscription" if dispatched.get("ignored") else "no_subscription"), counts
     if counts["sent"]:
         return "sent", None, counts
     if counts["failed"]:
