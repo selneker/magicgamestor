@@ -11,6 +11,7 @@ from core.audit import audit
 from core.db import db
 from core.security import ADMIN_ROLES, get_optional_user
 from services import fiveone
+from services import notifications
 from services import payments as gw
 from routers.payments import (PAYABLE_ORDER_STATUSES, PUBLIC, _backend_url, _frontend_url, _public, _set_order_status,
                               apply_status, expire_attempt, latest_attempt, record_late_success)
@@ -96,6 +97,8 @@ async def refresh_from_provider(attempt: dict, background: BackgroundTasks) -> d
     amount = data.get("amount")
     if status == "completed" and amount is not None and int(float(amount)) != int(attempt["amount"]):
         await audit("payment.amount_mismatch", "fiveone-lookup", attempt["order_id"], {"client_ref": attempt["client_ref"], "expected": attempt["amount"], "got": amount})
+        notifications.schedule(background, notifications.notify_amount_mismatch,
+                               attempt["order_id"], attempt.get("order_number"), "fiveone")
         return attempt
     return await apply_status(attempt, status, "fiveone-lookup", background, {"fiveone_reference": data.get("fiveonepay_reference")})
 
@@ -138,6 +141,8 @@ async def webhook(request: Request, background: BackgroundTasks):
             raise HTTPException(status_code=400, detail="Invalid amount")
         if received != int(attempt["amount"]):
             await audit("payment.amount_mismatch", "fiveone", attempt["order_id"], {"client_ref": attempt["client_ref"], "expected": attempt["amount"], "received": received})
+            notifications.schedule(background, notifications.notify_amount_mismatch,
+                                   attempt["order_id"], attempt.get("order_number"), "fiveone")
             raise HTTPException(status_code=400, detail="Amount mismatch")
     extra = {"fiveone_reference": data.get("fiveonepay_reference"), "paid_with": data.get("operator")}
     await db.payments.update_one({"client_ref": attempt["client_ref"]}, {"$set": {"callback": event, **extra}})
