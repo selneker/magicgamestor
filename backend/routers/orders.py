@@ -476,6 +476,14 @@ async def admin_stats():
     }
 
 
+def _csv_cell(value) -> str:
+    """CSV quoting + neutralisation des formules (Excel/LibreOffice) contrôlées par le client."""
+    text = str(value or "").replace('"', "'")
+    if text.startswith(("=", "+", "-", "@")):
+        text = "'" + text
+    return '"' + text + '"'
+
+
 @router.get("/admin/export", dependencies=[Depends(require_permission("orders.manage"))])
 async def admin_export():
     orders = await db.orders.find({}, PUBLIC).sort("created_at", -1).to_list(5000)
@@ -483,7 +491,7 @@ async def admin_export():
     rows = []
     for o in orders:
         items = " | ".join(f"{i['quantity']}x {i['name']}" for i in o["items"])
-        rows.append(",".join('"' + str(v or "").replace('"', "'") + '"' for v in [
+        rows.append(",".join(_csv_cell(v) for v in [
             o["order_number"], o["created_at"], o["status"], o["pubg_id"], o["pseudo"], items, o["total"],
             o["payment_method"], o.get("payment_phone"), o.get("manual_reference"), o.get("email")]))
     from fastapi.responses import Response
