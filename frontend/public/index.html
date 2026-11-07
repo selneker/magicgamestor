@@ -21,10 +21,13 @@
         <meta property="og:site_name" content="Magic Game Store" />
         <meta property="og:title" content="Magic Game Store — Recharges de jeux à Madagascar" />
         <meta property="og:description" content="Recharges de jeux mobiles, paiement MVola, Orange Money ou USDT. Compte joueur vérifié avant paiement." />
-        <meta property="og:image" content="%PUBLIC_URL%/icon-512.png" />
+        <meta property="og:image" content="%PUBLIC_URL%/og-image.png?v=1" />
         <meta name="twitter:card" content="summary" />
         <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-        <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon-192.png" />
+        <!-- Favicon = logo principal (PL-BRAND-1). ?v=1 pour invalider les copies en cache. -->
+        <link rel="icon" href="%PUBLIC_URL%/favicon.svg?v=1" type="image/svg+xml" />
+        <link rel="icon" href="%PUBLIC_URL%/favicon.ico?v=1" sizes="48x48" />
+        <link rel="apple-touch-icon" href="%PUBLIC_URL%/apple-touch-icon.png?v=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link href="https://fonts.googleapis.com/css2?family=Onest:wght@100..900&amp;family=Bricolage+Grotesque:wght@200..800&amp;display=swap" rel="stylesheet" />
@@ -42,10 +45,71 @@
         Learn how to configure a non-root public URL by running `npm run build`.
         -->
         <title>Magic Game Store — Recharges de jeux à Madagascar</title>
+        <!-- Loader de démarrage (PL-BRAND-1) : peint dès le parse HTML, avant le bundle.
+             Formes/durées = prototype validé (loader-prototype.html), intégration seule.
+             Couleurs inline : le CSS de l'app (et ses jetons) n'est pas encore chargé ici. -->
+        <style>
+            #mgs-loader{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:#E9E2D8;
+              transition:opacity .5s ease,visibility .5s}
+            #mgs-loader.is-done{opacity:0;visibility:hidden}
+            .mgs-logo{width:min(34vmin,180px);height:auto;overflow:visible}
+            .mgs-disc{fill:#000;transform-origin:415px 415px;animation:mgs-disc-in .55s cubic-bezier(.2,.9,.3,1) both}
+            .mgs-star{fill:#CBFE01;transform-origin:415px 415px;animation:mgs-star-in .6s cubic-bezier(.2,1.2,.3,1) .35s both,
+              mgs-pulse 1.6s ease-in-out 1.1s infinite}
+            .mgs-bar{position:absolute;bottom:18vh;width:90px;height:3px;background:rgba(0,0,0,.12);border-radius:3px;overflow:hidden}
+            .mgs-bar::after{content:"";display:block;height:100%;width:40%;background:#000;border-radius:3px;animation:mgs-slide 1.1s ease-in-out infinite}
+            .mgs-wake{position:absolute;bottom:calc(18vh - 28px);font:500 13px/1.4 system-ui,sans-serif;color:#0A0A0A}
+            @keyframes mgs-disc-in{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+            @keyframes mgs-star-in{from{transform:scale(0) rotate(-90deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+            @keyframes mgs-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+            @keyframes mgs-slide{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
+            @media (prefers-reduced-motion:reduce){.mgs-disc,.mgs-star,.mgs-bar::after{animation:none}.mgs-star{transform:none}}
+        </style>
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
     </head>
     <body>
-        <noscript>You need to enable JavaScript to run this app.</noscript>
+        <!-- Loader : une seule fois par session (sessionStorage), disparu quand React a rendu
+             (window.__mgsLoaderReady, appelé par App.js) — 900 ms minimum, 8 s maximum. -->
+        <div id="mgs-loader" role="status" aria-live="polite" aria-busy="true" aria-label="Chargement">
+          <svg class="mgs-logo" viewBox="0 0 830 830" aria-hidden="true">
+            <circle class="mgs-disc" cx="415" cy="415" r="415"/>
+            <path class="mgs-star" d="M415 0A415 415 0 0 0 830 415A415 415 0 0 0 415 830A415 415 0 0 0 0 415A415 415 0 0 0 415 0Z"/>
+          </svg>
+          <div class="mgs-bar"></div>
+          <p class="mgs-wake" id="mgs-loader-wake" hidden></p>
+        </div>
+        <script>
+            (function () {
+                var loader = document.getElementById('mgs-loader');
+                try {
+                    if (sessionStorage.getItem('mgs-loader-seen')) { loader.remove(); return; }
+                    sessionStorage.setItem('mgs-loader-seen', '1');
+                } catch (_) {}
+                var start = Date.now();
+                var finished = false;
+                var wake = document.getElementById('mgs-loader-wake');
+                // Le système de traduction de l'app vit dans le bundle (pas encore chargé) :
+                // langue lue dans localStorage, français par défaut (langue du site).
+                var wakeText = { fr: 'Réveil du serveur…', en: 'Waking the server…' };
+                var lang = 'fr';
+                try { lang = localStorage.getItem('mgs_lang') === 'en' ? 'en' : 'fr'; } catch (_) {}
+                if (wake) wake.textContent = wakeText[lang] || wakeText.fr;
+                function finish() {
+                    if (finished || !loader.parentNode) return;
+                    finished = true;
+                    var wait = Math.max(0, 900 - (Date.now() - start));
+                    setTimeout(function () {
+                        loader.classList.add('is-done');
+                        loader.removeAttribute('aria-busy');
+                        setTimeout(function () { loader.remove(); }, 550);
+                    }, wait);
+                }
+                window.__mgsLoaderReady = finish;
+                setTimeout(finish, 8000); // plafond : l'overlay disparaît quoi qu'il arrive
+                setTimeout(function () { if (!finished && wake) wake.hidden = false; }, 4000);
+            })();
+        </script>
+        <noscript><style>#mgs-loader{display:none}</style>You need to enable JavaScript to run this app.</noscript>
         <div id="root"></div>
         <!--
       This HTML file is a template.

@@ -33,7 +33,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(data.title || 'Magic Game Store', {
     body: data.body || 'Une nouvelle commande est arrivée.',
     tag: data.tag || data.orderId || 'mgs-order',
-    icon: '/icon-192.png',
+    icon: '/push-icon-192.png',
+    badge: '/badge-72.png',
     data: { url: data.url || '/admin/commandes' },
   }));
 });

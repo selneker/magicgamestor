@@ -59,7 +59,7 @@ describe("public/sw.js", () => {
     expect(typeof listeners.push).toBe("function");
     expect(typeof listeners.notificationclick).toBe("function");
     await waitEvent(listeners, "push", { data: { json: () => ({ title: "T", body: "B" }) } });
-    expect(registration.showNotification).toHaveBeenCalledWith("T", expect.objectContaining({ body: "B", icon: "/icon-192.png" }));
+    expect(registration.showNotification).toHaveBeenCalledWith("T", expect.objectContaining({ body: "B", icon: "/push-icon-192.png", badge: "/badge-72.png" }));
     await waitEvent(listeners, "notificationclick", { notification: { close: jest.fn(), data: { url: "/admin/commandes" } } });
     expect(sandbox.clients.openWindow).toHaveBeenCalledWith("https://admin.example/admin/commandes");
   });

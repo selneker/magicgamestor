@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 830 830">
+  <!-- Favicon Magic Game Store (PL-BRAND-1) : logo principal, étoile transparente.
+       Onglet sombre : disque blanc ; onglet clair : disque noir. -->
+  <style>@media (prefers-color-scheme: dark) { path { fill: #FFFFFF } }</style>
+  <path fill="#000000" fill-rule="evenodd" d="M415 0A415 415 0 1 1 415 830A415 415 0 1 1 415 0ZM415 0A415 415 0 0 0 830 415A415 415 0 0 0 415 830A415 415 0 0 0 0 415A415 415 0 0 0 415 0Z"/>
+</svg>

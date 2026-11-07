@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { MessageCircle, Phone } from "lucide-react";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
+import { Logo } from "@/components/Logo";
 
 export function Footer() {
   const { t } = useLang();
@@ -16,7 +17,12 @@ export function Footer() {
       </div>
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.4fr_0.8fr_0.8fr]">
         <div>
-          <p className="font-display text-lg font-black uppercase tracking-tight">Magic<span className="bg-primary px-1 text-[#0A0A0A]">Game</span>Store</p>
+          {/* PL-BRAND-1 : le logo remplace l'ancien bloc purement textuel ; le
+              nom reste visible à côté (et dans l'aria-label du logo). */}
+          <p className="flex items-center gap-2.5 font-display text-lg font-black uppercase tracking-tight">
+            <Logo className="h-8 w-8 shrink-0 text-foreground" label="Magic Game Store" />
+            <span>Magic<span className="bg-primary px-1 text-[#0A0A0A]">Game</span>Store</span>
+          </p>
           <p className="mt-4 max-w-xs text-sm text-muted-foreground">{t("footer.tagline")}</p>
           <div className="mt-6 flex flex-wrap gap-2">
             <a href="https://wa.me/261377519833" data-testid="footer-whatsapp" className="border border-foreground px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.12em] transition-colors hover:bg-primary hover:text-[#0A0A0A]">WhatsApp</a>

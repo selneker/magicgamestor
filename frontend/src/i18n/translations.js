@@ -1,6 +1,6 @@
 export const translations = {
   fr: {
-    nav: { shop: "Boutique", uc: "Achat {UC}", prime: "Abonnement", evo: "Pack évolutif", events: "Event", eventsFull: "Événements", orders: "Commandes", account: "Compte", admin: "Admin", login: "Connexion", logout: "Déconnexion", track: "Suivi", cart: "Panier", support: "Support", messages: "Messages" },
+    nav: { shop: "Boutique", uc: "Achat {UC}", prime: "Abonnement", evo: "Pack évolutif", events: "Event", eventsFull: "Événements", orders: "Commandes", account: "Compte", admin: "Admin", login: "Connexion", logout: "Déconnexion", track: "Suivi", cart: "Panier", support: "Support", messages: "Messages", pointsAria: "{n} points" },
     games: { title: "Jeux", select: "Choisir un jeu", current: "Jeu sélectionné", eyebrow: "Boutique", pickTitle: "Choisissez votre jeu", pickSubtitle: "Sélectionnez un jeu pour afficher son catalogue.", comingSoon: "Bientôt", active: "Actif", empty: "Aucun jeu disponible pour le moment." },
     profile: { backToShop: "Boutique", loyalty: "Points fidélité", quickAccess: "Accès rapide", preferences: "Préférences", security: "Sécurité", helpLegal: "Aide & légal", editProfile: "Modifier mon profil", pubgCard: "Ma PUBG Player Card", myOrders: "Mes commandes", language: "Langue", theme: "Thème", themeLight: "Clair", themeDark: "Sombre", themeSystem: "Système", password: "Mot de passe", deleteAccount: "Supprimer mon compte", helpSupport: "Aide & support", privacy: "Confidentialité", terms: "Conditions d'utilisation", avatarLocked: "Avatar non modifiable" },
     store: {
@@ -130,7 +130,7 @@ cart: { otherGame: "Votre panier contient des offres d'un autre jeu. Finalisez o
     error: { title: "Une erreur est survenue", body: "La page n'a pas pu s'afficher. Rechargez la page pour réessayer.", reload: "Recharger" },
   },
   en: {
-    nav: { shop: "Shop", uc: "Buy {UC}", prime: "Subscription", evo: "Evolving Pack", events: "Event", eventsFull: "Events", orders: "Orders", account: "Account", admin: "Admin", login: "Log in", logout: "Log out", track: "Track", cart: "Cart", support: "Support", messages: "Messages" },
+    nav: { shop: "Shop", uc: "Buy {UC}", prime: "Subscription", evo: "Evolving Pack", events: "Event", eventsFull: "Events", orders: "Orders", account: "Account", admin: "Admin", login: "Log in", logout: "Log out", track: "Track", cart: "Cart", support: "Support", messages: "Messages", pointsAria: "{n} points" },
     games: { title: "Games", select: "Pick a game", current: "Selected game", eyebrow: "Shop", pickTitle: "Choose your game", pickSubtitle: "Pick a game to open its catalog.", comingSoon: "Coming soon", active: "Active", empty: "No game available right now." },
     profile: { backToShop: "Shop", loyalty: "Loyalty points", quickAccess: "Quick access", preferences: "Preferences", security: "Security", helpLegal: "Help & legal", editProfile: "Edit my profile", pubgCard: "My PUBG Player Card", myOrders: "My orders", language: "Language", theme: "Theme", themeLight: "Light", themeDark: "Dark", themeSystem: "System", password: "Password", deleteAccount: "Delete my account", helpSupport: "Help & support", privacy: "Privacy", terms: "Terms of use", avatarLocked: "Avatar locked" },
     store: {
