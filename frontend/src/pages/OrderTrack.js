@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Clock, PackageCheck, Search, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
+import { paymentColor, paymentLabel } from "@/lib/paymentLabels";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { useGames } from "@/context/GameContext";
@@ -51,7 +52,7 @@ export function OrderCard({ order }) {
       </ul>
       <div className="mt-3 flex flex-wrap justify-between gap-2 border-t pt-3 text-sm text-slate-500">
         <span><OrderIdentity order={order} /> · {order.pseudo}</span>
-        <span className="capitalize">{order.payment_method === "orange" ? "Orange Money" : order.payment_method === "mvola" ? "MVola" : "USSD"}</span>
+        <span>{paymentLabel(order.payment_method, t)}</span>
         <span>{new Date(order.created_at).toLocaleString(lang === "en" ? "en-GB" : "fr-FR")}</span>
         <span className="num text-xl text-foreground">{formatAr(order.total)}</span>
       </div>
@@ -133,7 +134,7 @@ export default function OrderTrack() {
         <div className="mt-6 space-y-3">
           <OrderCard order={order} />
           {order.status === "pending_payment" && payInfo?.payment_url && !payInfo.simulated && (
-            <Button asChild className="h-12 w-full rounded-full font-bold" style={{ background: order.payment_method === "mvola" ? "var(--mvola)" : "var(--orange)" }} data-testid="resume-payment-button">
+            <Button asChild className="h-12 w-full rounded-full font-bold" style={{ background: paymentColor(order.payment_method) }} data-testid="resume-payment-button">
               <a href={payInfo.payment_url}>{t("checkout.resume")}</a>
             </Button>
           )}

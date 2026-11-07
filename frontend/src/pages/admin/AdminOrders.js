@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
+import { paymentLabel } from "@/lib/paymentLabels";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { StatusPill } from "@/pages/OrderTrack";
@@ -92,7 +93,7 @@ export default function AdminOrders() {
         </Select>
         <Select value={filters.method} onValueChange={(v) => setFilters({ ...filters, method: v })}>
           <SelectTrigger className="h-10 w-44 rounded-full" data-testid="admin-filter-method"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem value="all">{t("admin.allMethods")}</SelectItem><SelectItem value="mvola">MVola</SelectItem><SelectItem value="orange">Orange Money</SelectItem><SelectItem value="manual">USSD</SelectItem></SelectContent>
+          <SelectContent><SelectItem value="all">{t("admin.allMethods")}</SelectItem><SelectItem value="mvola">MVola</SelectItem><SelectItem value="orange">Orange Money</SelectItem><SelectItem value="manual">USSD</SelectItem><SelectItem value="binance">{paymentLabel("binance", t)}</SelectItem></SelectContent>
         </Select>
         <Button variant="outline" size="icon" className="rounded-full" onClick={load} data-testid="admin-orders-refresh"><RefreshCw className="h-4 w-4" /></Button>
       </div>
@@ -104,7 +105,7 @@ export default function AdminOrders() {
             <div className="text-sm">
               <p className="flex flex-wrap items-center gap-1 font-semibold text-slate-900">{o.pseudo} · <span className="font-mono">{o.pubg_id}</span><CopyButton value={o.pubg_id} label="PUBG ID" testId={`copy-pubg-${o.order_number}`} /></p>
               <p className="text-slate-600">{o.items.map((i) => `${i.quantity}× ${i.name}${i.season_name ? ` · ${i.season_name}` : ""}${i.week_key ? ` · sem. ${i.week_key}` : ""}`).join(", ")}</p>
-              <p className="flex flex-wrap items-center gap-1 text-xs text-slate-500">{o.payment_method === "manual" ? <>USSD · {o.manual_reference || ""}<CopyButton value={o.manual_reference} label="référence de transaction" testId={`copy-ref-${o.order_number}`} /></> : <>{o.payment_method === "mvola" ? "MVola" : "Orange Money"} · {o.payment_phone || ""}<CopyButton value={o.payment_phone} label="numéro de paiement" testId={`copy-phone-${o.order_number}`} /></>}{o.email ? ` · ${o.email}` : ""}</p>
+              <p className="flex flex-wrap items-center gap-1 text-xs text-slate-500">{o.payment_method === "manual" ? <>{paymentLabel(o.payment_method, t)} · {o.manual_reference || ""}<CopyButton value={o.manual_reference} label="référence de transaction" testId={`copy-ref-${o.order_number}`} /></> : o.payment_method === "binance" ? <>{paymentLabel(o.payment_method, t)}</> : <>{paymentLabel(o.payment_method, t)} · {o.payment_phone || ""}<CopyButton value={o.payment_phone} label="numéro de paiement" testId={`copy-phone-${o.order_number}`} /></>}{o.email ? ` · ${o.email}` : ""}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="num text-xl text-foreground">{formatAr(o.total)}</span>

@@ -81,7 +81,7 @@ cart: { otherGame: "Votre panier contient des offres d'un autre jeu. Finalisez o
       confirmOrder: "Confirmer commande", orderConfirmed: "Commande confirmée", orderPaidAuto: "Paiement confirmé automatiquement. Livraison en cours.", deliveryReceived: "Reçue", deliveryChecking: "En vérification", deliveryDelivered: "Livrée",
     },
     order: {
-      title: "Commande", track: "Suivre une commande", number: "Numéro de commande", find: "Rechercher", notFound: "Commande introuvable.", items: "Articles", method: "Paiement", date: "Date", none: "Aucune commande pour le moment.",
+      title: "Commande", track: "Suivre une commande", number: "Numéro de commande", find: "Rechercher", notFound: "Commande introuvable.", items: "Articles", method: "Paiement", methodOther: "Autre", date: "Date", none: "Aucune commande pour le moment.",
       history: "Historique de mes achats", historyEmpty: "Aucun achat pour le moment. Vos commandes apparaîtront ici.", viewTrack: "Voir le suivi", seeAll: "Voir tout", seeLess: "Voir moins",
       latePayment: "Un paiement a été reçu après le délai de 15 minutes. Notre équipe vérifie et vous recontacte.",
       status: { pending_payment: "Paiement en attente", awaiting_verification: "Vérification en cours", paid: "Payée — livraison en cours", delivered: "Livrée", cancelled: "Annulée", failed: "Paiement échoué", expired: "Paiement expiré" },
@@ -211,7 +211,7 @@ cart: { otherGame: "Your cart holds offers from another game. Check out or empty
       confirmOrder: "Confirm order", orderConfirmed: "Order confirmed", orderPaidAuto: "Payment confirmed automatically. Delivery in progress.", deliveryReceived: "Received", deliveryChecking: "Being checked", deliveryDelivered: "Delivered",
     },
     order: {
-      title: "Order", track: "Track an order", number: "Order number", find: "Find", notFound: "Order not found.", items: "Items", method: "Payment", date: "Date", none: "No orders yet.",
+      title: "Order", track: "Track an order", number: "Order number", find: "Find", notFound: "Order not found.", items: "Items", method: "Payment", methodOther: "Other", date: "Date", none: "No orders yet.",
       history: "My purchase history", historyEmpty: "No purchases yet. Your orders will appear here.", viewTrack: "View tracking", seeAll: "See all", seeLess: "See less",
       latePayment: "A payment was received after the 15-minute deadline. Our team is checking and will contact you.",
       status: { pending_payment: "Payment pending", awaiting_verification: "Under verification", paid: "Paid — delivering", delivered: "Delivered", cancelled: "Cancelled", failed: "Payment failed", expired: "Payment expired" },
