@@ -30,6 +30,14 @@ module.exports = {
         ink: '#111111',
         neo: '#D4FF00',
         paper: '#F8F8F8',
+        /* Marque (PL-BRAND-1) : renvoi vers les jetons CSS de src/index.css.
+           brand-lime : accents et boutons secondaires sur surface d'encre
+           uniquement (~15:1 sur #0A0A0A, ~1,1:1 sur fond clair → jamais en
+           texte sur fond clair). brand-sand : fonds de marque. */
+        brand: {
+          lime: 'var(--brand-lime)',
+          sand: 'var(--brand-sand)'
+        },
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {

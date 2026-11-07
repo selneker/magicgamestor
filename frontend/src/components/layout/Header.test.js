@@ -16,7 +16,7 @@ jest.mock("react-router-dom", () => {
   return { Link: Anchor, NavLink: Anchor };
 });
 jest.mock("@/lib/api", () => ({ api: { get: jest.fn(), post: jest.fn() } }));
-jest.mock("@/context/LanguageContext", () => ({ useLang: () => ({ t: (k) => k, lang: "fr" }) }));
+jest.mock("@/context/LanguageContext", () => ({ useLang: () => ({ t: (k, vars) => (k === "nav.pointsAria" && vars ? `${vars.n} points` : k), lang: "fr" }) }));
 jest.mock("@/context/CartContext", () => ({ useCart: () => ({ count: 0, setOpen: jest.fn() }) }));
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -91,4 +91,81 @@ test("header : utilisateur déconnecté (401 confirmé) → le bouton Connexion 
   expect(container.querySelector('[data-testid="auth-loading-icon"]')).toBeNull();
   await act(async () => root.unmount());
   container.remove();
+});
+
+// ---- PL-BRAND-1 : logo, pastille compacte, repli au défilement ----
+
+function setScrollY(y) {
+  Object.defineProperty(window, "scrollY", { value: y, configurable: true });
+}
+// jsdom fait 1024 px de large : le repli n'agit que sous 768 px.
+function setViewportWidth(w) {
+  Object.defineProperty(window, "innerWidth", { value: w, configurable: true });
+}
+async function scroll(container, root, y) {
+  setScrollY(y);
+  await act(async () => { window.dispatchEvent(new Event("scroll")); });
+}
+
+test("header : le texte de marque est remplacé par le logo SVG (aria-label = nom du magasin)", async () => {
+  const { container, root } = await mountHeader();
+  const logo = container.querySelector('[data-testid="header-logo"]');
+  expect(logo).not.toBeNull();
+  expect(logo.querySelector("svg")).not.toBeNull();
+  expect(logo.getAttribute("aria-label")).toBe("Magic Game Store");
+  expect(logo.textContent).not.toContain("Magic"); // plus de texte de marque
+  await act(async () => root.unmount());
+  container.remove();
+});
+
+test("pastille de points mobile : valeur abrégée, pas de libellé pts, solde exact dans l'aria-label", async () => {
+  api.get.mockImplementation((url) => {
+    if (url === "/auth/me") return Promise.resolve({ data: { user_id: "u1", role: "customer", name: "Test" } });
+    if (url === "/settings/status") return Promise.resolve({ data: { online: true } });
+    if (url === "/loyalty/me") return Promise.resolve({ data: { balance: { total: 12500 } } });
+    return Promise.resolve({ data: {} });
+  });
+  const { container, root } = await mountHeader();
+  await act(async () => {});
+  const pill = container.querySelector('[data-testid="header-loyalty-pill"]');
+  expect(pill).not.toBeNull();
+  expect(pill.getAttribute("aria-label")).toBe("12500 points");
+  expect(container.querySelector('[data-testid="header-loyalty-pill-value"]').textContent).toBe("12,5\u00A0k");
+  expect(pill.textContent).not.toContain("pts"); // libellé retiré sur mobile
+  await act(async () => root.unmount());
+  container.remove();
+});
+
+test("repli au défilement : caché en descendant, réapparaît en remontant", async () => {
+  setViewportWidth(390);
+  const { container, root } = await mountHeader();
+  const header = container.querySelector("header");
+  expect(header.getAttribute("data-collapsed")).toBe("false");
+  await scroll(container, root, 300);
+  await scroll(container, root, 500);
+  expect(header.getAttribute("data-collapsed")).toBe("true");
+  await scroll(container, root, 200);
+  expect(header.getAttribute("data-collapsed")).toBe("false");
+  await act(async () => root.unmount());
+  container.remove();
+  setScrollY(0);
+  setViewportWidth(1024);
+});
+
+test("repli au défilement : désactivé avec prefers-reduced-motion", async () => {
+  setViewportWidth(390);
+  window.matchMedia = jest.fn().mockReturnValue({ matches: true });
+  try {
+    const { container, root } = await mountHeader();
+    const header = container.querySelector("header");
+    await scroll(container, root, 300);
+    await scroll(container, root, 500);
+    expect(header.getAttribute("data-collapsed")).toBe("false");
+    await act(async () => root.unmount());
+    container.remove();
+  } finally {
+    delete window.matchMedia;
+    setScrollY(0);
+    setViewportWidth(1024);
+  }
 });

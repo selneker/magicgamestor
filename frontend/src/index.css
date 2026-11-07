@@ -60,6 +60,13 @@
            Même logique que --card-ink-muted : en clair l'encre s'atténue, en
            sombre c'est la crème (>= .72 d'opacité pour rester >= 4.5:1). */
         --admin-ink-muted: hsl(0 0% 7% / .72);
+        /* Identité de marque (PL-BRAND-1) : lime et sable du logo, fixes dans les
+           deux themes. Le lime n'est PAS une couleur de texte sur fond clair
+           (~1,1:1) : réservé aux accents sur surfaces d'encre (>= 15:1) et aux
+           boutons secondaires posés sur le noir. Le sable est un fond de marque
+           (loader, icônes, og-image) — plus sombre que la crème --cream. */
+        --brand-lime: #CBFE01;
+        --brand-sand: #E9E2D8;
     }
     .dark {
         --background: 0 0% 17%;        /* #2B2B2B */

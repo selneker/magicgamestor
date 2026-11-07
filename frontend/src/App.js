@@ -1,4 +1,5 @@
 import "@/App.css";
+import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { LanguageProvider } from "@/context/LanguageContext";
@@ -85,6 +86,12 @@ function AppRouter() {
 }
 
 export default function App() {
+  // Loader de démarrage (PL-BRAND-1) : signale au script inline de index.html
+  // que le premier rendu React est terminé (déclenche le fondu, 900 ms min,
+  // 8 s max côté loader). Idempotent : StrictMode appelle l'effet deux fois.
+  useEffect(() => {
+    if (typeof window.__mgsLoaderReady === "function") window.__mgsLoaderReady();
+  }, []);
   return (
     <ThemeProvider attribute="class" storageKey="mgs-theme" defaultTheme="system" enableSystem disableTransitionOnChange>
     <LanguageProvider>
