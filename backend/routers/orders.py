@@ -23,6 +23,9 @@ from services.notifications import notify_new_order
 
 router = APIRouter(tags=["orders"])
 PUBLIC = {"_id": 0}
+# Suivi public : le numéro de commande et l'identifiant joueur suffisent au client ;
+# l'email et le téléphone de paiement ne doivent jamais sortir par cette route publique.
+TRACK_PUBLIC = {"_id": 0, "email": 0, "payment_phone": 0}
 STATUSES = ["pending_payment", "awaiting_verification", "paid", "delivered", "cancelled", "failed", "expired"]
 SUBSCRIPTION_TYPES = ("prime", "prime_plus")
 SUBSCRIPTION_LABELS = {"prime": "Prime", "prime_plus": "Prime+"}
@@ -345,8 +348,10 @@ async def subscription_status(pubg_id: str = Query(min_length=9, max_length=13))
 
 
 @router.get("/orders/track")
-async def track_order(order_number: str = Query(min_length=6), pubg_id: str = Query(min_length=9)):
-    order = await db.orders.find_one({"order_number": order_number.upper().strip(), "pubg_id": pubg_id.strip()}, PUBLIC)
+async def track_order(request: Request, order_number: str = Query(min_length=6), pubg_id: str = Query(min_length=9)):
+    ratelimit.check(f"order_track:ip:{ratelimit.client_ip(request)}",
+                    ratelimit.setting("ORDER_TRACK_PER_HOUR_PER_IP", 20), 3600)
+    order = await db.orders.find_one({"order_number": order_number.upper().strip(), "pubg_id": pubg_id.strip()}, TRACK_PUBLIC)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     if order["status"] == "pending_payment" and order["payment_method"] != "manual":
@@ -355,7 +360,7 @@ async def track_order(order_number: str = Query(min_length=6), pubg_id: str = Qu
         attempt = await latest_attempt(order["id"])
         if attempt and attempt["status"] == "pending" and is_expired(attempt):
             await expire_attempt(attempt)
-            order = await db.orders.find_one({"id": order["id"]}, PUBLIC)
+            order = await db.orders.find_one({"id": order["id"]}, TRACK_PUBLIC)
     return with_game_defaults(order)
 
 
