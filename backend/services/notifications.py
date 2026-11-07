@@ -30,6 +30,7 @@ RETRY_ALERTS = {
     "chat_message": ("Nouveau message client (rappel)", "/admin/messages"),
     "test": ("Test des notifications (rappel)", "/admin/commandes"),
     "order_paid": ("Commande payée (rappel)", "/admin/commandes"),
+    "order_unprocessed": ("Commande payée non traitée (rappel)", "/admin/commandes"),
     "payment_failed": ("Paiement échoué (rappel)", "/admin/commandes"),
     "payment_expired": ("Paiement expiré (rappel)", "/admin/commandes"),
     "delivery_blocked": ("Livraison bloquée (rappel)", "/admin/commandes"),

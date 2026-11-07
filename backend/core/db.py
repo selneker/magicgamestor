@@ -19,6 +19,9 @@ async def ensure_indexes():
     await db.orders.create_index("id", unique=True)
     await db.orders.create_index("order_number", unique=True)
     await db.orders.create_index([("user_id", 1), ("created_at", -1)])
+    # PL-NOTIF-4 : relance des commandes payées non traitées — balayage borné par statut, plus
+    # anciennes d'abord (évite un tri en mémoire sur toute la collection).
+    await db.orders.create_index([("status", 1), ("created_at", 1)])
     await db.orders.create_index("pubg_id")
     await db.orders.create_index("game_id")
     await db.products.create_index("game_id")
