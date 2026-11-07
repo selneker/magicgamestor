@@ -98,7 +98,7 @@ async def expire_attempt(attempt: dict, background: BackgroundTasks | None = Non
             await audit("payment.expired", "system", attempt["order_id"], {"client_ref": attempt["client_ref"]})
             if background is not None:
                 background.add_task(on_payment_failed, attempt["order_id"], "expired")
-            notifications.schedule(background, notifications.notify_payment_expired,
+            notifications.schedule(None, notifications.notify_payment_expired,
                                    attempt["order_id"], attempt.get("order_number"), attempt.get("gateway"),
                                    "simulation" if attempt.get("simulated") else "system")
     return res
@@ -339,7 +339,7 @@ async def papi_notification(request: Request, background: BackgroundTasks):
         if received != int(attempt["amount"]):
             await db.payments.update_one({"client_ref": ref}, {"$set": {"amount_mismatch": {"expected": attempt["amount"], "received": received, "at": _iso()}}})
             await audit("payment.amount_mismatch", "papi", attempt["order_id"], {"client_ref": ref, "expected": attempt["amount"], "received": received})
-            notifications.schedule(background, notifications.notify_amount_mismatch,
+            notifications.schedule(None, notifications.notify_amount_mismatch,
                                    attempt["order_id"], attempt.get("order_number"), attempt.get("gateway"))
             raise HTTPException(status_code=400, detail="Amount mismatch")
     extra = {"callback": body, "papi_reference": body.get("paymentReference"), "paid_with": body.get("paymentMethod")}
