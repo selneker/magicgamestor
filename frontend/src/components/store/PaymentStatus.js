@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CheckCircle2, Loader2, Smartphone, XCircle } from "lucide-react";
 import { api } from "@/lib/api";
+import { paymentColor, paymentLabel } from "@/lib/paymentLabels";
 import { useLang } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
 
@@ -39,7 +40,7 @@ export function PaymentStatus({ order, onRetry, onCompleted }) {
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const trackUrl = `/suivi/${order.order_number}?pubg_id=${order.pubg_id}`;
-  const color = order.payment_method === "mvola" ? "var(--mvola)" : "var(--orange)";
+  const color = paymentColor(order.payment_method);
 
   // A single heading for every state, so the live region is the same DOM node
   // throughout: its text changes once per state change, never on each poll.
@@ -74,7 +75,7 @@ export function PaymentStatus({ order, onRetry, onCompleted }) {
 
       {state === "pending" && (
         <>
-          <p className="mt-2 text-sm text-muted-foreground">{order.payment_method === "mvola" ? "MVola" : "Orange Money"} · {order.payment_phone}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{paymentLabel(order.payment_method, t)}{order.payment_phone ? ` · ${order.payment_phone}` : ""}</p>
           <p className="mt-1 font-display text-3xl font-bold text-foreground">{formatAmount(order.total, lang)}</p>
           {simulated && <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700" data-testid="simulation-notice">{t("checkout.simulated")}</p>}
           <Loader2 className="mx-auto mt-6 h-6 w-6 animate-spin text-muted-foreground" />

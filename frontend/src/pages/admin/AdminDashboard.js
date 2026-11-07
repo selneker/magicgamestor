@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { api, formatAr } from "@/lib/api";
+import { paymentLabel } from "@/lib/paymentLabels";
 import { useLang } from "@/context/LanguageContext";
 
 export default function AdminDashboard() {
@@ -51,6 +52,7 @@ export default function AdminDashboard() {
             <span className="rounded-full bg-[var(--mvola)]/10 px-3 py-1 text-[var(--mvola)]">MVola {stats.by_method.mvola || 0}</span>
             <span className="rounded-full bg-[var(--orange)]/10 px-3 py-1 text-[var(--orange)]">Orange {stats.by_method.orange || 0}</span>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">USSD {stats.by_method.manual || 0}</span>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">{paymentLabel("binance", t)} {stats.by_method.binance || 0}</span>
           </div>
         </div>
       </div>
