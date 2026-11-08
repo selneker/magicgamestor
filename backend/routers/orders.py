@@ -489,7 +489,7 @@ async def admin_stats():
 def _csv_cell(value) -> str:
     """CSV quoting + neutralisation des formules (Excel/LibreOffice) contrôlées par le client."""
     text = str(value or "").replace('"', "'")
-    if text.startswith(("=", "+", "-", "@")):
+    if text.startswith(("=", "+", "-", "@", "\t", "\r")):
         text = "'" + text
     return '"' + text + '"'
 
