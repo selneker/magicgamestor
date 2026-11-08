@@ -1,3 +1,4 @@
+import re
 import secrets
 import uuid
 from datetime import datetime, timezone
@@ -15,7 +16,7 @@ from core.identity_keys import find_lock, identity_key, order_game_id, order_ide
 from core.security import (ADMIN_ROLES, get_current_user, get_optional_user, require_admin,
                            require_permission, require_super_admin)
 from routers.evo import EVO_TYPE, release_evo_locks, reserve_evo
-from services import loyalty, mailer
+from services import captcha, loyalty, mailer
 from services import payments as gw
 from services.fulfillment import on_order_paid
 from services.fzr_mapping import purchase_blocked, supplier_cost_usd
@@ -61,6 +62,7 @@ class OrderIn(BaseModel):
     email: str | None = None
     game_id: str = Field(default=DEFAULT_GAME_ID, min_length=1, max_length=60)
     identity_id: str | None = Field(default=None, max_length=60)
+    captcha_token: str | None = Field(default=None, max_length=4096)
 
     @field_validator("pubg_id")
     @classmethod
@@ -238,6 +240,7 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
     ratelimit.check(f"orders:ip:{ip}", ratelimit.setting("ORDERS_PER_HOUR_PER_IP", 30), 3600)
     if user:
         ratelimit.check(f"orders:user:{user['user_id']}", ratelimit.setting("ORDERS_PER_HOUR_PER_USER", 20), 3600)
+    await captcha.require(body.captcha_token, ip)
     # ------------------------------------------------------------------ #
     # ENTITÉ D'ABORD, MOYEN DE PAIEMENT ENSUITE.
     # L'identité joueur et la vendabilité du jeu sont validées AVANT toute dépendance de paiement :
