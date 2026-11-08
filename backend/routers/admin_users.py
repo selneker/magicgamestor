@@ -5,6 +5,7 @@ Authorization is centralised in core.security (require_permission / require_supe
 - role & permissions changes -> super admin only
 - the super admin account itself can never be blocked, deleted, demoted or edited by anyone else
 """
+import re
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -69,7 +70,7 @@ def _protect_super_admin(target: dict):
 @router.get("/admin/users")
 async def list_users(
     admin=Depends(require_permission("users.manage")),
-    search: str | None = None,
+    search: str | None = Query(default=None, max_length=100),
     role: str | None = Query(default=None, pattern=r"^(customer|admin|super_admin)$"),
     status: str | None = Query(default=None, pattern=r"^(active|blocked)$"),
     email_verified: bool | None = None,
@@ -78,7 +79,8 @@ async def list_users(
 ):
     query: dict = {"deleted_at": {"$exists": False}}
     if search:
-        needle = search.strip()
+        # re.escape : un terme saisi ne doit jamais devenir un motif coûteux (ReDoS).
+        needle = re.escape(search.strip())
         query["$or"] = [
             {"name": {"$regex": needle, "$options": "i"}},
             {"email": {"$regex": needle, "$options": "i"}},

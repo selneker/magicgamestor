@@ -379,7 +379,8 @@ async def get_order(order_id: str, user=Depends(get_optional_user)):
 
 # ---------- Admin ----------
 @router.get("/admin/orders", dependencies=[Depends(require_permission("orders.manage"))])
-async def admin_orders(status: str | None = None, method: str | None = None, q: str | None = None, limit: int = 200):
+async def admin_orders(status: str | None = None, method: str | None = None,
+                       q: str | None = Query(default=None, max_length=100), limit: int = 200):
     from routers.payments import expire_stale_attempts
     await expire_stale_attempts()
     query = {}
@@ -388,8 +389,9 @@ async def admin_orders(status: str | None = None, method: str | None = None, q: 
     if method and method != "all":
         query["payment_method"] = method
     if q:
-        query["$or"] = [{"pubg_id": {"$regex": q}}, {"pseudo": {"$regex": q, "$options": "i"}},
-                        {"order_number": {"$regex": q.upper()}}, {"email": {"$regex": q, "$options": "i"}}]
+        needle = re.escape(q)  # même règle que /admin/users : jamais de motif regex fourni par l'appelant
+        query["$or"] = [{"pubg_id": {"$regex": needle}}, {"pseudo": {"$regex": needle, "$options": "i"}},
+                        {"order_number": {"$regex": needle.upper()}}, {"email": {"$regex": needle, "$options": "i"}}]
     return await db.orders.find(query, PUBLIC).sort("created_at", -1).to_list(min(limit, 1000))
 
 
