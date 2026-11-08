@@ -301,6 +301,8 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         raise HTTPException(status_code=400, detail="Une seule offre Pack évolutif identique par commande et par PUBG ID.")
     from services import fees
     payment_fee = await fees.calculate_payment_fee(payment_provider, total)
+    # Commande invitée : l'UUID `id` est un secret de fait (lecture publique de la commande et de
+    # son statut de paiement). Ne jamais le journaliser ni l'exposer dans une page indexable.
     order = {
         "id": str(uuid.uuid4()), "order_number": _order_number(), "user_id": user["user_id"] if user else None,
         "email": (user or {}).get("email") or body.email, "pubg_id": body.pubg_id, "pseudo": body.pseudo.strip(),
