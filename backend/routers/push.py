@@ -66,10 +66,15 @@ async def subscribe(body: SubscriptionIn, user=Depends(require_admin)):
     subscription = PushSubscription(user_id=user["user_id"], endpoint=body.endpoint, keys=body.keys.model_dump())
     doc = subscription.to_mongo()
     doc.pop("_id")
+    # `endpoint` est unique : le filtre inclut le propriétaire, donc un upsert ne peut jamais
+    # réaffecter la souscription d'un autre admin. Un conflit d'index est traduit en 409.
+    query = {"endpoint": body.endpoint, "user_id": user["user_id"]}
     try:
-        await db.push_subscriptions.update_one({"endpoint": body.endpoint}, {"$set": doc, "$setOnInsert": {"_id": subscription.id}}, upsert=True)
+        await db.push_subscriptions.update_one(query, {"$set": doc, "$setOnInsert": {"_id": subscription.id}}, upsert=True)
     except DuplicateKeyError:
-        await db.push_subscriptions.update_one({"endpoint": body.endpoint}, {"$set": doc})
+        result = await db.push_subscriptions.update_one(query, {"$set": doc})
+        if not result.matched_count:
+            raise HTTPException(status_code=409, detail="Cette souscription Push appartient déjà à un autre compte.")
     return {"registered": True}
 
 

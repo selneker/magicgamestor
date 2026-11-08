@@ -270,7 +270,11 @@ async def initiate(body: InitiateIn, request: Request, background: BackgroundTas
 
 
 @router.get("/{order_id}/status")
-async def status(order_id: str, background: BackgroundTasks):
+async def status(order_id: str, background: BackgroundTasks, user=Depends(get_optional_user)):
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0, "status": 1, "order_number": 1, "user_id": 1})
+    if order and order.get("user_id") and (
+            not user or (user["user_id"] != order["user_id"] and user.get("role") not in ADMIN_ROLES)):
+        raise HTTPException(status_code=403, detail="Forbidden")
     attempt = await latest_attempt(order_id)
     if not attempt:
         raise HTTPException(status_code=404, detail="No payment for this order")
