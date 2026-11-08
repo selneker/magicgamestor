@@ -346,7 +346,11 @@ async def my_orders(user=Depends(get_current_user)):
 
 
 @router.get("/orders/subscriptions")
-async def subscription_status(pubg_id: str = Query(min_length=9, max_length=13)):
+async def subscription_status(request: Request, pubg_id: str = Query(min_length=9, max_length=13)):
+    # Route publique d'information (le tunnel de commande l'utilise) : la limite par IP rend
+    # l'énumération d'identifiants joueurs inexploitable sans imposer une connexion au client.
+    ratelimit.check(f"order_subs:ip:{ratelimit.client_ip(request)}",
+                    ratelimit.setting("ORDER_SUBS_PER_HOUR_PER_IP", 60), 3600)
     return {"pubg_id": pubg_id.strip(), "active": await active_subscriptions(pubg_id.strip())}
 
 
