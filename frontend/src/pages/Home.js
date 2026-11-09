@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { useGames } from "@/context/GameContext";
 import { useLang, localized } from "@/context/LanguageContext";
 import { StatusBadge } from "@/components/layout/Header";
+import { GameCard } from "@/components/game/GameCard";
 import { ProductCard } from "@/components/store/ProductCard";
 import { Reviews } from "@/components/store/Reviews";
 import { Button } from "@/components/ui/button";
@@ -121,30 +122,33 @@ function Steps() {
   );
 }
 
-function GamesBento({ games, selectGame }) {
-  const { t, lang } = useLang();
+function GamesBento({ games }) {
+  const { t } = useLang();
+  // PL-UI-GAMES-1 — grille de cartes sur tous les écrans : 2 col mobile,
+  // 3 tablette, 4 bureau ; 6 jeux max sur l'accueil puis « Voir tous les
+  // jeux » vers /jeux. Le composant porte les data-testid historiques
+  // `home-game-*` (conservés pour les tests).
   return (
     <section className="mt-20" data-testid="home-game-selection">
       <SectionHead eyebrow={t("games.title")} title={t("store.gamesTitle")} sub={t("store.gamesSub")} />
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-        {games.map((g, i) => (
-          <Link key={g.id} to={`/boutique?game=${g.id}`} onClick={() => selectGame(g.id)} data-testid={`home-game-${g.slug || g.id}`}
-            className={`card-lift group relative flex min-h-[200px] flex-col justify-between overflow-hidden rounded-[16px] border bg-card p-6 ${i === 0 && games.length === 2 ? "sm:col-span-2" : ""}`}>
-            <div className="flex items-start justify-between gap-3">
-              <GameLogo game={g} className="h-16 w-16" />
-              <ArrowUpRight className="h-5 w-5 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-            </div>
-            <div className="mt-8">
-              <p className="font-display text-2xl font-bold uppercase leading-tight">{g.name}</p>
-              {(localized(g, "description", lang)) && <p className="mt-1 text-sm text-muted-foreground">{localized(g, "description", lang)}</p>}
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                {(g.product_types || []).map((pt) => <span key={pt.key} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em]">{(lang === "en" && pt.label_en) || pt.label}</span>)}
-              </div>
-            </div>
-          </Link>
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {games.slice(0, 6).map((g) => (
+          <GameCard key={g.id} game={g} testId={`home-game-${g.slug || g.id}`} />
         ))}
-        {games.length === 0 && <p className="text-sm text-muted-foreground" data-testid="home-games-empty">{t("games.empty")}</p>}
       </div>
+      {games.length > 6 && (
+        <div className="mt-5 flex justify-center">
+          <Link
+            to="/jeux"
+            data-testid="games-see-all"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--rule-strong)] px-5 text-sm font-semibold hover:bg-[color:hsl(var(--muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-lime)]"
+          >
+            {t("games.seeAll")}
+            <ArrowUpRight className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+          </Link>
+        </div>
+      )}
+      {games.length === 0 && <p className="text-sm text-muted-foreground" data-testid="home-games-empty">{t("games.empty")}</p>}
     </section>
   );
 }
@@ -263,7 +267,7 @@ export default function Home() {
   return (
     <div className="pb-28">
       <Hero games={games} shopUrl={shopUrl} />
-      <GamesBento games={games} selectGame={selectGame} />
+      <GamesBento games={games} />
 
       <section className="mt-20">
         <SectionHead eyebrow={t("catalog.popular")} title={t("store.offersTitle")} sub={t("store.offersSub")}

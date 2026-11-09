@@ -32,6 +32,9 @@ export function GameProvider({ children }) {
   // that decision is driven by the URL (`/boutique` without `?game=`).
   const [explicit, setExplicit] = useState(false);
   const [open, setOpen] = useState(false);
+  // PL-UI-GAMES-1 : vrai tant que le premier fetch `/games` n'a pas répondu
+  // (skeletons de la grille). Jamais utilisé pour bloquer le rendu ailleurs.
+  const [loadingGames, setLoadingGames] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,7 +51,8 @@ export function GameProvider({ children }) {
           }
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoadingGames(false); });
     return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -69,13 +73,14 @@ export function GameProvider({ children }) {
 
   const value = useMemo(() => ({
     games,
+    loadingGames,
     selected,
     selectedId: selected?.id,
     explicit,
     selectGame,
     open,
     setOpen,
-  }), [games, selected, explicit, selectGame, open]);
+  }), [games, loadingGames, selected, explicit, selectGame, open]);
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 }
