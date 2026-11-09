@@ -1,9 +1,11 @@
 import re
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi import (APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request,
+                     UploadFile)
+from fastapi.responses import Response
 from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, Field, field_validator
 
@@ -17,7 +19,10 @@ from core.security import (ADMIN_ROLES, get_current_user, get_optional_user, req
                            require_permission, require_super_admin)
 from routers.evo import EVO_TYPE, release_evo_locks, reserve_evo
 from services import captcha, loyalty, mailer
+from services import notifications
+from services import order_maintenance
 from services import payments as gw
+from services import proofs as proof_store
 from services.fulfillment import on_order_paid
 from services.fzr_mapping import purchase_blocked, supplier_cost_usd
 from services.notifications import notify_new_order
@@ -27,16 +32,19 @@ PUBLIC = {"_id": 0}
 # Suivi public : le numéro de commande et l'identifiant joueur suffisent au client ;
 # l'email et le téléphone de paiement ne doivent jamais sortir par cette route publique.
 TRACK_PUBLIC = {"_id": 0, "email": 0, "payment_phone": 0}
-STATUSES = ["pending_payment", "awaiting_verification", "paid", "delivered", "cancelled", "failed", "expired"]
+STATUSES = ["pending_payment", "awaiting_verification", "proof_submitted", "late_payment", "paid",
+            "delivered", "cancelled", "failed", "expired"]
 SUBSCRIPTION_TYPES = ("prime", "prime_plus")
 SUBSCRIPTION_LABELS = {"prime": "Prime", "prime_plus": "Prime+"}
 INACTIVE_STATUSES = ("cancelled", "failed", "expired")
 TRANSITIONS = {
-    "pending_payment": {"paid", "cancelled", "failed", "expired"},
+    "pending_payment": {"paid", "cancelled", "failed", "expired", "proof_submitted", "late_payment"},
     "awaiting_verification": {"paid", "delivered", "cancelled", "failed"},
+    "proof_submitted": {"paid", "delivered", "cancelled", "failed"},
+    "late_payment": {"paid", "cancelled"},
     "paid": {"delivered", "cancelled"},
     "failed": {"paid", "cancelled"},
-    "expired": {"paid", "cancelled"},
+    "expired": {"paid", "cancelled", "late_payment"},
     "delivered": set(),
     "cancelled": set(),
 }
@@ -103,6 +111,48 @@ def _now():
 
 def _order_number():
     return "MGS-" + secrets.token_hex(3).upper()
+
+
+def initial_status(payment_method: str, manual_reference: str | None) -> str:
+    """Statut initial d'une commande.
+
+    Le paiement manuel SANS référence (nouvelle expérience, preuve par captures) attend un
+    paiement ; la référence texte historique reste acceptée pour les clients/écrans existants et
+    conserve le statut `awaiting_verification` d'avant le lot.
+    """
+    if payment_method == "manual" and manual_reference:
+        return "awaiting_verification"
+    return "pending_payment"
+
+
+def public_order(order: dict | None, *, admin: bool = False) -> dict | None:
+    """Commande exposée par l'API publique : jamais le nom de blob Azure ni le hash de l'image."""
+    order = with_game_defaults(order)
+    if order:
+        # Contrat stable pour le frontend : les champs du lot existent toujours (null si absents).
+        order.setdefault("payment_deadline_at", None)
+        order.setdefault("payment_proofs", [])
+    if order and not admin and order.get("payment_proofs"):
+        order["payment_proofs"] = [
+            {key: value for key, value in proof.items() if key not in ("blob_name", "sha256")}
+            for proof in order["payment_proofs"]
+        ]
+    return order
+
+
+async def _accessible_order(order_id: str, user: dict | None) -> dict:
+    """Même règle d'accès que le reste : propriétaire connecté, ou invité porteur de l'UUID.
+
+    L'UUID d'une commande invitée est un secret de fait : le porteur y accède sans compte, comme
+    pour la lecture de la commande et de son statut (correctif IDOR conservé).
+    """
+    order = await db.orders.find_one({"id": order_id}, PUBLIC)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.get("user_id") and (
+            not user or (user["user_id"] != order["user_id"] and user.get("role") not in ADMIN_ROLES)):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return order
 
 
 def subscription_expiry(created_at: str, months: int) -> str:
@@ -272,8 +322,6 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         if not await crypto.available():
             raise HTTPException(status_code=409, detail="Paiement Binance USDT indisponible.")
         payment_provider = "binance"
-    if body.payment_method == "manual" and not body.manual_reference:
-        raise HTTPException(status_code=400, detail="Transaction reference is required")
     ids = [i.product_id for i in body.items]
     products = {p["id"]: p for p in await db.products.find({"id": {"$in": ids}, "active": True}, PUBLIC).to_list(100)}
     if len(products) != len(set(ids)):
@@ -301,6 +349,7 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         raise HTTPException(status_code=400, detail="Une seule offre Pack évolutif identique par commande et par PUBG ID.")
     from services import fees
     payment_fee = await fees.calculate_payment_fee(payment_provider, total)
+    status = initial_status(body.payment_method, body.manual_reference)
     # Commande invitée : l'UUID `id` est un secret de fait (lecture publique de la commande et de
     # son statut de paiement). Ne jamais le journaliser ni l'exposer dans une page indexable.
     order = {
@@ -310,7 +359,10 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         "items": items, "subtotal": total, "payment_fee": payment_fee, "total": total + payment_fee, "currency": "Ar",
         "payment_method": body.payment_method, "payment_provider": payment_provider,
         "payment_phone": body.payment_phone, "manual_reference": body.manual_reference,
-        "status": "awaiting_verification" if body.payment_method == "manual" else "pending_payment",
+        "status": status,
+        # PL-ORDER-PROOF-1 : seul un paiement encore attendu porte l'échéance de 30 minutes.
+        "payment_deadline_at": order_maintenance.payment_deadline_iso() if status == "pending_payment" else None,
+        "payment_proofs": [],
         "admin_note": None, "created_at": _now(), "updated_at": _now(),
         "history": [{"status": "created", "at": _now()}],
     }
@@ -339,12 +391,12 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         if identity_snapshot["source"] == "identity":  # already a GameIdentity: startup migration must skip it
             await db.users.update_one({"user_id": user["user_id"]}, {"$addToSet": {"pubg_ids_migrated": body.pubg_id}})
     order.pop("_id", None)
-    return order
+    return public_order(order)
 
 
 @router.get("/orders/me")
 async def my_orders(user=Depends(get_current_user)):
-    return [with_game_defaults(o) for o in await db.orders.find({"user_id": user["user_id"]}, PUBLIC).sort("created_at", -1).to_list(200)]
+    return [public_order(o) for o in await db.orders.find({"user_id": user["user_id"]}, PUBLIC).sort("created_at", -1).to_list(200)]
 
 
 @router.get("/orders/subscriptions")
@@ -370,17 +422,174 @@ async def track_order(request: Request, order_number: str = Query(min_length=6),
         if attempt and attempt["status"] == "pending" and is_expired(attempt):
             await expire_attempt(attempt)
             order = await db.orders.find_one({"id": order["id"]}, TRACK_PUBLIC)
-    return with_game_defaults(order)
+    return public_order(order)
 
 
 @router.get("/orders/{order_id}")
 async def get_order(order_id: str, user=Depends(get_optional_user)):
-    order = await db.orders.find_one({"id": order_id}, PUBLIC)
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    if order.get("user_id") and (not user or (user["user_id"] != order["user_id"] and user.get("role") not in ADMIN_ROLES)):
-        raise HTTPException(status_code=403, detail="Forbidden")
-    return with_game_defaults(order)
+    order = await _accessible_order(order_id, user)
+    return public_order(order)
+
+
+# --------------------------------------------------------------------------- #
+# PL-ORDER-PROOF-1 — preuve de paiement manuelle (1 à 3 captures) et relance admin.
+# --------------------------------------------------------------------------- #
+def _proof_error(detail: str, code: str, remaining_seconds: int | None = None,
+                 reminders_left: int | None = None) -> HTTPException:
+    body = {"code": code, "message": detail}
+    if remaining_seconds is not None:
+        body["remaining_seconds"] = int(remaining_seconds)
+    if reminders_left is not None:
+        body["reminders_left"] = int(reminders_left)
+    return HTTPException(status_code=409 if code != "remind_cooldown" and code != "remind_limit" else 429,
+                         detail=body)
+
+
+@router.post("/orders/{order_id}/proof")
+async def upload_order_proof(order_id: str, request: Request, background: BackgroundTasks,
+                             files: list[UploadFile] = File(...),
+                             user=Depends(get_optional_user)):
+    """Reçoit 1 à 3 captures (JPEG/PNG réels), les compresse et les dépose dans Azure privé."""
+    ip = ratelimit.client_ip(request)
+    ratelimit.check(f"proof:ip:{ip}", ratelimit.setting("PROOF_UPLOAD_PER_HOUR_PER_IP", 20), 3600)
+    order = await _accessible_order(order_id, user)
+    if order.get("payment_method") != "manual":
+        raise _proof_error("La preuve n'est disponible que pour un paiement manuel.", "proof_not_allowed")
+    if order.get("status") != "pending_payment":
+        raise _proof_error("Cette commande n'attend plus de preuve.", "proof_not_pending")
+    if order.get("proof_validated_at"):
+        raise _proof_error("Une preuve a déjà été validée pour cette commande.", "proof_already_validated")
+    deadline = order.get("payment_deadline_at")
+    if not deadline or deadline <= _now():
+        raise _proof_error("Le délai de paiement est dépassé.", "proof_deadline_passed")
+    if not proof_store.configured():
+        # Désactivation propre : le site continue de fonctionner, seule cette fonction est indisponible.
+        raise HTTPException(status_code=503, detail="Envoi de preuve indisponible.")
+    if not 1 <= len(files) <= proof_store.MAX_FILES:
+        raise _proof_error("Envoyez 1 à 3 captures d'écran.", "proof_count")
+    existing = order.get("payment_proofs") or []
+    if len(existing) + len(files) > proof_store.MAX_FILES:
+        raise _proof_error("Trois preuves maximum par commande.", "proof_limit")
+    ratelimit.check(f"proof:order:{order_id}", ratelimit.setting("PROOF_UPLOAD_PER_HOUR_PER_ORDER", 6), 3600)
+
+    prepared, uploaded = [], []
+    try:
+        for upload in files:
+            raw = await upload.read(proof_store.MAX_INPUT_BYTES + 1)
+            if len(raw) > proof_store.MAX_INPUT_BYTES:
+                raise _proof_error("Chaque capture doit faire 8 Mo maximum.", "proof_too_large")
+            if proof_store.sniff(raw) is None:
+                raise _proof_error("Format non pris en charge : JPEG ou PNG uniquement.", "proof_format")
+            try:
+                jpeg = proof_store.compress(raw)
+            except proof_store.ProofError:
+                raise _proof_error("Image illisible.", "proof_format")
+            blob_name = await proof_store.upload(jpeg)
+            uploaded.append(blob_name)
+            prepared.append(proof_store.metadata(blob_name, jpeg))
+    except HTTPException:
+        for blob_name in uploaded:
+            try:
+                await proof_store.delete(blob_name)
+            except Exception:
+                pass
+        raise
+    except Exception:
+        for blob_name in uploaded:
+            try:
+                await proof_store.delete(blob_name)
+            except Exception:
+                pass
+        raise HTTPException(status_code=503, detail="Stockage des preuves indisponible.")
+
+    submitted_at = _now()
+    try:
+        res = await db.orders.update_one(
+            {"id": order_id, "status": "pending_payment",
+             "payment_deadline_at": {"$gt": submitted_at},
+             "proof_validated_at": {"$exists": False},
+             # Garde atomique : le total des preuves déjà présentes + celles-ci ne dépasse jamais 3.
+             "$expr": {"$lte": [{"$size": {"$ifNull": ["$payment_proofs", []]}},
+                                proof_store.MAX_FILES - len(prepared)]}},
+            {"$set": {"status": "proof_submitted", "proof_submitted_at": submitted_at,
+                      "updated_at": submitted_at},
+             "$unset": {"payment_deadline_at": ""},
+             "$push": {"payment_proofs": {"$each": prepared},
+                       "history": {"status": "proof_submitted", "at": submitted_at}}},
+        )
+    except Exception:
+        for blob_name in uploaded:
+            try:
+                await proof_store.delete(blob_name)
+            except Exception:
+                pass
+        raise
+    if res.modified_count != 1:
+        for blob_name in uploaded:
+            try:
+                await proof_store.delete(blob_name)
+            except Exception:
+                pass
+        raise _proof_error("Trop de preuves ou commande déjà traitée.", "proof_conflict")
+
+    await audit("order.proof_submitted", (user or {}).get("user_id") or f"ip:{ip}", order_id,
+                {"count": len(prepared)})
+    notifications.schedule(background, notifications.notify_proof_submitted,
+                           order_id, order.get("order_number"), order.get("total"), len(prepared))
+    updated = await db.orders.find_one({"id": order_id}, PUBLIC)
+    return {"ok": True, "status": "proof_submitted", "payment_deadline_at": None,
+            "proofs": public_order(updated).get("payment_proofs", []) if updated else []}
+
+
+@router.post("/orders/{order_id}/remind")
+async def remind_order_proof(order_id: str, request: Request, background: BackgroundTasks,
+                             user=Depends(get_optional_user)):
+    """Relance l'admin : 3 minutes d'attente entre deux relances, 3 relances maximum."""
+    ip = ratelimit.client_ip(request)
+    ratelimit.check(f"remind:ip:{ip}", ratelimit.setting("PROOF_REMIND_PER_HOUR_PER_IP", 30), 3600)
+    order = await _accessible_order(order_id, user)
+    if order.get("status") != "proof_submitted":
+        raise _proof_error("Aucune preuve en attente pour cette commande.", "remind_not_pending")
+    if order.get("proof_validated_at") or order.get("proof_reviewed_at"):
+        raise _proof_error("La preuve a déjà été traitée.", "remind_already_processed")
+
+    cooldown = ratelimit.setting("PROOF_REMIND_COOLDOWN_SECONDS", 180)
+    maximum = max(1, ratelimit.setting("PROOF_REMIND_MAX", 3))
+    count = int(order.get("proof_remind_count") or 0)
+    if count >= maximum:
+        raise _proof_error("Nombre maximal de relances atteint.", "remind_limit", 0, 0)
+    last = order.get("proof_reminded_at")
+    if last:
+        try:
+            elapsed = (datetime.now(timezone.utc) - datetime.fromisoformat(last)).total_seconds()
+        except (TypeError, ValueError):
+            elapsed = cooldown
+        if elapsed < cooldown:
+            raise _proof_error("Patientez avant une nouvelle relance.", "remind_cooldown",
+                               int(cooldown - elapsed), maximum - count)
+
+    moment = datetime.now(timezone.utc)
+    cutoff = (moment - timedelta(seconds=cooldown)).isoformat()
+    res = await db.orders.update_one(
+        {"id": order_id, "status": "proof_submitted",
+         "proof_validated_at": {"$exists": False},
+         "$expr": {"$lt": [{"$ifNull": ["$proof_remind_count", 0]}, maximum]},
+         "$or": [{"proof_reminded_at": {"$exists": False}},
+                 {"proof_reminded_at": {"$lte": cutoff}}]},
+        {"$inc": {"proof_remind_count": 1},
+         "$set": {"proof_reminded_at": moment.isoformat(), "updated_at": moment.isoformat()}},
+    )
+    if res.modified_count != 1:
+        raise _proof_error("Relance impossible pour le moment.", "remind_conflict",
+                           cooldown, max(0, maximum - count))
+    sent = count + 1
+    left = maximum - sent
+    await audit("order.proof_reminded", (user or {}).get("user_id") or f"ip:{ip}", order_id,
+                {"count": sent})
+    notifications.schedule(background, notifications.notify_proof_remind,
+                           order_id, order.get("order_number"), sent, left)
+    return {"ok": True, "reminders_left": left, "remaining_seconds": cooldown,
+            "next_at": (moment + timedelta(seconds=cooldown)).isoformat()}
 
 
 # ---------- Admin ----------
@@ -399,6 +608,30 @@ async def admin_orders(status: str | None = None, method: str | None = None,
         query["$or"] = [{"pubg_id": {"$regex": needle}}, {"pseudo": {"$regex": needle, "$options": "i"}},
                         {"order_number": {"$regex": needle.upper()}}, {"email": {"$regex": needle, "$options": "i"}}]
     return await db.orders.find(query, PUBLIC).sort("created_at", -1).to_list(min(limit, 1000))
+
+
+@router.get("/admin/orders/{order_id}/proofs/{index}")
+async def admin_order_proof(order_id: str, index: int,
+                            admin=Depends(require_permission("orders.manage"))):
+    """Relaye une preuve depuis Azure. Aucune URL publique, aucun SAS : uniquement ce flux admin."""
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0, "payment_proofs": 1})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    entries = order.get("payment_proofs") or []
+    if index < 0 or index >= len(entries):
+        raise HTTPException(status_code=404, detail="Proof not found")
+    entry = entries[index] or {}
+    if entry.get("purged_at") or not entry.get("blob_name"):
+        raise HTTPException(status_code=410, detail="Preuve supprimée.")
+    if not proof_store.configured():
+        raise HTTPException(status_code=503, detail="Stockage des preuves indisponible.")
+    try:
+        payload = await proof_store.download(entry["blob_name"])
+    except Exception:
+        raise HTTPException(status_code=502, detail="Preuve temporairement indisponible.")
+    return Response(content=payload, media_type=proof_store.CONTENT_TYPE,
+                    headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+                             "Content-Disposition": "inline"})
 
 
 @router.get("/admin/audit", dependencies=[Depends(require_admin)])
@@ -421,6 +654,11 @@ async def admin_update_order(order_id: str, body: StatusIn, background_tasks: Ba
     updates = {"status": body.status, "updated_at": _now()}
     if body.admin_note is not None:
         updates["admin_note"] = body.admin_note
+    if body.status != current["status"] and current["status"] == "proof_submitted":
+        # La revue admin clôt le délai de relance ; « payée/livrée » vaut validation de la preuve.
+        updates["proof_reviewed_at"] = _now()
+        if body.status in ("paid", "delivered"):
+            updates["proof_validated_at"] = _now()
     push = {"history": {"status": body.status, "at": _now()}} if body.status != current["status"] else None
     res = await db.orders.update_one({"id": order_id, "status": current["status"]}, {"$set": updates, **({"$push": push} if push else {})})
     if res.matched_count == 0:

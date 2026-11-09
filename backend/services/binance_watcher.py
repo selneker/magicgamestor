@@ -167,13 +167,47 @@ async def _confirm(payment: dict, dep: dict) -> str:
     return "confirmed"
 
 
+async def _late_payment(payment: dict, dep: dict) -> bool:
+    """Dépôt réel reçu APRÈS l'expiration de la commande : trace + admin, jamais de livraison auto.
+
+    Le paiement crypto est déjà `FAILED` (créneau libéré) : on ne le rouvre pas, on ne touche ni à
+    l'index unique `(network, amount_usdt)` ni au rapprochement. Seule la commande bascule
+    `expired → late_payment` (transition atomique) pour que l'admin décide de rembourser ou livrer.
+    """
+    order = await db.orders.find_one(
+        {"id": payment.get("order_id")},
+        {"_id": 0, "id": 1, "order_number": 1, "status": 1, "total": 1},
+    )
+    if not order or order.get("status") != "expired":
+        return False
+    now = crypto.iso()
+    late = {"payment_id": payment["id"], "tx_hash": dep.get("txId"),
+            "amount_usdt": str(dep.get("amount")), "network": payment.get("network"), "at": now}
+    res = await db.orders.update_one(
+        {"id": payment["order_id"], "status": "expired"},
+        {"$set": {"status": "late_payment", "late_payment": late, "updated_at": now},
+         "$push": {"history": {"status": "late_payment", "at": now}}},
+    )
+    if res.modified_count != 1:
+        return False
+    await audit("crypto.late_payment", "binance-watcher", payment["order_id"],
+                {"payment_id": payment["id"], "tx_hash": dep.get("txId"),
+                 "amount_usdt": str(dep.get("amount"))})
+    notifications.schedule(None, notifications.notify_late_success,
+                           payment["order_id"], order.get("order_number") or payment["order_id"], "binance")
+    return True
+
+
 async def _no_candidate(dep: dict, network: str, amount: str | None) -> str:
     if amount:
         other = await db.crypto_payments.find_one({"slot_open": True, "amount_usdt": amount}, {"id": 1})
         if other:
             return await _unmatched(dep, "wrong_network", other["id"])
-        late = await db.crypto_payments.find_one({"status": crypto.FAILED, "network": network, "amount_usdt": amount}, {"id": 1})
+        late = await db.crypto_payments.find_one(
+            {"status": crypto.FAILED, "network": network, "amount_usdt": amount,
+             "failure_reason": {"$in": ["order_expired", "expired"]}}, crypto.PUBLIC)
         if late:
+            await _late_payment(late, dep)
             return await _unmatched(dep, "payment_expired", late["id"])
     if await db.crypto_payments.find_one({"slot_open": True, "network": network}, {"id": 1}):
         return await _unmatched(dep, "amount_not_matching")

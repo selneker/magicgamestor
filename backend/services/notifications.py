@@ -39,6 +39,8 @@ RETRY_ALERTS = {
     "crypto_unmatched": ("Dépôt crypto non rapproché (rappel)", "/admin/paiements"),
     "amount_mismatch": ("Écart de montant (rappel)", "/admin/commandes"),
     "late_success": ("Succès tardif — revue manuelle (rappel)", "/admin/commandes"),
+    "proof_submitted": ("Preuve de paiement reçue (rappel)", "/admin/commandes"),
+    "proof_remind": ("Relance client sur preuve (rappel)", "/admin/commandes"),
 }
 
 
@@ -341,6 +343,27 @@ async def notify_crypto_unmatched(reason: str, amount: Any = None, coin: str | N
     await _critical("crypto_unmatched", "Dépôt crypto non rapproché",
                     _line(CRYPTO_REASONS.get(reason, "dépôt non rapproché"), money),
                     ADMIN_PAYMENTS_URL, f"crypto:{short_ref}" if short_ref else None)
+
+
+# --------------------------------------------------------------------------- #
+# PL-ORDER-PROOF-1 — preuves de paiement manuel.
+# --------------------------------------------------------------------------- #
+async def notify_proof_submitted(order_id: str, ref: str | None, total: Any, count: int) -> None:
+    """1 à 3 captures reçues pour une commande manuelle : l'admin doit les vérifier."""
+    ref = str(ref or order_id or "")
+    await _critical("proof_submitted", "Preuve de paiement reçue",
+                    _line(f"Commande {ref} : {int(count)} preuve(s) à vérifier", _amount(total),
+                          await _product_label(order_id)),
+                    ADMIN_ORDERS_URL, f"proof:{ref}", order_ref=ref or None, tag=order_id)
+
+
+async def notify_proof_remind(order_id: str, ref: str | None, count: int, left: int) -> None:
+    """Le client relance l'admin sur une preuve déjà envoyée (3 min d'attente, 3 relances)."""
+    ref = str(ref or order_id or "")
+    await _critical("proof_remind", "Relance client — preuve en attente",
+                    _line(f"Commande {ref} : relance {int(count)}/3", f"{int(left)} restante(s)"),
+                    ADMIN_ORDERS_URL, f"proofremind:{ref}:{int(count)}", order_ref=ref or None,
+                    tag=order_id)
 
 
 _DETACHED: set["asyncio.Task"] = set()

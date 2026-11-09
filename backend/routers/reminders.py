@@ -5,34 +5,20 @@ d'en-tête comparé en temps constant. Sans `CRON_TOKEN`, la route est désactiv
 jamais s'ouvrir par accident. Réponse réduite à des compteurs, aucun écho du jeton, aucun détail
 sur les commandes.
 """
-import hmac
 import logging
-import os
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 
+from core.cron import require_cron_token
 from services import reminders
 
 router = APIRouter(prefix="/internal/reminders", tags=["internal-reminders"])
 logger = logging.getLogger("mgs.reminders")
 
 
-def _token() -> str:
-    return os.environ.get("CRON_TOKEN", "").strip()
-
-
-def _authorized(request: Request, expected: str) -> bool:
-    supplied = request.headers.get("x-cron-token") or ""
-    return hmac.compare_digest(supplied.encode(), expected.encode())
-
-
 @router.post("/run")
 async def run(request: Request):
-    expected = _token()
-    if not expected:
-        raise HTTPException(status_code=503, detail="Relances désactivées.")
-    if not _authorized(request, expected):
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    require_cron_token(request)
     try:
         return await reminders.run_once()
     except Exception as exc:  # la réponse du cron doit rester stable même en cas de panne

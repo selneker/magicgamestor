@@ -18,3 +18,6 @@ py-vapid==1.9.4
 pywebpush==2.5.0
 pytest==9.1.1
 pytest-xdist==3.8.0
+# PL-ORDER-PROOF-1 : compression des preuves (EXIF supprimé) et stockage privé Azure Blob.
+Pillow==13.0.0
+azure-storage-blob==12.31.1

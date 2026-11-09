@@ -29,6 +29,8 @@ DEFAULT_EVENTS = frozenset({
     "delivery_blocked",
     "crypto_unmatched",
     "order_unprocessed",
+    "proof_submitted",
+    "proof_remind",
     "test",
 })
 
