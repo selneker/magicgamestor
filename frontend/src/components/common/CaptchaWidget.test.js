@@ -1,11 +1,18 @@
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
-import { CaptchaWidget, useCaptcha } from "./CaptchaWidget";
+import { CaptchaWidget, isCaptchaError, useCaptcha } from "./CaptchaWidget";
 
 // PL-SEC-HARDEN-1-CAPTCHA — le script Turnstile n'est JAMAIS chargé en test :
 // soit window.turnstile est simulé (le module le détecte et n'injecte rien),
 // soit on laisse jsdom créer une balise script sans fetch pour vérifier le
 // singleton de chargement.
+
+// Le libellé d'échec CDN passe par t() : on résout depuis le vrai dictionnaire.
+jest.mock("@/context/LanguageContext", () => {
+  const { translations } = jest.requireActual("@/i18n/translations");
+  const make = (lang) => (path) => path.split(".").reduce((a, k) => (a && a[k] !== undefined ? a[k] : undefined), translations[lang]) ?? path;
+  return { useLang: () => ({ t: make("fr"), lang: "fr" }) };
+});
 
 const ENV_VAR = "REACT_APP_TURNSTILE_SITE_KEY";
 const TEST_KEY = "0xAAAABBBB000000000000000000000001";
@@ -131,7 +138,7 @@ describe("avec clé et window.turnstile simulé", () => {
 });
 
 describe("chargement du script (pas de window.turnstile préexistant)", () => {
-  test("échec de chargement du script : le formulaire n'est pas bloqué (onError)", async () => {
+  test("échec de chargement du CDN : fail-closed — message inline + bouton Réessayer", async () => {
     process.env[ENV_VAR] = TEST_KEY;
     const onVerify = jest.fn();
     const onError = jest.fn();
@@ -141,7 +148,27 @@ describe("chargement du script (pas de window.turnstile préexistant)", () => {
     expect(script).not.toBeNull();
     await act(async () => { script.dispatchEvent(new Event("error")); });
     expect(onError).toHaveBeenCalled();
+    // la balise morte est retirée (une nouvelle tentative doit repartir propre)
+    expect(document.querySelectorAll("script[src*='challenges.cloudflare.com']")).toHaveLength(0);
+    // plus le conteneur du widget — un panneau d'échec à la place
     expect(container.querySelector('[data-testid="captcha-widget"]')).toBeNull();
+    const failed = container.querySelector('[data-testid="captcha-widget-failed"]');
+    expect(failed).not.toBeNull();
+    expect(failed.textContent).toContain("Impossible de charger la vérification anti-robot");
+    expect(container.querySelector('[data-testid="captcha-retry"]')).not.toBeNull();
+  });
+
+  test("2e échec après Réessayer : toujours fail-closed, le singleton repart de zéro", async () => {
+    process.env[ENV_VAR] = TEST_KEY;
+    await mountWidget({});
+    let script = document.querySelector("script[src*='challenges.cloudflare.com']");
+    await act(async () => { script.dispatchEvent(new Event("error")); });
+    await act(async () => { container.querySelector('[data-testid="captcha-retry"]').click(); });
+    script = document.querySelector("script[src*='challenges.cloudflare.com']");
+    expect(script).not.toBeNull(); // une (re)tentative = une balise
+    await act(async () => { script.dispatchEvent(new Event("error")); });
+    expect(container.querySelector('[data-testid="captcha-widget-failed"]')).not.toBeNull();
+    expect(document.querySelectorAll("script[src*='challenges.cloudflare.com']")).toHaveLength(0);
   });
 
   test("une seule balise <script>, même avec deux widgets montés", async () => {
@@ -155,6 +182,51 @@ describe("chargement du script (pas de window.turnstile préexistant)", () => {
     await act(async () => { await Promise.resolve(); });
     const scripts = document.querySelectorAll("script[src*='challenges.cloudflare.com/turnstile']");
     expect(scripts).toHaveLength(1);
+    // nettoyage du test : on rejette le singleton pour ne pas le laisser en attente
+    await act(async () => { scripts[0].dispatchEvent(new Event("error")); });
     await act(async () => r.unmount());
+  });
+
+  // Dernier test du fichier : il laisse le singleton RÉSOLU (chargement réussi),
+  // ce qui ne gêne aucun test ultérieur.
+  test("Réessayer : retente sans recharger la page et débloque le widget au succès", async () => {
+    process.env[ENV_VAR] = TEST_KEY;
+    await mountWidget({});
+    let script = document.querySelector("script[src*='challenges.cloudflare.com']");
+    await act(async () => { script.dispatchEvent(new Event("error")); });
+    expect(container.querySelector('[data-testid="captcha-widget-failed"]')).not.toBeNull();
+
+    await act(async () => { container.querySelector('[data-testid="captcha-retry"]').click(); });
+    // le singleton repart de zéro : une NOUVELLE balise (une seule au total)
+    script = document.querySelector("script[src*='challenges.cloudflare.com']");
+    expect(script).not.toBeNull();
+
+    // cette fois le CDN répond : jsdom n'exécute pas le src, on simule le load
+    stubTurnstile();
+    await act(async () => { script.dispatchEvent(new Event("load")); });
+    expect(container.querySelector('[data-testid="captcha-widget"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="captcha-widget-failed"]')).toBeNull();
+    expect(turnstileOpts).not.toBeNull();
+  });
+});
+
+describe("isCaptchaError", () => {
+  const err = (status, code, detail) => ({ response: { status, data: { code, detail } } });
+
+  test("contrat explicite backend : 400 + code captcha_required", () => {
+    expect(isCaptchaError(err(400, "captcha_required", "Vérification anti-robot requise."))).toBe(true);
+  });
+
+  test("transition : 428 quel que soit le corps", () => {
+    expect(isCaptchaError(err(428, "", ""))).toBe(true);
+  });
+
+  test("un 400 métier non-CAPTCHA n'est PAS une erreur captcha", () => {
+    expect(isCaptchaError(err(400, "invalid_credentials", "Identifiants incorrects"))).toBe(false);
+  });
+
+  test("succès / autre erreur réseau : non", () => {
+    expect(isCaptchaError(err(200, "", ""))).toBe(false);
+    expect(isCaptchaError(new Error("Network Error"))).toBe(false);
   });
 });

@@ -145,8 +145,8 @@ test("CAPTCHA avec clé : connexion — pas de widget au départ, il apparaît a
 test("CAPTCHA : erreur serveur liée au CAPTCHA → message dédié + widget réinitialisé", async () => {
   process.env[ENV_VAR] = TEST_KEY;
   stubTurnstile();
-  api.post.mockRejectedValueOnce({ response: { status: 428, data: { code: "captcha_required" } } });
-  api.post.mockRejectedValueOnce({ response: { status: 428, data: { code: "captcha_required" } } });
+  api.post.mockRejectedValueOnce({ response: { status: 400, data: { code: "captcha_required", detail: "Vérification anti-robot requise." } } });
+  api.post.mockRejectedValueOnce({ response: { status: 400, data: { code: "captcha_required", detail: "Vérification anti-robot requise." } } });
   const { container, root } = await renderLogin();
   await flushCaptcha();
   await fillAndSubmit(container);          // échec → widget affiché
@@ -165,5 +165,32 @@ test("CAPTCHA sans clé configurée : ni widget ni champ captcha_token, comporte
   expect(container.querySelector('[data-testid="captcha-widget"]')).toBeNull();
   const submitBtn = container.querySelector('[data-testid="auth-submit"]');
   expect(submitBtn.disabled).toBe(false);
+  await act(async () => root.unmount());
+});
+
+/* Échec de chargement du CDN Cloudflare : FAIL-CLOSED (lot séquentiel au
+   widget initial). Le formulaire reste bloqué, un message inline + un bouton
+   « Réessayer » prennent la place du widget ; aucune requête sans jeton.
+   Pas de stubTurnstile ici : on veut le VRAI chemin d'injection du script.
+   Conçu pour être le dernier test avec clé du fichier (singleton du script). */
+test("CAPTCHA échec CDN : formulaire bloqué, message inline, « Réessayer » proposé", async () => {
+  process.env[ENV_VAR] = TEST_KEY;
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => { root.render(<AuthPage mode="register" />); });
+  await flushCaptcha();
+  const script = document.querySelector("script[src*='challenges.cloudflare.com']");
+  expect(script).not.toBeNull();
+  await act(async () => { script.dispatchEvent(new Event("error")); });
+  const failed = container.querySelector('[data-testid="captcha-widget-failed"]');
+  expect(failed).not.toBeNull();
+  expect(failed.textContent).toContain("Impossible de charger la vérification anti-robot");
+  expect(container.querySelector('[data-testid="captcha-retry"]')).not.toBeNull();
+  const submitBtn = container.querySelector('[data-testid="auth-submit"]');
+  expect(submitBtn.disabled).toBe(true);
+  // Un utilisateur réel ne peut que cliquer le bouton (désactivé) : rien ne part
+  await act(async () => { submitBtn.click(); });
+  expect(api.post).not.toHaveBeenCalled();
   await act(async () => root.unmount());
 });

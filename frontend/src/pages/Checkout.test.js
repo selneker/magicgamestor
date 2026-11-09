@@ -145,7 +145,7 @@ test("erreur serveur CAPTCHA : message dédié + widget réinitialisé", async (
   process.env[ENV_VAR] = TEST_KEY;
   stubTurnstile();
   api.post.mockImplementation((url) => {
-    if (url === "/orders") return Promise.reject({ response: { status: 428, data: { code: "captcha_invalid" } } });
+    if (url === "/orders") return Promise.reject({ response: { status: 400, data: { code: "captcha_required", detail: "Vérification anti-robot requise." } } });
     if (url.startsWith("/payments/")) return Promise.resolve({ data: { payment_url: null, simulated: true } });
     return Promise.resolve({ data: {} });
   });

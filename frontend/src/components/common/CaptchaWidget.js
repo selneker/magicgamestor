@@ -1,4 +1,5 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { useLang } from "@/context/LanguageContext";
 
 // PL-SEC-HARDEN-1-CAPTCHA — Cloudflare Turnstile, chargé par une balise <script>
 // externe (aucun paquet npm). La clé est publique (site key) et lue au build :
@@ -24,7 +25,8 @@ function loadTurnstile() {
     s.async = true;
     s.onload = () => resolve(window.turnstile);
     s.onerror = () => {
-      turnstilePromise = null; // réessayable au prochain montage (CDN de retour)
+      turnstilePromise = null; // réessayable (bouton « Réessayer » ou prochain montage)
+      s.remove(); // pas de balise morte qui s'accumule à chaque tentative
       reject(new Error("turnstile-load-failed"));
     };
     document.head.appendChild(s);
@@ -62,18 +64,29 @@ const widgetTheme = () => {
 };
 
 // Détecte une erreur serveur liée au CAPTCHA : jeton absent/expiré/invalide.
-// Le contrat exact (code dédié) reste à confirmer avec le rapport du lot
-// backend PL-SEC-HARDEN-1 — tant qu'aucun code n'est publié, on couvre un
-// statut 428 + toute chaîne « captcha »/« turnstile » dans code ou message.
+// CONTRAT EXPLICITE backend PL-SEC-HARDEN-1 : réponse 400 + code
+// `captcha_required` (« Vérification anti-robot requise. ») — testé en premier.
+// On GARDE la détection de transition (statut 428, chaînes « captcha »/
+// « turnstile » dans code ou message) pour un ancien déploiement backend encore
+// actif pendant la bascule.
 export function isCaptchaError(err) {
-  const code = String(err?.response?.data?.code || err?.code || "");
-  const detail = String(err?.response?.data?.detail || err?.message || "");
+  const body = err?.response?.data || {};
+  if (err?.response?.status === 400 && body.code === "captcha_required") return true;
+  const code = String(body.code || err?.code || "");
+  const detail = String(body.detail || err?.message || "");
   if (err?.response?.status === 428) return true;
   return /captcha|turnstile/i.test(code) || /captcha|turnstile/i.test(detail);
 }
 
 export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onError }, ref) {
-  const [failed, setFailed] = useState(false); // chargement du script impossible → ne pas bloquer le formulaire
+  const { t } = useLang();
+  // Échec de chargement du CDN Cloudflare : STOP fail-closed — le formulaire
+  // reste bloqué jeton manquant ; on affiche un message inline + un bouton
+  // « Réessayer » qui retente le script sans recharger la page. Sans clé
+  // configurée, tout ce cheminement n'existe pas (formulaire normal).
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => { setFailed(false); setAttempt((n) => n + 1); }, []);
   const containerRef = useRef(null);
   const widgetIdRef = useRef(null);
   const onVerifyRef = useRef(onVerify);
@@ -82,7 +95,7 @@ export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onErr
   onErrorRef.current = onError;
 
   useEffect(() => {
-    if (!captchaEnabled()) return undefined;
+    if (!captchaEnabled() || failed) return undefined;
     let cancelled = false;
     loadTurnstile()
       .then((turnstile) => {
@@ -105,7 +118,7 @@ export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onErr
         widgetIdRef.current = null;
       }
     };
-  }, []);
+  }, [failed, attempt]);
 
   // Jeton à usage unique : après une erreur serveur liée au CAPTCHA, le formulaire
   // appelle reset() → Turnstile propose un nouveau challenge, le parent vide son jeton.
@@ -118,7 +131,18 @@ export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onErr
     },
   }));
 
-  if (!captchaEnabled() || failed) return null;
+  if (!captchaEnabled()) return null;
+  if (failed) {
+    return (
+      <div className="mt-1 flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-[10px] bg-muted/40 px-3 py-2 text-center" data-testid="captcha-widget-failed">
+        <p className="text-xs text-muted-foreground" role="status">{t("captcha.loadError")}</p>
+        {/* Cible tactile maison ≥ 44 px (h-11) : la règle du dépôt est plus stricte que la AA web. */}
+        <button type="button" onClick={retry} data-testid="captcha-retry" className="h-11 rounded-full border-2 border-[color:var(--rule)] px-4 text-xs font-bold text-foreground">
+          {t("captcha.retry")}
+        </button>
+      </div>
+    );
+  }
   return <div ref={containerRef} className="mt-1 flex min-h-16 justify-center" data-testid="captcha-widget" />;
 });
 
@@ -127,27 +151,27 @@ export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onErr
  *   const captcha = useCaptcha();
  *   ...
  *   captcha.siteKey        — clé (string) ou "" ; la clé est publique.
- *   captcha.ready          — true si le formulaire peut être soumis sans attendre
- *                            (pas de clé, ou jeton obtenu), false sinon.
+ *   captcha.ready          — true si le formulaire peut être soumis (pas de clé,
+ *                            ou jeton obtenu). L'échec de chargement du CDN ne
+ *                            débloque PLUS : fail-closed, le message inline et
+ *                            le bouton « Réessayer » vivent dans le widget.
  *   captcha.tokenFor(...)  — pièce à envoyer : la valeur ou undefined (champ omis).
  *   <CaptchaWidget ref={captcha.ref} onVerify={captcha.onVerify} /> ou null.
  */
 export function useCaptcha() {
   const [token, setToken] = useState("");
-  const [loadFailed, setLoadFailed] = useState(false); // script Turnstile injoignable → capacité conservée
   const onVerify = useCallback((value) => setToken(typeof value === "string" ? value : ""), []);
-  const onError = useCallback(() => setLoadFailed(true), []);
   const ref = useRef(null);
   return {
     siteKey: siteKey() || "",
     enabled: captchaEnabled(),
-    ready: !captchaEnabled() || loadFailed || !!token,
-    onError,
+    ready: !captchaEnabled() || !!token,
+    onError: () => {}, // informatif ; le widget gère son propre écran d'erreur
     // Après une erreur CAPTCHA ou une expiration : vide le jeton côté parent
     // (le bump de `key` par le parent re-crée le widget et repose un nouveau
     // challenge).
     expire: () => setToken(""),
-    tokenFor: () => (captchaEnabled() && !loadFailed && token) ? token : undefined,
+    tokenFor: () => (captchaEnabled() && token) ? token : undefined,
     ref,
     onVerify,
   };

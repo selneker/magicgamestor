@@ -104,7 +104,7 @@ test("erreur serveur CAPTCHA : message dédié « Merci de refaire le contrôle 
   stubTurnstile();
   const { api, errorMessage } = require("@/lib/api");
   const { toast } = require("sonner");
-  api.post.mockRejectedValue({ response: { status: 428, data: { code: "captcha_invalid" } } });
+  api.post.mockRejectedValue({ response: { status: 400, data: { code: "captcha_required", detail: "Vérification anti-robot requise." } } });
   const { container, root } = await renderForgot();
   setValue(container.querySelector('[data-testid="forgot-email-input"]'), "a@b.c");
   act(() => { turnstileOpts.callback("jeton-f1"); });
