@@ -1,94 +1,139 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, Gamepad2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Gamepad2, LayoutGrid } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useGames } from "@/context/GameContext";
 import { useLang } from "@/context/LanguageContext";
+import { hidesBottomChrome } from "@/lib/bottomChrome";
+import { useIsMobileViewport } from "@/hooks/useIsMobileViewport";
+
+// PL-UI-BOTTOM-1 — Changement rapide de jeu en pill flottante, ancrée juste
+// au-dessus du bouton manette (8 px d'écart). Remplace l'ancien panneau plein
+// : une rangée de logos (cibles 44 px), jetons existants uniquement, 5 jeux
+// puis un entrée « Tous ». Desktop (>= 1024 px) : non rendu du tout.
+const MAX_ITEMS = 5;
 
 export function GameSelector() {
   const { games, selected, selectGame, open, setOpen } = useGames();
   const { t } = useLang();
-  // Logo fallback: a missing OR broken `icon_url` falls back to the design-system icon.
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const mobile = useIsMobileViewport();
+  const panelRef = useRef(null);
+  // Logo fallback : un `icon_url` manquant OU cassé retombe sur l'icône design-system.
   const [broken, setBroken] = useState({});
+  const prefersReduced = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // Lock body scroll while the overlay is open and allow ESC to close it.
+  // Fermé au changement de route (chaque appui sur un jeu navigue, donc tout
+  // reste ouvert uniquement tant que l'utilisateur laisse la pill ouverte).
+  useEffect(() => {
+    if (open) setOpen(false);
+  }, [pathname, setOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Échap + roving focus (flèches / Home / End) pendant que la pill est ouverte.
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener("keydown", onKey);
+    const onKey = (e) => {
+      const panel = panelRef.current;
+      if (e.key === "Escape") { e.stopPropagation(); setOpen(false); return; }
+      if (!panel) return;
+      const items = Array.from(panel.querySelectorAll("button:not([disabled])"));
+      if (!items.length || !["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
+      e.preventDefault();
+      if (e.key === "Home") { items[0].focus(); return; }
+      if (e.key === "End") { items[items.length - 1].focus(); return; }
+      const index = items.indexOf(document.activeElement);
+      const forward = e.key === "ArrowRight" || e.key === "ArrowDown";
+      items[index === -1 ? 0 : (index + (forward ? 1 : -1) + items.length) % items.length].focus();
     };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [open, setOpen]);
+
+  // À l'ouverture le focus entre dans la pill : l'utilisateur clavier atterrit
+  // dessus sans avoir à tabuler à travers la page masquée derrière.
+  useEffect(() => {
+    if (!open) return;
+    const first = panelRef.current?.querySelector("button");
+    first?.focus({ preventScroll: true });
+  }, [open]);
+
+  // Clic extérieur → fermeture (le bouton manette est exclu : c'est lui qui bascule).
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (e) => {
+      if (!e.target.closest?.("[data-testid='game-selector-panel'], [data-testid='game-button']")) setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open, setOpen]);
+
+  if (!mobile || hidesBottomChrome(pathname)) return null;
 
   return (
     <AnimatePresence>
       {open && (
-        <>
-          <motion.div
-            key="game-selector-backdrop"
-            data-testid="game-selector-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
-            onClick={() => setOpen(false)}
-            className="game-backdrop fixed inset-0 z-[60]"
-            aria-hidden="true"
-          />
-          <motion.div
-            key="game-selector-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-label={t("games.title")}
-            data-testid="game-selector-panel"
-            initial={{ opacity: 0, y: 48, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 24, scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 320, damping: 30, mass: 0.9 }}
-            className="fixed inset-x-3 z-[61] mx-auto overflow-hidden rounded-[28px] border border-[color:var(--rule-strong)] bg-ink text-[color:hsl(var(--cream))] shadow-[0_18px_50px_hsl(0_0%_0%_/_.45)]
-                       bottom-[calc(env(safe-area-inset-bottom,0px)+5.75rem)]
-                       md:inset-x-auto md:left-1/2 md:top-1/2 md:bottom-auto md:w-[26rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2 md:-translate-y-1/2"
-          >
-            <p className="px-5 pt-5 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:hsl(var(--cream)/.6)]">{t("games.title")}</p>
-            <ul className="max-h-[60vh] space-y-1 overflow-y-auto p-3" data-testid="game-selector-list">
-              {games.map((g) => {
-                const isActive = g.id === selected?.id;
-                return (
-                  <li key={g.id}>
-                    <button
-                      type="button"
-                      onClick={() => selectGame(g.id)}
-                      data-testid={`game-selector-item-${g.slug || g.id}`}
-                      aria-pressed={isActive}
-                      className={`group flex w-full items-center gap-4 rounded-[20px] px-3 py-3 text-left transition-colors ${
-                        isActive ? "bg-[color:hsl(var(--cream)/.1)]" : "hover:bg-[color:hsl(var(--cream)/.05)]"
-                      }`}
-                    >
-                      <span className={`flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-[#0A0A0A] ${isActive ? "ring-2 ring-primary ring-offset-2 ring-offset-ink" : ""}`}>
-                        {g.icon_url && !broken[g.id] ? (
-                          <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy"
-                            onError={() => setBroken((b) => ({ ...b, [g.id]: true }))} />
-                        ) : (
-                          <Gamepad2 className="h-6 w-6" strokeWidth={2} />
-                        )}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-display text-[17px] font-semibold leading-tight text-[color:hsl(var(--cream))]">{g.name}</span>
-                        {g.description && (
-                          <span className="mt-0.5 block truncate text-[12px] font-normal text-[color:hsl(var(--cream)/.55)]">{g.description}</span>
-                        )}
-                      </span>
-                      <ArrowUpRight className="h-5 w-5 shrink-0 text-[color:hsl(var(--cream)/.45)] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" strokeWidth={2} aria-hidden="true" />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </motion.div>
-        </>
+        <motion.div
+          role="menu"
+          ref={panelRef}
+          aria-label={t("games.title")}
+          data-testid="game-selector-panel"
+          initial={prefersReduced ? false : { opacity: 0, y: 14, scale: 0.94 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={prefersReduced ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.96 }}
+          transition={{ duration: prefersReduced ? 0 : 0.18, ease: "easeOut" }}
+          className="fixed right-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.5rem)] z-[61]
+                     flex max-w-[calc(100vw-1.5rem)] items-center overflow-hidden rounded-[24px]
+                     border border-[color:var(--rule-strong)] bg-card px-1.5 py-1.5 text-[color:hsl(var(--card-foreground))]
+                     shadow-[0_18px_44px_hsl(0_0%_0%_/_.22)] backdrop-blur-md md:hidden"
+        >
+          {/* gap-1 (et non gap-2) : à 320 px la rangée de 6 cibles 44 px doit
+              tenir dans max-w 304 px (6*44 + 5*4 + 2*12 = 296 px), sinon
+              l'entrée « Tous » serait rognée par overflow-hidden. */}
+          <ul className="flex items-center gap-1" data-testid="game-selector-list">
+            {games.slice(0, MAX_ITEMS).map((g) => {
+              const isActive = g.id === selected?.id;
+              return (
+                <li key={g.id}>
+                  <button
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={isActive}
+                    aria-label={g.name}
+                    title={g.name}
+                    data-testid={`game-selector-item-${g.slug || g.id}`}
+                    onClick={() => { selectGame(g.id); navigate(`/boutique?game=${g.id}`); }}
+                    className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A] ${
+                      isActive ? "ring-2 ring-[color:var(--brand-lime)] ring-offset-2 ring-offset-[color:hsl(var(--card))]" : ""
+                    }`}
+                  >
+                    {g.icon_url && !broken[g.id] ? (
+                      <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy"
+                        onError={() => setBroken((b) => ({ ...b, [g.id]: true }))} />
+                    ) : (
+                      <Gamepad2 className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+            {games.length > MAX_ITEMS && (
+              <li>
+                <button
+                  type="button"
+                  role="menuitem"
+                  aria-label={t("games.all")}
+                  title={t("games.all")}
+                  data-testid="game-selector-all"
+                  onClick={() => navigate("/boutique")}
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-[color:var(--rule-strong)] text-[color:hsl(var(--muted-foreground))] transition-colors hover:bg-[color:hsl(var(--muted))] hover:text-[color:hsl(var(--foreground))]"
+                >
+                  <LayoutGrid className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+                </button>
+              </li>
+            )}
+          </ul>
+        </motion.div>
       )}
     </AnimatePresence>
   );

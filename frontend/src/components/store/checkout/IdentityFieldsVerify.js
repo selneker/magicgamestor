@@ -176,16 +176,20 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         </button>
       )}
       {state.status === "valid" && checkout && (
-        <div role="status" className="rounded-[18px] border-2 border-foreground bg-primary/15 p-4" data-testid="identity-verify-valid">
-          <p className="flex items-center gap-2 font-display text-lg font-bold"><CheckCircle2 className="h-5 w-5 text-emerald-600" />{t("checkout.verified")}</p>
-          <p className="mt-1.5 pl-7 text-base font-bold" data-testid="identity-verify-player-name">{t("checkout.verifyPlayerName")} : {state.name || "—"}</p>
-          {state.region && (
-            <p className="pl-7 text-base font-bold" data-testid="identity-verify-region">{t("checkout.verifyRegion")} : {state.region}</p>
-          )}
-          <p className="mt-2 text-xs text-foreground/80" data-testid="identity-verify-confirm">
-            {gameName
-              ? t("checkout.verifyConfirmForGame", { label: primaryLabel, game: gameName })
-              : t("checkout.verifyConfirmGeneric", { label: primaryLabel })}
+        // PL-CHK-1 : ligne compacte (coche + pseudo) à la place du grand
+        // encadré vert ; libellés, textes et testids conservés (contrats S2/S4).
+        <div role="status" className="mt-3" data-testid="identity-verify-valid">
+          <p className="flex flex-wrap items-center gap-x-2 text-sm font-bold">
+            <CheckCircle2 className="h-[18px] w-[18px] shrink-0 text-emerald-600" aria-hidden="true" />
+            <span className="min-w-0" data-testid="identity-verify-player-name">{t("checkout.verifyPlayerName")} : {state.name || "—"}</span>
+          </p>
+          <p className="mt-1 pl-[26px] text-xs text-muted-foreground">
+            {state.region && <span data-testid="identity-verify-region">{t("checkout.verifyRegion")} : {state.region}</span>}
+            <span data-testid="identity-verify-confirm" className={state.region ? "block" : ""}>
+              {gameName
+                ? t("checkout.verifyConfirmForGame", { label: primaryLabel, game: gameName })
+                : t("checkout.verifyConfirmGeneric", { label: primaryLabel })}
+            </span>
           </p>
         </div>
       )}

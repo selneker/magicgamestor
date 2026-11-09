@@ -76,15 +76,16 @@ function ManualPay({ config, summary, reference, onPaid }) {
   return (
     <section className="space-y-4" data-testid="checkout-step-pay-manual">
       <OrderSummary summary={summary} sticky />
-      <div className="rounded-[22px] border-2 border-[color:var(--rule)] bg-card p-4 sm:p-6">
-        <h2 className="font-display text-xl font-bold">{t("checkout.manualPayTitle")}</h2>
+      {/* PL-CHK-1 : carte étape retirée — dé-cadrage limits étapes 3-4 = points 1-2. */}
+      <div>
+        <h2 className="font-display text-lg font-bold leading-tight">{t("checkout.manualPayTitle")}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t("checkout.manualHowto")}</p>
 
         <p className="eyebrow mt-5">{t("checkout.ussdAmount")}</p>
         <p className="mt-1 font-display text-3xl font-bold num" data-testid="manual-amount">{formatAr(amount)}</p>
 
         {merchant && (
-          <div className="mt-5 rounded-[16px] border-2 border-[color:var(--rule)] bg-muted/40 p-4">
+          <div className="mt-5 rounded-[16px] border border-[color:var(--rule)] bg-muted/40 p-4">
             <p className="eyebrow">{t("checkout.ussdTitle")}</p>
 
             <p className="mt-3 text-sm font-semibold">{t("checkout.ussdCode")}</p>

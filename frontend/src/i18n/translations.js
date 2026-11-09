@@ -1,7 +1,7 @@
 export const translations = {
   fr: {
     nav: { shop: "Boutique", uc: "Achat {UC}", prime: "Abonnement", evo: "Pack évolutif", events: "Event", eventsFull: "Événements", orders: "Commandes", account: "Compte", admin: "Admin", login: "Connexion", logout: "Déconnexion", track: "Suivi", cart: "Panier", support: "Support", messages: "Messages", pointsAria: "{n} points" },
-    games: { title: "Jeux", select: "Choisir un jeu", current: "Jeu sélectionné", eyebrow: "Boutique", pickTitle: "Choisissez votre jeu", pickSubtitle: "Sélectionnez un jeu pour afficher son catalogue.", comingSoon: "Bientôt", active: "Actif", empty: "Aucun jeu disponible pour le moment." },
+    games: { title: "Jeux", select: "Choisir un jeu", current: "Jeu sélectionné", all: "Tous", seeAll: "Voir tous les jeux", search: "Rechercher un jeu…", searchEmptyTitle: "Aucun jeu trouvé", searchEmpty: "Aucun jeu ne correspond à votre recherche. Essayez un autre mot.", allCount: "{n} jeux affichés", allSub: "Tous les jeux ouverts à la vente sur la boutique.", eyebrow: "Boutique", pickTitle: "Choisissez votre jeu", pickSubtitle: "Sélectionnez un jeu pour afficher son catalogue.", comingSoon: "Bientôt", active: "Actif", empty: "Aucun jeu disponible pour le moment." },
     profile: { backToShop: "Boutique", loyalty: "Points fidélité", quickAccess: "Accès rapide", preferences: "Préférences", security: "Sécurité", helpLegal: "Aide & légal", editProfile: "Modifier mon profil", pubgCard: "Ma PUBG Player Card", myOrders: "Mes commandes", language: "Langue", theme: "Thème", themeLight: "Clair", themeDark: "Sombre", themeSystem: "Système", password: "Mot de passe", deleteAccount: "Supprimer mon compte", helpSupport: "Aide & support", privacy: "Confidentialité", terms: "Conditions d'utilisation", avatarLocked: "Avatar non modifiable" },
     store: {
       heroEyebrow: "Recharges de jeux · Madagascar", heroA: "Rechargez vos jeux.", heroB: "Sans détour.",
@@ -66,7 +66,7 @@ cart: { otherGame: "Votre panier contient des offres d'un autre jeu. Finalisez o
       verified: "Compte vérifié", verifyRequired: "Vérifiez votre ID PUBG Mobile avant de continuer.",
       selectMethod: "Mode de paiement", mvolaAuto: "MVola automatique", orangeAuto: "Orange Money automatique", manualTitle: "Paiement manuel", autoSub: "Paiement instantané", manualSub: "MVola / Orange Money",
       amount: "Montant", playerIdHelp: "Où trouver mon ID : ouvre ton profil PUBG Mobile et copie l'identifiant affiché.", methodCol: "Méthode", arrival: "Réception estimée", arrivalInstant: "Instantané", arrivalManual: "Vérification manuelle", cancel: "Annuler", confirmAndPay: "Confirmer et payer", product: "Produit", playerId: "ID joueur", zone: "Zone",
-      stepVerify: "Vérification", stepMethod: "Méthode", stepPay: "Paiement", stepConfirm: "Confirmation", progressLabel: "Progression de la commande", stageAccount: "Compte", stagePayment: "Paiement", stageDelivery: "Livraison", stepOf: "Étape {n} / {total}", continue: "Continuer", total: "Total",
+      stepVerify: "Vérification", stepMethod: "Méthode", stepPay: "Paiement", stepConfirm: "Confirmation", progressLabel: "Progression de la commande", stageAccount: "Compte", stagePayment: "Paiement", stageDelivery: "Livraison", continue: "Continuer", total: "Total",
       verifyTitle: "Vérification compte PUBG", verifyTitleGame: "Vérification du compte {game}", verifySub: "Entrez votre ID joueur : nous vérifions le compte avant le paiement.",
       errProvider: "Erreur fournisseur",
       acceptFee: "J'accepte les frais de vérification automatique", chooseOperator: "Choisir opérateur",
@@ -132,7 +132,7 @@ cart: { otherGame: "Votre panier contient des offres d'un autre jeu. Finalisez o
   },
   en: {
     nav: { shop: "Shop", uc: "Buy {UC}", prime: "Subscription", evo: "Evolving Pack", events: "Event", eventsFull: "Events", orders: "Orders", account: "Account", admin: "Admin", login: "Log in", logout: "Log out", track: "Track", cart: "Cart", support: "Support", messages: "Messages", pointsAria: "{n} points" },
-    games: { title: "Games", select: "Pick a game", current: "Selected game", eyebrow: "Shop", pickTitle: "Choose your game", pickSubtitle: "Pick a game to open its catalog.", comingSoon: "Coming soon", active: "Active", empty: "No game available right now." },
+    games: { title: "Games", select: "Pick a game", current: "Selected game", all: "All", seeAll: "See all games", search: "Search a game…", searchEmptyTitle: "No game found", searchEmpty: "No game matches your search. Try another word.", allCount: "{n} games shown", allSub: "Every game open for sale in the store.", eyebrow: "Shop", pickTitle: "Choose your game", pickSubtitle: "Pick a game to open its catalog.", comingSoon: "Coming soon", active: "Active", empty: "No game available right now." },
     profile: { backToShop: "Shop", loyalty: "Loyalty points", quickAccess: "Quick access", preferences: "Preferences", security: "Security", helpLegal: "Help & legal", editProfile: "Edit my profile", pubgCard: "My PUBG Player Card", myOrders: "My orders", language: "Language", theme: "Theme", themeLight: "Light", themeDark: "Dark", themeSystem: "System", password: "Password", deleteAccount: "Delete my account", helpSupport: "Help & support", privacy: "Privacy", terms: "Terms of use", avatarLocked: "Avatar locked" },
     store: {
       heroEyebrow: "Game top-ups · Madagascar", heroA: "Top up your games.", heroB: "No detours.",
@@ -197,7 +197,7 @@ cart: { otherGame: "Your cart holds offers from another game. Check out or empty
       verified: "Account verified", verifyRequired: "Verify your PUBG Mobile ID before continuing.",
       selectMethod: "Payment method", mvolaAuto: "MVola automatic", orangeAuto: "Orange Money automatic", manualTitle: "Manual payment", autoSub: "Instant payment", manualSub: "MVola / Orange Money",
       amount: "Amount", playerIdHelp: "Where to find my ID: open your PUBG Mobile profile and copy the displayed identifier.", methodCol: "Method", arrival: "Estimated arrival", arrivalInstant: "Instant", arrivalManual: "Manual verification", cancel: "Cancel", confirmAndPay: "Confirm & Pay", product: "Product", playerId: "Player ID", zone: "Zone",
-      stepVerify: "Verification", stepMethod: "Method", stepPay: "Payment", stepConfirm: "Confirmation", progressLabel: "Order progress", stageAccount: "Account", stagePayment: "Payment", stageDelivery: "Delivery", stepOf: "Step {n} / {total}", continue: "Continue", total: "Total",
+      stepVerify: "Verification", stepMethod: "Method", stepPay: "Payment", stepConfirm: "Confirmation", progressLabel: "Order progress", stageAccount: "Account", stagePayment: "Payment", stageDelivery: "Delivery", continue: "Continue", total: "Total",
       verifyTitleGame: "Verify your {game} account", verifyTitle: "PUBG account verification", verifySub: "Enter your player ID: we check the account before payment.",
       errProvider: "Provider error",
       acceptFee: "I accept the automatic verification fee", chooseOperator: "Choose operator",

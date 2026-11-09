@@ -1,4 +1,5 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -11,9 +12,9 @@ import { showsCartBar } from "@/lib/bottomChrome";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 // Fallback used when ResizeObserver is unavailable: a bit more than the bar's
-// measured height (~101 px at 390 px) so the reserved space never lets the bar
-// cover the footer's last row.
-const BAR_FALLBACK_HEIGHT = 112;
+// measured height (~62 px single-row since PL-UI-BOTTOM-1 dropped the fee hint)
+// so the reserved space never lets the bar cover the footer's last row.
+const BAR_FALLBACK_HEIGHT = 64;
 
 export function CartDrawer() {
   const { items, open, setOpen, setQty, remove, total, count, gameId } = useCart();
@@ -48,6 +49,7 @@ export function CartDrawer() {
   }, []);
 
   const renderBar = barSlot && !typing;
+  const prefersReduced = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // The bar is fixed, so the page must reserve room for it. Its height depends on
   // how the fee hint wraps, so it is measured rather than guessed.
@@ -69,29 +71,36 @@ export function CartDrawer() {
   }, [renderBar]);
   useEffect(() => { if (!barSlot) setBarHeight(0); }, [barSlot]);
 
+  // PL-UI-BOTTOM-1 — le bas de page est réservé par une variable CSS
+  // consommée par Layout (pb main) : navigation + barre panier, jamais le
+  // dernier élément caché. 7rem = base `pb-28` déjà posée par main ; au-delà
+  // il manque seulement la barre (72 px + safe-area) - 40 px de marge interne.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!barSlot || barHeight <= 0) return;
+    root.style.setProperty("--bottom-chrome-reserve", `max(0px, calc(${barHeight}px - 2.5rem + env(safe-area-inset-bottom, 0px)))`);
+    return () => root.style.removeProperty("--bottom-chrome-reserve");
+  }, [barSlot, barHeight]);
+
   return (
     <>
-      {/* Spacer so the bar never covers the footer's last row. It stays in place
-          while the bar is hidden for the keyboard, so nothing shifts. 2.5rem = the
-          footer's own pb-28 (7rem) minus the bar's 4.5rem bottom offset. */}
-      {barSlot && (
-        <div
-          className="md:hidden"
-          aria-hidden="true"
-          data-testid="cart-bar-spacer"
-          style={{ height: `max(0px, calc(${barHeight}px + max(0.75rem, env(safe-area-inset-bottom, 0px)) - 2.5rem))` }}
-        />
-      )}
       {/* env() avec un repli : sans lui, un navigateur qui ne connait pas
           env() invaliderait toute la declaration `bottom` et la barre fixe
           retomberait a sa position statique. */}
-      {/* Surface d'encre FIXE (noire dans les deux themes) : le total est en
-          neon dessus, et le cadre creme a 55 % garde la barre separee du fond
-          sombre (>= 3:1) au lieu de se fondre dedans. */}
-      {renderBar && <div ref={barRef} className="fixed inset-x-3 bottom-[calc(4rem+max(0.75rem,env(safe-area-inset-bottom,0px))+0.5rem)] z-[45] flex items-center gap-3 border-2 border-[color:hsl(var(--cream)/.55)] bg-ink p-2 text-[color:hsl(var(--cream))] shadow-[4px_4px_0_hsl(var(--primary))] md:hidden" data-testid="mobile-cart-bar">
-        <button type="button" className="min-h-11 min-w-0 flex-1 px-2 text-left" onClick={() => setOpen(true)}><span className="block text-sm font-semibold">{count} {count === 1 ? t("cart.item") : t("cart.items")}</span><span className="num block text-lg text-neo-on-ink">{formatAr(total)}</span><span className="block text-xs leading-snug">{t("cart.paymentFeeHint")}</span></button>
-        <button type="button" className="min-h-11 shrink-0 bg-primary px-4 text-sm font-bold text-[#0A0A0A]" onClick={() => { setOpen(false); navigate("/commande"); }}>{t("cart.checkout")}</button>
-      </div>}
+      {/* Carte flottante (PL-UI-BOTTOM-1) : jetons de surface (`bg-card`),
+          coins 20 px, bordure 1 px discrète, aucun cadre coloré. Posée
+          AU-DESSUS de la navigation : nav (52 px) + safe-area + 8 px. */}
+      {renderBar && (
+      <motion.div        ref={barRef}
+        initial={prefersReduced ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: prefersReduced ? 0 : 0.2, ease: "easeOut" }}
+        className="fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.5rem)] z-[45] flex items-center gap-3 rounded-[20px] border border-[color:var(--rule-strong)] bg-card p-2 text-[color:hsl(var(--card-foreground))] shadow-[0_18px_44px_hsl(0_0%_0%_/_.22)] backdrop-blur-md md:hidden"
+        data-testid="mobile-cart-bar">
+        <button type="button" className="min-h-11 min-w-0 flex-1 rounded-[14px] px-2 text-left" onClick={() => setOpen(true)}><span className="block text-xs font-medium">{count} {count === 1 ? t("cart.item") : t("cart.items")}</span><span className="num block text-lg font-bold">{formatAr(total)}</span></button>
+        <button type="button" className="min-h-11 shrink-0 rounded-full bg-primary px-4 text-sm font-bold text-[#0A0A0A]" onClick={() => { setOpen(false); navigate("/commande"); }}>{t("cart.checkout")}</button>
+      </motion.div>
+      )}
       <Sheet open={open} onOpenChange={setOpen}>
       {/* 28 px sur les deux coins gauches (le tiroir est une feuille laterale
           droite : les coins droits sont contre l'ecran). `overflow-hidden` rogne

@@ -14,6 +14,7 @@ import AuthCallback from "@/components/AuthCallback";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Layout from "@/components/layout/Layout";
 import Home from "@/pages/Home";
+import Games from "@/pages/Games";
 import Catalog from "@/pages/Catalog";
 import Product from "@/pages/Product";
 import Checkout from "@/pages/Checkout";
@@ -45,6 +46,7 @@ function AppRouter() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Home />} />
+          <Route path="/jeux" element={<Games />} />
           <Route path="/boutique" element={<Catalog />} />
           <Route path="/produit/:slug" element={<Product />} />
           <Route path="/commande" element={<Checkout />} />

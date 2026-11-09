@@ -1,24 +1,29 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Gamepad2, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useGames } from "@/context/GameContext";
 import { useLang } from "@/context/LanguageContext";
 import { hidesBottomChrome } from "@/lib/bottomChrome";
+import { useIsMobileViewport } from "@/hooks/useIsMobileViewport";
 
-// Fixed 🎮 button rendered next to the mobile bottom navigation. It is not a
-// floating-action-button bound to content, it never scrolls with the page and
-// it owns its own stacking layer so it stays sharp above the selector backdrop.
-//
-// The disc is the brand neon on an ink border (like the active pill of the
-// nav), with an ink glyph: no hardcoded colour, and nothing white on the black
-// nav. The soft shadow is theme-relative and therefore useless on the dark
-// nav — it is dropped there (`dark:shadow-none`).
+// PL-UI-BOTTOM-1 — le bouton manette rejoint la barre de navigation (même
+// hauteur, même alignement) et ouvre le nouveau sélecteur en pill. Il affiche
+// l'icône du jeu courant quand la route en porte un (`?game=`), sinon la
+// manette générique. Desktop (>= 1024 px) : non rendu du tout.
 export function GameButton() {
   const { pathname } = useLocation();
-  const { setOpen, open, selected } = useGames();
+  const [searchParams] = useSearchParams();
+  const { games, selected, setOpen, open } = useGames();
   const { t } = useLang();
+  const mobile = useIsMobileViewport();
+  const [broken, setBroken] = useState(false);
 
-  if (hidesBottomChrome(pathname)) return null;
+  // Jeu courant si la route en porte un (`/boutique?game=…`), sinon null.
+  const currentGame = games.find((g) => g.id === searchParams.get("game"));
+  useEffect(() => setBroken(false), [currentGame?.id]);
+
+  if (hidesBottomChrome(pathname) || !mobile) return null;
 
   return (
     <div
@@ -30,11 +35,12 @@ export function GameButton() {
         type="button"
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        aria-label={open ? t("common.close") : `${t("games.title")}${selected ? ` – ${selected.name}` : ""}`}
+        aria-haspopup="menu"
+        aria-label={open ? t("common.close") : `${t("games.select")}${selected ? ` – ${selected.name}` : ""}`}
         data-testid="game-button"
         data-open={open ? "true" : "false"}
         initial={false}
-        className="nav-pill pointer-events-auto relative flex h-[60px] w-[60px] shrink-0 items-center justify-center overflow-hidden border-2 border-ink bg-primary text-primary-foreground shadow-[0_6px_18px_hsl(var(--foreground)_/_.28)] dark:shadow-none active:scale-[0.96]"
+        className="nav-pill pointer-events-auto flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden border-2 border-ink bg-primary text-primary-foreground shadow-[0_6px_18px_hsl(var(--foreground)_/_.28)] dark:shadow-none active:scale-[0.96]"
       >
         <AnimatePresence initial={false} mode="popLayout">
           {open ? (
@@ -59,7 +65,16 @@ export function GameButton() {
               className="absolute inset-0 flex items-center justify-center"
               data-testid="game-button-game-icon"
             >
-              <Gamepad2 className="h-[22px] w-[22px]" strokeWidth={2.25} />
+              {currentGame?.icon_url && !broken ? (
+                <img
+                  src={currentGame.icon_url}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  onError={() => setBroken(true)}
+                />
+              ) : (
+                <Gamepad2 className="h-[22px] w-[22px]" strokeWidth={2.25} aria-hidden="true" />
+              )}
             </motion.span>
           )}
         </AnimatePresence>
