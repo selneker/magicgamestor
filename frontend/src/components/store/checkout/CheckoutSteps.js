@@ -6,10 +6,10 @@ import { useLang } from "@/context/LanguageContext";
 const STEPS = ["stepVerify", "stepMethod", "stepPay", "stepConfirm"];
 
 // PL-CHK-1 — stepper compact : 4 points reliés, sans libellés visibles
-// (l'étape courante est déjà nommée par « Étape x / 4 » au-dessus ; le nom de
-// chaque point reste dans l'arbre accessible via aria-label). Pas un bouton :
-// les étapes ne sont pas cliquables, un contrôle focusable qui ne fait rien
-// serait un piège clavier.
+// (l'étape courante reste portée par le nom de chaque point dans l'arbre
+// accessible, aria-label sur chaque point ; aucune autre indication d'étape
+// n'est rendue au-dessus). Pas un bouton : les étapes ne sont pas cliquables,
+// un contrôle focusable qui ne fait rien serait un piège clavier.
 export function CheckoutSteps({ step }) {
   const { t } = useLang();
   const active = Math.min(Math.max(step, 0), STEPS.length - 1);

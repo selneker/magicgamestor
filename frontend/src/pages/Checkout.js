@@ -179,16 +179,16 @@ export default function Checkout() {
     // bouton d'action des étapes 1-2 se colle en bas ; à partir de 1024 px :
     // colonne 480 px, bouton en flux normal (pas d'épinglage).
     <div className="mx-auto flex min-h-[calc(100svh-5rem)] max-w-xl flex-col pt-3 lg:min-h-0 lg:max-w-[480px]" data-testid="checkout-form">
-      {/* En-tête compact : retour + « Étape x / 4 » + petit titre (nom du jeu),
-          le gros titre « Finaliser la commande » est retiré. */}
+      {/* En-tête compact : retour + petit titre (nom du jeu sur une ligne),
+          le gros titre « Finaliser la commande » et la pastille « JEU · NOM »
+          sont retirés ; l'étape courante reste portée par le stepper ci-dessous
+          via aria-label sur chaque point. */}
       <div className="flex items-center gap-3">
         <BackButton onClick={back} testId="checkout-back" />
         <div className="min-w-0 flex-1">
-          <p className="eyebrow" data-testid="checkout-step-label">{t("checkout.stepOf", { n: step + 1, total: screens.length })}</p>
           <h1 className="truncate text-[15px] font-bold leading-tight sm:text-base" data-testid="checkout-title">{game?.name || t("checkout.title")}</h1>
         </div>
       </div>
-      {game && <p className="mt-2 self-start rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground" data-testid="checkout-game">{t("store.gameLabel")} · {game.name}</p>}
       {/* Stepper 4 points compact (labels remplacés par l'aria de chaque point). */}
       <CheckoutSteps step={step} />
       {/* Screens : pas d'`overflow-hidden` ici — il tuerait tout `sticky`
