@@ -189,3 +189,41 @@ class TestProgressiveLoginCaptcha:
             attempts = _check(2, token=None, minutes_ago=20)
         verify.assert_not_awaited()
         assert attempts.doc is None
+
+
+class TestCaptchaErrorContract:
+    """Contrat frontend : le 400 porte `detail` (inchangé) + `code: captcha_required`."""
+
+    @pytest.fixture
+    def client(self, monkeypatch):
+        import importlib
+
+        import dotenv
+        from fastapi.testclient import TestClient
+
+        # L'import de l'application ne doit pas recharger backend/.env par-dessus l'environnement de test.
+        monkeypatch.setattr(dotenv, "load_dotenv", lambda *_a, **_k: False)
+        server = importlib.import_module("server")
+        monkeypatch.setenv("TURNSTILE_SECRET_KEY", FAKE_KEY)
+        monkeypatch.setenv("REGISTER_PER_HOUR_PER_IP", "1000")
+        monkeypatch.setenv("ORDERS_PER_HOUR_PER_IP", "1000")
+
+        async def _reject(*_args, **_kwargs):
+            return False
+
+        monkeypatch.setattr("services.captcha.verify_turnstile", _reject)
+        return TestClient(server.app)
+
+    def test_register_400_carries_captcha_code(self, client):
+        resp = client.post("/api/auth/register", json={
+            "email": "captcha-contract@example.com", "password": "MotDePasse123!", "name": "Test Contrat"})
+        assert resp.status_code == 400
+        assert resp.json() == {"detail": "Vérification anti-robot requise.", "code": "captcha_required"}
+
+    def test_create_order_400_carries_captcha_code(self, client):
+        resp = client.post("/api/orders", json={
+            "pubg_id": "5123456789", "pseudo": "Testeur",
+            "items": [{"product_id": "p", "quantity": 1}],
+            "payment_method": "manual", "manual_reference": "REF"})
+        assert resp.status_code == 400
+        assert resp.json() == {"detail": "Vérification anti-robot requise.", "code": "captcha_required"}

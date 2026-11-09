@@ -27,7 +27,6 @@ MAX_ATTEMPTS, LOCK_MINUTES = 5, 15
 # Turnstile actif : dès la 3e tentative (2 échecs déjà enregistrés) un CAPTCHA est exigé ;
 # le refus dur à 10 échecs sur 15 min reste le garde-fou quand le CAPTCHA est indisponible.
 CAPTCHA_AFTER_FAILURES, HARD_LOCK_ATTEMPTS = 2, 10
-CAPTCHA_DETAIL = "Vérification anti-robot requise."
 VERIFY_TTL_H, RESET_TTL_MIN = 24, 30
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -128,7 +127,7 @@ async def _check_lock(identifier: str, request: Request, captcha_token: str | No
     if count >= HARD_LOCK_ATTEMPTS:
         raise HTTPException(status_code=429, detail="Too many attempts. Try again in 15 minutes.")
     if count >= CAPTCHA_AFTER_FAILURES and not await captcha.verify_turnstile(captcha_token, ratelimit.client_ip(request)):
-        raise HTTPException(status_code=400, detail=CAPTCHA_DETAIL)
+        raise captcha.CaptchaRequired()
 
 
 async def _record_failure(identifier: str):

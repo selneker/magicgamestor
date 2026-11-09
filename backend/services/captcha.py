@@ -8,13 +8,28 @@ import logging
 import os
 
 import httpx
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger("mgs.captcha")
 
 SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 TIMEOUT_S = 5
 _TRUE = ("1", "true", "yes", "on")
+
+CAPTCHA_DETAIL = "Vérification anti-robot requise."
+CAPTCHA_CODE = "captcha_required"
+
+
+class CaptchaRequired(HTTPException):
+    """400 dédié : le corps porte `code`, pour que le frontend distingue le CAPTCHA d'un autre 400."""
+
+    def __init__(self) -> None:
+        super().__init__(status_code=400, detail=CAPTCHA_DETAIL)
+
+
+async def captcha_required_handler(_: Request, exc: CaptchaRequired) -> JSONResponse:
+    return JSONResponse(status_code=400, content={"detail": exc.detail, "code": CAPTCHA_CODE})
 
 
 def enabled() -> bool:
@@ -42,6 +57,6 @@ async def verify_turnstile(token: str | None, remote_ip: str | None = None) -> b
 
 
 async def require(token: str | None, remote_ip: str | None = None):
-    """Lève un 400 générique si la vérification est active et que le jeton est absent/invalide."""
+    """Lève un 400 générique (code `captcha_required`) si le jeton est absent ou invalide."""
     if not await verify_turnstile(token, remote_ip):
-        raise HTTPException(status_code=400, detail="Vérification anti-robot requise.")
+        raise CaptchaRequired()
