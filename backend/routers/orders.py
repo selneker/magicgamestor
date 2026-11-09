@@ -1,3 +1,4 @@
+import re
 import secrets
 import uuid
 from datetime import datetime, timezone
@@ -15,7 +16,7 @@ from core.identity_keys import find_lock, identity_key, order_game_id, order_ide
 from core.security import (ADMIN_ROLES, get_current_user, get_optional_user, require_admin,
                            require_permission, require_super_admin)
 from routers.evo import EVO_TYPE, release_evo_locks, reserve_evo
-from services import loyalty, mailer
+from services import captcha, loyalty, mailer
 from services import payments as gw
 from services.fulfillment import on_order_paid
 from services.fzr_mapping import purchase_blocked, supplier_cost_usd
@@ -61,6 +62,7 @@ class OrderIn(BaseModel):
     email: str | None = None
     game_id: str = Field(default=DEFAULT_GAME_ID, min_length=1, max_length=60)
     identity_id: str | None = Field(default=None, max_length=60)
+    captcha_token: str | None = Field(default=None, max_length=4096)
 
     @field_validator("pubg_id")
     @classmethod
@@ -238,6 +240,7 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
     ratelimit.check(f"orders:ip:{ip}", ratelimit.setting("ORDERS_PER_HOUR_PER_IP", 30), 3600)
     if user:
         ratelimit.check(f"orders:user:{user['user_id']}", ratelimit.setting("ORDERS_PER_HOUR_PER_USER", 20), 3600)
+    await captcha.require(body.captcha_token, ip)
     # ------------------------------------------------------------------ #
     # ENTITÉ D'ABORD, MOYEN DE PAIEMENT ENSUITE.
     # L'identité joueur et la vendabilité du jeu sont validées AVANT toute dépendance de paiement :
@@ -298,6 +301,8 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         raise HTTPException(status_code=400, detail="Une seule offre Pack évolutif identique par commande et par PUBG ID.")
     from services import fees
     payment_fee = await fees.calculate_payment_fee(payment_provider, total)
+    # Commande invitée : l'UUID `id` est un secret de fait (lecture publique de la commande et de
+    # son statut de paiement). Ne jamais le journaliser ni l'exposer dans une page indexable.
     order = {
         "id": str(uuid.uuid4()), "order_number": _order_number(), "user_id": user["user_id"] if user else None,
         "email": (user or {}).get("email") or body.email, "pubg_id": body.pubg_id, "pseudo": body.pseudo.strip(),
@@ -343,7 +348,11 @@ async def my_orders(user=Depends(get_current_user)):
 
 
 @router.get("/orders/subscriptions")
-async def subscription_status(pubg_id: str = Query(min_length=9, max_length=13)):
+async def subscription_status(request: Request, pubg_id: str = Query(min_length=9, max_length=13)):
+    # Route publique d'information (le tunnel de commande l'utilise) : la limite par IP rend
+    # l'énumération d'identifiants joueurs inexploitable sans imposer une connexion au client.
+    ratelimit.check(f"order_subs:ip:{ratelimit.client_ip(request)}",
+                    ratelimit.setting("ORDER_SUBS_PER_HOUR_PER_IP", 60), 3600)
     return {"pubg_id": pubg_id.strip(), "active": await active_subscriptions(pubg_id.strip())}
 
 
@@ -376,7 +385,8 @@ async def get_order(order_id: str, user=Depends(get_optional_user)):
 
 # ---------- Admin ----------
 @router.get("/admin/orders", dependencies=[Depends(require_permission("orders.manage"))])
-async def admin_orders(status: str | None = None, method: str | None = None, q: str | None = None, limit: int = 200):
+async def admin_orders(status: str | None = None, method: str | None = None,
+                       q: str | None = Query(default=None, max_length=100), limit: int = 200):
     from routers.payments import expire_stale_attempts
     await expire_stale_attempts()
     query = {}
@@ -385,8 +395,9 @@ async def admin_orders(status: str | None = None, method: str | None = None, q: 
     if method and method != "all":
         query["payment_method"] = method
     if q:
-        query["$or"] = [{"pubg_id": {"$regex": q}}, {"pseudo": {"$regex": q, "$options": "i"}},
-                        {"order_number": {"$regex": q.upper()}}, {"email": {"$regex": q, "$options": "i"}}]
+        needle = re.escape(q)  # même règle que /admin/users : jamais de motif regex fourni par l'appelant
+        query["$or"] = [{"pubg_id": {"$regex": needle}}, {"pseudo": {"$regex": needle, "$options": "i"}},
+                        {"order_number": {"$regex": needle.upper()}}, {"email": {"$regex": needle, "$options": "i"}}]
     return await db.orders.find(query, PUBLIC).sort("created_at", -1).to_list(min(limit, 1000))
 
 
@@ -484,7 +495,7 @@ async def admin_stats():
 def _csv_cell(value) -> str:
     """CSV quoting + neutralisation des formules (Excel/LibreOffice) contrôlées par le client."""
     text = str(value or "").replace('"', "'")
-    if text.startswith(("=", "+", "-", "@")):
+    if text.startswith(("=", "+", "-", "@", "\t", "\r")):
         text = "'" + text
     return '"' + text + '"'
 

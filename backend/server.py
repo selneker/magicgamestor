@@ -18,7 +18,7 @@ from core.security import PERMISSIONS as DEFAULT_ADMIN_PERMISSIONS
 from core.games import migrate_multigame, migrate_saved_pubg_ids, reconcile_sellable_games, seed_games
 from core.seed import seed_all
 from routers import admin_users, auth, crypto, evo, fazercards, games, fiveone, fzr_orders, products, orders, payments, events, chat, push, loyalty, notifications, reminders
-from services import binance_watcher
+from services import binance_watcher, captcha
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("mgs")
@@ -58,6 +58,8 @@ async def migrate_users():
 
 
 app = FastAPI(title="Magic Game Store API", lifespan=lifespan)
+# Contrat d'erreur CAPTCHA : 400 avec `detail` + `code` (voir services/captcha.py).
+app.add_exception_handler(captcha.CaptchaRequired, captcha.captcha_required_handler)
 api = APIRouter(prefix="/api")
 
 

@@ -19,11 +19,14 @@ from core.origins import oauth_state_matches, require_trusted_origin
 from core.security import (ADMIN_ROLES, PUBLIC_USER_FIELDS, JWT_ALGORITHM, clear_auth_cookies, cookie_options, create_access_token,
                            get_current_user, hash_password, new_user_id, refresh_remember, refresh_session_valid,
                            revoke_refresh_session, set_auth_cookies, verify_password, ACCESS_TTL)
-from services import mailer
+from services import captcha, mailer
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger("mgs.auth")
 MAX_ATTEMPTS, LOCK_MINUTES = 5, 15
+# Turnstile actif : dès la 3e tentative (2 échecs déjà enregistrés) un CAPTCHA est exigé ;
+# le refus dur à 10 échecs sur 15 min reste le garde-fou quand le CAPTCHA est indisponible.
+CAPTCHA_AFTER_FAILURES, HARD_LOCK_ATTEMPTS = 2, 10
 VERIFY_TTL_H, RESET_TTL_MIN = 24, 30
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -34,12 +37,14 @@ class RegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     name: str = Field(min_length=2, max_length=60)
+    captcha_token: str | None = Field(default=None, max_length=4096)
 
 
 class LoginIn(BaseModel):
     email: EmailStr
     password: str
     remember: bool = True  # « Rester connecté » : cookie persistant 30 jours (décoché = cookie de session)
+    captcha_token: str | None = Field(default=None, max_length=4096)
 
 
 class PubgCardIn(BaseModel):
@@ -62,6 +67,7 @@ class TokenIn(BaseModel):
 
 class ForgotIn(BaseModel):
     email: EmailStr
+    captcha_token: str | None = Field(default=None, max_length=4096)
 
 
 class ResetIn(TokenIn):
@@ -104,13 +110,24 @@ async def _auth_response(response: Response, user: dict, remember: bool = True) 
     return {"user": _public_dict(user), "access_token": tokens["access_token"]}
 
 
-async def _check_lock(identifier: str):
+async def _check_lock(identifier: str, request: Request, captcha_token: str | None):
     doc = await db.login_attempts.find_one({"identifier": identifier})
-    if doc and doc.get("count", 0) >= MAX_ATTEMPTS:
-        locked_until = datetime.fromisoformat(doc["last_at"]) + timedelta(minutes=LOCK_MINUTES)
-        if locked_until > _now():
-            raise HTTPException(status_code=429, detail="Too many attempts. Try again in 15 minutes.")
+    count = int((doc or {}).get("count", 0))
+    if not doc or count <= 0:
+        return
+    locked_until = datetime.fromisoformat(doc["last_at"]) + timedelta(minutes=LOCK_MINUTES)
+    if locked_until <= _now():
         await db.login_attempts.delete_one({"identifier": identifier})
+        return
+    if not captcha.enabled():
+        # Sans Turnstile, le verrou dur historique reste la seule protection.
+        if count >= MAX_ATTEMPTS:
+            raise HTTPException(status_code=429, detail="Too many attempts. Try again in 15 minutes.")
+        return
+    if count >= HARD_LOCK_ATTEMPTS:
+        raise HTTPException(status_code=429, detail="Too many attempts. Try again in 15 minutes.")
+    if count >= CAPTCHA_AFTER_FAILURES and not await captcha.verify_turnstile(captcha_token, ratelimit.client_ip(request)):
+        raise captcha.CaptchaRequired()
 
 
 async def _record_failure(identifier: str):
@@ -149,6 +166,7 @@ async def send_verification_email(user: dict):
 @router.post("/register", dependencies=[Depends(require_trusted_origin)])
 async def register(body: RegisterIn, request: Request, response: Response, background: BackgroundTasks):
     ratelimit.check(f"register:ip:{ratelimit.client_ip(request)}", ratelimit.setting("REGISTER_PER_HOUR_PER_IP", 10), 3600)
+    await captcha.require(body.captcha_token, ratelimit.client_ip(request))
     email = body.email.lower()
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=409, detail="Email already registered")
@@ -167,7 +185,7 @@ async def register(body: RegisterIn, request: Request, response: Response, backg
 async def login(body: LoginIn, request: Request, response: Response):
     email = body.email.lower()
     ratelimit.check(f"login:ip:{ratelimit.client_ip(request)}", ratelimit.setting("LOGIN_PER_10MIN_PER_IP", 30), 600)
-    await _check_lock(email)
+    await _check_lock(email, request, body.captcha_token)
     user = await db.users.find_one({"email": email})
     if not user or user.get("deleted_at") or not user.get("password_hash") or not verify_password(body.password, user["password_hash"]):
         await _record_failure(email)
@@ -200,6 +218,7 @@ async def resend_verification(request: Request, background: BackgroundTasks, use
 @router.post("/forgot-password", dependencies=[Depends(require_trusted_origin)])
 async def forgot_password(body: ForgotIn, request: Request, background: BackgroundTasks):
     ratelimit.check(f"forgot:ip:{ratelimit.client_ip(request)}", ratelimit.setting("AUTH_EMAILS_PER_HOUR_PER_IP", 10), 3600)
+    await captcha.require(body.captcha_token, ratelimit.client_ip(request))
     email = body.email.lower()
     ratelimit.check(f"forgot:email:{email}", ratelimit.setting("FORGOT_PER_HOUR_PER_EMAIL", 3), 3600)
     user = await db.users.find_one({"email": email, "deleted_at": {"$exists": False}})

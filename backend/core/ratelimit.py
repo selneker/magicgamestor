@@ -1,4 +1,10 @@
-"""In-memory sliding-window rate limiter (single-instance). Limits are env-configurable."""
+"""In-memory sliding-window rate limiter. Limits are env-configurable.
+
+Les compteurs vivent dans le processus : la limite suppose UNE seule instance (offre Render
+gratuite). Avec plusieurs instances, la limite effective est multipliée par leur nombre et
+remise à zéro à chaque redéploiement. Avant de passer multi-instance, déplacer les compteurs
+vers un stockage partagé (collection Mongo dédiée ou Redis).
+"""
 import os
 import time
 from collections import defaultdict, deque
