@@ -58,9 +58,13 @@ export function PaymentFlow({ method, setMethod, phone, setPhone, reference, set
         const selected = method === c.key;
         const fee = paymentFee(config, c.key, subtotal);
         return (
-          <div key={c.key} className={`overflow-hidden rounded-[18px] border-2 bg-card transition-colors ${selected ? "border-foreground" : "border-[color:var(--rule)] hover:border-[color:var(--rule-strong)]"}`}>
+          // PL-CHK-1 : méthode = ligne (pas une carte encadrée) ; la ligne
+          // choisie reçoit le contour `--brand-lime` (1 px). Pas
+          // d'`overflow-hidden` ici : il tuerait tout descendant sticky, et le
+          // clip de l'expansion est déjà assuré par le motion.div.
+          <div key={c.key} className={`rounded-[16px] border bg-card transition-colors motion-reduce:transition-none ${selected ? "border-[color:var(--brand-lime)]" : "border-transparent hover:border-[color:var(--rule)]"}`}>
             <button type="button" data-testid={`method-${c.key}`} aria-pressed={selected} aria-expanded={selected} onClick={() => select(c.key)} className="flex w-full items-center gap-3 p-4 text-left active:scale-[0.99]">
-              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${selected ? "border-foreground" : "border-[color:var(--rule-strong)]"}`}>
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${selected ? "border-[color:var(--brand-lime)]" : "border-[color:var(--rule-strong)]"}`}>
                 {selected && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}
               </span>
               {PAYMENT_LOGOS[c.key] ? (
@@ -81,15 +85,16 @@ export function PaymentFlow({ method, setMethod, phone, setPhone, reference, set
             <AnimatePresence initial={false}>
               {selected && (
                 <motion.div key="exp" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.24, ease: "easeOut" }} className="overflow-hidden" data-testid={`payment-expanded-${c.key}`}>
-                  <div className="space-y-4 border-t-2 border-[color:var(--rule)] p-4">
+                  <div className="space-y-4 border-t border-[color:var(--rule)] p-4">
                     {(c.key === "mvola" || c.key === "orange") && <AutoPanel c={c} phone={phone} setPhone={setPhone} config={config} />}
                     {c.key === "manual" && <ManualPanel reference={reference} setReference={setReference} config={config} copy={copy} />}
                     {c.key === "binance" && <NetworkPicker crypto={crypto} network={network} setNetwork={setNetwork} />}
 
-                    <div className="space-y-2.5 rounded-[14px] border-2 border-[color:var(--rule)] bg-muted/40 p-4 text-sm" data-testid={`payment-summary-${c.key}`}>
+                    {/* Récap compact, sans cadre. */}
+                    <div className="space-y-2.5 rounded-[14px] bg-muted/50 p-4 text-sm" data-testid={`payment-summary-${c.key}`}>
                       <SummaryRow label={t("checkout.amount")} value={formatAr(subtotal)} />
                       <SummaryRow label={c.key === "binance" ? t("checkout.paymentFee") : t("checkout.verificationFee")} value={formatAr(fee)} />
-                      <div className="flex items-center justify-between border-t-2 border-[color:var(--rule)] pt-2.5">
+                      <div className="flex items-center justify-between border-t border-[color:var(--rule)] pt-2.5">
                         <span className="font-display text-[15px] font-bold">{t("checkout.total")}</span>
                         <span className="num text-lg" data-testid={`payment-total-${c.key}`}>{formatAr(subtotal + fee)}</span>
                       </div>
@@ -138,7 +143,7 @@ function AutoPanel({ c, phone, setPhone, config }) {
 
 function AcceptBox({ testId, checked, onChange, children }) {
   return (
-    <label className={`flex cursor-pointer items-start gap-3 rounded-[14px] border-2 p-3 text-sm transition-colors ${checked ? "border-foreground bg-primary/5" : "border-[color:var(--rule)]"}`}>
+    <label className={`flex cursor-pointer items-start gap-3 rounded-[14px] border p-3 text-sm transition-colors motion-reduce:transition-none ${checked ? "border-[color:var(--brand-lime)] bg-primary/5" : "border-[color:var(--rule)]"}`}>
       <Checkbox data-testid={testId} checked={checked} onCheckedChange={(v) => onChange(!!v)} className="mt-0.5" />
       <span className="min-w-0 flex-1">{children}</span>
     </label>
@@ -154,8 +159,8 @@ function NetworkPicker({ crypto, network, setNetwork }) {
         {crypto.networks.map((n) => {
           const on = network === n.key;
           return (
-            <button key={n.key} type="button" data-testid={`binance-network-${n.key}`} aria-pressed={on} onClick={() => setNetwork(n.key)} className={`flex items-center gap-2.5 rounded-[12px] border-2 p-3 text-left transition-colors ${on ? "border-foreground bg-primary/10" : "border-[color:var(--rule)] hover:border-foreground"}`}>
-              <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${on ? "border-foreground" : "border-[color:var(--rule-strong)]"}`}>{on && <span className="h-2.5 w-2.5 rounded-full bg-foreground" />}</span>
+            <button key={n.key} type="button" data-testid={`binance-network-${n.key}`} aria-pressed={on} onClick={() => setNetwork(n.key)} className={`flex items-center gap-2.5 rounded-[12px] border p-3 text-left transition-colors motion-reduce:transition-none ${on ? "border-[color:var(--brand-lime)] bg-primary/10" : "border-[color:var(--rule)] hover:border-foreground"}`}>
+              <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${on ? "border-primary" : "border-[color:var(--rule-strong)]"}`}>{on && <span className="h-2.5 w-2.5 rounded-full bg-primary" />}</span>
               <span className="min-w-0"><span className="block text-sm font-black">{n.key}</span><span className="block truncate text-[11px] text-muted-foreground">{n.label}</span></span>
             </button>
           );
@@ -192,7 +197,7 @@ function ManualPanel({ reference, setReference, config, copy }) {
         ))}
       </div>
       {merchant && (
-        <div className="space-y-2 rounded-[12px] border-2 border-[color:var(--rule)] bg-card p-3">
+        <div className="space-y-2 rounded-[12px] border border-[color:var(--rule)] bg-card p-3">
           <p className="text-sm text-foreground"><span className="font-medium">{t("checkout.ussdName")} :</span> <span data-testid="merchant-name">{merchant.name}</span></p>
           <div className="flex items-center justify-between gap-2">
             <p className="min-w-0 text-sm text-foreground"><span className="font-medium">{t("checkout.ussdNumberShort")} :</span> <span className="num break-all text-base font-bold" data-testid="merchant-number">{pretty(merchant.merchant)}</span></p>

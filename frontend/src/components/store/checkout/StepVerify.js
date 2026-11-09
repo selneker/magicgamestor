@@ -87,8 +87,11 @@ export function StepVerify({ gameName, pubgId, setPubgId, user, verified, setVer
   const selected = identity?.id && Object.entries(identity.fields || {}).every(([k, v]) => (identityValues || {})[k] === v);
 
   return (
-    <section className="rounded-[22px] border-2 border-[color:var(--rule)] bg-card p-4 sm:p-6" data-testid="checkout-step-verify">
-      <h2 className="font-display text-xl font-bold" data-testid="checkout-verify-title">{spec.length ? t("checkout.verifyTitleGame", { game: gameName || "" }) : t("checkout.verifyTitle")}</h2>
+    // PL-CHK-1 : carte étape retirée (cadre 22 px) — le contenu vit
+    // directement dans la colonne du checkout ; la section peut s'étirer
+    // (flex) pour que le CTA touché ci-dessous reste collé en bas d'écran.
+    <section className="flex flex-1 flex-col" data-testid="checkout-step-verify">
+      <h2 className="font-display text-lg font-bold leading-tight" data-testid="checkout-verify-title">{spec.length ? t("checkout.verifyTitleGame", { game: gameName || "" }) : t("checkout.verifyTitle")}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{t("checkout.verifySub")}</p>
       {!user && (
         <div className="mt-4">
@@ -101,14 +104,21 @@ export function StepVerify({ gameName, pubgId, setPubgId, user, verified, setVer
         <IdentityFieldsVerify spec={spec} gameId={gameId} values={identityValues} setValues={writeValues}
           onVerified={handleVerified} autoTrigger={autoVerify} checkout initial={verified} />
         {identities.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1" data-testid="checkout-identities">{identities.map((it) => <button type="button" key={it.id} data-testid={`identity-pick-${it.id}`} onClick={() => pickIdentity(it)} className={`rounded-full px-2 py-0.5 text-xs font-semibold transition-colors hover:bg-primary hover:text-[#0A0A0A] ${selected && identity?.id === it.id ? "bg-primary text-[#0A0A0A]" : "bg-muted text-muted-foreground"}`}>{it.label}</button>)}</div>
+          // PL-CHK-1 : IDs récents en rangée horizontale défilante (plus de
+          // flex-wrap multi-lignes qui pousse le CTA hors écran).
+          <div className="mt-2 -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1.5" data-testid="checkout-identities">{identities.map((it) => <button type="button" key={it.id} data-testid={`identity-pick-${it.id}`} onClick={() => pickIdentity(it)} className={`h-8 shrink-0 rounded-full px-3 text-xs font-semibold transition-colors ${selected && identity?.id === it.id ? "bg-primary text-[#0A0A0A]" : "border border-[color:var(--rule)] bg-muted text-muted-foreground hover:border-foreground"}`}>{it.label}</button>)}</div>
         )}
         {legacyIds.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">{legacyIds.map((id) => <button type="button" key={id} data-testid={`saved-id-${id}`} onClick={() => legacyPick(id)} className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-primary hover:text-[#0A0A0A]">{id}</button>)}</div>
+          <div className="-mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4 pb-1.5">{legacyIds.map((id) => <button type="button" key={id} data-testid={`saved-id-${id}`} onClick={() => legacyPick(id)} className="h-8 shrink-0 rounded-full border border-[color:var(--rule)] bg-muted px-3 text-xs font-semibold text-muted-foreground transition-colors hover:border-foreground">{id}</button>)}</div>
         )}
       </div>
+      {/* Gros bouton épinglé en bas d'écran (étape 1, mobile) : la colonne
+          étirée le colle en bas quand l'écran est court, `sticky` le garde
+          visible pendant un (rare) défilement ; ≥1024 px : flux normal. */}
       {verified && (
-        <Button type="button" onClick={onContinue} data-testid="checkout-verify-continue" className="mt-4 h-12 w-full rounded-full text-base font-bold">{t("checkout.continue")}</Button>
+        <div className="sticky bottom-2 z-10 mt-4 flex flex-1 flex-col justify-end bg-[color:hsl(var(--background))] pb-3 pt-3 lg:static lg:z-auto">
+          <Button type="button" onClick={onContinue} data-testid="checkout-verify-continue" className="h-14 w-full rounded-full text-base font-bold shadow-lg lg:shadow-none">{t("checkout.continue")}</Button>
+        </div>
       )}
     </section>
   );
