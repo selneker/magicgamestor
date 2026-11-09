@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useCart } from "@/context/CartContext";
+import { CaptchaWidget, isCaptchaError, useCaptcha } from "@/components/common/CaptchaWidget";
 import { PaymentStatus } from "@/components/store/PaymentStatus";
 import { Button } from "@/components/ui/button";
 
@@ -17,6 +18,8 @@ export default function CheckoutConfirm() {
   const [config, setConfig] = useState(null);
   const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState(null);
+  const captcha = useCaptcha(); // PL-SEC-HARDEN-1-CAPTCHA : création de commande
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   useEffect(() => {
     api.get("/payments/config").then(({ data }) => setConfig(data)).catch(() => {});
@@ -50,6 +53,7 @@ export default function CheckoutConfirm() {
         items: items.map((i) => ({ product_id: i.id, quantity: i.qty })),
         payment_method: ctx.method, payment_phone: manual ? undefined : ctx.phone,
         manual_reference: manual ? `${ctx.reference.provider}:${ctx.reference.value}` : undefined,
+        captcha_token: captcha.tokenFor(),
       };
       const { data: created } = await api.post("/orders", payload);
       clear();
@@ -61,7 +65,8 @@ export default function CheckoutConfirm() {
       if (payment.payment_url && !payment.simulated) { window.location.assign(payment.payment_url); return; }
       setOrder({ ...created, simulated: payment.simulated });
     } catch (err) {
-      toast.error(errorMessage(err));
+      toast.error(isCaptchaError(err) ? t("captcha.verifyAgain") : errorMessage(err));
+      if (isCaptchaError(err) && captcha.enabled) { captcha.expire(); setCaptchaKey((k) => k + 1); } // jeton à usage unique
     } finally {
       setBusy(false);
     }
@@ -101,7 +106,9 @@ export default function CheckoutConfirm() {
         </div>
       </div>
 
-      <Button type="button" onClick={confirm} disabled={busy} data-testid="confirm-and-pay-button" className="mt-6 h-12 w-full rounded-full text-base font-bold">
+      {captcha.enabled && <div className="mt-6 rounded-[18px] bg-muted/30 p-3" data-testid="checkout-confirm-captcha"><CaptchaWidget key={captchaKey} ref={captcha.ref} onVerify={captcha.onVerify} onError={captcha.onError} /></div>}
+
+      <Button type="button" onClick={confirm} disabled={busy || (captcha.enabled && !captcha.ready)} data-testid="confirm-and-pay-button" className="mt-6 h-12 w-full rounded-full text-base font-bold">
         {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.processing")}</> : `${t("checkout.confirmAndPay")} · ${formatAr(grandTotal)}`}
       </Button>
     </div>

@@ -8,6 +8,7 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useGames } from "@/context/GameContext";
 import { BackButton } from "@/components/common/BackButton";
+import { CaptchaWidget, isCaptchaError, useCaptcha } from "@/components/common/CaptchaWidget";
 import { PaymentFlow, methodLabel, paymentFee } from "@/components/store/PaymentFlow";
 import { CheckoutSteps } from "@/components/store/checkout/CheckoutSteps";
 import { StepVerify } from "@/components/store/checkout/StepVerify";
@@ -52,6 +53,12 @@ export default function Checkout() {
   const [autoVerify, setAutoVerify] = useState(0);
   const [identity, setIdentity] = useState(null);
   const [identityValues, setIdentityValues] = useState({});
+  // PL-SEC-HARDEN-1-CAPTCHA : un seul widget persistant pour tout le tunnel
+  // (les écrans de saisie sont re-montés à chaque étape, on ne le met pas dedans).
+  // Si la clé de site n'est pas configurée, le widget ne s'affiche pas, READY
+  // est toujours vrai et `captcha_token` est omis du corps de requête.
+  const captcha = useCaptcha();
+  const [captchaKey, setCaptchaKey] = useState(0);
   const setVerified = useCallback((v) => setVerifiedState(v), []);
   useEffect(() => {
     if (!pubgId) return;
@@ -118,7 +125,9 @@ export default function Checkout() {
       game_id: gameId, identity_id: user && matchesSaved ? identity.id : undefined, pubg_id: pubgValue,
       ...(fields ? { identity_fields: fields } : {}),
       pseudo: verified?.name || pubgValue, email: email || undefined,
-      items: items.map((i) => ({ product_id: i.id, quantity: i.qty })), payment_method: m, ...extra,
+      items: items.map((i) => ({ product_id: i.id, quantity: i.qty })), payment_method: m,
+      captcha_token: captcha.tokenFor(),
+      ...extra,
     });
     clear();
     setOrder(data);
@@ -127,11 +136,15 @@ export default function Checkout() {
 
   const run = async (fn) => {
     setBusy(true);
-    try { await fn(); } catch (e) { toast.error(errorMessage(e)); } finally { setBusy(false); }
+    try { await fn(); } catch (e) {
+      toast.error(isCaptchaError(e) ? t("captcha.verifyAgain") : errorMessage(e));
+      if (isCaptchaError(e) && captcha.enabled) { captcha.expire(); setCaptchaKey((k) => k + 1); } // jeton à usage unique
+    } finally { setBusy(false); }
   };
 
   const continueMethod = () => {
     if (method !== "binance") return go(2);
+    if (!order && !captcha.ready) return;
     return run(async () => {
       const created = order || await createOrder("binance");
       const { data } = await api.post("/crypto/initiate", { order_id: created.id, network });
@@ -156,8 +169,8 @@ export default function Checkout() {
   const screens = [
     <StepVerify key="v" gameName={game?.name} pubgId={pubgId} setPubgId={setPubgId} user={user} verified={verified} setVerified={setVerified} autoVerify={autoVerify} setAutoVerify={setAutoVerify} gameId={gameId} identity={identity} setIdentity={setIdentity} identitySpec={identitySpec} identityValues={identityValues} setIdentityValues={setIdentityValues} email={email} setEmail={setEmail} onContinue={() => go(1)} />,
     <PaymentFlow key="m" method={method} setMethod={setMethod} phone={phone} setPhone={setPhone} reference={reference} setReference={setReference} network={network} setNetwork={setNetwork} accepted={accepted} setAccepted={setAccepted} subtotal={subtotal} config={config} crypto={crypto} busy={busy} onContinue={continueMethod} />,
-    <StepPay key="p" method={method} order={order} config={config} summary={summary} reference={reference} busy={busy} onPayAuto={payAuto} onManualPaid={() => go(3)} cryptoPayment={cryptoPayment} onConfirmed={() => go(3)} trackUrl={trackUrl} />,
-    <StepConfirm key="c" method={method} order={order} trackUrl={trackUrl} summary={summary} reference={reference} setReference={setReference} busy={busy} onConfirm={confirmManual} />,
+    <StepPay key="p" method={method} order={order} config={config} summary={summary} reference={reference} busy={busy} captchaReady={captcha.ready} onPayAuto={payAuto} onManualPaid={() => go(3)} cryptoPayment={cryptoPayment} onConfirmed={() => go(3)} trackUrl={trackUrl} />,
+    <StepConfirm key="c" method={method} order={order} trackUrl={trackUrl} summary={summary} reference={reference} setReference={setReference} busy={busy} captchaReady={captcha.ready} onConfirm={confirmManual} />,
   ];
 
   return (
@@ -178,6 +191,14 @@ export default function Checkout() {
           </motion.div>
         </AnimatePresence>
       </div>
+      {/* Widget persistant, hors des écrans animés : la commande est créée au clic
+          de l'étape 2 (binance), 3 (auto) ou 4 (manuel) — il doit rester visible et
+          validé pendant tout le parcours. Absent si la clé de site n'est pas configurée. */}
+      {step >= 1 && captcha.enabled && (
+        <div className="mt-5 rounded-[18px] bg-muted/30 p-3" data-testid="checkout-captcha">
+          <CaptchaWidget key={captchaKey} ref={captcha.ref} onVerify={captcha.onVerify} onError={captcha.onError} />
+        </div>
+      )}
     </div>
   );
 }
