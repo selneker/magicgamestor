@@ -14,6 +14,7 @@ from core.db import db
 from core.security import ADMIN_ROLES, get_optional_user, require_admin, require_permission, require_super_admin
 from services import fees
 from services import notifications
+from services import order_maintenance
 from services import payments as gw
 from services.fulfillment import on_order_paid, on_payment_failed
 
@@ -128,6 +129,13 @@ async def apply_status(attempt: dict, raw_status: str, source: str, background: 
     if not won:
         return await db.payments.find_one({"client_ref": ref}, PUBLIC) or attempt
     if status == "completed":
+        # Une commande déjà expirée ne se livre JAMAIS automatiquement, même si la tentative,
+        # elle, n'avait pas encore atteint son délai interne : succès tardif -> décision admin.
+        current_order = await db.orders.find_one({"id": order_id}, {"_id": 0, "status": 1})
+        if current_order and current_order.get("status") == "expired":
+            await record_late_success({**won, "status": "completed"}, source, extra,
+                                      payment_from=("completed",))
+            return await db.payments.find_one({"client_ref": ref}, PUBLIC) or won
         delivered = await _set_order_status(order_id, "paid", PAYABLE_ORDER_STATUSES, {"paid_attempt_ref": ref, "paid_at": _iso()})
         if delivered:
             if background is not None:
@@ -152,17 +160,30 @@ async def apply_status(attempt: dict, raw_status: str, source: str, background: 
     return won
 
 
-async def record_late_success(attempt: dict, source: str, extra: dict | None = None) -> dict:
+async def record_late_success(attempt: dict, source: str, extra: dict | None = None,
+                              payment_from: tuple = ("expired",)) -> dict:
     """SUCCESS received after the internal deadline: never auto-deliver; flag for manual, traceable resolution."""
+    statuses = list(payment_from)
+    # Un seul statut d'origine : égalité simple (compatible avec les doubles de test existants).
+    status_filter = statuses[0] if len(statuses) == 1 else {"$in": statuses}
     won = await db.payments.find_one_and_update(
-        {"client_ref": attempt["client_ref"], "status": "expired"},
+        {"client_ref": attempt["client_ref"], "status": status_filter},
         {"$set": {"status": "late_success", "late_success_at": _iso(), "updated_at": _iso(), "status_source": source, **(extra or {})}},
         projection=PUBLIC, return_document=True)
     if not won:
         return await db.payments.find_one({"client_ref": attempt["client_ref"]}, PUBLIC) or attempt
-    await db.orders.update_one({"id": attempt["order_id"]}, {"$set": {
-        "late_payment": {"client_ref": attempt["client_ref"], "amount": attempt["amount"], "at": _iso(), "papi_reference": (extra or {}).get("papi_reference")},
-        "updated_at": _iso()}})
+    now = _iso()
+    late = {"client_ref": attempt["client_ref"], "amount": attempt["amount"], "at": now,
+            "papi_reference": (extra or {}).get("papi_reference")}
+    # Bascule atomique expired -> late_payment. Le repli conserve la trace même si la commande a
+    # pris un autre statut entre-temps (jamais d'écrasement d'un statut payé/livré).
+    changed = await db.orders.update_one(
+        {"id": attempt["order_id"], "status": "expired"},
+        {"$set": {"status": "late_payment", "late_payment": late, "updated_at": now},
+         "$push": {"history": {"status": "late_payment", "at": now}}})
+    if changed.modified_count == 0:
+        await db.orders.update_one({"id": attempt["order_id"]},
+                                   {"$set": {"late_payment": late, "updated_at": now}})
     logger.warning("LATE SUCCESS for %s (order %s): funds received after deadline, manual review required", attempt["client_ref"], attempt["order_number"])
     await audit("payment.late_success", source, attempt["order_id"], {"client_ref": attempt["client_ref"], "amount": attempt["amount"]})
     notifications.schedule(None, notifications.notify_late_success,
@@ -243,7 +264,8 @@ async def initiate(body: InitiateIn, request: Request, background: BackgroundTas
     }
     await db.payments.insert_one(attempt)
     if order["status"] != "pending_payment":
-        await _set_order_status(order["id"], "pending_payment", ("failed", "expired"))
+        await _set_order_status(order["id"], "pending_payment", ("failed", "expired"),
+                                {"payment_deadline_at": order_maintenance.payment_deadline_iso()})
         from routers.orders import reserve_subscription, SUBSCRIPTION_TYPES
         for item in order["items"]:
             if item["type"] in SUBSCRIPTION_TYPES:

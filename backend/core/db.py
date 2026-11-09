@@ -22,6 +22,9 @@ async def ensure_indexes():
     # PL-NOTIF-4 : relance des commandes payées non traitées — balayage borné par statut, plus
     # anciennes d'abord (évite un tri en mémoire sur toute la collection).
     await db.orders.create_index([("status", 1), ("created_at", 1)])
+    # PL-ORDER-PROOF-1 : expiration atomique des commandes en attente et purge des expirées.
+    await db.orders.create_index([("status", 1), ("payment_deadline_at", 1)])
+    await db.orders.create_index([("status", 1), ("expired_at", 1)])
     await db.orders.create_index("pubg_id")
     await db.orders.create_index("game_id")
     await db.products.create_index("game_id")

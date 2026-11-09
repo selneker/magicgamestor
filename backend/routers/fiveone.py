@@ -12,6 +12,7 @@ from core.db import db
 from core.security import ADMIN_ROLES, get_optional_user
 from services import fiveone
 from services import notifications
+from services import order_maintenance
 from services import payments as gw
 from routers.payments import (PAYABLE_ORDER_STATUSES, PUBLIC, _backend_url, _frontend_url, _public, _set_order_status,
                               apply_status, expire_attempt, latest_attempt, record_late_success)
@@ -81,7 +82,8 @@ async def initiate(body: InitiateIn, request: Request, background: BackgroundTas
     }
     await db.payments.insert_one(attempt)
     if order["status"] != "pending_payment":
-        await _set_order_status(order["id"], "pending_payment", ("failed", "expired"))
+        await _set_order_status(order["id"], "pending_payment", ("failed", "expired"),
+                                {"payment_deadline_at": order_maintenance.payment_deadline_iso()})
     await audit("payment.attempt", (user or {}).get("user_id") or f"ip:{ip}", order["id"],
                 {"client_ref": client_ref, "attempt_no": attempt_no, "amount": order["total"], "gateway": "fiveone"})
     return _public(attempt)
