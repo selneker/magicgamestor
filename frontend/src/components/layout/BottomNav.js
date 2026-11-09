@@ -49,7 +49,7 @@ export function BottomNav() {
     <>
       {/* Main navigation layer — stays behind the game-selector backdrop. */}
       <div
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex items-center px-3 pr-[5rem] pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex items-center px-3 pr-[3.75rem] pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden"
         data-testid="bottom-nav-wrapper"
       >
         <nav

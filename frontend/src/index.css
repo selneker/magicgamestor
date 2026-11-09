@@ -246,9 +246,10 @@
 .rounded-full { border-radius: 10px !important; }
 .rounded-full[class*="h-1"], .rounded-full[class*="w-1"], .rounded-full[class*="h-2"], .rounded-full[class*="w-2"], .rounded-full[class*="h-3"], span.rounded-full { border-radius: 9999px !important; }
 .nav-pill, .nav-pill.rounded-full { border-radius: 9999px !important; }
-/* Mobile bottom navigation — larger, rounder reference geometry. */
-.nav-outer { height: 64px; border-radius: 32px !important; }
-.nav-item-pill, .nav-item-pill.rounded-full { height: 56px; border-radius: 28px !important; }
+/* Mobile bottom navigation — same height as the mobile header (h-14 = 56 px slab
+   ≤ 52 px), compact active pill (44 px ≥ the 44 px touch target). */
+.nav-outer { height: 52px; border-radius: 26px !important; }
+.nav-item-pill, .nav-item-pill.rounded-full { height: 44px; border-radius: 22px !important; }
 .game-backdrop {
     background: rgba(0, 0, 0, .28);
     -webkit-backdrop-filter: blur(14px) saturate(130%); backdrop-filter: blur(14px) saturate(130%);
