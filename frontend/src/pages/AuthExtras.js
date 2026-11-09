@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
+import { CaptchaWidget, isCaptchaError, useCaptcha } from "@/components/common/CaptchaWidget";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -24,16 +25,23 @@ export function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
+  const captcha = useCaptcha();
+  const [captchaKey, setCaptchaKey] = useState(0);
   const submit = async (e) => {
     e.preventDefault(); setBusy(true);
-    try { await api.post("/auth/forgot-password", { email }); setSent(true); } catch (err) { toast.error(errorMessage(err)); } finally { setBusy(false); }
+    try { await api.post("/auth/forgot-password", { email, captcha_token: captcha.tokenFor() }); setSent(true); }
+    catch (err) {
+      toast.error(isCaptchaError(err) ? t("captcha.verifyAgain") : errorMessage(err));
+      if (captcha.enabled) { captcha.expire(); setCaptchaKey((k) => k + 1); } // jeton à usage unique
+    } finally { setBusy(false); }
   };
   return (
     <Shell title={t("auth.forgotTitle")} subtitle={t("auth.forgotSub")} testId="forgot-password-page">
       {sent ? <p className="text-sm" data-testid="forgot-sent">{t("auth.forgotSent")}</p> : (
         <form onSubmit={submit} className="space-y-4">
           <div><label htmlFor="fp-email" className="text-sm font-medium">{t("auth.email")}</label><Input id="fp-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 h-12 rounded-xl" data-testid="forgot-email-input" /></div>
-          <Button type="submit" disabled={busy} className="h-12 w-full rounded-full font-semibold" data-testid="forgot-submit">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.forgotCta")}</Button>
+          {captcha.enabled && <CaptchaWidget key={captchaKey} ref={captcha.ref} onVerify={captcha.onVerify} onError={captcha.onError} />}
+          <Button type="submit" disabled={busy || (captcha.enabled && !captcha.ready)} className="h-12 w-full rounded-full font-semibold" data-testid="forgot-submit">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.forgotCta")}</Button>
         </form>
       )}
       <p className="mt-5 text-center text-sm text-slate-500"><Link to="/connexion" className="font-semibold text-primary" data-testid="back-to-login">{t("auth.login")}</Link></p>

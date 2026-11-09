@@ -36,21 +36,21 @@ async function copyToClipboard(value) {
   }
 }
 
-export function StepPay({ method, order, config, summary, reference, busy, onPayAuto, onManualPaid, cryptoPayment, onConfirmed, trackUrl }) {
+export function StepPay({ method, order, config, summary, reference, busy, captchaReady = true, onPayAuto, onManualPaid, cryptoPayment, onConfirmed, trackUrl }) {
   if (method === "manual") return <ManualPay config={config} summary={summary} reference={reference} onPaid={onManualPaid} />;
   if (method === "binance") return cryptoPayment ? <BinancePay payment={cryptoPayment} orderId={order.id} onConfirmed={onConfirmed} trackUrl={trackUrl} /> : null;
   if (order?.attempt) return <PaymentStatus key={order.attempt} order={order} onRetry={onPayAuto} onCompleted={onConfirmed} />;
-  return <AutoPay summary={summary} busy={busy} onPay={onPayAuto} />;
+  return <AutoPay summary={summary} busy={busy} captchaReady={captchaReady} onPay={onPayAuto} />;
 }
 
-function AutoPay({ summary, busy, onPay }) {
+function AutoPay({ summary, busy, captchaReady = true, onPay }) {
   const { t } = useLang();
   return (
     <section className="space-y-4" data-testid="checkout-step-pay-auto">
       <OrderSummary summary={summary} sticky />
       <p className="flex items-center gap-2 rounded-[14px] bg-muted px-3 py-2 text-sm font-semibold text-foreground"><Zap className="h-4 w-4 shrink-0" />{t("checkout.autoVerifyNote")}</p>
       <p className="text-sm text-muted-foreground">{t("checkout.playerVerifyNote")}</p>
-      <Button type="button" onClick={onPay} disabled={busy} data-testid="checkout-pay-now" className="h-12 w-full rounded-full text-base font-bold">
+      <Button type="button" onClick={onPay} disabled={busy || !captchaReady} data-testid="checkout-pay-now" className="h-12 w-full rounded-full text-base font-bold">
         {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.processing")}</> : `${t("checkout.payNow")} · ${formatAr(summary.subtotal + summary.fee)}`}
       </Button>
     </section>

@@ -6,6 +6,7 @@ import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { startGoogleLogin } from "@/components/AuthCallback";
+import { CaptchaWidget, isCaptchaError, useCaptcha } from "@/components/common/CaptchaWidget";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,18 +20,33 @@ export default function AuthPage({ mode = "login" }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // PL-SEC-HARDEN-1-CAPTCHA : inscription → widget dès l'arrivée ; connexion →
+  // seulement après un premier échec (l'usage normal ne doit pas être gêné).
+  // Le compteur repart de zéro après une connexion réussie ou un rechargement.
+  const captcha = useCaptcha();
+  const [captchaKey, setCaptchaKey] = useState(0);
+  const [loginFailed, setLoginFailed] = useState(false);
+  const showCaptcha = captcha.enabled && (mode === "register" || loginFailed);
   const from = location.state?.from || "/";
 
   if (user) return <Navigate to={from} replace />;
 
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setError("");
+    const captchaUsed = showCaptcha ? captcha.tokenFor() : undefined;
     try {
-      const { data } = await api.post(`/auth/${mode}`, mode === "login" ? { email: form.email, password: form.password, remember: form.remember } : form);
+      const { data } = await api.post(`/auth/${mode}`, mode === "login"
+        ? { email: form.email, password: form.password, remember: form.remember, captcha_token: captchaUsed }
+        : { ...form, captcha_token: captchaUsed });
       setUser(data.user);
       if (mode === "register") toast.message(t("auth.verifySent"));
+      setLoginFailed(false);
       navigate(from, { replace: true });
-    } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); }
+    } catch (err) {
+      setError(isCaptchaError(err) ? t("captcha.verifyAgain") : errorMessage(err));
+      if (mode === "login") setLoginFailed(true);
+      if (showCaptcha) { captcha.expire(); setCaptchaKey((k) => k + 1); } // jeton à usage unique
+    } finally { setBusy(false); }
   };
 
   return (
@@ -65,8 +81,9 @@ export default function AuthPage({ mode = "login" }) {
               <Link to="/mot-de-passe-oublie" className="text-xs font-medium text-muted-foreground hover:text-foreground" data-testid="login-forgot-password-link">{t("auth.forgot")}</Link>
             </div>
           )}
+          {showCaptcha && <CaptchaWidget key={captchaKey} ref={captcha.ref} onVerify={captcha.onVerify} onError={captcha.onError} />}
           {error && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700" data-testid="auth-error">{error}</p>}
-          <Button type="submit" disabled={busy} className="h-12 w-full rounded-full text-base font-bold" data-testid="auth-submit">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.submit")}</Button>
+          <Button type="submit" disabled={busy || (captcha.enabled && showCaptcha && !captcha.ready)} className="h-12 w-full rounded-full text-base font-bold" data-testid="auth-submit">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.submit")}</Button>
         </form>
         <p className="mt-5 text-center text-sm text-slate-500">
           {mode === "login" ? t("auth.noAccount") : t("auth.hasAccount")}{" "}

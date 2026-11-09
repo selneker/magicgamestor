@@ -39,7 +39,7 @@ export function OrderDone({ order, trackUrl }) {
   );
 }
 
-export function StepConfirm({ method, order, trackUrl, summary, reference, setReference, busy, onConfirm }) {
+export function StepConfirm({ method, order, trackUrl, summary, reference, setReference, busy, captchaReady = true, onConfirm }) {
   const { t } = useLang();
   if (method !== "manual") return order ? <OrderDone order={order} trackUrl={trackUrl} /> : null;
   return (
@@ -50,7 +50,7 @@ export function StepConfirm({ method, order, trackUrl, summary, reference, setRe
         <p className="mt-1 text-xs text-muted-foreground">{t("checkout.refHint")}</p>
       </div>
       <OrderSummary summary={summary} />
-      <Button type="button" onClick={onConfirm} disabled={busy || !(reference.value || "").trim()} data-testid="confirm-order-button" className="h-12 w-full rounded-full text-base font-bold">
+      <Button type="button" onClick={onConfirm} disabled={busy || !(reference.value || "").trim() || !captchaReady} data-testid="confirm-order-button" className="h-12 w-full rounded-full text-base font-bold">
         {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.processing")}</> : t("checkout.confirmOrder")}
       </Button>
     </section>
