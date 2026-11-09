@@ -6,9 +6,9 @@ Trois tâches idempotentes, appelées par la route interne protégée (cron-job.
    écriture, donc un webhook qui vient de payer la commande ne peut pas être écrasé.
 2. `purge_expired_orders` : suppression définitive des `expired` depuis `EXPIRED_PURGE_DAYS` qui
    n'ont jamais reçu de paiement ni de preuve.
-3. `purge_order_proofs` : suppression des blobs Azure des commandes à statut final depuis
+3. `purge_order_proofs` : suppression des fichiers GridFS des commandes à statut final depuis
    `PROOF_RETENTION_DAYS` ; les métadonnées (sha256, taille, dates) restent en base. Idempotent,
-   et une panne Azure n'interrompt jamais le reste de la tâche.
+   et une panne de stockage n'interrompt jamais le reste de la tâche.
 """
 import logging
 import os
@@ -153,13 +153,11 @@ async def purge_expired_orders(now: datetime | None = None) -> dict:
 
 
 async def purge_order_proofs(now: datetime | None = None) -> dict:
-    """Supprime les blobs des preuves retenues au-delà du délai, une commande à la fois.
+    """Supprime les fichiers des preuves retenues au-delà du délai, une commande à la fois.
 
-    Idempotent : une preuve déjà `purged_at` n'est jamais retéléchargée ni resupprimée. Une erreur
-    Azure sur un blob journalise et passe au suivant sans bloquer les autres commandes.
+    Idempotent : une preuve déjà `purged_at` n'est jamais relue ni resupprimée. Une erreur de
+    stockage sur un fichier journalise et passe au suivant sans bloquer les autres commandes.
     """
-    if not proofs.configured():
-        return {"purged_blobs": 0, "skipped": "storage_not_configured"}
     cutoff = ((now or _now()) - timedelta(days=proof_retention_days())).isoformat()
     purged = 0
     try:

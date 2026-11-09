@@ -126,7 +126,7 @@ def initial_status(payment_method: str, manual_reference: str | None) -> str:
 
 
 def public_order(order: dict | None, *, admin: bool = False) -> dict | None:
-    """Commande exposée par l'API publique : jamais le nom de blob Azure ni le hash de l'image."""
+    """Commande exposée par l'API publique : jamais l'identifiant de stockage ni le hash de l'image."""
     order = with_game_defaults(order)
     if order:
         # Contrat stable pour le frontend : les champs du lot existent toujours (null si absents).
@@ -445,11 +445,18 @@ def _proof_error(detail: str, code: str, remaining_seconds: int | None = None,
                          detail=body)
 
 
+async def _proof_quota_saturated(background: BackgroundTasks, used: int) -> None:
+    """Alerte l'admin une seule fois par dépassement, sans jamais bloquer la réponse."""
+    if await proof_store.quota_alert_once():
+        notifications.schedule(background, notifications.notify_proof_storage_full,
+                               used, proof_store.max_total_bytes())
+
+
 @router.post("/orders/{order_id}/proof")
 async def upload_order_proof(order_id: str, request: Request, background: BackgroundTasks,
                              files: list[UploadFile] = File(...),
                              user=Depends(get_optional_user)):
-    """Reçoit 1 à 3 captures (JPEG/PNG réels), les compresse et les dépose dans Azure privé."""
+    """Reçoit 1 à 3 captures (JPEG/PNG réels), les compresse et les stocke dans le bucket GridFS privé."""
     ip = ratelimit.client_ip(request)
     ratelimit.check(f"proof:ip:{ip}", ratelimit.setting("PROOF_UPLOAD_PER_HOUR_PER_IP", 20), 3600)
     order = await _accessible_order(order_id, user)
@@ -462,8 +469,12 @@ async def upload_order_proof(order_id: str, request: Request, background: Backgr
     deadline = order.get("payment_deadline_at")
     if not deadline or deadline <= _now():
         raise _proof_error("Le délai de paiement est dépassé.", "proof_deadline_passed")
-    if not proof_store.configured():
+    if not proof_store.storage_enabled():
         # Désactivation propre : le site continue de fonctionner, seule cette fonction est indisponible.
+        raise HTTPException(status_code=503, detail="Envoi de preuve indisponible.")
+    used_bytes = await proof_store.usage_bytes()
+    if used_bytes >= proof_store.max_total_bytes():
+        await _proof_quota_saturated(background, used_bytes)
         raise HTTPException(status_code=503, detail="Envoi de preuve indisponible.")
     if not 1 <= len(files) <= proof_store.MAX_FILES:
         raise _proof_error("Envoyez 1 à 3 captures d'écran.", "proof_count")
@@ -472,7 +483,7 @@ async def upload_order_proof(order_id: str, request: Request, background: Backgr
         raise _proof_error("Trois preuves maximum par commande.", "proof_limit")
     ratelimit.check(f"proof:order:{order_id}", ratelimit.setting("PROOF_UPLOAD_PER_HOUR_PER_ORDER", 6), 3600)
 
-    prepared, uploaded = [], []
+    prepared, uploaded, incoming = [], [], 0
     try:
         for upload in files:
             raw = await upload.read(proof_store.MAX_INPUT_BYTES + 1)
@@ -484,9 +495,14 @@ async def upload_order_proof(order_id: str, request: Request, background: Backgr
                 jpeg = proof_store.compress(raw)
             except proof_store.ProofError:
                 raise _proof_error("Image illisible.", "proof_format")
-            blob_name = await proof_store.upload(jpeg)
+            blob_name = await proof_store.save(jpeg)
             uploaded.append(blob_name)
+            incoming += len(jpeg)
             prepared.append(proof_store.metadata(blob_name, jpeg))
+        # Contrôle précis : les images compressées ne doivent pas faire déborder le quota Atlas.
+        if used_bytes + incoming > proof_store.max_total_bytes():
+            await _proof_quota_saturated(background, used_bytes)
+            raise HTTPException(status_code=503, detail="Envoi de preuve indisponible.")
     except HTTPException:
         for blob_name in uploaded:
             try:
@@ -532,6 +548,8 @@ async def upload_order_proof(order_id: str, request: Request, background: Backgr
                 pass
         raise _proof_error("Trop de preuves ou commande déjà traitée.", "proof_conflict")
 
+    # Un envoi accepté referme la série : un futur dépassement alertera de nouveau l'admin.
+    await proof_store.clear_quota_alert()
     await audit("order.proof_submitted", (user or {}).get("user_id") or f"ip:{ip}", order_id,
                 {"count": len(prepared)})
     notifications.schedule(background, notifications.notify_proof_submitted,
@@ -613,7 +631,7 @@ async def admin_orders(status: str | None = None, method: str | None = None,
 @router.get("/admin/orders/{order_id}/proofs/{index}")
 async def admin_order_proof(order_id: str, index: int,
                             admin=Depends(require_permission("orders.manage"))):
-    """Relaye une preuve depuis Azure. Aucune URL publique, aucun SAS : uniquement ce flux admin."""
+    """Relaye une preuve depuis GridFS. Aucune URL publique : uniquement ce flux admin."""
     order = await db.orders.find_one({"id": order_id}, {"_id": 0, "payment_proofs": 1})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -623,10 +641,10 @@ async def admin_order_proof(order_id: str, index: int,
     entry = entries[index] or {}
     if entry.get("purged_at") or not entry.get("blob_name"):
         raise HTTPException(status_code=410, detail="Preuve supprimée.")
-    if not proof_store.configured():
-        raise HTTPException(status_code=503, detail="Stockage des preuves indisponible.")
     try:
-        payload = await proof_store.download(entry["blob_name"])
+        payload = await proof_store.read(entry["blob_name"])
+    except proof_store.ProofNotFound:
+        raise HTTPException(status_code=404, detail="Proof not found")
     except Exception:
         raise HTTPException(status_code=502, detail="Preuve temporairement indisponible.")
     return Response(content=payload, media_type=proof_store.CONTENT_TYPE,
