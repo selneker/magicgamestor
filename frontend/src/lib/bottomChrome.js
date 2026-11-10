@@ -10,6 +10,17 @@ const HIDDEN_BOTTOM_CHROME_PREFIXES = ["/admin", "/compte", "/privacy", "/terms"
 export const hidesBottomChrome = (pathname = "") =>
   HIDDEN_BOTTOM_CHROME_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
+// PL-CHK-4 — mode « focalisé » : AUCUN chrome du site (header, footer, nav
+// basse, barre panier, sélecteur rapide de jeu, bannière « Commande en cours »)
+// sur le tunnel de commande (/commande…), l'écran de paiement /orders/:id et
+// les pages de connexion / inscription / mot de passe oublié. Chaque page y
+// rend son PROPRE en-tête minimal (flèche retour, logo). Source unique : le
+// Layout et les pages lisent toutes cette liste — pas de logique dispersée.
+const FOCUSED_PREFIXES = ["/commande", "/orders/", "/connexion", "/inscription", "/mot-de-passe-oublie"];
+
+export const isFocusedRoute = (pathname = "") =>
+  FOCUSED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+
 // A product page renders its own sticky buy bar (Product.js), which occupies the
 // same slot just above the bottom nav.
 export const isProductRoute = (pathname = "") => pathname.startsWith("/produit/");

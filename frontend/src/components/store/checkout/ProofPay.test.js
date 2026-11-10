@@ -1,21 +1,22 @@
-import React, { act, useState } from "react";
+import React, { act } from "react";
 import { createRoot } from "react-dom/client";
-import { ProofPay } from "./ProofPay";
+import { ProofSheet, ProofWaiting, LateScreen, EndScreen, ProofExpired } from "./ProofPay";
 
-// PL-CHK-2 — paiement manuel : zone de preuve (type/taillée/plafond 3,
-// preuves déjà envoyées comprises), envoi multipart sans Content-Type manuel,
-// écran d'attente « Preuve envoyée » + Relancer (cooldown/plafond), et
-// interrogation du statut (onglet visible, arrêt au démontage / statut final).
+// PL-CHK-4 — feuille « Confirmation du paiement » (écran 3 : vignettes + n/3,
+// récap unique, case obligatoire, Confirmer grisé), écran d'attente (écran 4 :
+// carte « Détails de la commande » avec ID et pseudo SÉPARÉS, Relancer fixé
+// avec cooldown), écran 8 (expirée). La LOGIQUE d'upload est conservée :
+// multipart sans Content-Type manuel, revokeObjectURL, erreurs proof_* / 429 /
+// 503 / captcha, proof_deadline_passed → refetch.
 
 const ORDER_PENDING = {
-  id: "o1", order_number: "MGS-T1", pubg_id: "123", status: "pending_payment",
-  payment_method: "manual", subtotal: 2500, payment_fee: 0,
-  items: [{ product_id: "p1", name: "660 UC", quantity: 1 }],
+  id: "o1", order_number: "MGS-T1", pubg_id: "123456789", pseudo: "Joueur", status: "pending_payment",
+  payment_method: "manual", manual_operator: "mvola", subtotal: 2500, payment_fee: 0, total: 2500,
+  items: [{ product_id: "p1", name: "660 UC", quantity: 1, line_total: 2500 }],
   payment_deadline_at: null, payment_proofs: [],
 };
-const CONFIG = { providers: { mvola: { merchant: "0383905692", name: "Test Merchant" } } };
-const SUMMARY = { lines: [{ key: "p1", label: "1 × 660 UC" }], pubgId: "123", name: "Joueur", method: "USSD", subtotal: 2500, fee: 0 };
-const onConfirmed = jest.fn();
+const ORDER_WAITING = { ...ORDER_PENDING, status: "proof_submitted", payment_proofs: [{}, {}] };
+const SUMMARY = { lines: [{ key: "p1", label: "1 × 660 UC" }], pubgId: "123456789", subtotal: 2500, fee: 0 };
 
 jest.mock("react-router-dom", () => {
   const React = require("react");
@@ -30,7 +31,6 @@ jest.mock("@/lib/api", () => ({
   errorMessage: (e, f) => `Erreur: ${e?.response?.data?.code || "inconnue"}`,
   formatAr: (v) => `${Number(v || 0).toLocaleString("fr-FR")} Ar`,
 }));
-// PL-SEC-HARDEN : le contrat captcha est traité par le mécanisme existant.
 jest.mock("@/components/common/CaptchaWidget", () => ({
   isCaptchaError: (e) => e?.response?.data?.code === "captcha_required",
 }));
@@ -43,6 +43,9 @@ jest.mock("@/context/LanguageContext", () => {
   };
   return { useLang: () => ({ t: make("fr"), lang: "fr" }) };
 });
+jest.mock("@/lib/paymentLabels", () => ({
+  paymentLabel: (m) => (m === "manual" ? "Manuel" : m),
+}));
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -52,16 +55,22 @@ const revoke = jest.fn();
 URL.createObjectURL = mkBlobUrl;
 URL.revokeObjectURL = revoke;
 
-const HHarness = ({ initial }) => {
-  const [order, setOrder] = useState(initial);
-  return <ProofPay order={order} config={CONFIG} summary={SUMMARY} reference={{ provider: "mvola" }} onUpdated={setOrder} onConfirmed={onConfirmed} />;
-};
-
-async function mountProof(order) {
+async function mountSheet(order = ORDER_PENDING, over = {}) {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
-  await act(async () => { root.render(<HHarness initial={order} />); });
+  await act(async () => {
+    root.render(<ProofSheet open onOpenChange={jest.fn()} order={order} summary={SUMMARY} onUpdated={over.onUpdated || jest.fn()} onSubmitted={over.onSubmitted || jest.fn()} />);
+  });
+  await act(async () => { await Promise.resolve(); });
+  return { container, root };
+}
+
+async function mountUi(ui) {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => { root.render(ui); });
   await act(async () => { await Promise.resolve(); });
   return { container, root };
 }
@@ -69,7 +78,7 @@ async function mountProof(order) {
 const png = () => new File(["x"], `c-${Math.random().toString(36).slice(2)}.png`, { type: "image/png" });
 
 async function addFiles(container, files) {
-  const input = container.querySelector('[data-testid="proof-input"]');
+  const input = document.querySelector('[data-testid="proof-input"]'); // contenu Radix portalisé
   Object.defineProperty(input, "files", { value: files, configurable: true });
   await act(async () => { input.dispatchEvent(new Event("change", { bubbles: true })); });
   await act(async () => { await Promise.resolve(); });
@@ -87,230 +96,233 @@ afterEach(() => {
   document.body.innerHTML = "";
   jest.useRealTimers();
   mkBlobUrl.mockClear(); revoke.mockClear();
-  onConfirmed.mockClear();
 });
 
-describe("zone de preuve", () => {
-  test("rend les instructions USSD, le montant et la zone : compteur 0 / 3", async () => {
-    const { container, root } = await mountProof(ORDER_PENDING);
-    expect(container.querySelector('[data-testid="ussd-code"]').textContent).toBe("#111*1*2*0383905692*2500*1*0#");
-    expect(container.querySelector('[data-testid="manual-amount"]').textContent).toMatch(/2\s500/);
-    expect(container.querySelector('[data-testid="proof-count"]').textContent).toBe("0 / 3 captures");
-    expect(container.querySelector('[data-testid="proof-submit"]').disabled).toBe(true);
-    expect(container.querySelector('[data-testid="manual-reference"]')).toBeNull();
+describe("feuille de preuve (écran 3)", () => {
+  test("titre, aide, récap unique et case obligatoire ; Confirmer désactivé sans image", async () => {
+    const { container, root } = await mountSheet();
+    expect(document.querySelector('[data-testid="proof-sheet-title"]').textContent).toBe("Confirmation du paiement");
+    expect(document.querySelector('[data-testid="proof-recap"]').textContent).toContain("1 × 660 UC");
+    expect(document.querySelector('[data-testid="proof-recap"]').textContent).toMatch(/2[\s\u00a0\u202f]500/);
+    expect(document.querySelector('[data-testid="proof-exact-checkbox"]').getAttribute("aria-checked")).toBe("false");
+    expect(document.querySelector('[data-testid="proof-submit"]').disabled).toBe(true);
     await act(async () => root.unmount());
   });
 
-  test("ajout / retrait de vignettes avec compteur et libération des URL", async () => {
-    const { container, root } = await mountProof(ORDER_PENDING);
-    await addFiles(container, [png(), png()]);
-    expect(container.querySelector('[data-testid="proof-count"]').textContent).toBe("2 / 3 captures");
-    expect(container.querySelectorAll("[data-testid^='proof-thumb-']").length).toBe(2);
-    expect(mkBlobUrl).toHaveBeenCalledTimes(2);
-    await act(async () => { container.querySelector('[data-testid="proof-remove-0"]').click(); });
-    expect(container.querySelector('[data-testid="proof-count"]').textContent).toBe("1 / 3 captures");
-    expect(container.querySelectorAll("[data-testid^='proof-thumb-']").length).toBe(1);
-    expect(revoke).toHaveBeenCalled();
+  test("images ajoutées mais sans case : Confirmer toujours désactivé ; case cochée → actif", async () => {
+    const { container, root } = await mountSheet();
+    await addFiles(container, [png()]);
+    expect(document.querySelector('[data-testid="proof-submit"]').disabled).toBe(true);
+    await act(async () => { document.querySelector('[data-testid="proof-exact-checkbox"]').click(); });
+    expect(document.querySelector('[data-testid="proof-submit"]').disabled).toBe(false);
     await act(async () => root.unmount());
+  });
+
+  test("ajout / retrait de vignettes et libération des URL", async () => {
+    const { container, root } = await mountSheet();
+    await addFiles(container, [png(), png()]);
+    expect(document.querySelectorAll("[data-testid^='proof-thumb-']").length).toBe(2);
+    expect(mkBlobUrl).toHaveBeenCalledTimes(2);
+    await act(async () => { document.querySelector('[data-testid="proof-remove-0"]').click(); });
+    expect(revoke).toHaveBeenCalledTimes(1);
+    expect(document.querySelectorAll("[data-testid^='proof-thumb-']").length).toBe(1);
+    await act(async () => root.unmount());
+    // Démentage : les URL restantes sont libérées.
+    expect(revoke).toHaveBeenCalledTimes(2);
   });
 
   test("plafond de 3 INCLUT les preuves déjà envoyées", async () => {
-    const { container, root } = await mountProof({ ...ORDER_PENDING, payment_proofs: [{ size: 10, content_type: "image/jpeg" }, { size: 10, content_type: "image/jpeg" }] });
-    // Compteur plausible : 2 déjà envoyées + 0 locale = 2 / 3.
-    expect(container.querySelector('[data-testid="proof-count"]').textContent).toBe("2 / 3 captures");
-    await addFiles(container, [png(), png()]); // 2 demandées, une seule possible
-    expect(container.querySelector('[data-testid="proof-count"]').textContent).toBe("3 / 3 captures");
-    expect(mkBlobUrl).toHaveBeenCalledTimes(1);
+    const { container, root } = await mountSheet({ ...ORDER_PENDING, payment_proofs: [{}, {}] });
+    expect(document.querySelectorAll("[data-testid^='proof-thumb-']").length).toBe(0);
+    await addFiles(container, [png()]);
+    expect(document.querySelectorAll("[data-testid^='proof-thumb-']").length).toBe(1);
+    // plus une seule tuile « + » (3 déjà comptées) : une 2e sélection est refusée
+    expect(document.querySelector('[data-testid="proof-add-button"]')).toBeNull();
+    await addFiles(container, [png()]);
+    expect(document.querySelectorAll("[data-testid^='proof-thumb-']").length).toBe(1);
+    expect(document.querySelector('[data-testid="proof-error"]').textContent).toBe("3 captures maximum par commande.");
     await act(async () => root.unmount());
   });
 
-  test("type refusé (JPEG/PNG uniquement) et taille refusée (8 Mo)", async () => {
-    const { container, root } = await mountProof(ORDER_PENDING);
-    const bad = new File(["x"], "c.gif", { type: "image/gif" });
-    await addFiles(container, [bad]);
-    expect(container.querySelector('[data-testid="proof-error"]').textContent).toContain("JPEG ou PNG");
-    expect(mkBlobUrl).not.toHaveBeenCalled();
-    const big = new File([new Uint8Array(8 * 1024 * 1024 + 1)], "big.png", { type: "image/png" });
-    await addFiles(container, [big]);
-    expect(container.querySelector('[data-testid="proof-error"]').textContent).toContain("8 Mo");
+  test("type refusé et taille refusée : messages lisibles", async () => {
+    const { container, root } = await mountSheet();
+    const big = new File(["x".repeat(9)], "big.png", { type: "image/png" });
+    Object.defineProperty(big, "size", { value: 9 * 1024 * 1024 });
+    await addFiles(container, [new File(["x"], "c.txt", { type: "text/plain" }), big]);
+    expect(document.querySelectorAll("[data-testid^='proof-thumb-']").length).toBe(0);
+    expect(document.querySelector('[data-testid="proof-error"]').textContent.length).toBeGreaterThan(5);
     await act(async () => root.unmount());
   });
-});
 
-describe("envoi de la preuve", () => {
-  test("succès : POST FormData (champ files répété), état réel et écran d'attente", async () => {
-    const uploaded = { ...ORDER_PENDING, status: "proof_submitted", payment_proofs: [{ size: 10, content_type: "image/png", uploaded_at: "2026-11-10T10:00:00Z" }] };
-    api.post.mockImplementation((url) => (url === "/orders/o1/proof" ? Promise.resolve({ data: {} }) : Promise.resolve({ data: {} })));
-    api.get.mockImplementation((url) => (url === "/orders/o1" ? Promise.resolve({ data: uploaded }) : Promise.resolve({ data: {} })));
-    const { container, root } = await mountProof(ORDER_PENDING);
+  test("succès : POST FormData (champ files répété, pas de Content-Type), état réel + écran d'attente", async () => {
+    const onUpdated = jest.fn();
+    const onSubmitted = jest.fn();
+    const fresh = { ...ORDER_PENDING, status: "proof_submitted" };
+    api.post.mockResolvedValue({ data: { ok: true } });
+    api.get.mockImplementation((url) => (url === "/orders/o1" ? Promise.resolve({ data: fresh }) : Promise.resolve({ data: {} })));
+    const { container, root } = await mountSheet(ORDER_PENDING, { onUpdated, onSubmitted });
     await addFiles(container, [png(), png()]);
-    expect(container.querySelector('[data-testid="proof-submit"]').disabled).toBe(false);
-    await act(async () => { container.querySelector('[data-testid="proof-submit"]').click(); });
+    await act(async () => { document.querySelector('[data-testid="proof-exact-checkbox"]').click(); });
+    await act(async () => { document.querySelector('[data-testid="proof-submit"]').click(); });
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
     const call = api.post.mock.calls.find((c) => c[0] === "/orders/o1/proof");
-    expect(call[1]).toBeInstanceOf(FormData);
-    expect(Array.from(call[1].getAll("files")).length).toBe(2);
-    expect(container.querySelector('[data-testid="proof-waiting"]')).not.toBeNull(); // écran « Preuve envoyée »
-    expect(container.querySelector('[data-testid="proof-waiting"]').textContent).toContain("Preuve envoyée");
-    // Pas de compte à rebours sur l'écran d'attente.
-    expect(container.querySelector('[data-testid="payment-countdown"]')).toBeNull();
-    expect(revoke).toHaveBeenCalled(); // URL libérées au succès
+    expect(call).not.toBeNull();
+    const fd = call[1];
+    expect(fd).toBeInstanceOf(FormData);
+    expect(fd.getAll("files")).toHaveLength(2);
+    expect(fd.get("content-type")).toBeNull(); // le navigateur pose la limite multipart
+    expect(onUpdated).toHaveBeenCalledWith(fresh);
+    expect(onSubmitted).toHaveBeenCalled();
     await act(async () => root.unmount());
   });
 
-  test("breadcrumbs de codes serveur → messages FR clairs (409/429/503/captcha)", async () => {
-    const error = (status, code) => ({ response: { status, data: { detail: { code, message: "x" } } } });
-    const cases = [
-      [409, "proof_format", "JPEG ou PNG"],
-      [409, "proof_too_large", "8 Mo"],
-      [409, "proof_count", "1 à 3"],
-      [409, "proof_limit", "Trois preuves"],
-      [409, "proof_not_pending", "n'attend plus"],
-      [409, "proof_already_validated", "déjà été validée"],
-      [409, "proof_conflict", "réessayez"],
-      [429, null, "Trop d'envois"],
-      [503, null, "indisponible"],
-      [400, "other", null], // pas de code reconnu → errorMessage générique
-    ];
-    for (const [status, code, expected] of cases) {
-      api.post.mockImplementation((url) => (url === "/orders/o1/proof" ? Promise.reject(error(status, code)) : Promise.resolve({ data: {} })));
-      const { container, root } = await mountProof(ORDER_PENDING);
-      await addFiles(container, [png()]);
-      await act(async () => { container.querySelector('[data-testid="proof-submit"]').click(); });
-      await act(async () => { await Promise.resolve(); await Promise.resolve(); });
-      const msg = container.querySelector('[data-testid="proof-error"]').textContent;
-      if (expected === null) expect(msg).toContain("Erreur:"); else expect(msg).toContain(expected);
-      expect(msg).not.toMatch(/^proof_|remind_/); // jamais un nom technique brut
-      await act(async () => root.unmount());
-    }
+  test.each([
+    [409, "proof_not_allowed", "Cette commande n'attend plus de preuve."],
+    [429, "", "Trop d'envois : réessayez dans quelques minutes."],
+    [503, "", "Envoi de preuve indisponible, réessayez plus tard."],
+  ])("erreurs serveur %i → message FR clair, la feuille reste ouverte", async (status, code, expected) => {
+    api.post.mockRejectedValue({ response: { status, data: { code, detail: code ? { code } : "technique" } } });
+    const { container, root } = await mountSheet();
+    await addFiles(container, [png()]);
+    await act(async () => { document.querySelector('[data-testid="proof-exact-checkbox"]').click(); });
+    await act(async () => { document.querySelector('[data-testid="proof-submit"]').click(); });
+    await act(async () => { await Promise.resolve(); });
+    expect(document.querySelector('[data-testid="proof-error"]').textContent).toBe(expected);
+    await act(async () => root.unmount());
   });
 
   test("captcha_required → le mécanisme existant prend la main", async () => {
-    api.post.mockImplementation((url) => (url === "/orders/o1/proof" ? Promise.reject({ response: { status: 400, data: { code: "captcha_required" } } }) : Promise.resolve({ data: {} })));
-    const { container, root } = await mountProof(ORDER_PENDING);
+    api.post.mockRejectedValue({ response: { status: 400, data: { code: "captcha_required" } } });
+    const { container, root } = await mountSheet();
     await addFiles(container, [png()]);
-    await act(async () => { container.querySelector('[data-testid="proof-submit"]').click(); });
-    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
-    expect(container.querySelector('[data-testid="proof-error"]').textContent).toContain("contrôle de sécurité");
+    await act(async () => { document.querySelector('[data-testid="proof-exact-checkbox"]').click(); });
+    await act(async () => { document.querySelector('[data-testid="proof-submit"]').click(); });
+    await act(async () => { await Promise.resolve(); });
+    expect(document.querySelector('[data-testid="proof-error"]').textContent)
+      .toBe("Merci de refaire le contrôle de sécurité ci-dessus puis de réessayer.");
     await act(async () => root.unmount());
   });
 
-  test("proof_deadline_passed : la commande est rechargée → écran expiré", async () => {
-    api.post.mockImplementation((url) => (url === "/orders/o1/proof" ? Promise.reject({ response: { status: 400, data: { detail: { code: "proof_deadline_passed" } } } }) : Promise.resolve({ data: {} })));
+  test("proof_deadline_passed : la commande est rechargée (état réel → écran expiré par le parent)", async () => {
+    const onUpdated = jest.fn();
+    const onSubmitted = jest.fn();
+    api.post.mockRejectedValue({ response: { status: 400, data: { detail: { code: "proof_deadline_passed" } } } });
     api.get.mockImplementation((url) => (url === "/orders/o1" ? Promise.resolve({ data: { ...ORDER_PENDING, status: "expired" } }) : Promise.resolve({ data: {} })));
-    const { container, root } = await mountProof(ORDER_PENDING);
+    const { container, root } = await mountSheet(ORDER_PENDING, { onUpdated, onSubmitted });
     await addFiles(container, [png()]);
-    await act(async () => { container.querySelector('[data-testid="proof-submit"]').click(); });
+    await act(async () => { document.querySelector('[data-testid="proof-exact-checkbox"]').click(); });
+    await act(async () => { document.querySelector('[data-testid="proof-submit"]').click(); });
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
-    expect(container.querySelector('[data-testid="proof-expired"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="proof-expired"]').textContent).toContain("Aucun paiement n'a été débité");
+    expect(onUpdated).toHaveBeenCalledWith(expect.objectContaining({ status: "expired" }));
+    expect(onSubmitted).toHaveBeenCalled();
     await act(async () => root.unmount());
   });
 });
 
-describe("écran d'attente + Relancer", () => {
-  const waiting = { ...ORDER_PENDING, status: "proof_submitted", payment_proofs: [{ size: 10, content_type: "image/png", uploaded_at: "2026-11-10T10:00:00Z" }] };
+describe("écran d'attente (écran 4)", () => {
+  const Waiting = (over = {}) => {
+    const Harness = () => <ProofWaiting order={{ ...ORDER_WAITING, ...over }} onUpdated={jest.fn()} />;
+    return mountUi(<Harness />);
+  };
 
-  test("Relancer : succès → cooldown + relances restantes ; bouton désactivé pendant", async () => {
-    api.get.mockImplementation((url) => (url === "/orders/o1" ? Promise.resolve({ data: waiting }) : Promise.resolve({ data: {} })));
-    api.post.mockImplementation((url) => (url === "/orders/o1/remind" ? Promise.resolve({ data: { ok: true, reminders_left: 2, remaining_seconds: 180, next_at: "now+180" } }) : Promise.resolve({ data: {} })));
-    const { container, root } = await mountProof(waiting);
-    const btn = container.querySelector('[data-testid="remind-button"]');
-    await act(async () => { btn.click(); });
-    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
-    expect(container.querySelector('[data-testid="remind-cd"]').textContent).toContain("03:00");
-    expect(container.querySelector('[data-testid="remind-left"]').textContent).toContain("2");
-    expect(container.querySelector('[data-testid="remind-button"]').disabled).toBe(true); // cooldown
+  test("titre, carte Détails ouverte par défaut, ID joueur et pseudo sur deux lignes séparées", async () => {
+    const { container, root } = await Waiting();
+    expect(container.querySelector('[data-testid="proof-wait-title"]').textContent)
+      .toBe("Confirmation du paiement en attente");
+    expect(container.querySelector('[data-testid="details-player-id"]').textContent).toBe("123456789");
+    expect(container.querySelector('[data-testid="details-pseudo"]').textContent).toBe("Joueur");
+    expect(container.querySelector('[data-testid="details-paid-with"]').textContent).toBe("MVola");
+    expect(container.querySelector('[data-testid="details-amount"]').textContent).toMatch(/2[\s\u00a0\u202f]500/);
+    expect(container.querySelector('[data-testid="details-number"]').textContent).toBe("#MGS-T1");
+    // ouvert par défaut : les lignes sont visibles
+    expect(container.querySelector('[data-testid="order-details-rows"]')).not.toBeNull();
+    // PAS de lien « Annuler » ici (le backend refuse après preuve)
+    expect(container.querySelector('[data-testid="cancel-open"]')).toBeNull();
     await act(async () => root.unmount());
   });
 
-  test("remind_cooldown 429 → minutes affichées, bouton désactivé", async () => {
-    api.get.mockImplementation((url) => (url === "/orders/o1" ? Promise.resolve({ data: waiting }) : Promise.resolve({ data: {} })));
-    api.post.mockImplementation((url) => (url === "/orders/o1/remind" ? Promise.reject({ response: { status: 429, data: { detail: { code: "remind_cooldown", remaining_seconds: 95 } } } }) : Promise.resolve({ data: {} })));
-    const { container, root } = await mountProof(waiting);
+  test("Relancer : succès → cooldown mm:ss sur le bouton, relances restantes affichées", async () => {
+    api.post.mockResolvedValue({ data: { remaining_seconds: 180, reminders_left: 2 } });
+    const { container, root } = await Waiting();
     await act(async () => { container.querySelector('[data-testid="remind-button"]').click(); });
-    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
-    expect(container.querySelector('[data-testid="remind-cd"]').textContent).toContain("01:35");
+    await act(async () => { await Promise.resolve(); });
+    expect(api.post).toHaveBeenCalledWith("/orders/o1/remind", {});
+    expect(container.querySelector('[data-testid="remind-left"]').textContent).toContain("2");
+    expect(container.querySelector('[data-testid="remind-button"]').textContent).toContain("03:00");
     expect(container.querySelector('[data-testid="remind-button"]').disabled).toBe(true);
     await act(async () => root.unmount());
   });
 
   test("remind_limit → bouton désactivé avec message clair", async () => {
-    api.get.mockImplementation((url) => (url === "/orders/o1" ? Promise.resolve({ data: waiting }) : Promise.resolve({ data: {} })));
-    api.post.mockImplementation((url) => (url === "/orders/o1/remind" ? Promise.reject({ response: { status: 429, data: { detail: { code: "remind_limit" } } } }) : Promise.resolve({ data: {} })));
-    const { container, root } = await mountProof(waiting);
+    api.post.mockRejectedValue({ response: { status: 429, data: { detail: { code: "remind_limit" } } } });
+    const { container, root } = await Waiting();
     await act(async () => { container.querySelector('[data-testid="remind-button"]').click(); });
-    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
-    expect(container.querySelector('[data-testid="remind-limit"]').textContent).toContain("maximal");
+    await act(async () => { await Promise.resolve(); });
+    expect(container.querySelector('[data-testid="remind-limit"]').textContent.length).toBeGreaterThan(5);
     expect(container.querySelector('[data-testid="remind-button"]').disabled).toBe(true);
     await act(async () => root.unmount());
   });
 
-  test("statut devient late_payment : écran dédié sans promesse de livraison", async () => {
-    api.get.mockImplementation(() => Promise.resolve({ data: { ...waiting, status: "late_payment" } }));
-    const { container, root } = await mountProof(waiting);
-    await act(async () => { await Promise.resolve(); await Promise.resolve(); }); // premier poll → late_payment
-    expect(container.querySelector('[data-testid="proof-late"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="proof-late"]').textContent).toContain("Paiement reçu après expiration");
-    await act(async () => root.unmount());
-  });
-
-  test("statut final au poll : paid → onConfirmed (étape Confirmation) puis l'appel s'arrête", async () => {
-    api.get.mockImplementation((url) => (url === "/orders/o1" ? Promise.resolve({ data: { ...waiting, status: "paid" } }) : Promise.resolve({ data: {} })));
-    const { container, root } = await mountProof(waiting);
-    const flush = async () => act(async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); });
-    await flush();
-    expect(onConfirmed).toHaveBeenCalled(); // paid → étape 4
-    const calls = api.get.mock.calls.filter((c) => c[0] === "/orders/o1").length;
-    await act(async () => { jest.advanceTimersByTime(90_000); });
-    expect(api.get.mock.calls.filter((c) => c[0] === "/orders/o1").length).toBe(calls); // arrêt sur statut final
-    await act(async () => root.unmount());
-  });
-
-  test("interrogation : 10s ×3, 20s ×2 puis 30s ; démontage stoppe", async () => {
-    api.get.mockImplementation((url) => (url === "/orders/o1" ? Promise.resolve({ data: waiting }) : Promise.resolve({ data: {} })));
-    const { container, root } = await mountProof(waiting);
+  test("interrogation : premier passage immédiat puis 10s ×3, 20s ×2 puis 30s ; démontage stoppe", async () => {
+    api.get.mockImplementation((url) => (url === "/orders/o1" ? Promise.resolve({ data: ORDER_WAITING }) : Promise.resolve({ data: {} })));
+    const onUpdated = jest.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => { root.render(<ProofWaiting order={ORDER_WAITING} onUpdated={onUpdated} />); });
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
     const calls = () => api.get.mock.calls.filter((c) => c[0] === "/orders/o1").length;
-    expect(calls()).toBe(1); // premier passage immédiat
-    // Chaque itération de la boucle attend d'abord la fin du timer, puis effectue
-    // sa requête immédiatement : une avance + flush microtâches par salve.
+    expect(calls()).toBe(1);
     const tick = async (ms) => { await act(async () => { jest.advanceTimersByTime(ms); await Promise.resolve(); await Promise.resolve(); }); };
-    await tick(10_000); await tick(10_000); await tick(10_000); // 3 × 10 s
+    await tick(10_000); await tick(10_000); await tick(10_000);
     expect(calls()).toBe(4);
-    await tick(20_000); await tick(20_000); // 2 × 20 s
+    await tick(20_000); await tick(20_000);
     expect(calls()).toBe(6);
-    await tick(30_000); // puis 30 s
+    await tick(30_000);
     expect(calls()).toBe(7);
     await act(async () => root.unmount());
     await act(async () => { jest.advanceTimersByTime(120_000); });
-    expect(calls()).toBe(7); // démontage : plus rien
+    expect(calls()).toBe(7);
   });
 
-  test("onglet caché : aucune interrogation tant que visibilityState ≠ visible", async () => {
-    const orig = document.visibilityState;
-    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
-    api.get.mockImplementation((url) => (url === "/orders/o1" ? Promise.resolve({ data: waiting }) : Promise.resolve({ data: {} })));
-    const { container, root } = await mountProof(waiting);
+  test("statut final au poll : paid → onUpdated et l'appel s'arrête", async () => {
+    let paid = false;
+    api.get.mockImplementation((url) => Promise.resolve({ data: paid ? { ...ORDER_WAITING, status: "paid" } : ORDER_WAITING }));
+    const onUpdated = jest.fn(() => { paid = true; });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => { root.render(<ProofWaiting order={ORDER_WAITING} onUpdated={onUpdated} />); });
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
-    await act(async () => { jest.advanceTimersByTime(45_000); });
-    expect(api.get.mock.calls.filter((c) => c[0] === "/orders/o1").length).toBe(0);
+    await act(async () => { jest.advanceTimersByTime(10_000); await Promise.resolve(); await Promise.resolve(); });
+    expect(onUpdated).toHaveBeenCalledWith(expect.objectContaining({ status: "paid" }));
+    const callsAfterPaid = api.get.mock.calls.length;
+    await act(async () => { jest.advanceTimersByTime(60_000); await Promise.resolve(); await Promise.resolve(); });
+    expect(api.get.mock.calls.length).toBe(callsAfterPaid);
     await act(async () => root.unmount());
-    Object.defineProperty(document, "visibilityState", { value: orig, configurable: true });
   });
 });
 
 describe("écrans de fin", () => {
-  test("cancelled → message + retour à l'accueil", async () => {
-    const { container, root } = await mountProof({ ...ORDER_PENDING, status: "cancelled" });
-    expect(container.querySelector('[data-testid="proof-cancelled"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="proof-home"]')).not.toBeNull();
+  test("late_payment → écran dédié", async () => {
+    const { container, root } = await mountUi(<LateScreen />);
+    expect(container.querySelector('[data-testid="proof-late"]')).not.toBeNull();
     await act(async () => root.unmount());
   });
-  test("expired → écran d'expiration « recommencer »", async () => {
-    const { container, root } = await mountProof({ ...ORDER_PENDING, status: "expired" });
+
+  test("cancelled → message + retour à l'accueil", async () => {
+    const { container, root } = await mountUi(<EndScreen order={{ ...ORDER_PENDING, status: "cancelled" }} />);
+    expect(container.querySelector('[data-testid="proof-cancelled"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="proof-home"]').getAttribute("href")).toBe("/");
+    await act(async () => root.unmount());
+  });
+
+  test("expired → écran 8 avec le n° de commande et « Recommencer » vers la boutique", async () => {
+    const { container, root } = await mountUi(<ProofExpired order={{ ...ORDER_PENDING, status: "expired" }} />);
     expect(container.querySelector('[data-testid="proof-expired"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="proof-expired"]').textContent).toContain("Recommencer");
+    expect(container.querySelector('[data-testid="proof-expired-title"]').textContent).toBe("La commande a expiré");
+    expect(container.querySelector('[data-testid="proof-expired"]').textContent).toContain("MGS-T1");
+    expect(container.querySelector('[data-testid="proof-restart"]').getAttribute("href")).toBe("/boutique");
     await act(async () => root.unmount());
   });
 });

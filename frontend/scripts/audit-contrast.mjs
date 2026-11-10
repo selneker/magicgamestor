@@ -197,9 +197,11 @@ const PAYMENT_CONFIG = {
   mode: "papi", gateway: "papi", live: false, papi_auto: true, fiveone_enabled: false, auto_payment: true,
   payment_fees: { manual: { percent: 0, min: 0, max: 0 }, papi: { percent: 1.5, min: 100, max: 900 } },
   manual_only: false, timeout_minutes: 15,
+  // PL-CHK-4 — écran 1 : les lignes MVola / Orange ne s'affichent que si la
+  // config déclare le provider actif ; les deux sont mesurées.
   providers: {
-    mvola: { configured: false, merchant: "0383905692", name: "Selneker Dino" },
-    orange: { configured: false, merchant: "0377519833", name: "Selneker Dino" },
+    mvola: { configured: true, merchant: "0383905692", name: "Selneker Dino" },
+    orange: { configured: true, merchant: "0377519833", name: "Selneker Dino" },
   },
 };
 
@@ -210,6 +212,14 @@ const ORDER = {
   payment_deadline_at: new Date(Date.now() + 20 * 60_000).toISOString(), payment_proofs: [],
   items: [{ product_id: "p1", name: "660 UC", quantity: 1, price: 2500, line_total: 2500 }],
 };
+
+// PL-CHK-4 — écran 2 (/orders/:id) : le paiement manuel N'A PAS de téléphone
+// (preuve par USSD marchand) ; l'opérateur est persisté. Variantes par page :
+// opérateur, écran d'attente, expiration.
+const RESUME_ORDER = (over = {}) => ({
+  ...ORDER, payment_method: "manual", manual_operator: "mvola", pseudo: "TestPlayer",
+  payment_phone: undefined, ...over,
+});
 
 // PL-CHK-2 — petites captures PNG valides (1×1) pour l'état « vignettes » de
 // l'étape 3 manuelle : le même flux que le client (champ file multiple).
@@ -248,7 +258,7 @@ const CHAT_THREAD = {
   has_more: false,
 };
 
-const mockApi = (pathname) => {
+const mockApi = (pathname, page = {}) => {
   // Pages admin : formes minimales mais typées (objets là où les pages
   // accèdent à des champs, tableaux ailleurs), pour que chaque page rende
   // réellement son interface.
@@ -270,19 +280,21 @@ const mockApi = (pathname) => {
   if (pathname.endsWith("/games")) return GAMES;
   if (pathname.includes("/payments/config")) return PAYMENT_CONFIG;
   if (pathname.includes("/payments/initiate")) return { simulated: true, payment_url: null, attempt: 1 };
+  // PL-CHK-4 — sondage 5 s de l'écran 2 (paiement automatique) : réponse stable.
+  if (/\/payments\/[\w-]+\/status$/.test(pathname)) return page.payStatus || { simulated: true, payment_url: null };
+  if (pathname.includes("/crypto/config")) return page.cryptoConfig || { available: false, networks: [] };
   if (pathname.includes("/products")) return PRODUCTS;
   if (pathname.includes("/events")) return EVENTS;
   if (pathname.includes("/settings/status")) return { online: false };
-  if (pathname.includes("/crypto/config")) return { available: false, networks: [] };
   if (pathname.includes("/me/game-identities")) return [];
   if (pathname.includes("/loyalty/me")) return { balance: { total: 1200, earned: 1200, promo: 0 }, ledger: [], config: {} };
   if (pathname.includes("/loyalty/rewards")) return [];
   if (pathname.includes("/loyalty/transfers")) return [];
   if (pathname.includes("/orders/me")) return [ORDER];
-  // PL-CHK-2 — reprise/compte à rebours : GET /orders/{id} renvoie l'état réel.
-  if (/\/orders\/(?!me)[\w-]+$/.test(pathname)) return ORDER;
-  if (pathname.includes("/payments/initiate")) return { simulated: true, payment_url: null, attempt: 1 };
-  if (pathname.endsWith("/orders")) return ORDER;
+  // PL-CHK-2/PL-CHK-4 — reprise/compte à rebours : GET /orders/{id} renvoie
+  // l'état réel DE LA PAGE AUDITÉE (opérateur, statut).
+  if (/\/orders\/(?!me)[\w-]+$/.test(pathname)) return page.trackOrder || ORDER;
+  if (pathname.endsWith("/orders")) return page.createdOrder || ORDER;
   return [];
 };
 
@@ -297,16 +309,24 @@ const mockApi = (pathname) => {
 const PAGES = [
   { name: "accueil", path: "/" },
   { name: "catalogue", path: "/boutique?game=pubg-mobile" },
-  { name: "checkout-1-verification-initiale", path: "/commande", step: "init" },
+  // PL-CHK-4 — le tunnel n'a qu'UN écran de création (/commande) : état
+  // initial (méthodes en lignes, rien sélectionné), état vérifié (ID +
+  // pseudo + coche), méthode sélectionnée (remarque courte), Binance
+  // (sélecteur de réseau). Les états de vérification d'identité sont mesurés
+  // sur le même écran (IdentityFieldsVerify inchangé).
+  { name: "checkout-1-init", path: "/commande", step: "init" },
   { name: "checkout-1-verification", path: "/commande", step: 1 },
-  { name: "checkout-2-methode", path: "/commande", step: 2 },
-  { name: "checkout-3-ussd-mvola", path: "/commande", step: 3, provider: "mvola" },
-  { name: "checkout-3-ussd-orange", path: "/commande", step: 3, provider: "orange" },
-  // PL-CHK-2 — le champ référence texte disparaît : les écrans mesurés à
-  // l'étape 3 sont maintenant la zone de preuve (vide, puis avec vignettes).
-  { name: "checkout-3-preuve", path: "/commande", step: "preuve" },
-  { name: "checkout-3-preuve-vignettes", path: "/commande", step: "preuve-vignettes" },
-  { name: "statut-paiement", path: "/commande", step: "auto-status" },
+  { name: "checkout-1-methode-mvola", path: "/commande", step: 2 },
+  { name: "checkout-1-methode-binance", path: "/commande", step: "binance",
+    cryptoConfig: { available: true, networks: [{ key: "BSC", label: "BNB Smart Chain" }] } },
+  // Écran 2 (/orders/:id) : manuel MVola, manuel Orange, attente (preuve
+  // envoyée), expiration. Aucun pilotage : l'écran lit GET /orders/{id}.
+  { name: "paiement-manuel-mvola", path: "/orders/ord_1", trackOrder: RESUME_ORDER() },
+  { name: "paiement-manuel-orange", path: "/orders/ord_1", trackOrder: RESUME_ORDER({ manual_operator: "orange" }) },
+  { name: "paiement-attente", path: "/orders/ord_1",
+    trackOrder: RESUME_ORDER({ status: "proof_submitted", payment_proofs: [{ size: 10, content_type: "image/jpeg" }] }) },
+  { name: "paiement-expire", path: "/orders/ord_1", trackOrder: RESUME_ORDER({ status: "expired" }) },
+  { name: "statut-paiement", path: "/orders/ord_1", trackOrder: RESUME_ORDER({ status: "pending_payment", payment_method: "mvola", manual_operator: undefined }) },
   { name: "fiche-produit", path: "/produit/660-uc" },
   { name: "compte", path: "/compte", loggedIn: true },
   { name: "suivi", path: "/suivi", loggedIn: true },
@@ -553,41 +573,22 @@ const driveCheckout = async (pg, step) => {
   // / `pubg-verify-btn` n'existent plus dans les composants — ils faisaient
   // échouer le pilotage en silence (fill/click inexistants → page non pilotée,
   // état mesuré = écran d'initialisation).
+  // PL-CHK-4 — écran unique /commande : les étapes 2 et 3 (et la zone de
+  // preuve de l'étape 3) n'existent plus — le tunnel crée la commande au CTA
+  // et ouvre /orders/:id. Étapes mesurées : init, vérifié (1), méthode
+  // sélectionnée (2), Binance (réseau requis avant CTA).
   await fill(pg, '[data-testid="identity-field-player_id"]', "52328390220");
   await click(pg, '[data-testid="identity-verify-btn"]', 1200);
-  // L'ecran de verification (etape 1) se mesure APRES la verification : c'est
-  // l'etat ou le bouton « Verifier l'ID » passe en desactive. On s'arrete donc
-  // ici, sans cliquer « Continuer » — sinon on mesurerait l'ecran suivant.
+  // L'état vérifié (ID + pseudo + coche) se mesure ici.
   if (step === 1) return true;
-  const cont = await pg.$('[data-testid="checkout-verify-continue"]');
-  if (!cont) return false;
-  await cont.click();
-  await pg.waitForTimeout(1000);
-
-  if (step === 2) return true;
-
-  // PL-CHK-2 — étape 3 : toutes les méthodes créent la commande au clic de
-  // l'étape 2 (POST /orders → ORDER). « preuve » mesure la zone vide ;
-  // « preuve-vignettes » passe par le champ file réel (setInputFiles) comme
-  // le ferait le client.
-  if (step === 3 || step === "preuve" || step === "preuve-vignettes") {
-    await click(pg, '[data-testid="method-manual"]', 600);
-    const provider = PAGES.find((p) => p.step === 3 && p.provider)?.provider;
-    if (provider) await click(pg, `[data-testid="manual-provider-${provider}"]`, 500);
-    await click(pg, '[data-testid="payment-pay"]', 1200);
-    if (step === "preuve-vignettes") {
-      await pg.setInputFiles('[data-testid="proof-input"]', PROOF_FILES);
-      await pg.waitForTimeout(600);
-    }
+  // Méthode sélectionnée : la remarque courte s'affiche sous la ligne.
+  if (step === 2) {
+    await click(pg, '[data-testid="method-mvola"]', 600);
     return true;
   }
-
-  if (step === "auto-status") {
-    await click(pg, '[data-testid="method-mvola"]', 600);
-    await fill(pg, '[data-testid="payment-phone"]', "0341234567");
-    await click(pg, '[data-testid="accept-fee-checkbox"]', 400);
-    await click(pg, '[data-testid="payment-pay"]', 1200);
-    await click(pg, '[data-testid="checkout-pay-now"]', 1800);
+  if (step === "binance") {
+    await click(pg, '[data-testid="method-binance"]', 600);
+    await click(pg, '[data-testid="binance-network-BSC"]', 400);
     return true;
   }
   return false;
@@ -688,7 +689,7 @@ const run = async () => {
             }
             return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(v) });
           }
-          return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockApi(p)) });
+          return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockApi(p, page)) });
         });
         try {
           await pg.goto(base + page.path, { waitUntil: "domcontentloaded", timeout: 30000 });
