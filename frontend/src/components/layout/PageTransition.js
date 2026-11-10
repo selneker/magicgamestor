@@ -8,7 +8,7 @@ import { useEffect, useRef } from "react";
 const TAB_ORDER = [
   { match: (p) => p === "/" || p.startsWith("/boutique") || p.startsWith("/produit") || p.startsWith("/pack-evolutif") },
   { match: (p) => p.startsWith("/evenements") },
-  { match: (p) => p.startsWith("/suivi") || p.startsWith("/commande") || p.startsWith("/compte") },
+  { match: (p) => p.startsWith("/suivi") || p.startsWith("/commande") || p.startsWith("/compte") || p.startsWith("/orders") },
   { match: (p) => p.startsWith("/chat") || p.startsWith("/support") },
 ];
 

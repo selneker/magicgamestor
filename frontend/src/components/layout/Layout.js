@@ -1,4 +1,5 @@
 import { Header } from "@/components/layout/Header";
+import { PendingOrderBanner } from "@/components/store/PendingOrderBanner";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { AdminBottomNav } from "@/components/layout/AdminBottomNav";
 import { Footer } from "@/components/layout/Footer";
@@ -19,6 +20,7 @@ export default function Layout() {
     <GameProvider>
       <div className="min-h-screen bg-background overflow-x-hidden">
         <Header />
+        <PendingOrderBanner />
         <main className={`mx-auto w-full max-w-7xl px-4 sm:px-6 md:pb-0 ${chromeHidden ? "pb-6" : "pb-[calc(7rem+var(--bottom-chrome-reserve,0px))]"}`}><PageTransition /></main>
         <Footer />
         <BottomNav />

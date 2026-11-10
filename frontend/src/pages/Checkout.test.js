@@ -135,6 +135,11 @@ test("sans clé : la commande est créée à la fin de l'étape 2, sans champ ca
   expect(call[1].payment_method).toBe("mvola");
   expect(call[1].captcha_token).toBeUndefined(); // clé absente → champ omis
   expect(call[1].manual_reference).toBeUndefined();
+  // PL-CHK-3 : la commande créée est mémorisée localement — { id, createdAt }
+  // UNIQUEMENT (jamais de téléphone, nom ou autre donnée personnelle).
+  const stored = JSON.parse(global.localStorage.getItem("mgs_pending_order_id"));
+  expect(Object.keys(stored).sort()).toEqual(["createdAt", "id"]);
+  expect(stored).toEqual({ id: "o1", createdAt: expect.any(String) });
   expect(container.querySelector('[data-testid="checkout-screen-3"]')).not.toBeNull(); // écran Paiement
   // Le pay-now de l'étape 3 ne recrée PAS de commande.
   const count = api.post.mock.calls.filter((c) => c[0] === "/orders").length;
