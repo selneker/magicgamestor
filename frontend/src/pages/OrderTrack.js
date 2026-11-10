@@ -10,9 +10,14 @@ import { useGames } from "@/context/GameContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
+// PL-CHK-2 — proof_submitted / late_payment (preuves par captures) rejoignent
+// la famille « en attente » : bordure encrée, horloge — même style que les
+// anciens statuts de vérification, tokens existants clair et sombre.
 const STYLE = {
   pending_payment: ["border-foreground bg-transparent text-foreground", Clock],
   awaiting_verification: ["border-foreground bg-transparent text-foreground", Clock],
+  proof_submitted: ["border-foreground bg-transparent text-foreground", Clock],
+  late_payment: ["border-foreground bg-transparent text-foreground", Clock],
   paid: ["border-[#0A0A0A] bg-primary text-[#0A0A0A]", CheckCircle2],
   delivered: ["border-foreground bg-foreground text-background", PackageCheck],
   cancelled: ["border-foreground/40 bg-transparent text-muted-foreground line-through", XCircle],

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
@@ -22,6 +22,24 @@ const slide = {
   exit: (d) => ({ x: d > 0 ? "-100%" : "100%", opacity: 0.5 }),
 };
 const initiateUrl = (o) => (o.payment_provider === "fiveone" ? "/payments/fiveone/initiate" : "/payments/initiate");
+
+// PL-CHK-2 — la commande est créée À LA FIN DE L'ÉTAPE 2 (Méthode) pour toutes
+// les méthodes, sans `manual_reference`. Son identifiant est posé dans
+// sessionStorage pour qu'un rechargement de l'étape 3 (ou un retour plus tard)
+// retrouve la commande en attente au lieu d'en recréer une.
+const PENDING_KEY = "mgs_pending_order";
+// Statuts qui clôturent le tunnel : la clé de reprise est retirée.
+const DONE_STATUSES = ["paid", "delivered", "cancelled", "failed", "expired", "late_payment"];
+
+const readPending = () => {
+  try { return JSON.parse(sessionStorage.getItem(PENDING_KEY) || "null"); } catch (_) { return null; }
+};
+const writePending = (order) => {
+  try {
+    if (order) sessionStorage.setItem(PENDING_KEY, JSON.stringify({ id: order.id, order_number: order.order_number, pubg_id: order.pubg_id, method: order.payment_method }));
+    else sessionStorage.removeItem(PENDING_KEY);
+  } catch (_) { /* storage can be unavailable in private mode */ }
+};
 
 export default function Checkout() {
   const { t, lang } = useLang();
@@ -53,10 +71,20 @@ export default function Checkout() {
   const [autoVerify, setAutoVerify] = useState(0);
   const [identity, setIdentity] = useState(null);
   const [identityValues, setIdentityValues] = useState({});
+  // Un rechargement pendant l'étape 3 laisse le panier vide mais la commande en
+  // attente existe : on masque l'écran « panier vide » pendant la reprise.
+  const [recovering, setRecovering] = useState(() => !!readPending()?.id);
+  // Garde anti double-clic synchrone de `run` : le ref vit au niveau du
+  // composant (avant tout `return` anticipé — règles des hooks). Un
+  // double-clic dans la même frame tombe avant que le DOM ne peigne
+  // `disabled` : un seul appel API part jamais.
+  const inFlight = useRef(false);
   // PL-SEC-HARDEN-1-CAPTCHA : un seul widget persistant pour tout le tunnel
   // (les écrans de saisie sont re-montés à chaque étape, on ne le met pas dedans).
   // Si la clé de site n'est pas configurée, le widget ne s'affiche pas, READY
   // est toujours vrai et `captcha_token` est omis du corps de requête.
+  // PL-CHK-2 : le jeton accompagne désormais la création (fin de l'étape 2),
+  // pour toutes les méthodes — comportement du widget inchangé.
   const captcha = useCaptcha();
   const [captchaKey, setCaptchaKey] = useState(0);
   const setVerified = useCallback((v) => setVerifiedState(v), []);
@@ -88,8 +116,41 @@ export default function Checkout() {
 
   const go = useCallback((n) => { setDir(n > step ? 1 : -1); setStep(n); window.scrollTo({ top: 0, behavior: "smooth" }); }, [step]);
 
+  const refreshOrder = useCallback(() => api.get(`/orders/${order.id}`).then(({ data }) => setOrder(data)).catch(() => {}), [order?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (items.length === 0 && !order) {
+  // Reprise : après un rechargement (ou un retour par l'historique), la
+  // commande en attente est retrouvée via GET /orders/{id} (propriétaire
+  // connecté ou invité porteur de l'UUID) au lieu d'être recréée. Binance :
+  // on rouvre le slot USDT existant via GET /crypto/{id}/status quand il est
+  // encore actif, sinon on navigationne vers le suivi (jamais de 2e initiation).
+  useEffect(() => {
+    const pending = readPending();
+    if (!pending?.id) { setRecovering(false); return; }
+    api.get(`/orders/${pending.id}`).then(async ({ data }) => {
+      setOrder(data);
+      setMethod(data.payment_method);
+      if (DONE_STATUSES.includes(data.status)) { writePending(null); setStep(3); setDir(1); return; } // écran Confirmation
+      if (data.status !== "pending_payment") { setStep(2); setDir(1); return; } // écran Paiement
+      if (data.payment_method === "binance") {
+        try {
+          const { data: st } = await api.get(`/crypto/${data.id}/status`);
+          if (st.payment) { setCryptoPayment(st.payment); setStep(2); setDir(1); return; }
+        } catch (_) { /* le suivi affichera l'état réel */ }
+        navigate(`/suivi/${data.order_number}?pubg_id=${data.pubg_id}`);
+        return;
+      }
+      setStep(2); setDir(1);
+    }).catch(() => { writePending(null); setRecovering(false); }) // commande introuvable : on repart à zéro
+      .finally(() => setRecovering(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Statut terminal atteint (dans le tunnel ou ailleurs) : la clé de reprise
+  // disparaît — un nouveau passage créera une NOUVELLE commande.
+  useEffect(() => {
+    if (order && DONE_STATUSES.includes(order.status)) writePending(null);
+  }, [order?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (items.length === 0 && !order && !recovering) {
     return <div className="py-24 text-center" data-testid="checkout-empty"><p className="text-muted-foreground">{t("cart.empty")}</p><Button asChild className="mt-4 rounded-full"><Link to="/boutique">{t("cart.browse")}</Link></Button></div>;
   }
 
@@ -130,47 +191,57 @@ export default function Checkout() {
       ...extra,
     });
     clear();
+    writePending(data);
     setOrder(data);
     return data;
   };
 
+  // run : busy + garde synchrone (un double-clic dans la même frame tombe
+  // avant que le DOM ne peigne `disabled`) : un seul appel API part jamais.
   const run = async (fn) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     try { await fn(); } catch (e) {
       toast.error(isCaptchaError(e) ? t("captcha.verifyAgain") : errorMessage(e));
       if (isCaptchaError(e) && captcha.enabled) { captcha.expire(); setCaptchaKey((k) => k + 1); } // jeton à usage unique
-    } finally { setBusy(false); }
+    } finally { inFlight.current = false; setBusy(false); }
   };
 
+  // Fin de l'étape 2 : on crée la commande ICI pour toutes les méthodes, puis
+  // l'écran 3 affiche le paiement. busy (bouton en chargement + anti
+  // double-clic) et « erreur → rester à l'étape 2 » viennent de `run`.
   const continueMethod = () => {
-    if (method !== "binance") return go(2);
     if (!order && !captcha.ready) return;
     return run(async () => {
-      const created = order || await createOrder("binance");
-      const { data } = await api.post("/crypto/initiate", { order_id: created.id, network });
-      setCryptoPayment(data);
-      go(2);
+      if (method === "binance") {
+        const created = order || await createOrder("binance");
+        const { data } = await api.post("/crypto/initiate", { order_id: created.id, network });
+        setCryptoPayment(data);
+      } else {
+        // MVola / Orange automatique : le numéro à débiter est saisi à l'étape 2.
+        await (order || createOrder(method, { payment_phone: phone }));
+      }
+      go(2); // étape Paiement (ProofPay / compte à rebours)
     });
   };
 
-  const payAuto = () => run(async () => {
-    const created = order || await createOrder(method, { payment_phone: phone });
-    const { data: payment } = await api.post(initiateUrl(created), { order_id: created.id });
-    if (payment.payment_url && !payment.simulated) { window.location.assign(payment.payment_url); return; }
-    setOrder({ ...created, simulated: payment.simulated, attempt: (order?.attempt || 0) + 1 });
-  });
-
-  const confirmManual = () => run(async () => {
-    const created = await createOrder("manual", { manual_reference: `${reference.provider}:${reference.value.trim()}` });
-    toast.success(`${t("order.title")} ${created.order_number}`);
-    navigate(`/suivi/${created.order_number}?pubg_id=${created.pubg_id}`);
-  });
+  // Étape 3, méthodes automatiques : la commande existe déjà, on lance le
+  // paiement (aucun captcha_token ici — la création l'a déjà consommé).
+  const payAuto = () => {
+    if (!order) return;
+    return run(async () => {
+      const { data: payment } = await api.post(initiateUrl(order), { order_id: order.id });
+      if (payment.payment_url && !payment.simulated) { window.location.assign(payment.payment_url); return; }
+      setOrder((o) => ({ ...o, simulated: payment.simulated, attempt: (o.attempt || 0) + 1 }));
+    });
+  };
 
   const screens = [
     <StepVerify key="v" gameName={game?.name} pubgId={pubgId} setPubgId={setPubgId} user={user} verified={verified} setVerified={setVerified} autoVerify={autoVerify} setAutoVerify={setAutoVerify} gameId={gameId} identity={identity} setIdentity={setIdentity} identitySpec={identitySpec} identityValues={identityValues} setIdentityValues={setIdentityValues} email={email} setEmail={setEmail} onContinue={() => go(1)} />,
     <PaymentFlow key="m" method={method} setMethod={setMethod} phone={phone} setPhone={setPhone} reference={reference} setReference={setReference} network={network} setNetwork={setNetwork} accepted={accepted} setAccepted={setAccepted} subtotal={subtotal} config={config} crypto={crypto} busy={busy} onContinue={continueMethod} />,
-    <StepPay key="p" method={method} order={order} config={config} summary={summary} reference={reference} busy={busy} captchaReady={captcha.ready} onPayAuto={payAuto} onManualPaid={() => go(3)} cryptoPayment={cryptoPayment} onConfirmed={() => go(3)} trackUrl={trackUrl} />,
-    <StepConfirm key="c" method={method} order={order} trackUrl={trackUrl} summary={summary} reference={reference} setReference={setReference} busy={busy} captchaReady={captcha.ready} onConfirm={confirmManual} />,
+    <StepPay key="p" method={method} order={order} config={config} summary={summary} reference={reference} busy={busy} captchaReady={captcha.ready} onPayAuto={payAuto} cryptoPayment={cryptoPayment} onConfirmed={() => go(3)} trackUrl={trackUrl} onUpdated={setOrder} onRefresh={refreshOrder} />,
+    <StepConfirm key="c" order={order} trackUrl={trackUrl} />,
   ];
 
   return (
@@ -201,8 +272,8 @@ export default function Checkout() {
           </motion.div>
         </AnimatePresence>
         {/* Captcha : hors des écrans animés, après la zone étirée — la
-            commande est créée au clic de l'étape 2 (binance), 3 (auto) ou
-            4 (manuel) — visible et validé pendant tout le parcours ; le
+            commande est créée au clic de l'étape 2 (toutes les méthodes,
+            PL-CHK-2) — visible et validé pendant tout le parcours ; le
             temps d'apparition (étapes >= 1) et l'alignement sont inchangés. */}
         {step >= 1 && captcha.enabled && (
           <div className="mt-5 rounded-[18px] bg-muted/30 p-3" data-testid="checkout-captcha">

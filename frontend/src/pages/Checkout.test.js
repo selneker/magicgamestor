@@ -2,9 +2,10 @@ import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import Checkout from "./Checkout";
 
-// PL-SEC-HARDEN-1-CAPTCHA — le jeton CAPTCHA accompagne POST /orders sur tout
-// le tunnel (étapes 2 binance, 3 auto, 4 manuel). Les écrans de SAISIE pourront
-// être simulés (ils n'ont jamais eu de test) ; StepPay/StepConfirm restent réels.
+// PL-CHK-2 — la commande est créée À LA FIN DE L'ÉTAPE 2 (Méthode) pour toutes
+// les méthodes, sans `manual_reference`, avec le captcha SEC-HARDEN ; un
+// rechargement retrouve la commande en attente via sessionStorage. Les écrans
+// de saisie sont simulés ; StepPay/ProofPay restent réels.
 
 jest.mock("react-router-dom", () => {
   const React = require("react");
@@ -41,7 +42,13 @@ jest.mock("@/components/store/checkout/StepVerify", () => ({
   StepVerify: ({ onContinue }) => <button data-testid="stub-verify-continue" onClick={onContinue}>v</button>,
 }));
 jest.mock("@/components/store/PaymentFlow", () => ({
-  PaymentFlow: ({ setMethod, onContinue }) => <button data-testid="stub-method-continue" onClick={() => { setMethod("mvola"); onContinue(); }}>m</button>,
+  PaymentFlow: ({ setMethod, onContinue, busy }) => (
+    <>
+      <button data-testid="stub-method-pick" onClick={() => setMethod("mvola")}>pick-m</button>
+      <button data-testid="stub-manual-pick" onClick={() => setMethod("manual")}>pick-mf</button>
+      <button data-testid="stub-method-continue" disabled={busy} onClick={onContinue}>m</button>
+    </>
+  ),
   methodLabel: (t, m) => "MVola automatique",
   paymentFee: () => 0,
 }));
@@ -61,22 +68,34 @@ const stubTurnstile = () => {
   };
 };
 
+// Commande « créée » renvoyée par POST /orders — le contrat PL-CHK-2 contient
+// toujours le délai et la liste des preuves.
+const mkOrder = (over = {}) => ({
+  id: "o1", order_number: "MGS-T1", pubg_id: "123", subtotal: 2500, payment_fee: 0,
+  items: [{ product_id: "p1", name: "660 UC", quantity: 1 }], status: "pending_payment",
+  payment_method: "manual", payment_deadline_at: new Date(Date.now() + 20 * 60000).toISOString(),
+  payment_proofs: [], ...over,
+});
+
 async function renderCheckout() {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
   await act(async () => { root.render(<Checkout />); });
-  // montages différés (config, captcha)
+  // montages différés (config, captcha, reprise éventuelle)
   await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
   return { container, root };
 }
 
-async function toStepPay(container) {
+async function toStepMethod(container) {
   await act(async () => { container.querySelector('[data-testid="stub-verify-continue"]').click(); });
   await act(async () => { await Promise.resolve(); });
-  await act(async () => { container.querySelector('[data-testid="stub-method-continue"]').click(); });
-  await act(async () => { await Promise.resolve(); });
 }
+
+const pick = async (container, testid) => {
+  await act(async () => { container.querySelector(`[data-testid="${testid}"]`).click(); });
+  await act(async () => { await Promise.resolve(); });
+};
 
 const { api } = require("@/lib/api");
 const { toast } = require("sonner");
@@ -85,11 +104,14 @@ beforeEach(() => {
   delete process.env[ENV_VAR];
   delete window.turnstile;
   window.scrollTo = jest.fn();
+  sessionStorage.clear();
   api.get.mockReset(); api.post.mockReset();
   api.get.mockImplementation((url) => Promise.resolve({ data: {} }));
   api.post.mockImplementation((url, body) => {
+    if (url === "/orders") return Promise.resolve({ data: mkOrder({ payment_method: body?.payment_method }) });
     if (url === "/payments/initiate" || url.includes("/payments/fiveone/initiate")) return Promise.resolve({ data: { payment_url: null, simulated: true } });
-    return Promise.resolve({ data: { id: "o1", order_number: "MGS-T1", pubg_id: "123", subtotal: 2500, payment_fee: 0, items: [], status: "pending_payment", payment_method: body?.payment_method } });
+    if (url.startsWith("/crypto/")) return Promise.resolve({ data: { payment: null } });
+    return Promise.resolve({ data: {} });
   });
   MOCK_CART_ITEMS = [{ id: "p1", name: "660 UC", name_en: "660 UC", qty: 1, price: 2500 }];
 });
@@ -99,79 +121,121 @@ afterEach(() => {
   delete window.turnstile;
 });
 
-test("sans clé : le tunnel est inchangé — POST /orders sans champ captcha_token", async () => {
+test("sans clé : la commande est créée à la fin de l'étape 2, sans champ captcha_token", async () => {
   const { container, root } = await renderCheckout();
-  await toStepPay(container);
-  expect(container.querySelector('[data-testid="captcha-widget"]')).toBeNull();
-  const btn = container.querySelector('[data-testid="checkout-pay-now"]');
-  expect(btn.disabled).toBe(false);
-  await act(async () => { btn.click(); });
+  await toStepMethod(container);
+  await pick(container, "stub-method-pick");
+  expect(api.post.mock.calls.some((c) => c[0] === "/orders")).toBe(false); // rien à l'étape 1
+  await act(async () => { container.querySelector('[data-testid="stub-method-continue"]').click(); });
   await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
-  expect(api.post).toHaveBeenCalledWith("/orders", expect.objectContaining({ payment_method: "mvola" }));
-  const body = api.post.mock.calls.find((c) => c[0] === "/orders")[1];
-  expect(body.captcha_token).toBeUndefined();
-  await act(async () => root.unmount());
-});
-
-test("avec clé : le bouton payer est bloqué sans jeton, l'envoie inclut captcha_token", async () => {
-  process.env[ENV_VAR] = TEST_KEY;
-  stubTurnstile();
-  const { container, root } = await renderCheckout();
-  await toStepPay(container);
-  expect(container.querySelector('[data-testid="captcha-widget"]')).not.toBeNull();
-  const btn = container.querySelector('[data-testid="checkout-pay-now"]');
-  expect(btn.disabled).toBe(true);
-  act(() => { turnstileOpts.callback("jeton-c1"); });
-  await act(async () => { await Promise.resolve(); });
-  expect(btn.disabled).toBe(false);
-  await act(async () => { btn.click(); });
-  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
-  expect(api.post).toHaveBeenCalledWith("/orders", expect.objectContaining({ payment_method: "mvola", captcha_token: "jeton-c1" }));
-  await act(async () => root.unmount());
-});
-
-test("avec clé, sans jeton : cliquer sur payer n'appelle pas l'API", async () => {
-  process.env[ENV_VAR] = TEST_KEY;
-  stubTurnstile();
-  const { container, root } = await renderCheckout();
-  await toStepPay(container);
+  const call = api.post.mock.calls.find((c) => c[0] === "/orders");
+  expect(call[1].payment_method).toBe("mvola");
+  expect(call[1].captcha_token).toBeUndefined(); // clé absente → champ omis
+  expect(call[1].manual_reference).toBeUndefined();
+  expect(container.querySelector('[data-testid="checkout-screen-3"]')).not.toBeNull(); // écran Paiement
+  // Le pay-now de l'étape 3 ne recrée PAS de commande.
+  const count = api.post.mock.calls.filter((c) => c[0] === "/orders").length;
   await act(async () => { container.querySelector('[data-testid="checkout-pay-now"]').click(); });
   await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
-  expect(api.post.mock.calls.some((c) => c[0] === "/orders")).toBe(false);
+  expect(api.post.mock.calls.filter((c) => c[0] === "/orders").length).toBe(count);
+  expect(api.post.mock.calls.some((c) => c[0] === "/payments/initiate")).toBe(true);
   await act(async () => root.unmount());
 });
 
-test("erreur serveur CAPTCHA : message dédié + widget réinitialisé", async () => {
+test("manuel : création à l'étape 2 (step 3 = preuve), le payload n'a plus de manual_reference", async () => {
+  const { container, root } = await renderCheckout();
+  await toStepMethod(container);
+  await pick(container, "stub-manual-pick");
+  await act(async () => { container.querySelector('[data-testid="stub-method-continue"]').click(); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+  expect(api.post).toHaveBeenCalledWith("/orders", expect.objectContaining({ payment_method: "manual" }));
+  const body = api.post.mock.calls.find((c) => c[0] === "/orders")[1];
+  expect(body.manual_reference).toBeUndefined();
+  expect(container.querySelector('[data-testid="checkout-screen-3"]')).not.toBeNull(); // écran Paiement (preuve)
+  expect(container.querySelector('[data-testid="proof-drop-zone"]')).not.toBeNull();
+  // Aucun champ de référence texte ne doit subsister.
+  expect(container.querySelector('[data-testid="manual-reference"]')).toBeNull();
+  await act(async () => root.unmount());
+});
+
+test("double-clic à l'étape 2 : un seul POST /orders", async () => {
+  const { container, root } = await renderCheckout();
+  await toStepMethod(container);
+  await pick(container, "stub-method-pick");
+  await act(async () => {
+    const btn = container.querySelector('[data-testid="stub-method-continue"]');
+    btn.click(); btn.click(); btn.click();
+    await new Promise((r) => setTimeout(r, 0));
+  });
+  expect(api.post.mock.calls.filter((c) => c[0] === "/orders").length).toBe(1);
+  await act(async () => root.unmount());
+});
+
+test("erreur à la création : message + on reste à l'étape 2", async () => {
+  api.post.mockImplementation((url) => {
+    if (url === "/orders") return Promise.reject({ message: "boom", response: { status: 500, data: {} } });
+    return Promise.resolve({ data: {} });
+  });
+  const { container, root } = await renderCheckout();
+  await toStepMethod(container);
+  await pick(container, "stub-method-pick");
+  await act(async () => { container.querySelector('[data-testid="stub-method-continue"]').click(); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+  expect(toast.error).toHaveBeenCalled();
+  // On reste à l'écran Méthode (screen-2) : pas d'écran de paiement (screen-3).
+  expect(container.querySelector('[data-testid="checkout-screen-2"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="checkout-screen-3"]')).toBeNull();
+  await act(async () => root.unmount());
+});
+
+test("avec clé : la création attend le jeton puis l'envoie avec captcha_token", async () => {
+  process.env[ENV_VAR] = TEST_KEY;
+  stubTurnstile();
+  const { container, root } = await renderCheckout();
+  await toStepMethod(container);
+  await pick(container, "stub-method-pick");
+  expect(container.querySelector('[data-testid="captcha-widget"]')).not.toBeNull();
+  await act(async () => { container.querySelector('[data-testid="stub-method-continue"]').click(); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+  expect(api.post.mock.calls.some((c) => c[0] === "/orders")).toBe(false); // sans jeton : rien
+  act(() => { turnstileOpts.callback("jeton-c1"); });
+  await act(async () => { await Promise.resolve(); });
+  await act(async () => { container.querySelector('[data-testid="stub-method-continue"]').click(); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+  expect(api.post).toHaveBeenCalledWith("/orders", expect.objectContaining({ payment_method: "mvola", captcha_token: "jeton-c1" }));
+  expect(container.querySelector('[data-testid="checkout-screen-3"]')).not.toBeNull(); // écran Paiement
+  await act(async () => root.unmount());
+});
+
+test("erreur CAPTCHA à la création : message dédié + on reste à l'étape 2", async () => {
   process.env[ENV_VAR] = TEST_KEY;
   stubTurnstile();
   api.post.mockImplementation((url) => {
     if (url === "/orders") return Promise.reject({ response: { status: 400, data: { code: "captcha_required", detail: "Vérification anti-robot requise." } } });
-    if (url.startsWith("/payments/")) return Promise.resolve({ data: { payment_url: null, simulated: true } });
     return Promise.resolve({ data: {} });
   });
   const { container, root } = await renderCheckout();
-  await toStepPay(container);
+  await toStepMethod(container);
+  await pick(container, "stub-method-pick");
   act(() => { turnstileOpts.callback("jeton-c1"); });
   await act(async () => { await Promise.resolve(); });
-  await act(async () => { container.querySelector('[data-testid="checkout-pay-now"]').click(); });
+  await act(async () => { container.querySelector('[data-testid="stub-method-continue"]').click(); });
   await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
   expect(toast.error).toHaveBeenCalledWith("Merci de refaire le contrôle de sécurité ci-dessus puis de réessayer.");
-  expect(container.querySelector('[data-testid="checkout-pay-now"]').disabled).toBe(true); // jeton à usage unique vidé
+  expect(container.querySelector('[data-testid="checkout-screen-2"]')).not.toBeNull(); // reste Méthode
+  expect(container.querySelector('[data-testid="checkout-screen-3"]')).toBeNull();
   await act(async () => root.unmount());
 });
 
-test("manuel : le bouton de confirmation attend le jeton puis l'envoie (étape 4)", async () => {
-  process.env[ENV_VAR] = TEST_KEY;
-  stubTurnstile();
+test("recharge : la commande en attente est retrouvée (étape 3, preuve), pas recréée", async () => {
+  const pending = mkOrder({ id: "o-reprise", order_number: "MGS-R1", payment_method: "manual" });
+  sessionStorage.setItem("mgs_pending_order", JSON.stringify({ id: pending.id, order_number: pending.order_number, pubg_id: pending.pubg_id, method: "manual" }));
+  api.get.mockImplementation((url) => (url === `/orders/${pending.id}` ? Promise.resolve({ data: pending }) : Promise.resolve({ data: {} })));
   const { container, root } = await renderCheckout();
-  await toStepPay(container);
-  act(() => { turnstileOpts.callback("jeton-m1"); });
-  await act(async () => { await Promise.resolve(); });
-  // Simuler la méthode manuelle : renvoyer à l'étape 4 via le composant réel.
-  // On déclenche payAuto → commande créée → StepPay basculle en PaymentStatus ;
-  // le cas manuel complet est couvert par le test CheckoutConfirm page dédiée.
-  await act(async () => { container.querySelector('[data-testid="checkout-pay-now"]').click(); });
-  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
-  expect(api.post).toHaveBeenCalledWith("/orders", expect.objectContaining({ captcha_token: "jeton-m1" }));
+  expect(container.querySelector('[data-testid="checkout-screen-3"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="proof-drop-zone"]')).not.toBeNull();
+  expect(api.post.mock.calls.some((c) => c[0] === "/orders")).toBe(false);
+  // La clé de reprise existe encore (statut non terminal).
+  expect(sessionStorage.getItem("mgs_pending_order")).not.toBeNull();
   await act(async () => root.unmount());
 });

@@ -1,9 +1,13 @@
 import { Link } from "react-router-dom";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { formatAr } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
+// PL-CHK-2 — la branche « manual » (champ référence texte) est retirée : les
+// commandes USSD passent désormais par la preuve par captures (ProofPay) et la
+// commande est créée à la fin de l'étape Méthode. Ce fichier ne garde que le
+// récap (OrderSummary) et l'écran de confirmation finale (OrderDone).
 
 export function OrderSummary({ summary, sticky = false }) {
   const { t } = useLang();
@@ -41,21 +45,8 @@ export function OrderDone({ order, trackUrl }) {
   );
 }
 
-export function StepConfirm({ method, order, trackUrl, summary, reference, setReference, busy, captchaReady = true, onConfirm }) {
-  const { t } = useLang();
-  if (method !== "manual") return order ? <OrderDone order={order} trackUrl={trackUrl} /> : null;
-  return (
-    <section className="space-y-4" data-testid="checkout-step-confirm">
-      {/* PL-CHK-1 : carte étape retirée — le champ garde sa propre bordure. */}
-      <div>
-        <label className="font-display text-lg font-bold leading-tight" htmlFor="manual-reference">{t("checkout.reference")}</label>
-        <Input id="manual-reference" data-testid="manual-reference" value={reference.value || ""} onChange={(e) => setReference({ ...reference, value: e.target.value })} placeholder="Ex : Ref 1148190***" className="mt-2 h-12 rounded-[12px]" />
-        <p className="mt-1 text-xs text-muted-foreground">{t("checkout.refHint")}</p>
-      </div>
-      <OrderSummary summary={summary} />
-      <Button type="button" onClick={onConfirm} disabled={busy || !(reference.value || "").trim() || !captchaReady} data-testid="confirm-order-button" className="h-12 w-full rounded-full text-base font-bold">
-        {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.processing")}</> : t("checkout.confirmOrder")}
-      </Button>
-    </section>
-  );
+// Étape 4 (Confirmation) : même contrat qu'avant, la prop `method` disparaît
+// car manuel n'atterrit plus ici que via onConfirmed (paid/delivered).
+export function StepConfirm({ order, trackUrl }) {
+  return order ? <OrderDone order={order} trackUrl={trackUrl} /> : null;
 }
