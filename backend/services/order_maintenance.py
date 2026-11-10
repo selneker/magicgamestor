@@ -23,6 +23,8 @@ logger = logging.getLogger("mgs.order_maintenance")
 DEFAULT_PAYMENT_WINDOW_MIN = 30
 DEFAULT_EXPIRED_PURGE_DAYS = 7
 DEFAULT_PROOF_RETENTION_DAYS = 7
+# PL-ORDER-CLIENT-1 : avertissement au client quand il reste au plus N minutes (5 par défaut).
+DEFAULT_EXPIRY_WARN_MIN = 5
 # « validée, annulée, échouée ou expirée » : `paid`/`delivered` couvrent la validation.
 FINAL_STATUSES = ("paid", "delivered", "cancelled", "failed", "expired")
 PAID_PAYMENT_STATUSES = ("completed", "late_success")
@@ -49,6 +51,11 @@ def proof_retention_days() -> int:
     return _env_int("PROOF_RETENTION_DAYS", DEFAULT_PROOF_RETENTION_DAYS, 1, 3650)
 
 
+def expiry_warn_min() -> int:
+    """Avertissement « il reste N minutes » (`ORDER_EXPIRY_WARN_MIN`, 5 min par défaut)."""
+    return _env_int("ORDER_EXPIRY_WARN_MIN", DEFAULT_EXPIRY_WARN_MIN, 1, 24 * 60)
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -62,19 +69,26 @@ def _no_proof_filter() -> dict:
     return {"$or": [{"payment_proofs": {"$exists": False}}, {"payment_proofs": {"$size": 0}}]}
 
 
-async def _release_order_holds(order_ids: list[str], now_iso: str) -> int:
-    """Libère les créneaux Binance et les verrous d'abonnement/pack des commandes expirées.
+def _item_label(order: dict) -> str:
+    """Libellé court des produits de la commande (jamais un pseudo ni un identifiant joueur)."""
+    names = [str(item.get("name")) for item in order.get("items") or [] if item.get("name")]
+    return ", ".join(names[:2]) + ("…" if len(names) > 2 else "")
+
+
+async def release_order_holds(order_ids: list[str], now_iso: str, reason: str = "order_expired") -> int:
+    """Libère les créneaux Binance et les verrous d'abonnement/pack d'une commande close.
 
     L'index unique partiel `(network, amount_usdt)` n'est JAMAIS modifié : on retire seulement
-    `slot_open` du document, ce qui libère naturellement le créneau.
+    `slot_open` du document, ce qui libère naturellement le créneau. `reason` distingue une
+    expiration d'une annulation client (`order_cancelled`), sans changer ce comportement.
     """
     if not order_ids:
         return 0
     res = await db.crypto_payments.update_many(
         {"order_id": {"$in": order_ids}, "slot_open": True},
-        {"$set": {"status": "FAILED", "failure_reason": "order_expired", "updated_at": now_iso},
+        {"$set": {"status": "FAILED", "failure_reason": reason, "updated_at": now_iso},
          "$unset": {"slot_open": ""},
-         "$push": {"history": {"status": "FAILED", "reason": "order_expired", "at": now_iso}}},
+         "$push": {"history": {"status": "FAILED", "reason": reason, "at": now_iso}}},
     )
     from routers.orders import release_subscription_locks  # import local : évite un cycle au démarrage
     for order_id in order_ids:
@@ -107,20 +121,85 @@ async def expire_due_orders(now: datetime | None = None) -> dict:
 
     docs = await db.orders.find(
         {"expiration_batch": batch},
-        {"_id": 0, "id": 1, "order_number": 1, "payment_method": 1},
+        {"_id": 0, "id": 1, "order_number": 1, "payment_method": 1, "payment_provider": 1,
+         "total": 1, "currency": 1, "user_id": 1, "game_id": 1, "items.name": 1},
     ).to_list(1000)
     order_ids = [doc["id"] for doc in docs if doc.get("id")]
     try:
-        released = await _release_order_holds(order_ids, now_iso)
+        released = await release_order_holds(order_ids, now_iso)
     except Exception as exc:
         logger.warning("Libération des créneaux impossible (%s)", type(exc).__name__)
         released = 0
     for doc in docs:
+        # Alerte admin : réglage existant `ALERT_PAYMENT_EXPIRED` inchangé.
         notifications.schedule(
             None, notifications.notify_payment_expired,
             doc.get("id"), doc.get("order_number"), doc.get("payment_method"), "system",
         )
+        # PL-ORDER-CLIENT-1 : notification CLIENT unique, indépendante du réglage admin.
+        try:
+            marked = await db.orders.update_one(
+                {"id": doc.get("id"), "expired_notified_at": {"$exists": False}},
+                {"$set": {"expired_notified_at": now_iso}},
+            )
+        except Exception as exc:  # une panne de marqueur ne bloque jamais le reste de la tâche
+            logger.warning("Marqueur d'expiration non posé (%s)", type(exc).__name__)
+            continue
+        if marked.modified_count == 1:
+            notifications.schedule(
+                None, notifications.notify_customer_payment_expired,
+                doc.get("id"), doc.get("order_number"), doc.get("total"),
+                _item_label(doc), doc.get("game_id"), doc.get("user_id"),
+            )
     return {"expired": res.modified_count, "released_crypto": released}
+
+
+async def warn_expiring_orders(now: datetime | None = None) -> dict:
+    """Avertit UNE fois chaque commande encore payable proche de son échéance (client).
+
+    Le marqueur `expiry_warned_at` est posé par un `update_one` filtré AVANT l'envoi : deux
+    passages simultanés de la tâche ne peuvent pas produire deux notifications. Aucune preuve,
+    aucun paiement : seules les commandes réellement en attente sont concernées.
+    """
+    moment = now or _now()
+    now_iso = moment.isoformat()
+    threshold = (moment + timedelta(minutes=expiry_warn_min())).isoformat()
+    warned = 0
+    try:
+        cursor = db.orders.find(
+            {"status": "pending_payment",
+             "payment_deadline_at": {"$gt": now_iso, "$lte": threshold},
+             "expiry_warned_at": {"$exists": False},
+             "paid_at": {"$exists": False}, "paid_attempt_ref": {"$exists": False},
+             **_no_proof_filter()},
+            {"_id": 0, "id": 1, "order_number": 1, "total": 1, "user_id": 1, "game_id": 1,
+             "items.name": 1},
+        ).limit(200)
+        async for order in cursor:
+            try:
+                marked = await db.orders.update_one(
+                    {"id": order.get("id"), "status": "pending_payment",
+                     "payment_deadline_at": {"$gt": now_iso, "$lte": threshold},
+                     "expiry_warned_at": {"$exists": False},
+                     "paid_at": {"$exists": False}, "paid_attempt_ref": {"$exists": False},
+                     **_no_proof_filter()},
+                    {"$set": {"expiry_warned_at": now_iso}},
+                )
+            except Exception as exc:  # marqueur impossible : on n'envoie rien, on continue
+                logger.warning("Marqueur d'avertissement non posé (%s)", type(exc).__name__)
+                continue
+            if marked.modified_count != 1:
+                continue
+            warned += 1
+            notifications.schedule(
+                None, notifications.notify_customer_payment_expiring,
+                order.get("id"), order.get("order_number"), order.get("total"),
+                _item_label(order), order.get("game_id"), order.get("user_id"),
+                expiry_warn_min(),
+            )
+    except Exception as exc:  # le cron doit rester stable même si Mongo est indisponible
+        logger.warning("Avertissement d'expiration impossible (%s)", type(exc).__name__)
+    return {"expiry_warned": warned}
 
 
 async def purge_expired_orders(now: datetime | None = None) -> dict:
@@ -200,7 +279,8 @@ async def run_all(now: datetime | None = None) -> dict:
     """Un passage complet pour cron-job.org. Chaque tâche est isolée : une panne n'annule pas les autres."""
     moment = now or _now()
     result = {}
-    for name, func in (("expiration", expire_due_orders),
+    for name, func in (("expiry_warning", warn_expiring_orders),
+                       ("expiration", expire_due_orders),
                        ("expired_purge", purge_expired_orders),
                        ("proof_purge", purge_order_proofs),
                        # PL-PROOF-QUOTA-1 : alerte précoce quotidienne, dans la tâche cron existante.

@@ -408,6 +408,104 @@ async def notify_storage_warning(db_bytes: int | None, db_limit_bytes: int, proo
                     ADMIN_ORDERS_URL, f"storage:warn:{day}")
 
 
+# --------------------------------------------------------------------------- #
+# PL-ORDER-CLIENT-1 — notifications au CLIENT (avertissement et expiration).
+#
+# Aucun journal `alert_log` ici : c'est le journal des alertes ADMIN, et il ne doit pas se
+# remplir de lignes clients. Le seul canal existant pour un client est le Push déjà en place
+# (`push_subscriptions` par `user_id`), donc une commande invitée (`user_id` absent) ne reçoit
+# rien : il n'existe aujourd'hui aucun abonnement client sans compte. Une panne d'envoi est
+# journalisée (type d'exception seulement) et ne remonte jamais.
+# --------------------------------------------------------------------------- #
+FR = "fr"
+EN = "en"
+CUSTOMER_ORDERS_URL = "/orders/{order_id}"
+
+
+async def _customer_language(user_id: str | None) -> str:
+    """Langue du client si elle est réellement stockée (`language`/`locale`/`lang`), sinon FR."""
+    if not user_id:
+        return FR
+    try:
+        user = await db.users.find_one({"user_id": user_id},
+                                       {"_id": 0, "language": 1, "locale": 1, "lang": 1})
+    except Exception as exc:  # type: ignore[attr-defined]
+        logger.warning("Langue du client illisible (%s)", type(exc).__name__)
+        return FR
+    for field in ("language", "locale", "lang"):
+        value = str((user or {}).get(field) or "").strip().lower().replace("_", "-")
+        if value.startswith("en"):
+            return EN
+        if value.startswith("fr"):
+            return FR
+    return FR
+
+
+async def _notify_customer(user_id: str | None, payload: dict) -> dict[str, Any]:
+    """Push à un seul client ; ne journalise pas dans `alert_log` et ne lève jamais.
+
+    Sans `user_id` (commande invitée) ou sans abonnement, rien n'est envoyé : les compteurs
+    renvoyés le disent (`targeted: 0`), sans exception ni alerte admin parasite.
+    """
+    counts = {"targeted": 0, "sent": 0, "expired": 0, "failed": 0, "ignored": 0, "reasons": []}
+    if not user_id:
+        return counts
+    if not push.configured():
+        return counts
+    try:
+        return await push.dispatch_to_users([user_id], payload)
+    except Exception as exc:  # type: ignore[attr-defined]
+        logger.warning("Notification client non envoyée (%s)", type(exc).__name__)
+        return counts
+
+
+def _customer_body(language: str, items_label: str, total: Any, ref: str, expiring: bool,
+                   minutes: int) -> tuple[str, str]:
+    product = items_label or ("votre commande" if language != EN else "your order")
+    money = _amount(total)
+    if language == EN:
+        if expiring:
+            return (f"You have {int(minutes)} minutes left to pay",
+                    f"{product} — {money}. Order {ref}: complete the payment before it expires.")
+        return ("Your order has expired",
+                f"{product} — {money}. Order {ref} expired without payment.")
+    if expiring:
+        return (f"Il vous reste {int(minutes)} minutes pour payer",
+                f"{product} — {money}. Commande {ref} : finalisez le paiement avant l'expiration.")
+    return ("Votre commande a expiré",
+            f"{product} — {money}. Commande {ref} expirée, aucun paiement reçu.")
+
+
+async def _notify_customer_deadline(event: str, order_id: str, ref: str | None, total: Any,
+                                    items_label: str, game_id: str | None, user_id: str | None,
+                                    expiring: bool, minutes: int = 0) -> dict[str, Any]:
+    """Construit et envoie la notification client ; le corps ne porte aucune identité de joueur."""
+    language = await _customer_language(user_id)
+    title, body = _customer_body(language, items_label, total, str(ref or order_id or ""),
+                                 expiring, minutes)
+    payload = {"title": title, "body": body,
+               "url": CUSTOMER_ORDERS_URL.format(order_id=order_id), "tag": str(order_id or event)}
+    if game_id:
+        payload["game"] = game_id
+    return await _notify_customer(user_id, payload)
+
+
+async def notify_customer_payment_expiring(order_id: str, ref: str | None, total: Any,
+                                           items_label: str = "", game_id: str | None = None,
+                                           user_id: str | None = None, minutes: int = 5) -> None:
+    """`payment_expiring` : une seule fois par commande, ≤ `ORDER_EXPIRY_WARN_MIN` minutes restantes."""
+    await _notify_customer_deadline("payment_expiring", order_id, ref, total, items_label,
+                                    game_id, user_id, expiring=True, minutes=minutes)
+
+
+async def notify_customer_payment_expired(order_id: str, ref: str | None, total: Any,
+                                          items_label: str = "", game_id: str | None = None,
+                                          user_id: str | None = None) -> None:
+    """`payment_expired` : une seule fois, à l'expiration (réglage admin `ALERT_PAYMENT_EXPIRED` ignoré)."""
+    await _notify_customer_deadline("payment_expired", order_id, ref, total, items_label,
+                                    game_id, user_id, expiring=False)
+
+
 _DETACHED: set["asyncio.Task"] = set()
 
 

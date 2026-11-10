@@ -22,5 +22,5 @@ async def run(request: Request):
         return await order_maintenance.run_all()
     except Exception as exc:  # la réponse du cron reste stable même en cas de panne inattendue
         logger.warning("Tâches commandes/preuves impossible (%s)", type(exc).__name__)
-        return {"expired": 0, "released_crypto": 0, "purged_orders": 0, "purged_blobs": 0,
-                "storage_alerts": 0}
+        return {"expiry_warned": 0, "expired": 0, "released_crypto": 0, "purged_orders": 0,
+                "purged_blobs": 0, "storage_alerts": 0}

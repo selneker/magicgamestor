@@ -119,6 +119,28 @@ async def admin_user_ids() -> set[str]:
         {"role": {"$in": list(ADMIN_ROLES)}}, {"_id": 0, "user_id": 1})}
 
 
+async def dispatch_to_users(user_ids, payload) -> dict:
+    """Envoie à tous les abonnements des utilisateurs donnés (PL-ORDER-CLIENT-1).
+
+    Réutilise la collection `push_subscriptions` et `send_push` : aucun nouveau système
+    d'abonnement. Un identifiant absent (commande invitée) ne cible rien. Un abonnement mort
+    (404/410) est supprimé par `send_push`, exactement comme pour les admins.
+    """
+    counts = {"targeted": 0, "sent": 0, "expired": 0, "failed": 0, "ignored": 0, "reasons": []}
+    wanted = [str(user_id) for user_id in (user_ids or []) if user_id]
+    if not wanted:
+        return counts
+    async for doc in db.push_subscriptions.find({"user_id": {"$in": wanted}}):
+        subscription = PushSubscription.from_mongo(doc)
+        counts["targeted"] += 1
+        reason = {}
+        result = await send_push(subscription, payload, reason)
+        counts["expired" if result == "expired" else "sent" if result == "sent" else "failed"] += 1
+        if result != "sent" and reason.get("code"):
+            counts["reasons"].append(reason["code"])
+    return counts
+
+
 async def dispatch_to_admins(payload) -> dict:
     """Envoie à tous les abonnements des comptes admin ; retourne les compteurs et les raisons.
 
