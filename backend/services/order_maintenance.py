@@ -202,7 +202,9 @@ async def run_all(now: datetime | None = None) -> dict:
     result = {}
     for name, func in (("expiration", expire_due_orders),
                        ("expired_purge", purge_expired_orders),
-                       ("proof_purge", purge_order_proofs)):
+                       ("proof_purge", purge_order_proofs),
+                       # PL-PROOF-QUOTA-1 : alerte précoce quotidienne, dans la tâche cron existante.
+                       ("storage_warning", proofs.check_storage_warnings)):
         try:
             result.update(await func(moment))
         except Exception as exc:  # déjà protégé, ceinture et bretelles

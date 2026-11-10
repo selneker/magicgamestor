@@ -32,6 +32,8 @@ DEFAULT_EVENTS = frozenset({
     "proof_submitted",
     "proof_remind",
     "proof_storage_full",
+    "proof_db_full",
+    "storage_warning",
     "test",
 })
 

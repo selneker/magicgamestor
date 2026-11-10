@@ -42,6 +42,8 @@ RETRY_ALERTS = {
     "proof_submitted": ("Preuve de paiement reçue (rappel)", "/admin/commandes"),
     "proof_remind": ("Relance client sur preuve (rappel)", "/admin/commandes"),
     "proof_storage_full": ("Stockage des preuves saturé (rappel)", "/admin/commandes"),
+    "proof_db_full": ("Base MongoDB saturée (rappel)", "/admin/commandes"),
+    "storage_warning": ("Stockage bientôt saturé (rappel)", "/admin/commandes"),
 }
 
 
@@ -375,6 +377,35 @@ async def notify_proof_storage_full(used_bytes: int, limit_bytes: int) -> None:
                     _line(f"Preuves : {used_mb:.0f} Mo / {limit_mb:.0f} Mo",
                           "Nouveaux envois refusés", "Libérez de la place ou augmentez PROOF_MAX_TOTAL_MB"),
                     ADMIN_ORDERS_URL, "proofstorage:full")
+
+
+# --------------------------------------------------------------------------- #
+# PL-PROOF-QUOTA-1 — la base ENTIÈRE (Atlas gratuit = 512 Mo tout compris).
+# --------------------------------------------------------------------------- #
+async def notify_proof_db_full(db_bytes: int, limit_bytes: int) -> None:
+    """Base au-delà de `PROOF_DB_MAX_MB` : les envois de preuve sont refusés, pas les commandes."""
+    used_mb = max(0, int(db_bytes)) / (1024 * 1024)
+    limit_mb = max(0, int(limit_bytes)) / (1024 * 1024)
+    await _critical("proof_db_full", "Base MongoDB saturée",
+                    _line(f"Base : {used_mb:.0f} Mo / {limit_mb:.0f} Mo",
+                          "Nouveaux envois de preuve refusés",
+                          "Purgez les preuves ou augmentez PROOF_DB_MAX_MB"),
+                    ADMIN_ORDERS_URL, "proofdb:full")
+
+
+async def notify_storage_warning(db_bytes: int | None, db_limit_bytes: int, proofs_bytes: int,
+                                 proofs_limit_bytes: int, day: str) -> None:
+    """Alerte précoce quotidienne : base proche du plafond ou preuves à 80 % de leur quota."""
+    db_used = max(0, int(db_bytes or 0)) / (1024 * 1024)
+    db_limit = max(0, int(db_limit_bytes)) / (1024 * 1024)
+    proofs_used = max(0, int(proofs_bytes)) / (1024 * 1024)
+    proofs_limit = max(0, int(proofs_limit_bytes)) / (1024 * 1024)
+    percent = round(100 * int(proofs_bytes) / int(proofs_limit_bytes)) if proofs_limit_bytes else 0
+    await _critical("storage_warning", "Stockage bientôt saturé",
+                    _line(f"Base : {db_used:.0f} Mo / {db_limit:.0f} Mo",
+                          f"Preuves : {proofs_used:.0f} Mo / {proofs_limit:.0f} Mo ({percent} %)",
+                          "Baissez PROOF_RETENTION_DAYS ou purgez les preuves"),
+                    ADMIN_ORDERS_URL, f"storage:warn:{day}")
 
 
 _DETACHED: set["asyncio.Task"] = set()
