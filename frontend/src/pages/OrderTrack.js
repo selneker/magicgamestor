@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Clock, PackageCheck, Search, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
@@ -10,10 +10,12 @@ import { useAuth } from "@/context/AuthContext";
 import { useGames } from "@/context/GameContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { BackButton } from "@/components/common/BackButton";
 import { PaymentCountdown } from "@/components/store/checkout/PaymentCountdown";
-import { ProofPay, LateScreen, EndScreen, ProofExpired } from "@/components/store/checkout/ProofPay";
+import { ProofWaiting, ProofSheet, LateScreen, EndScreen, ProofExpired } from "@/components/store/checkout/ProofPay";
+import { CancelSheet } from "@/components/store/checkout/CancelSheet";
 import { BinancePay } from "@/components/store/checkout/BinancePay";
-import { ManualProviderPicker } from "@/components/store/PaymentFlow";
+import { ManualProviderPicker, CopyButton, pretty } from "@/components/store/PaymentFlow";
 
 // PL-CHK-2 — proof_submitted / late_payment (preuves par captures) rejoignent
 // la famille « en attente » : bordure encrée, horloge — même style que les
@@ -118,41 +120,45 @@ function usePaymentRetry(order, onDone) {
 // mémorisation de reprise (client lecture de commande).
 const RESUME_DONE = ["paid", "delivered", "cancelled", "failed", "expired"];
 
-// PL-CHK-3 — écran de reprise d'une commande (/orders/:orderId, route dédiée).
-// IL N'A PAS de copie : les écrans de statut sont exactement les composants de
-// l'étape 3 du checkout (ProofPay, PaymentCountdown, BinancePay, LateScreen,
-// EndScreen, ProofExpired) — le checkout n'est plus le seul chemin d'accès.
-// Lecture via GET /orders/{id} : propriétaire connecté OU invité porteur de
-// l'UUID (backend `_accessible_order`, routers/orders.py:143-154) ; 403/404 →
-// message générique sans détail. Opérateur manuel (Mvola/Orange) : champ NON
-// persisté côté API (rapport PL-CHK-3, à ajouter côté backend), le client
-// choisit via ManualProviderPicker partagé avec le panneau étape 2.
+// PL-CHK-4 — écran 2 « Paiement » (/orders/:id, SEUL écran de paiement, reprise
+// PL-CHK-3 comprise) reproduit la maquette : en-tête minimal (retour + « Annuler
+// la commande »), titre « Ouvrir MVola / Orange Money pour payer » ou « Envoyer
+// des USDT », « Payer sous » + compte à rebours mm:ss, deux étapes numérotées
+// (losanges, filet vertical), boutons de copie avec retour « Copié », bouton
+// fixé en bas. AUCUN récapitulatif (il vit à la fin, écran 4), aucune
+// explication longue. Binance : flux existant (détection automatique, aucune
+// preuve) — jamais de 2ᵉ initiation. Anciennes commandes sans `manual_operator`
+// persisté : le sélecteur d'opérateur de PL-CHK-3 s'affiche.
 export function OrderResume({ orderId }) {
   const { t } = useLang();
+  const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [config, setConfig] = useState(null);
   const [cryptoPayment, setCryptoPayment] = useState(null);
   const [state, setState] = useState("loading"); // loading | ok | denied
-  const [reference, setReference] = useState({ provider: "mvola", value: "" });
+  const [operator, setOperator] = useState(null); // "mvola" | "orange"
+  const [proofOpen, setProofOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
-  // Config USSD (codes + numéro marchand) : mêmes clés que le checkout souscrites.
+  // Config (numéro et nom Mvola/Orange issus de la config API, jamais écrits en dur).
   useEffect(() => {
     api.get("/payments/config").then(({ data }) => setConfig(data)).catch(() => {});
   }, []);
 
   useEffect(() => {
     let active = true;
-    setOrder(null); setCryptoPayment(null); setState("loading");
+    setOrder(null); setCryptoPayment(null); setState("loading"); setOperator(null);
     api.get(`/orders/${orderId}`).then(async ({ data }) => {
       if (!active) return;
       setOrder(data);
+      setOperator(data.manual_operator || null);
       setState("ok");
       // Binance : rouverture du slot USDT existant via GET /crypto/{id}/status
       // quand il est encore actif — JAMAIS de 2ᵉ initiation (PL-CHK-2).
       if (data?.status === "pending_payment" && data.payment_method === "binance") {
         api.get(`/crypto/${orderId}/status`).then(({ data: st }) => {
           if (active && st?.payment && st.payment.status !== "FAILED") setCryptoPayment(st.payment);
-        }).catch(() => { /* sans slot : la carte de la commande reste le seul écran */ });
+        }).catch(() => { /* sans slot : le compte à rebours reste le seul écran */ });
       }
     }).catch(() => { if (active) setState("denied"); });
     return () => { active = false; };
@@ -179,45 +185,113 @@ export function OrderResume({ orderId }) {
 
   if (state === "loading") return null;
 
+  // Récap dérivé de la commande lue (consommé par la feuille de preuve).
+  const summary = order ? {
+    lines: (order.items || []).map((i) => ({ key: i.product_id, label: `${i.quantity} × ${i.name}` })),
+    pubgId: order.pubg_id,
+    subtotal: order.subtotal ?? order.total, fee: order.payment_fee ?? 0,
+  } : null;
+
+  const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/"));
+
+  const header = (right) => (
+    <header className="flex h-[52px] flex-none items-center justify-between gap-2 px-1">
+      <BackButton onClick={back} testId="order-back" />
+      {right}
+    </header>
+  );
+
   if (state === "denied") {
     // 403 (commande d'un autre client) ou 404 (introuvable) : message générique,
     // JAMAIS de détail — la seule sortie est le retour à l'accueil.
     return (
-      <div className="mx-auto max-w-2xl py-20 text-center" data-testid="order-not-available">
-        <p className="font-display text-2xl font-bold">{t("order.notAvailable")}</p>
-        <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">{t("order.notAvailableBody")}</p>
-        <Button asChild className="mt-6 h-12 w-full max-w-xs rounded-full font-bold" data-testid="order-back-home">
-          <Link to="/">{t("order.backHome")}</Link>
-        </Button>
+      <div className="mx-auto flex min-h-[100svh] w-full max-w-[480px] flex-col" data-testid="order-resume">
+        {header(null)}
+        <div className="flex flex-1 flex-col items-center justify-center px-4 py-10 text-center" data-testid="order-not-available">
+          <p className="font-display text-2xl font-bold">{t("order.notAvailable")}</p>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">{t("order.notAvailableBody")}</p>
+          <Button asChild className="mt-6 h-12 w-full max-w-xs rounded-full font-bold" data-testid="order-back-home">
+            <Link to="/">{t("order.backHome")}</Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
-  // Récap dérivé de la commande lue — même forme que le résumé du checkout
-  // (OrderSummary, USSD et montants consomment les mêmes champs).
-  const summary = {
-    lines: (order.items || []).map((i) => ({ key: i.product_id, label: `${i.quantity} × ${i.name}` })),
-    pubgId: order.pubg_id, name: null,
-    method: paymentLabel(order.payment_method, t),
-    subtotal: order.subtotal ?? order.total, fee: order.payment_fee ?? 0,
-  };
   const pending = order.status === "pending_payment";
-  const autoPending = pending && order.payment_method !== "manual" && order.payment_method !== "binance";
+  const manual = pending && order.payment_method === "manual";
+  const binance = pending && order.payment_method === "binance";
+  const autoPending = pending && !manual && !binance;
+  // Opérateur : champ persisté (PL-ORDER-CLIENT-1) ; null (ancienne commande)
+  // → sélecteur PL-CHK-3 affiché, repli local "mvola" pour le titre.
+  const op = operator || "mvola";
+  const opName = op === "orange" ? t("checkout.methodOrange") : t("checkout.methodMvola");
+  const opTitle = op === "orange" ? t("checkout.payTitleOrange") : t("checkout.payTitleMvola");
+  const merchant = config?.providers?.[op];
+  const payTotal = formatAr((order.subtotal ?? order.total) + (order.payment_fee ?? 0));
 
   return (
-    <div className="mx-auto max-w-2xl pb-24 pt-6" data-testid="order-resume">
-      {/* Carte de la commande TOUJOURS visible en haut, composant de statut en dessous. */}
-      <OrderCard order={order} />
-      <div className="mt-4 space-y-3">
-        {pending && order.payment_method === "manual" && (
+    <div className="mx-auto flex min-h-[100svh] w-full max-w-[480px] flex-col lg:min-h-0" data-testid="order-resume">
+      {header(pending && (
+        <button type="button" onClick={() => setCancelOpen(true)} data-testid="order-cancel-open"
+          className="min-h-[44px] text-xs text-muted-foreground underline decoration-dotted underline-offset-[3px]">
+          {t("checkout.cancelOrder")}
+        </button>
+      ))}
+
+      <div className="flex min-h-0 flex-1 flex-col px-1 pb-2">
+        {manual && (
           <>
-            {/* L'opérateur n'est pas renvoyé par l'API : le client le (re)choisit avant de payer. */}
-            <ManualProviderPicker provider={reference.provider} onSelect={(key) => setReference({ provider: key, value: "" })} />
-            <ProofPay order={order} config={config} summary={summary} reference={reference} onUpdated={setOrder} onConfirmed={refetch} />
+            {!order.manual_operator && (
+              <div className="pt-2" data-testid="resume-operator-picker">
+                <ManualProviderPicker provider={op} onSelect={setOperator} />
+              </div>
+            )}
+            <h2 className="pt-3 font-display text-[24px] font-extrabold leading-[1.15]" data-testid="resume-pay-title">{opTitle}</h2>
+            <div className="pt-2.5">
+              <PaymentCountdown order={order} onZero={refetch} />
+            </div>
+            {/* Deux étapes numérotées : losanges + filet vertical (maquette). */}
+            <div className="relative mt-5 pl-9" data-testid="resume-steps">
+              <span className="absolute bottom-4 left-[13px] top-3.5 w-px bg-[color:var(--rule-strong)]" aria-hidden="true" />
+              <div className="relative mb-4">
+                <Diamond n={1} />
+                <h3 className="text-[16px] font-bold leading-[27px]">{t("checkout.transferVia", { name: opName })}</h3>
+                {merchant ? (
+                  <div className="mt-1">
+                    <KV label={t("checkout.youPay")} value={payTotal} copyValue={String((order.subtotal ?? order.total) + (order.payment_fee ?? 0))} testId="pay-amount" />
+                    <KV label={t("checkout.ussdName")} value={merchant.name} copyValue={merchant.name} testId="merchant-name" />
+                    <KV label={t("checkout.ussdNumberShort")} value={pretty(merchant.merchant)} copyValue={merchant.merchant} testId="merchant-number" />
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground" data-testid="merchant-loading">{t("common.error")}</p>
+                )}
+              </div>
+              <div className="relative">
+                <Diamond n={2} />
+                <p className="text-[15px] font-semibold leading-snug" data-testid="resume-proof-step">{t("checkout.proofStepText")}</p>
+              </div>
+            </div>
           </>
         )}
-        {pending && autoPending && (
-          <section className="space-y-3" data-testid="resume-auto">
+
+        {binance && (
+          <>
+            <h2 className="pt-3 font-display text-[24px] font-extrabold leading-[1.15]" data-testid="resume-pay-title">{t("checkout.payTitleBinance")}</h2>
+            <div className="pt-2.5">
+              <PaymentCountdown order={order} onZero={refetch} />
+            </div>
+            {cryptoPayment
+              ? <div className="mt-4" data-testid="resume-binance"><BinancePay payment={cryptoPayment} orderId={order.id} onConfirmed={refetch} trackUrl="/suivi" /></div>
+              : <p className="mt-4 text-sm font-medium text-muted-foreground" data-testid="resume-binance-noproof">{t("checkout.binanceNoProof")}</p>}
+          </>
+        )}
+
+        {autoPending && (
+          // Anciennes commandes automatiques (mvola/orange PAPI) : reprise
+          // PL-CHK-3 conservée, restylée (titre + compte à rebours + lien).
+          <section className="mt-3 space-y-3" data-testid="resume-auto">
+            <h2 className="font-display text-[24px] font-extrabold leading-[1.15]" data-testid="resume-pay-title">{paymentLabel(order.payment_method, t)}</h2>
             <PaymentCountdown order={order} onZero={refetch} />
             {payInfo?.payment_url && !payInfo.simulated && (
               <Button asChild className="h-12 w-full rounded-full font-bold" style={{ background: paymentColor(order.payment_method) }} data-testid="resume-payment-button">
@@ -227,18 +301,72 @@ export function OrderResume({ orderId }) {
             {payInfo?.expires_at && <p className="text-center text-xs text-muted-foreground" data-testid="payment-deadline">{t("checkout.deadline", { time: new Date(payInfo.expires_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) })}</p>}
           </section>
         )}
-        {pending && order.payment_method === "binance" && (cryptoPayment
-          ? <BinancePay payment={cryptoPayment} orderId={order.id} onConfirmed={refetch} trackUrl="/suivi" />
-          : <PaymentCountdown order={order} onZero={refetch} />)}
-        {order.status === "proof_submitted" && <ProofPay order={order} onUpdated={setOrder} onConfirmed={refetch} />}
+
+        {order.status === "proof_submitted" && <ProofWaiting order={order} onUpdated={setOrder} />}
         {order.status === "late_payment" && <LateScreen />}
-        {order.status === "expired" && <ProofExpired />}
+        {order.status === "expired" && <ProofExpired order={order} />}
         {["cancelled", "failed"].includes(order.status) && <EndScreen order={order} />}
-        {/* Relance auto : comportement de la page de suivi conservé (dépassé/échoué). */}
-        {["failed", "expired"].includes(order.status) && !["manual", "binance"].includes(order.payment_method) && (
-          <Button onClick={retry} disabled={retrying} variant="outline" className="h-12 w-full rounded-full font-bold" data-testid="retry-payment-button">{t("checkout.retry")}</Button>
-        )}
+        {["paid", "delivered", "awaiting_verification"].includes(order.status) && <OrderCard order={order} />}
       </div>
+
+      {/* Boutons fixés en bas (mobile) ; ≥1024 px : flux normal. */}
+      {manual && (
+        <div className="sticky bottom-0 z-10 flex-none bg-[color:hsl(var(--background))] px-1 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 lg:static lg:z-auto lg:bg-transparent lg:pb-2">
+          <Button type="button" onClick={() => setProofOpen(true)} data-testid="send-proof-button" className="h-[52px] w-full rounded-full text-[15px] font-extrabold">
+            {t("checkout.sendProof")}
+          </Button>
+        </div>
+      )}
+      {binance && (
+        <div className="sticky bottom-0 z-10 flex-none bg-[color:hsl(var(--background))] px-1 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 lg:static lg:z-auto lg:bg-transparent lg:pb-2">
+          <Button type="button" disabled data-testid="binance-waiting" className="h-[52px] w-full rounded-full text-[15px] font-extrabold">
+            {t("checkout.binanceWaiting")}
+          </Button>
+        </div>
+      )}
+      {["failed", "expired"].includes(order.status) && !["manual", "binance"].includes(order.payment_method) && (
+        <div className="sticky bottom-0 z-10 flex-none bg-[color:hsl(var(--background))] px-1 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 lg:static lg:z-auto lg:bg-transparent lg:pb-2">
+          <Button onClick={retry} disabled={retrying} variant="outline" className="h-12 w-full rounded-full font-bold" data-testid="retry-payment-button">{t("checkout.retry")}</Button>
+        </div>
+      )}
+
+      {/* Feuille 3 (preuve) et feuille 7 (annulation). */}
+      {manual && (
+        <ProofSheet
+          open={proofOpen} onOpenChange={setProofOpen}
+          order={order} summary={summary}
+          onSubmitted={() => setProofOpen(false)} onUpdated={setOrder} />
+      )}
+      {pending && (
+        <CancelSheet
+          open={cancelOpen} onOpenChange={setCancelOpen}
+          order={order}
+          onCancelled={() => navigate("/", { replace: true })}
+          onConflict={refetch} />
+      )}
+    </div>
+  );
+}
+
+// Losange numéroté (maquette : carré pivoté 45°, chiffre redressé).
+function Diamond({ n }) {
+  return (
+    <span className="absolute -left-9 top-0 flex h-[27px] w-[27px] rotate-45 items-center justify-center rounded-[6px] bg-foreground" aria-hidden="true">
+      <span className="-rotate-45 text-[13px] font-extrabold text-background">{n}</span>
+    </span>
+  );
+}
+
+// Ligne clé/valeur de l'étape 1 + bouton de copie (retour « Copié » polie).
+function KV({ label, value, copyValue, testId }) {
+  const { t } = useLang();
+  return (
+    <div className="mt-3.5 flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="mt-0.5 num break-all text-[16px] font-bold" data-testid={testId}>{value}</p>
+      </div>
+      <CopyButton value={copyValue} label={`${t("checkout.copy")} ${label}`} testId={`copy-${testId}`} />
     </div>
   );
 }
@@ -246,7 +374,7 @@ export function OrderResume({ orderId }) {
 export default function OrderTrack() {
   // PL-CHK-3 — sélecteur de route sans hook conditionnel : /orders/:orderId
   // monte l'écran de reprise, toute autre route équipe la page de recherche.
-  const { orderId, orderNumber } = useParams();
+  const { orderId } = useParams();
   if (orderId) return <OrderResume orderId={orderId} />;
   return <OrderTrackSearch />;
 }
@@ -338,8 +466,7 @@ function OrderTrackSearch() {
                     <div className="flex shrink-0 flex-col items-end gap-2.5">
                       <span className="num text-xl text-foreground">{formatAr(o.total)}</span>
                       {/* PL-CHK-3 — commande en attente : bouton de reprise menant à
-                          /orders/:id (écran complet ; opérateur manuel re-choisi là-bas
-                          car non persisté côté API). Labels par statut/méthode. */}
+                          /orders/:id (écran complet). Labels par statut/méthode. */}
                       {["pending_payment", "proof_submitted"].includes(o.status) && (
                         <Button asChild size="sm" className="h-8 rounded-full px-4 text-xs font-bold" data-testid={`history-resume-${o.order_number}`}>
                           <Link to={`/orders/${o.id}`}>

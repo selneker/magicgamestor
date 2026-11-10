@@ -5,13 +5,22 @@ import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
+import { BackButton } from "@/components/common/BackButton";
 import { CaptchaWidget, isCaptchaError, useCaptcha } from "@/components/common/CaptchaWidget";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-function Shell({ title, subtitle, testId, children }) {
+function Shell({ title, subtitle, testId, back, children }) {
+  const navigate = useNavigate();
+  // PL-CHK-4 — mode focalisé (mot de passe oublié) : en-tête minimal, flèche
+  // retour avec repli accueil (fonctionne sans historique, onglet profond).
   return (
-    <div className="mx-auto max-w-md pb-24 pt-10" data-testid={testId}>
+    <div className="mx-auto max-w-md pb-10 pt-2" data-testid={testId}>
+      {back && (
+        <header className="flex h-[52px] items-center px-1">
+          <BackButton onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/"))} testId={`${testId}-back`} />
+        </header>
+      )}
       <p className="eyebrow">Magic Game Store</p>
       <h1 className="font-display text-3xl font-bold text-slate-900 sm:text-4xl">{title}</h1>
       {subtitle && <p className="mt-2 text-slate-500">{subtitle}</p>}
@@ -36,7 +45,7 @@ export function ForgotPassword() {
     } finally { setBusy(false); }
   };
   return (
-    <Shell title={t("auth.forgotTitle")} subtitle={t("auth.forgotSub")} testId="forgot-password-page">
+    <Shell title={t("auth.forgotTitle")} subtitle={t("auth.forgotSub")} testId="forgot-password-page" back>
       {sent ? <p className="text-sm" data-testid="forgot-sent">{t("auth.forgotSent")}</p> : (
         <form onSubmit={submit} className="space-y-4">
           <div><label htmlFor="fp-email" className="text-sm font-medium">{t("auth.email")}</label><Input id="fp-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 h-12 rounded-xl" data-testid="forgot-email-input" /></div>

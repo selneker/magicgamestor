@@ -50,13 +50,14 @@ const captchaEnabled = () => {
   return !!key && typeof key === "string" && !!key.trim();
 };
 
-// Taille compacte sur petit écran : le widget « normal » mesure 300 px de large,
-// plus large qu'un écran 320 px moins le padding de la carte (272 px).
-const widgetSize = () => {
-  if (typeof window === "undefined") return "normal";
-  if (typeof window.matchMedia !== "function") return "normal";
-  return window.matchMedia("(max-width: 400px)").matches ? "compact" : "normal";
-};
+// PL-CHK-4 — taille `flexible` : le widget occupe TOUTE la largeur de son
+// conteneur (conteneur aligné à gauche, 100 % — plus de Pilule 300 px plus
+// large qu'un écran 320 px moins le padding). Apparence `interaction-only` :
+// invisible tant que Cloudflare ne demande pas d'action — le conteneur ne
+// réserve donc AUCUNE hauteur (aucun saut de mise en page) ; quand une
+// interaction est demandée, `before-interactive-callback` prévient le parent
+// qui ouvre la feuille « Vérification de sécurité » (écran 9).
+const widgetSize = () => "flexible";
 
 const widgetTheme = () => {
   try { return document.documentElement.classList.contains("dark") ? "dark" : "light"; }
@@ -78,8 +79,8 @@ export function isCaptchaError(err) {
   return /captcha|turnstile/i.test(code) || /captcha|turnstile/i.test(detail);
 }
 
-export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onError }, ref) {
-  const { t } = useLang();
+export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onError, onInteractive }, ref) {
+  const { t, lang } = useLang();
   // Échec de chargement du CDN Cloudflare : STOP fail-closed — le formulaire
   // reste bloqué jeton manquant ; on affiche un message inline + un bouton
   // « Réessayer » qui retente le script sans recharger la page. Sans clé
@@ -93,6 +94,8 @@ export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onErr
   onVerifyRef.current = onVerify;
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
+  const onInteractiveRef = useRef(onInteractive);
+  onInteractiveRef.current = onInteractive;
 
   useEffect(() => {
     if (!captchaEnabled() || failed) return undefined;
@@ -104,10 +107,19 @@ export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onErr
           sitekey: siteKey(),
           theme: widgetTheme(),
           size: widgetSize(),
+          // PL-CHK-4 — invisible jusqu'à ce que Cloudflare demande une action.
+          appearance: "interaction-only",
+          // Langue du site (codes courts "fr" / "en" ; valeur inconnue → repli auto).
+          language: lang === "en" ? "en" : "fr",
           callback: (token) => onVerifyRef.current(token),
           // Expiration : Turnstile exige un re-solve — jeton remis à vide.
           "expired-callback": () => onVerifyRef.current(""),
           "error-callback": () => onVerifyRef.current(""),
+          // PL-CHK-4 — Cloudflare demande une action (écran 9) : le parent ouvre
+          // la feuille « Vérification de sécurité » ; jeton reçu / interaction
+          // terminée : le parent la referme et poursuit.
+          "before-interactive-callback": () => onInteractiveRef.current?.(true),
+          "after-interactive-callback": () => onInteractiveRef.current?.(false),
         });
       })
       .catch(() => { if (!cancelled) { setFailed(true); onErrorRef.current?.(); } });
@@ -118,7 +130,7 @@ export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onErr
         widgetIdRef.current = null;
       }
     };
-  }, [failed, attempt]);
+  }, [failed, attempt, lang]); // lang : le widget est re-rendu avec la nouvelle langue
 
   // Jeton à usage unique : après une erreur serveur liée au CAPTCHA, le formulaire
   // appelle reset() → Turnstile propose un nouveau challenge, le parent vide son jeton.
@@ -143,7 +155,10 @@ export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onErr
       </div>
     );
   }
-  return <div ref={containerRef} className="mt-1 flex min-h-16 justify-center" data-testid="captcha-widget" />;
+  // Conteneur : toute la largeur, aligné à gauche ; avec `interaction-only`
+  // le widget n'occupe AUCUNE place tant que Cloudflare ne demande rien
+  // (aucune hauteur réservée, aucun saut de mise en page).
+  return <div ref={containerRef} className="w-full text-left" data-testid="captcha-widget" />;
 });
 
 /**

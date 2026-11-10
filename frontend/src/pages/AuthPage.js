@@ -6,6 +6,8 @@ import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { startGoogleLogin } from "@/components/AuthCallback";
+import { BackButton } from "@/components/common/BackButton";
+import { Logo } from "@/components/Logo";
 import { CaptchaWidget, isCaptchaError, useCaptcha } from "@/components/common/CaptchaWidget";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -50,7 +52,15 @@ export default function AuthPage({ mode = "login" }) {
   };
 
   return (
-    <div className="mx-auto max-w-md pb-24 pt-10" data-testid={`${mode}-page`}>
+    // PL-CHK-4 — mode focalisé (connexion / inscription) : en-tête minimal —
+    // flèche retour (repli accueil, fonctionne sans historique) + logo du site,
+    // seul. Ni header ni footer du site (géré dans Layout.js).
+    <div className="mx-auto max-w-md pb-10 pt-2" data-testid={`${mode}-page`}>
+      <header className="flex h-[52px] items-center justify-between px-1">
+        <BackButton onClick={() => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/"))} testId={`${mode}-back`} />
+        <Logo className="h-7 w-7 text-foreground" label="Magic Game Store" />
+        <span className="h-10 w-10" aria-hidden="true" />
+      </header>
       <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{t("auth.welcome")}</p>
       <h1 className="font-display text-3xl font-bold text-slate-900 sm:text-4xl">{mode === "login" ? t("auth.login") : t("auth.register")}</h1>
       <p className="mt-2 text-slate-500">{mode === "login" ? t("auth.loginSub") : t("auth.registerSub")}</p>

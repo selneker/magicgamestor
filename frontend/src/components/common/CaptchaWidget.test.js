@@ -81,10 +81,29 @@ describe("avec clé et window.turnstile simulé", () => {
     expect(container.querySelector('[data-testid="captcha-widget"]')).not.toBeNull();
     expect(turnstileOpts.sitekey).toBe(TEST_KEY);
     expect(["light", "dark"]).toContain(turnstileOpts.theme);
-    // Taille compacte ≤ 400 px d'écran (jsdom n'a pas matchMedia → « normal »)
-    expect(["normal", "compact"]).toContain(turnstileOpts.size);
+    // PL-CHK-4 — toute la largeur du conteneur (jamais de taille fixe qui
+    // déborde à 320-430 px), invisible tant que Cloudflare ne demande rien.
+    expect(turnstileOpts.size).toBe("flexible");
+    expect(turnstileOpts.appearance).toBe("interaction-only");
+    // Langue du site (useLang → "fr" dans ce test).
+    expect(turnstileOpts.language).toBe("fr");
     act(() => { turnstileOpts.callback("jeton-123"); });
     expect(onVerify).toHaveBeenCalledWith("jeton-123");
+  });
+
+  test("PL-CHK-4 — onInteractive : before/after-interactive-callback préviennent le parent", async () => {
+    process.env[ENV_VAR] = TEST_KEY;
+    stubTurnstile();
+    const onVerify = jest.fn();
+    const onInteractive = jest.fn();
+    await mountWidget({ onVerify, onInteractive });
+    act(() => { turnstileOpts["before-interactive-callback"](); });
+    expect(onInteractive).toHaveBeenLastCalledWith(true);
+    act(() => { turnstileOpts["after-interactive-callback"](); });
+    expect(onInteractive).toHaveBeenLastCalledWith(false);
+    // Un before de plus (le prop est bien là) : toujours aucun crash.
+    act(() => { turnstileOpts["before-interactive-callback"](); });
+    expect(onInteractive).toHaveBeenCalledTimes(3);
   });
 
   test("expiration : le jeton est remis à VIDE (jeton à usage unique)", async () => {

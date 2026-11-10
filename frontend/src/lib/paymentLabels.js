@@ -1,9 +1,8 @@
 // PL-PAYLABEL-1 — point de vérité unique pour l'affichage du moyen de paiement
 // d'une commande existante (`order.payment_method` : mvola | orange | manual |
 // binance). Les noms de marque ne se traduisent pas ; seule la valeur de repli
-// « Autre » passe par t(). La SÉLECTION d'une méthode côté client
-// (PaymentMethodPicker, PaymentFlow) ne passe PAS par ici : elle a ses propres
-// libellés traduits (« MVola automatique », etc.).
+// « Autre » passe par t(). La SÉLECTION d'une méthode côté client ne passe PAS
+// par ici : l'écran 1 du tunnel (Checkout.js) a ses propres libellés traduits.
 export const PAYMENT_METHOD_LABELS = {
   mvola: "MVola",
   orange: "Orange Money",

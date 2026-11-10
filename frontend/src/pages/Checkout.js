@@ -1,46 +1,36 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { AlertTriangle, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { api, errorMessage } from "@/lib/api";
-import { writePendingOrderId, clearPendingOrderId } from "@/lib/pendingOrder"; // PL-CHK-3
+import { api, errorMessage, formatAr } from "@/lib/api";
+import { readPendingOrderId, writePendingOrderId, clearPendingOrderId } from "@/lib/pendingOrder"; // PL-CHK-3
 import { useLang } from "@/context/LanguageContext";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useGames } from "@/context/GameContext";
 import { BackButton } from "@/components/common/BackButton";
 import { CaptchaWidget, isCaptchaError, useCaptcha } from "@/components/common/CaptchaWidget";
-import { PaymentFlow, methodLabel, paymentFee } from "@/components/store/PaymentFlow";
-import { CheckoutSteps } from "@/components/store/checkout/CheckoutSteps";
-import { StepVerify } from "@/components/store/checkout/StepVerify";
-import { StepPay } from "@/components/store/checkout/StepPay";
-import { StepConfirm } from "@/components/store/checkout/StepConfirm";
+import { IdentityFieldsVerify } from "@/components/store/checkout/IdentityFieldsVerify";
+import { PAYMENT_LOGOS, NetworkPicker, paymentFee } from "@/components/store/PaymentFlow";
 import { Button } from "@/components/ui/button";
 
-const slide = {
-  enter: (d) => ({ x: d > 0 ? "100%" : "-100%", opacity: 0.5 }),
-  center: { x: 0, opacity: 1 },
-  exit: (d) => ({ x: d > 0 ? "-100%" : "100%", opacity: 0.5 }),
-};
-const initiateUrl = (o) => (o.payment_provider === "fiveone" ? "/payments/fiveone/initiate" : "/payments/initiate");
+// PL-CHK-4 — écran 1 « Commande » (maquette Binance, 3 étapes réelles, aucun
+// stepper). L'écran tient dans 360×640 sans défilement, bouton principal fixé
+// en bas : en-tête minimal (retour + nom du jeu), montant en grand, ID joueur
+// vérifié (ID + pseudo sur deux lignes), modes de paiement en LIGNES séparées
+// (MVola manuel / Orange Money manuel / Binance USDT — uniquement les méthodes
+// réellement actives), une remarque courte selon la méthode. AUCUN récapitulatif
+// (il vit à la fin, écran 4), aucun bloc de frais détaillé (une seule petite
+// ligne si des frais > 0 existent), aucun stepper, aucune carte explicative.
+// La commande est créée ICI puis redirection vers /orders/:id (écran 2), qui
+// est le SEUL écran de paiement (reprise PL-CHK-3 comprise).
 
-// PL-CHK-2 — la commande est créée À LA FIN DE L'ÉTAPE 2 (Méthode) pour toutes
-// les méthodes, sans `manual_reference`. Son identifiant est posé dans
-// sessionStorage pour qu'un rechargement de l'étape 3 (ou un retour plus tard)
-// retrouve la commande en attente au lieu d'en recréer une.
-const PENDING_KEY = "mgs_pending_order";
 // Statuts qui clôturent le tunnel : la clé de reprise est retirée.
 const DONE_STATUSES = ["paid", "delivered", "cancelled", "failed", "expired", "late_payment"];
+const ACTIVE_STATUSES = ["pending_payment", "proof_submitted"];
 
-const readPending = () => {
-  try { return JSON.parse(sessionStorage.getItem(PENDING_KEY) || "null"); } catch (_) { return null; }
-};
-
-// PL-CHK-2-FIX1 — une 422 Pydantic (erreur de validation de modèle) arrive dans
-// `detail` sous forme de tableau décrivant chaque champ fautif ; l'afficher tel
-// quel montrerait un texte technique (« Value error, Invalid phone number »).
-// On mappe le champ fautif vers un libellé FR/EN via t() dans le composant.
-const FIELD_TEXT_KEYS = { payment_phone: "checkout.phoneError" };
+// PL-CHK-2-FIX1 : les 422 Pydantic sont traduites en libellés lisibles.
+const FIELD_TEXT_KEYS = { payment_phone: "checkout.phoneError", manual_operator: "checkout.orderValidationError" };
 const validationDetails = (e) => {
   const d = e?.response?.data?.detail;
   return e?.response?.status === 422 && Array.isArray(d) ? d : null;
@@ -49,79 +39,54 @@ const validationField = (details) => {
   const loc = details?.find((x) => Array.isArray(x?.loc) && x.loc.length > 1)?.loc;
   return loc ? loc[loc.length - 1] : null;
 };
-const writePending = (order) => {
-  try {
-    if (order) sessionStorage.setItem(PENDING_KEY, JSON.stringify({ id: order.id, order_number: order.order_number, pubg_id: order.pubg_id, method: order.payment_method }));
-    else sessionStorage.removeItem(PENDING_KEY);
-  } catch (_) { /* storage can be unavailable in private mode */ }
-};
 
 export default function Checkout() {
-  const { t, lang } = useLang();
+  const { t } = useLang();
   const { items, total, clear, gameId: cartGameId } = useCart();
   const { user } = useAuth();
   const gameSel = useGames();
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const ctx = location.state || {};
-  const [step, setStep] = useState(0);
-  const [dir, setDir] = useState(1);
   const [pubgId, setPubgId] = useState(() => {
     const fallback = user?.saved_pubg_ids?.[0] || "";
-    try { return ctx.pubgId || searchParams.get("pubg_id") || localStorage.getItem("mgs_last_player_id") || fallback; } catch (_) { return ctx.pubgId || searchParams.get("pubg_id") || fallback; }
+    try { return searchParams.get("pubg_id") || localStorage.getItem("mgs_last_player_id") || fallback; } catch (_) { return searchParams.get("pubg_id") || fallback; }
   });
   const [verified, setVerifiedState] = useState(null);
-  const [email, setEmail] = useState(ctx.email || "");
-  const [method, setMethod] = useState(null);
-  const [phone, setPhone] = useState(user?.phone || "");
-  const [reference, setReference] = useState({ provider: "mvola", value: "" });
+  const [editingId, setEditingId] = useState(false);
+  const [method, setMethod] = useState(null); // "mvola" | "orange" (manuel) | "binance"
   const [network, setNetwork] = useState(null);
-  const [accepted, setAccepted] = useState(false);
   const [config, setConfig] = useState(null);
   const [crypto, setCrypto] = useState(null);
-  const [order, setOrder] = useState(null);
-  const [cryptoPayment, setCryptoPayment] = useState(null);
   const [busy, setBusy] = useState(false);
   const [autoVerify, setAutoVerify] = useState(0);
   const [identity, setIdentity] = useState(null);
   const [identityValues, setIdentityValues] = useState({});
-  // Un rechargement pendant l'étape 3 laisse le panier vide mais la commande en
-  // attente existe : on masque l'écran « panier vide » pendant la reprise.
-  const [recovering, setRecovering] = useState(() => !!readPending()?.id);
-  // Garde anti double-clic synchrone de `run` : le ref vit au niveau du
-  // composant (avant tout `return` anticipé — règles des hooks). Un
-  // double-clic dans la même frame tombe avant que le DOM ne peigne
-  // `disabled` : un seul appel API part jamais.
+  // Reprise : un rechargement de /commande avec une commande en attente
+  // redirige vers l'écran de paiement — jamais de nouvelle commande.
+  const [recovering, setRecovering] = useState(() => !!readPendingOrderId());
+  // Garde anti double-clic synchrone : un seul appel API part jamais.
   const inFlight = useRef(false);
-  // PL-SEC-HARDEN-1-CAPTCHA : un seul widget persistant pour tout le tunnel
-  // (les écrans de saisie sont re-montés à chaque étape, on ne le met pas dedans).
-  // Si la clé de site n'est pas configurée, le widget ne s'affiche pas, READY
-  // est toujours vrai et `captcha_token` est omis du corps de requête.
-  // PL-CHK-2 : le jeton accompagne désormais la création (fin de l'étape 2),
-  // pour toutes les méthodes — comportement du widget inchangé.
   const captcha = useCaptcha();
   const [captchaKey, setCaptchaKey] = useState(0);
-  const setVerified = useCallback((v) => setVerifiedState(v), []);
+  // Feuille « Vérification de sécurité » (écran 9) : le widget reste MONTÉ
+  // (invisible tant que Cloudflare ne demande rien) — la feuille est donc
+  // toujours dans le DOM, en `invisible` quand fermée.
+  const [captchaOpen, setCaptchaOpen] = useState(false);
+  const pendingSubmit = useRef(false);
+
   useEffect(() => {
     if (!pubgId) return;
-    try { localStorage.setItem("mgs_last_player_id", pubgId); } catch (_) { /* storage can be unavailable in private mode */ }
+    try { localStorage.setItem("mgs_last_player_id", pubgId); } catch (_) { /* storage indisponible */ }
   }, [pubgId]);
-  // The order's game is the CART's game (a cart holds one game), never a stale header selection.
-  const gameId = order?.game_id || cartGameId || gameSel?.selectedId || "pubg-mobile";
+
+  // The order's game is the CART's game (a cart holds one game).
+  const gameId = cartGameId || gameSel?.selectedId || "pubg-mobile";
   const game = (gameSel?.games || []).find((g) => g.id === gameId);
-  // Mémoïsé : sans cela, `game?.identity_fields || []` crée un NOUVEAU tableau à
-  // chaque rendu quand le jeu n'a pas de identity_fields. `spec` changeait donc
-  // d'identité, `handleVerified` aussi, et l'effet d'annulation de
-  // IdentityFieldsVerify (useEffect sur [values, onVerified]) se re-déclenchait : le
-  // résultat de la vérification était effacé et le client ne pouvait pas
-  // sortir de l'étape 1. Le backend injecte toujours le contrat résolu
-  // (GET /api/games), mais le front n'avait pas de repli équivalent à
-  // identity_spec() : on fige donc la référence.
+  // Référence figée (voir PL-CHK-1 : sans memo, le résultat de vérification
+  // était effacé par le re-déclenchement de l'effet d'annulation).
   const identitySpec = useMemo(() => game?.identity_fields || [], [game]);
-  // Changing game invalidates any identity typed or verified for the previous game.
   useEffect(() => {
-    setVerifiedState(null); setIdentity(null); setIdentityValues({});
+    setVerifiedState(null); setIdentity(null); setIdentityValues({}); setEditingId(false);
   }, [gameId]);
 
   useEffect(() => {
@@ -129,66 +94,81 @@ export default function Checkout() {
     api.get("/crypto/config").then(({ data }) => setCrypto(data)).catch(() => {});
   }, []);
 
-  const go = useCallback((n) => { setDir(n > step ? 1 : -1); setStep(n); window.scrollTo({ top: 0, behavior: "smooth" }); }, [step]);
-
-  const refreshOrder = useCallback(() => api.get(`/orders/${order.id}`).then(({ data }) => setOrder(data)).catch(() => {}), [order?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reprise : après un rechargement (ou un retour par l'historique), la
-  // commande en attente est retrouvée via GET /orders/{id} (propriétaire
-  // connecté ou invité porteur de l'UUID) au lieu d'être recréée. Binance :
-  // on rouvre le slot USDT existant via GET /crypto/{id}/status quand il est
-  // encore actif, sinon on navigationne vers le suivi (jamais de 2e initiation).
+  // Reprise PL-CHK-3 : une commande en attente connue (invité ou compte) ouvre
+  // directement son écran de paiement — /commande ne recrée JAMAIS une commande
+  // par-dessus une commande active.
   useEffect(() => {
-    const pending = readPending();
-    if (!pending?.id) { setRecovering(false); return; }
-    api.get(`/orders/${pending.id}`).then(async ({ data }) => {
-      setOrder(data);
-      setMethod(data.payment_method);
-      if (DONE_STATUSES.includes(data.status)) { writePending(null); setStep(3); setDir(1); return; } // écran Confirmation
-      if (data.status !== "pending_payment") { setStep(2); setDir(1); return; } // écran Paiement
-      if (data.payment_method === "binance") {
-        try {
-          const { data: st } = await api.get(`/crypto/${data.id}/status`);
-          if (st.payment) { setCryptoPayment(st.payment); setStep(2); setDir(1); return; }
-        } catch (_) { /* le suivi affichera l'état réel */ }
-        navigate(`/suivi/${data.order_number}?pubg_id=${data.pubg_id}`);
-        return;
-      }
-      setStep(2); setDir(1);
-    }).catch(() => { writePending(null); setRecovering(false); }) // commande introuvable : on repart à zéro
-      .finally(() => setRecovering(false));
+    const pending = readPendingOrderId(); // { id, createdAt } | null
+    if (!pending) { setRecovering(false); return; }
+    api.get(`/orders/${pending.id}`).then(({ data }) => {
+      if (ACTIVE_STATUSES.includes(data.status)) { navigate(`/orders/${data.id}`, { replace: true }); return; }
+      if (DONE_STATUSES.includes(data.status)) clearPendingOrderId();
+      setRecovering(false);
+    }).catch(() => { clearPendingOrderId(); setRecovering(false); });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Statut terminal atteint (dans le tunnel ou ailleurs) : la clé de reprise
-  // et la mémoire PL-CHK-3 disparaissent — un nouveau passage créera une
-  // NOUVELLE commande.
-  useEffect(() => {
-    if (order && DONE_STATUSES.includes(order.status)) { writePending(null); clearPendingOrderId(); }
-  }, [order?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Méthodes réellement actives (source : /payments/config + /crypto/config,
+  // inventaire étape 0). Aucune méthode désactivée n'est jamais affichée :
+  // MVola / Orange manuels suivent providers.*.configured (env backend),
+  // Binance suit crypto.available.
+  const mvolaActive = !config || config.providers?.mvola?.configured !== false;
+  const orangeActive = !config || config.providers?.orange?.configured !== false;
+  const binanceActive = !!crypto?.available;
 
-  if (items.length === 0 && !order && !recovering) {
-    return <div className="py-24 text-center" data-testid="checkout-empty"><p className="text-muted-foreground">{t("cart.empty")}</p><Button asChild className="mt-4 rounded-full"><Link to="/boutique">{t("cart.browse")}</Link></Button></div>;
-  }
+  const subtotal = total;
+  // Frais de la méthode choisie (Binance : 0) — une seule petite ligne.
+  const fee = method ? paymentFee(config, method === "binance" ? "binance" : "manual", subtotal) : 0;
 
-  const trackUrl = order ? `/suivi/${order.order_number}?pubg_id=${order.pubg_id}` : "/suivi";
-  const subtotal = order ? order.subtotal : total;
-  const lines = order
-    ? order.items.map((i) => ({ key: i.product_id, label: `${i.quantity} × ${i.name}` }))
-    : items.map((i) => ({ key: i.id, label: `${i.qty} × ${lang === "en" && i.name_en ? i.name_en : i.name}` }));
-  const shownId = gameId !== "pubg-mobile" && identitySpec.length
-    ? identitySpec.map((f) => (identityValues[f.key] || "").trim()).filter(Boolean).join(" / ")
-    : pubgId;
-  const summary = { lines, pubgId: order?.pubg_id && gameId === "pubg-mobile" ? order.pubg_id : shownId, name: verified?.name, method: methodLabel(t, method), subtotal, fee: order ? order.payment_fee : paymentFee(config, method, total) };
+  const shownId = useMemo(() => {
+    if (gameId !== "pubg-mobile" && identitySpec.length) {
+      return identitySpec.map((f) => (identityValues[f.key] || "").trim()).filter(Boolean).join(" / ");
+    }
+    return pubgId;
+  }, [gameId, identitySpec, identityValues, pubgId]);
 
-  const back = () => {
-    if (order) return navigate(trackUrl);
-    if (step > 0) return go(step - 1);
-    return window.history.state?.idx > 0 ? navigate(-1) : navigate("/boutique");
-  };
+  const receiveText = items.map((i) => `${i.qty} × ${i.name}`).join(", ");
 
-  const createOrder = async (m, extra = {}) => {
-    // Identité GÉNÉRIQUE : les champs dynamiques du jeu sont transmis tels quels ; `pubg_id` reste
-    // la colonne historique et porte la valeur du champ primaire (PUBG Mobile inchangé).
+  const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/boutique"));
+
+  const setVerified = useCallback((v) => {
+    setVerifiedState(v);
+    if (v) setEditingId(false);
+  }, []);
+
+  // Identité mémorisée (compte connecté) : après vérification réussie, POST
+  // /me/game-identities (dédupliqué côté serveur) → identity_id dans le
+  // payload /orders. Invité : rien n'est mémorisé, la commande part sans.
+  const saveIdentity = useCallback((fields, name) => {
+    if (!user) return;
+    const primaryKey = identitySpec.find((f) => f.primary)?.key || identitySpec[0]?.key;
+    api.post("/me/game-identities", { game_id: gameId, label: name || fields[primaryKey], fields, ...(name ? { player_name: name } : {}) })
+      .then(({ data }) => setIdentity(data))
+      .catch(() => { /* l'identité n'est pas mémorisée : commande sans identity_id */ });
+  }, [user, gameId, identitySpec]);
+
+  // Après vérification réussie : les champs TRIMMÉS du formulaire partent dans
+  // la commande ; la valeur primaire miroite `pubgId` (colonne historique du
+  // payload /orders, PUBG inchangé — portage de l'ancien StepVerify). Les
+  // valeurs passent par une REF : le verdict peut arriver avec une closure
+  // antérieure au dernier rendu (portage exact du valuesRef de StepVerify).
+  const valuesRef = useRef(identityValues);
+  valuesRef.current = identityValues;
+  const handleVerified = useCallback((v) => {
+    setVerified(v);
+    if (!v) return;
+    const fields = Object.fromEntries(identitySpec.map((f) => [f.key, (valuesRef.current[f.key] || "").trim()]));
+    const primaryKey = identitySpec.find((f) => f.primary)?.key || identitySpec[0]?.key;
+    if (primaryKey && fields[primaryKey]) setPubgId(fields[primaryKey]);
+    saveIdentity(fields, v.name);
+  }, [setVerified, identitySpec, saveIdentity]);
+
+  // Création de la commande (contrat inchangé + manual_operator pour le
+  // manuel). JAMAIS de manual_reference ; JAMAIS de téléphone vide — le
+  // manuel n'a PAS de champ téléphone (la preuve passe par l'USSD marchand).
+  // `tokenArg` : jeton passé explicitement lors de l'auto-soumission CAPTCHA —
+  // le state du hook n'est pas encore à jour au même rendu (jeton à usage
+  // unique, jamais périmé dans le payload).
+  const createOrder = async (tokenArg) => {
     const dynamic = gameId !== "pubg-mobile" && identitySpec.length > 0;
     const primaryKey = identitySpec.find((f) => f.primary)?.key || identitySpec[0]?.key || "player_id";
     const fields = dynamic
@@ -201,118 +181,220 @@ export default function Checkout() {
     const { data } = await api.post("/orders", {
       game_id: gameId, identity_id: user && matchesSaved ? identity.id : undefined, pubg_id: pubgValue,
       ...(fields ? { identity_fields: fields } : {}),
-      pseudo: verified?.name || pubgValue, email: email || undefined,
-      items: items.map((i) => ({ product_id: i.id, quantity: i.qty })), payment_method: m,
-      captcha_token: captcha.tokenFor(),
-      ...extra,
+      pseudo: verified?.name || pubgValue,
+      items: items.map((i) => ({ product_id: i.id, quantity: i.qty })),
+      payment_method: method === "binance" ? "binance" : "manual",
+      ...(method && method !== "binance" ? { manual_operator: method } : {}), // "mvola" | "orange"
+      captcha_token: tokenArg ?? captcha.tokenFor(),
     });
-    // PL-CHK-3 : mémorisation MINIMALE (invité) pour la reprise hors checkout —
-    // uniquement { id, createdAt }, jamais de donnée personnelle.
+    // PL-CHK-3 : mémorisation MINIMALE { id, createdAt } pour la reprise.
     writePendingOrderId(data.id, data.created_at || new Date().toISOString());
     clear();
-    writePending(data);
-    setOrder(data);
     return data;
   };
 
-  // run : busy + garde synchrone (un double-clic dans la même frame tombe
-  // avant que le DOM ne peigne `disabled`) : un seul appel API part jamais.
   const run = async (fn) => {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
-    try { await fn(); } catch (e) {
-      // PL-CHK-2-FIX1 : les erreurs de validation Pydantic (422) sont traduites en
-      // libellés lisibles (champ fautif quand il est connu), pas le texte technique.
+    try {
+      await fn();
+    } catch (e) {
       const vDetails = validationDetails(e);
       toast.error(isCaptchaError(e)
         ? t("captcha.verifyAgain")
         : (vDetails ? t(FIELD_TEXT_KEYS[validationField(vDetails)] || "checkout.orderValidationError") : errorMessage(e)));
       if (isCaptchaError(e) && captcha.enabled) { captcha.expire(); setCaptchaKey((k) => k + 1); } // jeton à usage unique
+      setCaptchaOpen(false); // une erreur technique referme la feuille
     } finally { inFlight.current = false; setBusy(false); }
   };
 
-  // Fin de l'étape 2 : on crée la commande ICI pour toutes les méthodes, puis
-  // l'écran 3 affiche le paiement. busy (bouton en chargement + anti
-  // double-clic) et « erreur → rester à l'étape 2 » viennent de `run`.
-  const continueMethod = () => {
-    if (!order && !captcha.ready) return;
-    return run(async () => {
-      if (method === "binance") {
-        const created = order || await createOrder("binance");
-        const { data } = await api.post("/crypto/initiate", { order_id: created.id, network });
-        setCryptoPayment(data);
-      } else {
-        // MVola / Orange automatique : le numéro à débiter est saisi à l'étape 2.
-        // PL-CHK-2-FIX1 — le manuel n'a PAS de numéro client (la preuve passe par
-        // l'USSD marchand, `PaymentFlow.ManualPanel` n'a pas de champ téléphone) :
-        // ici SANS `payment_phone`, que le backend accepte comme absent
-        // (routers/orders.py:68 `payment_phone: str | None` ; une chaîne vide
-        // est rejetée « Invalid phone number » par le validateur :92-100). Pour les méthodes auto, le
-        // numéro vide n'est jamais envoyé tel quel : on l'omet, le backend répond
-        // alors 400 « Payment phone number is required » au lieu d'une 422 Pydantic.
-        if (method === "manual") await (order || createOrder(method));
-        else await (order || createOrder(method, { payment_phone: phone || undefined }));
-      }
-      go(2); // étape Paiement (ProofPay / compte à rebours)
-    });
+  const goToOrder = (data) => {
+    pendingSubmit.current = false;
+    setCaptchaOpen(false);
+    navigate(`/orders/${data.id}`, { replace: true });
   };
 
-  // Étape 3, méthodes automatiques : la commande existe déjà, on lance le
-  // paiement (aucun captcha_token ici — la création l'a déjà consommé).
-  const payAuto = () => {
-    if (!order) return;
-    return run(async () => {
-      const { data: payment } = await api.post(initiateUrl(order), { order_id: order.id });
-      if (payment.payment_url && !payment.simulated) { window.location.assign(payment.payment_url); return; }
-      setOrder((o) => ({ ...o, simulated: payment.simulated, attempt: (o.attempt || 0) + 1 }));
-    });
+  const submitOrder = async (tokenArg) => {
+    if (!method) return;
+    if (method === "binance") {
+      // Binance : création PUIS ouverture du slot USDT existant — jamais de
+      // 2ᵉ initiation (l'écran 2 relit GET /crypto/{id}/status).
+      let created = null;
+      await run(async () => {
+        created = await createOrder(tokenArg);
+        await api.post("/crypto/initiate", { order_id: created.id, network });
+      });
+      if (created) goToOrder(created);
+      return;
+    }
+    await run(async () => { const created = await createOrder(tokenArg); goToOrder(created); });
   };
 
-  const screens = [
-    <StepVerify key="v" gameName={game?.name} pubgId={pubgId} setPubgId={setPubgId} user={user} verified={verified} setVerified={setVerified} autoVerify={autoVerify} setAutoVerify={setAutoVerify} gameId={gameId} identity={identity} setIdentity={setIdentity} identitySpec={identitySpec} identityValues={identityValues} setIdentityValues={setIdentityValues} email={email} setEmail={setEmail} onContinue={() => go(1)} />,
-    <PaymentFlow key="m" method={method} setMethod={setMethod} phone={phone} setPhone={setPhone} reference={reference} setReference={setReference} network={network} setNetwork={setNetwork} accepted={accepted} setAccepted={setAccepted} subtotal={subtotal} config={config} crypto={crypto} busy={busy} onContinue={continueMethod} />,
-    <StepPay key="p" method={method} order={order} config={config} summary={summary} reference={reference} busy={busy} captchaReady={captcha.ready} onPayAuto={payAuto} cryptoPayment={cryptoPayment} onConfirmed={() => go(3)} trackUrl={trackUrl} onUpdated={setOrder} onRefresh={refreshOrder} />,
-    <StepConfirm key="c" order={order} trackUrl={trackUrl} />,
-  ];
+  const onPlaceOrder = () => {
+    if (!verified || !method || busy) return;
+    if (captcha.enabled && !captcha.ready) {
+      // Cloudflare n'a pas encore délivré de jeton : la feuille « Vérification
+      // de sécurité » s'ouvre (elle contient le widget, déjà monté) ; jeton
+      // reçu → création automatique + fermeture.
+      pendingSubmit.current = true;
+      setCaptchaOpen(true);
+      return;
+    }
+    submitOrder();
+  };
 
-  return (
-    // PL-CHK-1 — colonne de checkout : sur mobile la colonne s'étire jusqu'en
-    // bas de l'écran (janvier : header 3.5rem + main pb-6) pour que le gros
-    // bouton d'action des étapes 1-2 se colle en bas ; à partir de 1024 px :
-    // colonne 480 px, bouton en flux normal (pas d'épinglage).
-    <div className="mx-auto flex min-h-[calc(100svh-5rem)] max-w-xl flex-col pt-3 lg:min-h-0 lg:max-w-[480px]" data-testid="checkout-form">
-      {/* En-tête compact : retour + petit titre (nom du jeu sur une ligne),
-          le gros titre « Finaliser la commande » et la pastille « JEU · NOM »
-          sont retirés ; l'étape courante reste portée par le stepper ci-dessous
-          via aria-label sur chaque point. */}
-      <div className="flex items-center gap-3">
-        <BackButton onClick={back} testId="checkout-back" />
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[15px] font-bold leading-tight sm:text-base" data-testid="checkout-title">{game?.name || t("checkout.title")}</h1>
+  // Jeton reçu (invisible ou après interaction) : poursuite automatique — le
+  // jeton est passé explicitement (state pas encore à jour au même rendu).
+  const handleCaptchaVerify = (token) => {
+    captcha.onVerify(token);
+    if (token && pendingSubmit.current) submitOrder(token);
+  };
+
+  const canSubmit = !!verified && !!method && (method !== "binance" || !!network);
+
+  if (items.length === 0 && !recovering) {
+    return (
+      <div className="mx-auto flex min-h-[100svh] max-w-[480px] flex-col" data-testid="checkout-form">
+        <header className="flex h-[52px] flex-none items-center px-1">
+          <BackButton onClick={back} testId="checkout-back" />
+        </header>
+        <div className="flex flex-1 items-center justify-center py-24 text-center" data-testid="checkout-empty">
+          <div>
+            <p className="text-muted-foreground">{t("cart.empty")}</p>
+            <Button type="button" onClick={back} className="mt-4 rounded-full" data-testid="checkout-browse">{t("cart.browse")}</Button>
+          </div>
         </div>
       </div>
-      {/* Stepper 4 points compact (labels remplacés par l'aria de chaque point). */}
-      <CheckoutSteps step={step} />
-      {/* Screens : pas d'`overflow-hidden` ici — il tuerait tout `sticky`
-          descendant ; le glissement horizontal reste clippé par le
-          `overflow-x-hidden` racine du Layout. */}
-      <div className="relative mt-4 flex flex-1 flex-col">
-        <AnimatePresence mode="popLayout" initial={false} custom={dir}>
-          <motion.div key={step} custom={dir} variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.24, ease: "easeOut" }} className="flex w-full flex-1 flex-col" data-testid={`checkout-screen-${step + 1}`}>
-            {screens[step]}
-          </motion.div>
-        </AnimatePresence>
-        {/* Captcha : hors des écrans animés, après la zone étirée — la
-            commande est créée au clic de l'étape 2 (toutes les méthodes,
-            PL-CHK-2) — visible et validé pendant tout le parcours ; le
-            temps d'apparition (étapes >= 1) et l'alignement sont inchangés. */}
-        {step >= 1 && captcha.enabled && (
-          <div className="mt-5 rounded-[18px] bg-muted/30 p-3" data-testid="checkout-captcha">
-            <CaptchaWidget key={captchaKey} ref={captcha.ref} onVerify={captcha.onVerify} onError={captcha.onError} />
+    );
+  }
+
+  return (
+    // Colonne 480 px (desktop) ; mobile : plein écran, CTA collé en bas.
+    <div className="mx-auto flex min-h-[100svh] w-full max-w-[480px] flex-col lg:min-h-0" data-testid="checkout-form">
+      {/* En-tête minimal (mode focalisé) : retour + nom du jeu. */}
+      <header className="flex h-[52px] flex-none items-center gap-2 px-1">
+        <BackButton onClick={back} testId="checkout-back" />
+        <h1 className="min-w-0 flex-1 truncate text-[16px] font-extrabold leading-tight" data-testid="checkout-title">{game?.name || t("checkout.title")}</h1>
+        <span className="h-8 w-8 shrink-0" aria-hidden="true" />
+      </header>
+
+      <div className="flex min-h-0 flex-1 flex-col px-1 pb-2">
+        {/* Montant en grand. */}
+        <div className="border-b border-[color:var(--rule)] pb-3 pt-1" data-testid="checkout-amount-block">
+          <p className="text-xs text-muted-foreground">{t("checkout.youPay")}</p>
+          <p className="my-0.5 font-display text-[32px] font-extrabold leading-tight tracking-[-0.01em]" data-testid="checkout-amount">{formatAr(total)} <span className="text-[15px] font-bold text-muted-foreground">Ar</span></p>
+          <div className="flex items-center justify-between text-[13px] text-muted-foreground">
+            <span>{t("checkout.youReceive")}</span>
+            <b className="text-foreground" data-testid="checkout-receive">{receiveText}</b>
           </div>
+          {fee > 0 && <p className="mt-1 text-xs text-muted-foreground" data-testid="checkout-fee-line">{t("checkout.paymentFee")} : {formatAr(fee)} Ar</p>}
+        </div>
+
+        {/* ID joueur : ID et pseudo sur DEUX lignes séparées, coche + pseudo,
+            lien « Changer ». Tant que ce n'est pas vérifié : vérification
+            générique (IdentityFieldsVerify, tous jeux). */}
+        <div className="pt-3">
+          <p className="mb-1.5 text-xs text-muted-foreground">{t("checkout.playerIdLabel")}</p>
+          {verified && !editingId ? (
+            <div data-testid="checkout-player-verified">
+              <div className="flex h-[46px] items-center justify-between rounded-[14px] border border-[color:var(--rule)] bg-card px-3.5">
+                <span className="num truncate text-[15px] font-bold" data-testid="checkout-player-id">{shownId}</span>
+                <button type="button" onClick={() => setEditingId(true)} className="shrink-0 text-xs font-bold text-primary" data-testid="checkout-change-id">{t("checkout.change")}</button>
+              </div>
+              <p className="mt-1.5 flex items-center gap-2 text-[13px] font-bold text-primary" data-testid="checkout-player-ok">
+                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-primary text-[#0A0A0A]" aria-hidden="true"><Check className="h-3 w-3" strokeWidth={3} /></span>
+                <span className="min-w-0 truncate" data-testid="checkout-player-pseudo">{verified.name || "—"}</span>
+              </p>
+            </div>
+          ) : (
+            <IdentityFieldsVerify
+              spec={identitySpec} gameId={gameId}
+              values={identityValues} setValues={setIdentityValues}
+              onVerified={handleVerified} autoTrigger={autoVerify}
+              initial={verified} />
+          )}
+        </div>
+
+        {/* Mode de paiement : lignes séparées (jamais de méthode désactivée). */}
+        <div className="pt-3">
+          <p className="mb-1.5 text-xs text-muted-foreground">{t("checkout.payment")}</p>
+          <div className="flex flex-col gap-1.5" data-testid="payment-methods">
+            {mvolaActive && <MethodLine testId="method-mvola" logo={PAYMENT_LOGOS.mvola} name="MVola" sub={t("checkout.methodManualSub")} selected={method === "mvola"} onSelect={() => setMethod("mvola")} />}
+            {orangeActive && <MethodLine testId="method-orange" logo={PAYMENT_LOGOS.orange} name="Orange Money" sub={t("checkout.methodManualSub")} selected={method === "orange"} onSelect={() => setMethod("orange")} />}
+            {binanceActive && (
+              <div>
+                <MethodLine testId="method-binance" logo={PAYMENT_LOGOS.binance} name="Binance" sub={t("checkout.methodBinanceSub")} selected={method === "binance"} onSelect={() => setMethod("binance")} />
+                {method === "binance" && crypto?.networks?.length > 0 && (
+                  <div className="px-3 pb-3 pt-2" data-testid="payment-expanded-binance">
+                    <NetworkPicker crypto={crypto} network={network} setNetwork={setNetwork} />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Remarque courte — UNE seule, selon la méthode choisie. */}
+        {method && (
+          <p className="mt-auto flex gap-2 pb-1 pt-3 text-[12.5px] leading-[1.45] text-muted-foreground" data-testid="checkout-remark">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>{t(method === "mvola" ? "checkout.remarkMvola" : method === "orange" ? "checkout.remarkOrange" : "checkout.remarkBinance")}</span>
+          </p>
         )}
       </div>
+
+      {/* Bouton principal fixé en bas (mobile) ; ≥1024 px : flux normal. */}
+      <div className="sticky bottom-0 z-10 flex-none bg-[color:hsl(var(--background))] px-1 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 lg:static lg:z-auto lg:bg-transparent lg:pb-2">
+        <Button type="button" onClick={onPlaceOrder} disabled={!canSubmit || busy} data-testid="checkout-submit" className="h-[52px] w-full rounded-full text-[15px] font-extrabold">
+          {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.creating")}</> : t("checkout.placeOrder")}
+        </Button>
+      </div>
+
+      {/* Feuille « Vérification de sécurité » (écran 9) — TOUJOURS montée quand
+          le CAPTCHA est actif : le widget tourne invisiblement dedans
+          (interaction-only), la feuille n'apparaît que si Cloudflare demande
+          une action. visibility:hidden (pas display:none) : le widget reste
+          rendu ; aucune hauteur réservée dans la page (position:fixed). */}
+      {captcha.enabled && (
+        <div
+          className={`fixed inset-0 z-50 ${captchaOpen ? "" : "invisible pointer-events-none"}`}
+          role="dialog" aria-modal="true" aria-hidden={!captchaOpen} data-testid="captcha-sheet"
+          onKeyDown={(e) => { if (e.key === "Escape" && !busy) { pendingSubmit.current = false; setCaptchaOpen(false); } }}
+        >
+          <div className="absolute inset-0 bg-black/60" onClick={() => { if (!busy) { pendingSubmit.current = false; setCaptchaOpen(false); } }} />
+          <div className="absolute inset-x-0 bottom-0 rounded-t-[24px] border-t border-[color:var(--rule)] bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-1/2 lg:w-[480px] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-[24px]">
+            <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-[color:var(--rule-strong)]" aria-hidden="true" />
+            <h2 className="text-[18px] font-extrabold" data-testid="captcha-sheet-title">{t("checkout.captchaSheetTitle")}</h2>
+            <p className="mb-3 mt-0.5 text-[13px] leading-snug text-muted-foreground">{t("checkout.captchaSheetSub")}</p>
+            <CaptchaWidget key={captchaKey} ref={captcha.ref} onVerify={handleCaptchaVerify} onInteractive={(needed) => { if (needed) setCaptchaOpen(true); }} />
+            <div className="mt-3">
+              <Button type="button" onClick={() => submitOrder()} disabled={!captcha.ready || busy} data-testid="captcha-sheet-submit" className="h-[52px] w-full rounded-full text-[15px] font-extrabold">
+                {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.creating")}</> : t("checkout.placeOrder")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+// Ligne de méthode (maquette : logo, nom + sous-titre, pastille de choix) ;
+// la ligne choisie porte le contour `--brand-lime`. Pastille neutre aux jetons
+// si le logo manque (aucune couleur de marque inventée).
+function MethodLine({ testId, logo, name, sub, selected, onSelect }) {
+  return (
+    <button type="button" data-testid={testId} aria-pressed={selected} onClick={onSelect}
+      className={`flex min-h-[46px] w-full items-center gap-3 rounded-[14px] border bg-card px-3.5 py-2 text-left transition-colors motion-reduce:transition-none ${selected ? "border-[color:var(--brand-lime)]" : "border-[color:var(--rule)]"}`}>
+      {logo
+        ? <img src={logo} alt="" aria-hidden="true" className="h-[26px] w-[26px] shrink-0 rounded-[8px] object-contain" />
+        : <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[8px] bg-muted text-xs font-black text-muted-foreground" aria-hidden="true">{name.slice(0, 1)}</span>}
+      <span className="min-w-0 flex-1">
+        <span className="block text-[14px] font-bold leading-tight">{name}</span>
+        <span className="mt-0.5 block text-[11px] text-muted-foreground">{sub}</span>
+      </span>
+      <span className={`h-[18px] w-[18px] shrink-0 rounded-full border-2 ${selected ? "border-[color:var(--brand-lime)] bg-[radial-gradient(var(--brand-lime)_45%,transparent_50%)]" : "border-[color:var(--rule-strong)]"}`} aria-hidden="true" />
+    </button>
   );
 }
