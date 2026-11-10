@@ -146,6 +146,7 @@ def ctx(monkeypatch, client, loop):
     alerts = _Alerts()
     monkeypatch.setattr("services.notifications.schedule", alerts)
     monkeypatch.setattr(binance_watcher.notifications, "schedule", alerts)
+    proofs.reset_db_usage_cache()  # PL-PROOF-QUOTA-1 : cache module global, jamais partagé entre tests
     _arun(core_db.ensure_indexes)
     yield SimpleNamespace(db=sync_db, alerts=alerts)
     loop.run_until_complete(_close_client(async_client))
@@ -578,6 +579,17 @@ class TestProofPurge:
                                       for stored_id in stored_ids],
                       updated_at=stamp)
 
+    def test_retention_of_three_days_is_honoured(self, ctx, monkeypatch):
+        # PL-PROOF-QUOTA-1 : la rétention reste lue dans l'environnement (Render la réglera à 3).
+        monkeypatch.setenv("PROOF_RETENTION_DAYS", "3")
+        old = self._final_order(ctx, [_stored(b"1")], ages_days=4)
+        recent = self._final_order(ctx, [_stored(b"2")], ages_days=2)
+
+        assert _arun(order_maintenance.purge_order_proofs())["purged_blobs"] == 1
+        assert ctx.db.orders.find_one({"id": old["id"]})["payment_proofs"][0]["purged_at"]
+        assert "purged_at" not in ctx.db.orders.find_one({"id": recent["id"]})["payment_proofs"][0]
+        assert ctx.db["payment_proofs.files"].count_documents({}) == 1
+
     def test_purge_is_idempotent_and_keeps_metadata(self, ctx):
         order = self._final_order(ctx, [_stored(b"1"), _stored(b"2")])
 
@@ -654,3 +666,199 @@ class TestCronRoute:
     def test_route_is_closed_without_token(self, client, monkeypatch, ctx):
         monkeypatch.delenv("CRON_TOKEN", raising=False)
         assert client.post("/api/internal/orders/run").status_code == 503
+
+
+# --------------------------------------------------------------------------- #
+# PL-PROOF-QUOTA-1 — garde-fou sur la taille RÉELLE de la base (dbStats)
+# --------------------------------------------------------------------------- #
+MB = 1024 * 1024
+
+
+def _db_stats(monkeypatch, value):
+    """Remplace la lecture `dbStats` et vide le cache (une valeur fixe, comptée)."""
+    calls = []
+
+    async def fake():
+        calls.append(value)
+        return value
+
+    monkeypatch.setattr(proofs, "_read_db_stats", fake)
+    proofs.reset_db_usage_cache()
+    return calls
+
+
+class TestDbStats:
+    def test_storage_plus_index_size(self, monkeypatch):
+        class FakeDatabase:
+            async def command(self, name, **kwargs):
+                assert name == "dbStats" and kwargs.get("scale") == 1
+                return {"storageSize": 300, "indexSize": 45}
+
+        monkeypatch.setattr(proofs, "db", FakeDatabase())
+        proofs.reset_db_usage_cache()
+        assert _arun(proofs.db_usage_bytes) == 345
+
+    def test_error_or_refused_command_is_unknown_never_an_exception(self, monkeypatch):
+        from pymongo.errors import OperationFailure
+
+        for error in (RuntimeError("mongo down"), OperationFailure("not allowed")):
+            class FakeDatabase:
+                async def command(self, *args, **kwargs):
+                    raise error
+
+            monkeypatch.setattr(proofs, "db", FakeDatabase())
+            proofs.reset_db_usage_cache()
+            assert _arun(proofs.db_usage_bytes) is None
+
+    def test_cache_is_used_for_five_minutes(self, monkeypatch):
+        calls = _db_stats(monkeypatch, 123)
+        clock = [1000.0]
+        monkeypatch.setattr(proofs, "_clock", lambda: clock[0])
+        proofs.reset_db_usage_cache()
+
+        assert _arun(proofs.db_usage_bytes) == 123
+        clock[0] += 299  # toujours dans la fenêtre
+        assert _arun(proofs.db_usage_bytes) == 123
+        assert len(calls) == 1
+        clock[0] += 2  # 301 s : re-mesure
+        assert _arun(proofs.db_usage_bytes) == 123
+        assert len(calls) == 2
+
+
+class TestDbQuotaGuard:
+    def test_full_database_refuses_with_the_existing_503_and_keeps_the_order(self, client, monkeypatch, ctx):
+        _db_stats(monkeypatch, 10 * MB)
+        monkeypatch.setenv("PROOF_DB_MAX_MB", "0")  # seuil atteint pour toute taille connue
+        order = _order(ctx)
+
+        r = _upload(client, order["id"], [_file(_png())])
+        assert r.status_code == 503
+        # Contrat IDENTIQUE au quota d'images existant (même corps, même message).
+        assert r.json()["detail"] == "Envoi de preuve indisponible."
+        document = ctx.db.orders.find_one({"id": order["id"]})
+        assert document["status"] == "pending_payment"
+        assert document["payment_proofs"] == []
+        assert ctx.db["payment_proofs.files"].count_documents({}) == 0
+        assert len(ctx.alerts.named("notify_proof_db_full")) == 1
+
+        # Deuxième refus du même dépassement : une seule alerte.
+        assert _upload(client, order["id"], [_file(_png())]).status_code == 503
+        assert len(ctx.alerts.named("notify_proof_db_full")) == 1
+
+    def test_alert_fires_again_after_a_recovery(self, client, monkeypatch, ctx):
+        _db_stats(monkeypatch, 10 * MB)
+        monkeypatch.setenv("PROOF_DB_MAX_MB", "0")
+        blocked = _order(ctx)
+        assert _upload(client, blocked["id"], [_file(_png())]).status_code == 503
+        assert len(ctx.alerts.named("notify_proof_db_full")) == 1
+
+        monkeypatch.setenv("PROOF_DB_MAX_MB", "100")  # 100 Mo > 10 Mo : un envoi repasse
+        recovered = _order(ctx)
+        assert _upload(client, recovered["id"], [_file(_png())]).status_code == 200
+        assert ctx.db["proof_db_alerts"].count_documents({}) == 0  # marqueur refermé
+
+        monkeypatch.setenv("PROOF_DB_MAX_MB", "0")
+        again = _order(ctx)
+        assert _upload(client, again["id"], [_file(_png())]).status_code == 503
+        assert len(ctx.alerts.named("notify_proof_db_full")) == 2
+
+    def test_unknown_database_size_blocks_nothing(self, client, monkeypatch, ctx):
+        _db_stats(monkeypatch, None)  # commande refusée / panne : taille inconnue
+        monkeypatch.setenv("PROOF_DB_MAX_MB", "0")
+        order = _order(ctx)
+
+        assert _upload(client, order["id"], [_file(_png())]).status_code == 200
+        assert ctx.db.orders.find_one({"id": order["id"]})["status"] == "proof_submitted"
+        assert not ctx.alerts.named("notify_proof_db_full")
+
+
+class TestStorageWarning:
+    def test_one_daily_alert_and_only_one(self, monkeypatch, ctx):
+        _db_stats(monkeypatch, 360 * MB)
+        monkeypatch.setenv("PROOF_DB_WARN_MB", "350")
+        monkeypatch.setenv("PROOF_MAX_TOTAL_MB", "150")
+        day1 = datetime(2026, 11, 10, 8, tzinfo=timezone.utc)
+
+        first = _arun(order_maintenance.run_all, day1)
+        assert first["storage_alerts"] == 1
+        alerts = ctx.alerts.named("notify_storage_warning")
+        assert len(alerts) == 1
+        db_bytes, db_limit, _proofs_bytes, _proofs_limit, day = alerts[0][1]
+        assert db_bytes == 360 * MB and db_limit == 400 * MB and day == "2026-11-10"
+
+        second = _arun(order_maintenance.run_all, day1)
+        assert second["storage_alerts"] == 0
+        assert len(ctx.alerts.named("notify_storage_warning")) == 1
+
+        third = _arun(order_maintenance.run_all, day1 + timedelta(days=1))
+        assert third["storage_alerts"] == 1
+        assert len(ctx.alerts.named("notify_storage_warning")) == 2
+
+    def test_proofs_at_eighty_percent_trigger_the_warning(self, monkeypatch, ctx):
+        _db_stats(monkeypatch, 1 * MB)
+        monkeypatch.setenv("PROOF_MAX_TOTAL_MB", "100")
+
+        async def fake_usage():
+            return 80 * MB
+
+        monkeypatch.setattr(proofs, "usage_bytes", fake_usage)
+        day = datetime(2026, 11, 10, tzinfo=timezone.utc)
+        assert _arun(proofs.check_storage_warnings, day) == {"storage_alerts": 1}
+        assert len(ctx.alerts.named("notify_storage_warning")) == 1
+
+    def test_below_thresholds_no_alert(self, monkeypatch, ctx):
+        _db_stats(monkeypatch, 100 * MB)
+        monkeypatch.setenv("PROOF_MAX_TOTAL_MB", "150")
+        day = datetime(2026, 11, 10, tzinfo=timezone.utc)
+
+        assert _arun(proofs.check_storage_warnings, day) == {"storage_alerts": 0}
+        assert not ctx.alerts.named("notify_storage_warning")
+
+
+class TestStorageRoute:
+    def _headers(self, ctx):
+        _admin, headers = _user(ctx, role="admin", permissions=["orders.manage"])
+        return headers
+
+    def test_route_is_protected_and_payload_is_minimal(self, client, ctx):
+        assert client.get("/api/admin/storage").status_code == 401
+        _customer, customer_headers = _user(ctx)
+        assert client.get("/api/admin/storage", headers=customer_headers).status_code == 403
+        _no_perm, no_perm_headers = _user(ctx, role="admin", permissions=[])
+        assert client.get("/api/admin/storage", headers=no_perm_headers).status_code == 403
+
+        _stored(b"proof")  # proofs_count = 1, aucun ordre nécessaire
+        r = client.get("/api/admin/storage", headers=self._headers(ctx))
+        assert r.status_code == 200
+        body = r.json()
+        assert set(body) == {"db_bytes", "db_limit_mb", "proofs_bytes", "proofs_limit_mb",
+                             "proofs_count", "status"}
+        assert body["db_limit_mb"] == 400 and body["proofs_limit_mb"] == 150
+        assert body["proofs_count"] == 1 and body["status"] == "ok"
+        # Aucune donnée de commande ni de client.
+        assert all(key not in body for key in ("orders", "users", "email", "pubg_id"))
+
+    def test_status_ok_warn_full_unknown(self, client, monkeypatch, ctx):
+        headers = self._headers(ctx)
+        value = [10 * MB]
+
+        async def fake():
+            return value[0]
+
+        monkeypatch.setattr(proofs, "_read_db_stats", fake)
+
+        proofs.reset_db_usage_cache()
+        assert client.get("/api/admin/storage", headers=headers).json()["status"] == "ok"
+
+        proofs.reset_db_usage_cache()
+        value[0] = 360 * MB
+        assert client.get("/api/admin/storage", headers=headers).json()["status"] == "warn"
+
+        proofs.reset_db_usage_cache()
+        value[0] = 400 * MB
+        assert client.get("/api/admin/storage", headers=headers).json()["status"] == "full"
+
+        proofs.reset_db_usage_cache()
+        value[0] = None
+        body = client.get("/api/admin/storage", headers=headers).json()
+        assert body["status"] == "unknown" and body["db_bytes"] is None

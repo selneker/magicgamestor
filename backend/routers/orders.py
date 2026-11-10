@@ -452,6 +452,13 @@ async def _proof_quota_saturated(background: BackgroundTasks, used: int) -> None
                                used, proof_store.max_total_bytes())
 
 
+async def _proof_db_saturated(background: BackgroundTasks, used: int) -> None:
+    """Alerte « base saturée » une seule fois par dépassement (marqueur distinct du quota images)."""
+    if await proof_store.db_alert_once():
+        notifications.schedule(background, notifications.notify_proof_db_full,
+                               used, proof_store.db_max_bytes())
+
+
 @router.post("/orders/{order_id}/proof")
 async def upload_order_proof(order_id: str, request: Request, background: BackgroundTasks,
                              files: list[UploadFile] = File(...),
@@ -471,6 +478,12 @@ async def upload_order_proof(order_id: str, request: Request, background: Backgr
         raise _proof_error("Le délai de paiement est dépassé.", "proof_deadline_passed")
     if not proof_store.storage_enabled():
         # Désactivation propre : le site continue de fonctionner, seule cette fonction est indisponible.
+        raise HTTPException(status_code=503, detail="Envoi de preuve indisponible.")
+    # PL-PROOF-QUOTA-1 : la base ENTIÈRE (Atlas gratuit = 512 Mo) refuse les écritures une fois
+    # pleine. Taille inconnue = on ne bloque pas (comportement historique inchangé).
+    db_bytes = await proof_store.db_usage_bytes()
+    if db_bytes is not None and db_bytes >= proof_store.db_max_bytes():
+        await _proof_db_saturated(background, db_bytes)
         raise HTTPException(status_code=503, detail="Envoi de preuve indisponible.")
     used_bytes = await proof_store.usage_bytes()
     if used_bytes >= proof_store.max_total_bytes():
@@ -550,6 +563,7 @@ async def upload_order_proof(order_id: str, request: Request, background: Backgr
 
     # Un envoi accepté referme la série : un futur dépassement alertera de nouveau l'admin.
     await proof_store.clear_quota_alert()
+    await proof_store.clear_db_alert()
     await audit("order.proof_submitted", (user or {}).get("user_id") or f"ip:{ip}", order_id,
                 {"count": len(prepared)})
     notifications.schedule(background, notifications.notify_proof_submitted,
@@ -745,6 +759,30 @@ async def admin_stats():
         "by_method": {r["_id"]: r["count"] for r in by_method}, "daily": list(reversed(daily)), "top_products": top,
         "customers": await db.users.count_documents({"role": "customer"}),
         "pending_payment_count": len(pending_orders), "pending_payment_usd": round(pending_usd, 2),
+    }
+
+
+@router.get("/admin/storage", dependencies=[Depends(require_permission("orders.manage"))])
+async def admin_storage():
+    """État du stockage (base entière + preuves). Aucune donnée de commande ni de client."""
+    db_bytes = await proof_store.db_usage_bytes()
+    proofs_bytes = await proof_store.usage_bytes()
+    proofs_limit = proof_store.max_total_bytes()
+    if db_bytes is None:
+        status = "unknown"  # taille de la base illisible : ni ok ni pleine par défaut
+    elif db_bytes >= proof_store.db_max_bytes() or proofs_bytes >= proofs_limit:
+        status = "full"
+    elif db_bytes >= proof_store.db_warn_bytes() or proofs_bytes * 5 >= proofs_limit * 4:
+        status = "warn"
+    else:
+        status = "ok"
+    return {
+        "db_bytes": db_bytes,
+        "db_limit_mb": proof_store.db_max_mb(),
+        "proofs_bytes": proofs_bytes,
+        "proofs_limit_mb": proof_store.max_total_mb(),
+        "proofs_count": await proof_store.count_files(),
+        "status": status,
     }
 
 

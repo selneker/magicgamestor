@@ -12,13 +12,19 @@ Règles volontairement strictes :
 Le stockage est un bucket GridFS dédié (`payment_proofs`) dans la base MongoDB du site : aucun
 service externe, aucun réseau supplémentaire. `PROOF_STORAGE_ENABLED=false` désactive proprement
 les envois (503) sans affecter le reste du site. `PROOF_MAX_TOTAL_MB` plafonne l'espace occupé par
-les images (Atlas gratuit = 512 Mo pour tout le site) ; la purge des preuves anciennes libère la
-place.
+les images ; la purge des preuves anciennes libère la place.
+
+PL-PROOF-QUOTA-1 ajoute un garde-fou sur la base ENTIÈRE (Atlas gratuit = 512 Mo tout compris,
+écritures refusées une fois plein) : `PROOF_DB_MAX_MB` refuse les envois au-delà, et
+`PROOF_DB_WARN_MB` déclenche une alerte précoce. La taille vient de `dbStats`
+(`storageSize + indexSize`), mise en cache 5 minutes ; une commande refusée ou une panne rend la
+taille inconnue (`None`) et ne bloque jamais rien.
 """
 import hashlib
 import io
 import logging
 import os
+import time
 import uuid
 from datetime import datetime, timezone
 
@@ -46,6 +52,17 @@ DEFAULT_MAX_TOTAL_MB = 150
 # Marqueur du dépassement déjà notifié (une alerte par dépassement, pas une par requête).
 QUOTA_ALERTS = "proof_storage_alerts"
 QUOTA_ALERT_ID = "proofs-quota"
+
+# PL-PROOF-QUOTA-1 — garde-fou sur la taille RÉELLE de toute la base (Atlas gratuit = 512 Mo).
+# Refus au-delà de `PROOF_DB_MAX_MB` (défaut 400), alerte précoce au-delà de `PROOF_DB_WARN_MB`
+# (défaut 350). Mesure `dbStats` (storageSize + indexSize) mise en cache 5 minutes.
+DEFAULT_DB_MAX_MB = 400
+DEFAULT_DB_WARN_MB = 350
+DB_USAGE_CACHE_S = 300
+DB_ALERTS = "proof_db_alerts"
+DB_ALERT_ID = "proofs-db"
+DB_WARNINGS = "proof_storage_warnings"
+DB_WARN_ID = "proofs-db-warn"
 
 
 class ProofError(Exception):
@@ -75,14 +92,42 @@ def storage_enabled() -> bool:
     return _env("PROOF_STORAGE_ENABLED").lower() not in ("0", "false", "no", "off")
 
 
-def max_total_bytes() -> int:
-    """Quota total des images (`PROOF_MAX_TOTAL_MB`, 150 Mo par défaut, jamais négatif)."""
-    raw = _env("PROOF_MAX_TOTAL_MB")
+def _env_mb(name: str, default: int) -> int:
+    """Valeur en Mo lue dans l'environnement, jamais négative, défaut si illisible."""
+    raw = _env(name)
     try:
-        megabytes = int(raw) if raw else DEFAULT_MAX_TOTAL_MB
+        megabytes = int(raw) if raw else default
     except ValueError:
-        megabytes = DEFAULT_MAX_TOTAL_MB
-    return max(0, megabytes) * 1024 * 1024
+        megabytes = default
+    return max(0, megabytes)
+
+
+def max_total_mb() -> int:
+    """Quota total des images (`PROOF_MAX_TOTAL_MB`, 150 Mo par défaut)."""
+    return _env_mb("PROOF_MAX_TOTAL_MB", DEFAULT_MAX_TOTAL_MB)
+
+
+def max_total_bytes() -> int:
+    """Quota total des images en octets (jamais négatif)."""
+    return max_total_mb() * 1024 * 1024
+
+
+def db_max_mb() -> int:
+    """Refus des envois au-delà de cette taille de base (`PROOF_DB_MAX_MB`, 400 Mo)."""
+    return _env_mb("PROOF_DB_MAX_MB", DEFAULT_DB_MAX_MB)
+
+
+def db_max_bytes() -> int:
+    return db_max_mb() * 1024 * 1024
+
+
+def db_warn_mb() -> int:
+    """Seuil d'alerte précoce (`PROOF_DB_WARN_MB`, 350 Mo)."""
+    return _env_mb("PROOF_DB_WARN_MB", DEFAULT_DB_WARN_MB)
+
+
+def db_warn_bytes() -> int:
+    return db_warn_mb() * 1024 * 1024
 
 
 # --------------------------------------------------------------------------- #
@@ -206,24 +251,131 @@ async def has_room(extra_bytes: int = 0) -> bool:
     return await usage_bytes() + max(0, extra_bytes) <= max_total_bytes()
 
 
-async def quota_alert_once() -> bool:
-    """Réserve l'alerte de dépassement ; vrai seulement pour le premier refus de la série."""
+async def _marker_once(collection: str, marker_id: str) -> bool:
+    """Réserve un marqueur atomique ; vrai seulement s'il vient d'être créé.
+
+    Une panne d'écriture est journalisée et vaut « pas d'alerte » : l'observabilité ne casse
+    jamais la requête en cours (`quota_alert_once` historique et alertes PL-PROOF-QUOTA-1).
+    """
     now = datetime.now(timezone.utc).isoformat()
     try:
-        result = await db[QUOTA_ALERTS].update_one(
-            {"_id": QUOTA_ALERT_ID},
+        result = await db[collection].update_one(
+            {"_id": marker_id},
             {"$setOnInsert": {"created_at": now, "updated_at": now}},
             upsert=True,
         )
     except Exception as exc:  # type: ignore[attr-defined]
-        logger.warning("Marqueur de quota illisible (%s)", type(exc).__name__)
+        logger.warning("Marqueur d'alerte illisible (%s)", type(exc).__name__)
         return False
     return result.upserted_id is not None
 
 
+async def _marker_clear(collection: str, marker_id: str) -> None:
+    """Efface un marqueur (idempotent, jamais d'exception)."""
+    try:
+        await db[collection].delete_one({"_id": marker_id})
+    except Exception as exc:  # type: ignore[attr-defined]
+        logger.warning("Marqueur d'alerte non effacé (%s)", type(exc).__name__)
+
+
+async def count_files() -> int:
+    """Nombre de fichiers de preuve stockés (0 si illisible, jamais d'exception)."""
+    try:
+        return int(await db[f"{BUCKET}.files"].count_documents({}))
+    except Exception as exc:  # type: ignore[attr-defined]
+        logger.warning("Nombre de preuves illisible (%s)", type(exc).__name__)
+        return 0
+
+
+async def quota_alert_once() -> bool:
+    """Réserve l'alerte de dépassement ; vrai seulement pour le premier refus de la série."""
+    return await _marker_once(QUOTA_ALERTS, QUOTA_ALERT_ID)
+
+
 async def clear_quota_alert() -> None:
     """Efface le marqueur dès qu'un envoi repasse : un futur dépassement alertera de nouveau."""
+    await _marker_clear(QUOTA_ALERTS, QUOTA_ALERT_ID)
+
+
+# --------------------------------------------------------------------------- #
+# PL-PROOF-QUOTA-1 — taille réelle de la base, refus et alertes
+# --------------------------------------------------------------------------- #
+_clock = time.monotonic
+# Cache (horodatage monotone, octets ou None) : évite un `dbStats` à chaque requête.
+_db_usage_cache: tuple[float, int | None] | None = None
+
+
+def reset_db_usage_cache() -> None:
+    """Vide le cache de taille (tests et diagnostic manuel uniquement)."""
+    global _db_usage_cache
+    _db_usage_cache = None
+
+
+async def _read_db_stats() -> int | None:
+    """`storageSize + indexSize` de la base courante, ou `None` si la commande échoue.
+
+    `dbStats` est autorisé sur le niveau gratuit d'Atlas pour la base du site (seules `local` et
+    `config` sont interdites). Toute erreur ou refus reste une valeur inconnue, jamais une exception.
+    """
     try:
-        await db[QUOTA_ALERTS].delete_one({"_id": QUOTA_ALERT_ID})
+        stats = await db.command("dbStats", scale=1)
+        return int(stats.get("storageSize") or 0) + int(stats.get("indexSize") or 0)
     except Exception as exc:  # type: ignore[attr-defined]
-        logger.warning("Marqueur de quota non effacé (%s)", type(exc).__name__)
+        logger.warning("Taille de la base illisible (%s)", type(exc).__name__)
+        return None
+
+
+async def db_usage_bytes() -> int | None:
+    """Taille réelle de la base (octets), en cache 5 minutes ; `None` = inconnue."""
+    global _db_usage_cache
+    now = _clock()
+    if _db_usage_cache is not None and now - _db_usage_cache[0] < DB_USAGE_CACHE_S:
+        return _db_usage_cache[1]
+    value = await _read_db_stats()
+    _db_usage_cache = (now, value)
+    return value
+
+
+async def db_alert_once() -> bool:
+    """Réserve l'alerte « base saturée » ; vrai une seule fois par dépassement."""
+    return await _marker_once(DB_ALERTS, DB_ALERT_ID)
+
+
+async def clear_db_alert() -> None:
+    """Un envoi accepté referme la série : un prochain dépassement alertera de nouveau."""
+    await _marker_clear(DB_ALERTS, DB_ALERT_ID)
+
+
+def _day(now: datetime | None = None) -> str:
+    """Jour UTC `AAAA-MM-JJ` (clé de l'alerte quotidienne)."""
+    moment = now or datetime.now(timezone.utc)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(timezone.utc).strftime("%Y-%m-%d")
+
+
+async def storage_warning_once(now: datetime | None = None) -> bool:
+    """Réserve l'alerte précoce du jour ; vrai seulement au premier passage de la journée UTC."""
+    return await _marker_once(DB_WARNINGS, f"{DB_WARN_ID}:{_day(now)}")
+
+
+async def check_storage_warnings(now: datetime | None = None) -> dict:
+    """Alerte précoce quotidienne (base ou preuves proches du plafond). Ne lève jamais.
+
+    Appelée par la tâche planifiée existante (`POST /api/internal/orders/run`). Une seule
+    notification par jour UTC, même si la tâche tourne plusieurs fois.
+    """
+    db_bytes = await db_usage_bytes()
+    proofs_bytes = await usage_bytes()
+    proofs_limit = max_total_bytes()
+    over_db = db_bytes is not None and db_bytes >= db_warn_bytes()
+    over_proofs = proofs_limit > 0 and proofs_bytes >= proofs_limit * 80 // 100
+    if not (over_db or over_proofs):
+        return {"storage_alerts": 0}
+    if not await storage_warning_once(now):
+        return {"storage_alerts": 0}
+    from services import notifications  # import local : garde ce module sans dépendance d'alerte
+
+    notifications.schedule(None, notifications.notify_storage_warning,
+                           db_bytes, db_max_bytes(), proofs_bytes, proofs_limit, _day(now))
+    return {"storage_alerts": 1}
