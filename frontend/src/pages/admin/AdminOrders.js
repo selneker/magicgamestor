@@ -7,17 +7,24 @@ import { paymentLabel } from "@/lib/paymentLabels";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { StatusPill } from "@/pages/OrderTrack";
+import { OrderProofs } from "@/pages/admin/OrderProofs";
 import { FzrFulfillment, lineRecord, repRecord, lineSendable } from "@/components/admin/FzrFulfillment";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CopyButton } from "@/components/admin/CopyButton";
 
-const STATUSES = ["pending_payment", "awaiting_verification", "paid", "delivered", "cancelled", "failed", "expired"];
+// PL-CHK-2 — proof_submitted et late_payment ajoutés aux filtres et aux
+// transitions (miroir exact de routers/orders.py).
+const STATUSES = ["pending_payment", "awaiting_verification", "proof_submitted", "late_payment", "paid", "delivered", "cancelled", "failed", "expired"];
 // Mirrors backend TRANSITIONS in routers/orders.py
 const TRANSITIONS = {
-  pending_payment: ["paid", "cancelled", "failed", "expired"], awaiting_verification: ["paid", "delivered", "cancelled", "failed"],
-  paid: ["delivered", "cancelled"], failed: ["paid", "cancelled"], expired: ["paid", "cancelled"], delivered: [], cancelled: [],
+  pending_payment: ["paid", "cancelled", "failed", "expired", "proof_submitted", "late_payment"],
+  awaiting_verification: ["paid", "delivered", "cancelled", "failed"],
+  proof_submitted: ["paid", "delivered", "cancelled", "failed"],
+  late_payment: ["paid", "cancelled"],
+  paid: ["delivered", "cancelled"], failed: ["paid", "cancelled"], expired: ["paid", "cancelled", "late_payment"],
+  delivered: [], cancelled: [],
 };
 const canDeliver = (s) => TRANSITIONS[s]?.includes("delivered");
 
@@ -105,7 +112,7 @@ export default function AdminOrders() {
             <div className="text-sm">
               <p className="flex flex-wrap items-center gap-1 font-semibold text-slate-900">{o.pseudo} · <span className="font-mono">{o.pubg_id}</span><CopyButton value={o.pubg_id} label="PUBG ID" testId={`copy-pubg-${o.order_number}`} /></p>
               <p className="text-slate-600">{o.items.map((i) => `${i.quantity}× ${i.name}${i.season_name ? ` · ${i.season_name}` : ""}${i.week_key ? ` · sem. ${i.week_key}` : ""}`).join(", ")}</p>
-              <p className="flex flex-wrap items-center gap-1 text-xs text-slate-500">{o.payment_method === "manual" ? <>{paymentLabel(o.payment_method, t)} · {o.manual_reference || ""}<CopyButton value={o.manual_reference} label="référence de transaction" testId={`copy-ref-${o.order_number}`} /></> : o.payment_method === "binance" ? <>{paymentLabel(o.payment_method, t)}</> : <>{paymentLabel(o.payment_method, t)} · {o.payment_phone || ""}<CopyButton value={o.payment_phone} label="numéro de paiement" testId={`copy-phone-${o.order_number}`} /></>}{o.email ? ` · ${o.email}` : ""}</p>
+              <p className="flex flex-wrap items-center gap-1 text-xs text-slate-500">{o.payment_method === "manual" ? <>{paymentLabel(o.payment_method, t)}{o.manual_reference ? <> · {o.manual_reference}<CopyButton value={o.manual_reference} label="référence de transaction" testId={`copy-ref-${o.order_number}`} /></> : null}</> : o.payment_method === "binance" ? <>{paymentLabel(o.payment_method, t)}</> : <>{paymentLabel(o.payment_method, t)} · {o.payment_phone || ""}<CopyButton value={o.payment_phone} label="numéro de paiement" testId={`copy-phone-${o.order_number}`} /></>}{o.email ? ` · ${o.email}` : ""}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="num text-xl text-foreground">{formatAr(o.total)}</span>
@@ -121,6 +128,8 @@ export default function AdminOrders() {
               {isSuperAdmin && <Button size="icon" variant="ghost" className="rounded-full text-slate-400 hover:text-rose-600" onClick={() => remove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
             </div>
             <FzrFulfillment order={o} mappedIds={mappedIds} mapStatus={mapStatus} mapComponents={mapComponents} readyCount={readyCount(o)} onChanged={load} />
+            {/* PL-CHK-2 — preuves de paiement : affichage uniquement, aucune action admin modifiée. */}
+            <OrderProofs order={o} />
           </article>
         ))}
       </div>

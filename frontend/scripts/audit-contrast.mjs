@@ -204,10 +204,23 @@ const PAYMENT_CONFIG = {
 };
 
 const ORDER = {
-  id: "ord_1", order_number: "MGS-123456", total: 2500, subtotal: 2500, payment_fee: 0, status: "pending",
+  id: "ord_1", order_number: "MGS-123456", total: 2500, subtotal: 2500, payment_fee: 0, status: "pending_payment",
   payment_method: "mvola", payment_phone: "0341234567", pubg_id: "52328390220",
+  // PL-CHK-2 — contrat preuve : le délai et la liste existent toujours.
+  payment_deadline_at: new Date(Date.now() + 20 * 60_000).toISOString(), payment_proofs: [],
   items: [{ product_id: "p1", name: "660 UC", quantity: 1, price: 2500, line_total: 2500 }],
 };
+
+// PL-CHK-2 — petites captures PNG valides (1×1) pour l'état « vignettes » de
+// l'étape 3 manuelle : le même flux que le client (champ file multiple).
+const TINY_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
+const PROOF_FILES = [
+  { name: "capture-1.png", mimeType: "image/png", buffer: TINY_PNG },
+  { name: "capture-2.png", mimeType: "image/png", buffer: TINY_PNG },
+];
 
 const USER = { user_id: "u1", email: "client@exemple.test", name: "Client", roles: [], permissions: [] };
 // Variante admin pour les pages /admin/* (ProtectedRoute exige role admin ;
@@ -266,6 +279,9 @@ const mockApi = (pathname) => {
   if (pathname.includes("/loyalty/rewards")) return [];
   if (pathname.includes("/loyalty/transfers")) return [];
   if (pathname.includes("/orders/me")) return [ORDER];
+  // PL-CHK-2 — reprise/compte à rebours : GET /orders/{id} renvoie l'état réel.
+  if (/\/orders\/(?!me)[\w-]+$/.test(pathname)) return ORDER;
+  if (pathname.includes("/payments/initiate")) return { simulated: true, payment_url: null, attempt: 1 };
   if (pathname.endsWith("/orders")) return ORDER;
   return [];
 };
@@ -286,7 +302,10 @@ const PAGES = [
   { name: "checkout-2-methode", path: "/commande", step: 2 },
   { name: "checkout-3-ussd-mvola", path: "/commande", step: 3, provider: "mvola" },
   { name: "checkout-3-ussd-orange", path: "/commande", step: 3, provider: "orange" },
-  { name: "checkout-4-reference", path: "/commande", step: 4 },
+  // PL-CHK-2 — le champ référence texte disparaît : les écrans mesurés à
+  // l'étape 3 sont maintenant la zone de preuve (vide, puis avec vignettes).
+  { name: "checkout-3-preuve", path: "/commande", step: "preuve" },
+  { name: "checkout-3-preuve-vignettes", path: "/commande", step: "preuve-vignettes" },
   { name: "statut-paiement", path: "/commande", step: "auto-status" },
   { name: "fiche-produit", path: "/produit/660-uc" },
   { name: "compte", path: "/compte", loggedIn: true },
@@ -513,21 +532,29 @@ const driveCheckout = async (pg, step) => {
     await click(pg, '[data-testid="identity-verify-btn"]', 1200);
     return true;
   }
-  // Verification PUBG Mobile : on remplit l'ID puis on declenche. L'ecran
-  // mesure est l'etat affiche APRES la reponse simulee.
+  // Verification PUBG Mobile / parcours historique : la fiche utilise dans
+  // tous les cas le composant generique (identity-field-* / identity-verify-btn,
+  // POST /fazercards/validate-id) ; l'ecran mesure est celui affiche APRES la
+  // reponse simulee (voir le mock `pubgVerify` ci-dessous).
   if (step === "pubg") {
-    await fill(pg, '[data-testid="pubg-id-input"]', "52328390220");
-    await click(pg, '[data-testid="pubg-verify-btn"]', 1200);
+    await fill(pg, '[data-testid="identity-field-player_id"]', "52328390220");
+    await click(pg, '[data-testid="identity-verify-btn"]', 1200);
     return true;
   }
   // Meme verification, sur la page fidelite (presentation reduite).
   if (step === "pubg-fidelite") {
-    await fill(pg, '[data-testid="reward-pubg-input"]', "52328390220");
-    await click(pg, '[data-testid="pubg-verify-btn"]', 1200);
+    await fill(pg, '[data-testid="identity-field-player_id"]', "52328390220");
+    await click(pg, '[data-testid="identity-verify-btn"]', 1200);
     return true;
   }
-  await fill(pg, '[data-testid="pubg-id-input"]', "52328390220");
-  await click(pg, '[data-testid="pubg-verify-btn"]', 1200);
+  // PL-CHK-2 correctif driver : le flux de vérification est celui du composant
+  // générique IdentityFieldsVerify (testids identity-field-* / identity-verify-btn,
+  // endpoint POST /fazercards/validate-id). Les anciens testids `pubg-id-input`
+  // / `pubg-verify-btn` n'existent plus dans les composants — ils faisaient
+  // échouer le pilotage en silence (fill/click inexistants → page non pilotée,
+  // état mesuré = écran d'initialisation).
+  await fill(pg, '[data-testid="identity-field-player_id"]', "52328390220");
+  await click(pg, '[data-testid="identity-verify-btn"]', 1200);
   // L'ecran de verification (etape 1) se mesure APRES la verification : c'est
   // l'etat ou le bouton « Verifier l'ID » passe en desactive. On s'arrete donc
   // ici, sans cliquer « Continuer » — sinon on mesurerait l'ecran suivant.
@@ -539,13 +566,19 @@ const driveCheckout = async (pg, step) => {
 
   if (step === 2) return true;
 
-  if (step === 3 || step === 4) {
+  // PL-CHK-2 — étape 3 : toutes les méthodes créent la commande au clic de
+  // l'étape 2 (POST /orders → ORDER). « preuve » mesure la zone vide ;
+  // « preuve-vignettes » passe par le champ file réel (setInputFiles) comme
+  // le ferait le client.
+  if (step === 3 || step === "preuve" || step === "preuve-vignettes") {
     await click(pg, '[data-testid="method-manual"]', 600);
     const provider = PAGES.find((p) => p.step === 3 && p.provider)?.provider;
     if (provider) await click(pg, `[data-testid="manual-provider-${provider}"]`, 500);
     await click(pg, '[data-testid="payment-pay"]', 1200);
-    if (step === 3) return true;
-    await click(pg, '[data-testid="manual-paid-button"]', 1200);
+    if (step === "preuve-vignettes") {
+      await pg.setInputFiles('[data-testid="proof-input"]', PROOF_FILES);
+      await pg.waitForTimeout(600);
+    }
     return true;
   }
 
@@ -622,8 +655,27 @@ const run = async () => {
           }
           // Reponse de verification simulee : c'est elle qui decide de l'etat
           // affiche (invalide, panne, compte verifie, reponse non-JSON).
+          // Le front appelle POST /fazercards/validate-id pour tous les jeux
+          // (IdentityFieldsVerify) : les pages `pubgVerify` dirigent donc ce
+          // meme endpoint ici (l'ancien appel /fazercards/pubg/validate-id
+          // n'existe plus dans les composants).
           if (p.includes("validate-id")) {
-            const v = page.validate || { valid: true, player_name: "TestPlayer" };
+            const fallback = page.validate || { valid: true, player_name: "TestPlayer" };
+            if (page.pubgVerify && !page.validate) {
+              const v = page.pubgVerify;
+              if (v.html) {
+                return route.fulfill({ status: 200, contentType: "text/html", body: "<html><body>passerelle</body></html>" });
+              }
+              if (v.status) {
+                return route.fulfill({
+                  status: v.status,
+                  contentType: "application/json",
+                  body: JSON.stringify({ detail: "upstream failure" }),
+                });
+              }
+              return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(v) });
+            }
+            const v = fallback;
             if (v.html) {
               return route.fulfill({ status: 200, contentType: "text/html", body: "<html><body>passerelle</body></html>" });
             }

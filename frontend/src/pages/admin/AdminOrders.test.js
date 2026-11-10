@@ -99,3 +99,56 @@ test("liste admin : la commande manuelle garde la copie de référence, binance 
   expect(rowText(container, "MGS-BN")).toContain("joueur@exemple.test");
   await act(async () => root.unmount());
 });
+
+// PL-CHK-2 — section « Preuves » : vignettes auth par index (blob), états d'
+// erreur 410 (purgée) / 404 (indisponible), et l'affichage des badges des deux
+// nouveau statuts de preuve.
+// Le polyfill core-js (importé via la chaîne api/OrderProofs) remplace
+// l'objet URL global APRÈS l'éval du fichier : le stub est posé dans beforeEach,
+// au moment du test, sur l'URL réellement référencée.
+beforeEach(() => {
+  URL.createObjectURL = jest.fn(() => `blob:mock-${Math.random().toString(36).slice(2)}`);
+  URL.revokeObjectURL = jest.fn();
+});
+
+test("liste admin : les statuts proof_submitted et late_payment ont leur libellé", async () => {
+  mockOrders = [order({ order_number: "MGS-PS", payment_method: "manual", status: "proof_submitted" }), order({ order_number: "MGS-LP", payment_method: "manual", status: "late_payment" })];
+  const { container, root } = await mountOrders();
+  expect(rowText(container, "MGS-PS")).toContain("Preuve en vérification");
+  expect(rowText(container, "MGS-LP")).toContain("Paiement tardif, en vérification");
+  await act(async () => root.unmount());
+});
+
+test("liste admin : section Preuves avec vignette téléchargée (GET auth par index)", async () => {
+  const { api } = require("@/lib/api");
+  api.get.mockImplementation((url) => {
+    if (url === "/admin/fazercards/mappings") return Promise.resolve({ data: { products: [] } });
+    if (url === "/admin/orders") return Promise.resolve({ data: mockOrders });
+    if (url === "/admin/orders/MGS-PS/proofs/0") return Promise.resolve({ data: new Blob(["x"], { type: "image/png" }) });
+    if (url === "/admin/orders/MGS-PS/proofs/1") return Promise.reject({ response: { status: 410 } });
+    return Promise.resolve({ data: {} });
+  });
+  mockOrders = [order({ order_number: "MGS-PS", payment_method: "manual", status: "proof_submitted", payment_proofs: [{ size: 1024 * 1024 * 2, uploaded_at: "2026-11-10T10:00:00Z" }, { size: 10, uploaded_at: "2026-11-10T10:01:00Z" }] })];
+  const { container, root } = await mountOrders();
+  expect(api.get).toHaveBeenCalledWith("/admin/orders/MGS-PS/proofs/0", { responseType: "blob" });
+  expect(container.querySelector('[data-testid="admin-proofs"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="admin-proof-0"] img')).not.toBeNull();
+  expect(container.querySelector('[data-testid="admin-proof-gone-1"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="admin-proof-meta-0"]').textContent).toContain("Mo");
+  await act(async () => root.unmount());
+});
+
+test("liste admin : 404 sur un GET de preuve → vignette « Indisponible »", async () => {
+  const { api } = require("@/lib/api");
+  api.get.mockImplementation((url) => {
+    if (url === "/admin/fazercards/mappings") return Promise.resolve({ data: { products: [] } });
+    if (url === "/admin/orders") return Promise.resolve({ data: mockOrders });
+    if (url.startsWith("/admin/orders/MGS-PS/proofs/")) return Promise.reject({ response: { status: 404 } });
+    return Promise.resolve({ data: {} });
+  });
+  mockOrders = [order({ order_number: "MGS-PS", payment_method: "manual", status: "proof_submitted", payment_proofs: [{ size: 10, uploaded_at: "2026-11-10T10:00:00Z" }] })];
+  const { container, root } = await mountOrders();
+  expect(container.querySelector('[data-testid="admin-proof-unavailable-0"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="admin-proof-0"] img')).toBeNull();
+  await act(async () => root.unmount());
+});
