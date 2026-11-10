@@ -179,23 +179,35 @@ function SummaryRow({ label, value }) {
   );
 }
 
-function ManualPanel({ reference, setReference, config, copy }) {
+// PL-CHK-3 — la pastille « opérateur » des commandes USSD sort du panneau étape 2
+// : PaymentFlow.ManualPanel et l'écran de reprise (OrderTrack) la partagent —
+// l'opérateur choisi n'étant pas renvoyé par l'API (cf. PL-CHK-3 rapport), le
+// client le (re)choisit explicitement avant de payer.
+export function ManualProviderPicker({ provider, onSelect }) {
   const { t } = useLang();
   const PROVIDERS = [
     { key: "mvola", label: "MVola", color: "var(--mvola)" },
     { key: "orange", label: "Orange Money", color: "var(--orange)" },
   ];
-  const provider = reference.provider || "mvola";
-  const merchant = config?.providers?.[provider];
-
   return (
-    <div className="space-y-3">
+    <>
       <p className="text-sm font-semibold">{t("checkout.chooseOperator")}</p>
       <div className="flex gap-2">
         {PROVIDERS.map((p) => (
-          <button key={p.key} type="button" data-testid={`manual-provider-${p.key}`} aria-pressed={provider === p.key} onClick={() => setReference({ ...reference, provider: p.key })} className={`rounded-full px-4 py-1.5 text-xs font-bold transition-opacity ${provider === p.key ? "text-ink" : "border bg-card text-muted-foreground hover:opacity-80"}`} style={provider === p.key ? { background: p.color } : undefined}>{p.label}</button>
+          <button key={p.key} type="button" data-testid={`manual-provider-${p.key}`} aria-pressed={provider === p.key} onClick={() => onSelect(p.key)} className={`rounded-full px-4 py-1.5 text-xs font-bold transition-opacity ${provider === p.key ? "text-ink" : "border bg-card text-muted-foreground hover:opacity-80"}`} style={provider === p.key ? { background: p.color } : undefined}>{p.label}</button>
         ))}
       </div>
+    </>
+  );
+}
+
+function ManualPanel({ reference, setReference, config, copy }) {
+  const { t } = useLang();
+  const provider = reference.provider || "mvola";
+  const merchant = config?.providers?.[provider];
+  return (
+    <div className="space-y-3">
+      <ManualProviderPicker provider={provider} onSelect={(key) => setReference({ ...reference, provider: key, value: "" })} />
       {merchant && (
         <div className="space-y-2 rounded-[12px] border border-[color:var(--rule)] bg-card p-3">
           <p className="text-sm text-foreground"><span className="font-medium">{t("checkout.ussdName")} :</span> <span data-testid="merchant-name">{merchant.name}</span></p>

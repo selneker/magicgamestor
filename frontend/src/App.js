@@ -53,6 +53,8 @@ function AppRouter() {
           <Route path="/commande/confirmation" element={<CheckoutConfirm />} />
           <Route path="/suivi" element={<OrderTrack />} />
           <Route path="/suivi/:orderNumber" element={<OrderTrack />} />
+          {/* PL-CHK-3 : écran de reprise d'une commande (UUID invité ou propriétaire). */}
+          <Route path="/orders/:orderId" element={<OrderTrack />} />
           <Route path="/pack-evolutif" element={<PackEvolutif />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />

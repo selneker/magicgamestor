@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from "react-router-do
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
+import { writePendingOrderId, clearPendingOrderId } from "@/lib/pendingOrder"; // PL-CHK-3
 import { useLang } from "@/context/LanguageContext";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -159,9 +160,10 @@ export default function Checkout() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Statut terminal atteint (dans le tunnel ou ailleurs) : la clé de reprise
-  // disparaît — un nouveau passage créera une NOUVELLE commande.
+  // et la mémoire PL-CHK-3 disparaissent — un nouveau passage créera une
+  // NOUVELLE commande.
   useEffect(() => {
-    if (order && DONE_STATUSES.includes(order.status)) writePending(null);
+    if (order && DONE_STATUSES.includes(order.status)) { writePending(null); clearPendingOrderId(); }
   }, [order?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (items.length === 0 && !order && !recovering) {
@@ -204,6 +206,9 @@ export default function Checkout() {
       captcha_token: captcha.tokenFor(),
       ...extra,
     });
+    // PL-CHK-3 : mémorisation MINIMALE (invité) pour la reprise hors checkout —
+    // uniquement { id, createdAt }, jamais de donnée personnelle.
+    writePendingOrderId(data.id, data.created_at || new Date().toISOString());
     clear();
     writePending(data);
     setOrder(data);

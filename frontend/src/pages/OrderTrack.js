@@ -1,14 +1,19 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { CheckCircle2, Clock, PackageCheck, Search, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
 import { paymentColor, paymentLabel } from "@/lib/paymentLabels";
+import { clearPendingOrderId } from "@/lib/pendingOrder";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { useGames } from "@/context/GameContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { PaymentCountdown } from "@/components/store/checkout/PaymentCountdown";
+import { ProofPay, LateScreen, EndScreen, ProofExpired } from "@/components/store/checkout/ProofPay";
+import { BinancePay } from "@/components/store/checkout/BinancePay";
+import { ManualProviderPicker } from "@/components/store/PaymentFlow";
 
 // PL-CHK-2 — proof_submitted / late_payment (preuves par captures) rejoignent
 // la famille « en attente » : bordure encrée, horloge — même style que les
@@ -65,10 +70,191 @@ export function OrderCard({ order }) {
   );
 }
 
+// PL-CHK-3 — hook partagé entre la page de recherche (/suivi) et l'écran de
+// reprise (/orders/:id) : sondage du paiement AUTOMATIQUE (mvola / orange / fiveone…),
+// stocke la réponse (/payments/{id}/status) et signale au parent quand le
+// statut vu par le PROVIDER a bougé (visibilité d'écran pas concernée ici :
+// 5 s, autorité = serveur). Manuel : exclu (pas d'URL de paiement) — Binance a
+// son propre sondage (/crypto/{id}/status dans BinancePay).
+function useAutoPaymentPoll(order, onChanged) {
+  const [payInfo, setPayInfo] = useState(null);
+  useEffect(() => {
+    if (!order || order.status !== "pending_payment" || order.payment_method === "manual") return;
+    let active = true;
+    const refresh = async () => {
+      try {
+        const { data } = await api.get(`/payments/${order.id}/status`);
+        if (!active) return;
+        setPayInfo(data);
+        if (data.order_status !== order.status) onChanged?.();
+      } catch (_) { /* no payment yet */ }
+    };
+    refresh();
+    const id = setInterval(refresh, 5000);
+    return () => { active = false; clearInterval(id); };
+  }, [order?.id, order?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+  return payInfo;
+}
+
+// PL-CHK-3 — relance de paiement automatique quand l'échéance a expiré
+// (POST /payments/initiate → redirection provider, sinon rechargement local).
+// Partagée par les deux écrans ; jamais appelée pour manual (ProofExpired
+// propose « recommencer ») ni Binance (jamais de 2ᵉ initiation).
+function usePaymentRetry(order, onDone) {
+  const [retrying, setRetrying] = useState(false);
+  const retry = useCallback(async () => {
+    if (!order) return;
+    setRetrying(true);
+    try {
+      const { data } = await api.post("/payments/initiate", { order_id: order.id });
+      if (data.payment_url && !data.simulated) { window.location.assign(data.payment_url); return; }
+      onDone?.();
+    } catch (e) { toast.error(errorMessage(e)); } finally { setRetrying(false); }
+  }, [order?.id, onDone]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { retrying, retry };
+}
+
+// Statut final présent dans ProofPay.js (FINAL_STATUSES) : plafonne aussi la
+// mémorisation de reprise (client lecture de commande).
+const RESUME_DONE = ["paid", "delivered", "cancelled", "failed", "expired"];
+
+// PL-CHK-3 — écran de reprise d'une commande (/orders/:orderId, route dédiée).
+// IL N'A PAS de copie : les écrans de statut sont exactement les composants de
+// l'étape 3 du checkout (ProofPay, PaymentCountdown, BinancePay, LateScreen,
+// EndScreen, ProofExpired) — le checkout n'est plus le seul chemin d'accès.
+// Lecture via GET /orders/{id} : propriétaire connecté OU invité porteur de
+// l'UUID (backend `_accessible_order`, routers/orders.py:143-154) ; 403/404 →
+// message générique sans détail. Opérateur manuel (Mvola/Orange) : champ NON
+// persisté côté API (rapport PL-CHK-3, à ajouter côté backend), le client
+// choisit via ManualProviderPicker partagé avec le panneau étape 2.
+export function OrderResume({ orderId }) {
+  const { t } = useLang();
+  const [order, setOrder] = useState(null);
+  const [config, setConfig] = useState(null);
+  const [cryptoPayment, setCryptoPayment] = useState(null);
+  const [state, setState] = useState("loading"); // loading | ok | denied
+  const [reference, setReference] = useState({ provider: "mvola", value: "" });
+
+  // Config USSD (codes + numéro marchand) : mêmes clés que le checkout souscrites.
+  useEffect(() => {
+    api.get("/payments/config").then(({ data }) => setConfig(data)).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setOrder(null); setCryptoPayment(null); setState("loading");
+    api.get(`/orders/${orderId}`).then(async ({ data }) => {
+      if (!active) return;
+      setOrder(data);
+      setState("ok");
+      // Binance : rouverture du slot USDT existant via GET /crypto/{id}/status
+      // quand il est encore actif — JAMAIS de 2ᵉ initiation (PL-CHK-2).
+      if (data?.status === "pending_payment" && data.payment_method === "binance") {
+        api.get(`/crypto/${orderId}/status`).then(({ data: st }) => {
+          if (active && st?.payment && st.payment.status !== "FAILED") setCryptoPayment(st.payment);
+        }).catch(() => { /* sans slot : la carte de la commande reste le seul écran */ });
+      }
+    }).catch(() => { if (active) setState("denied"); });
+    return () => { active = false; };
+  }, [orderId]);
+
+  // Statut final / expiration vu par l'API : la mémorisation de reprise meurt
+  // (l'invité n'a plus de commande en attente à retrouver).
+  useEffect(() => {
+    if (order && RESUME_DONE.includes(order.status)) clearPendingOrderId();
+  }, [order?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Échéance atteinte ou provider signale un changement : état réel depuis l'API.
+  const refetch = useCallback(() =>
+    api.get(`/orders/${orderId}`).then(({ data }) => setOrder(data)).catch(() => {}), [orderId]);
+
+  const payInfo = useAutoPaymentPoll(
+    order?.status === "pending_payment" && order.payment_method !== "binance" ? order : null,
+    refetch,
+  );
+  const { retrying, retry } = usePaymentRetry(
+    ["failed", "expired"].includes(order?.status) && !["manual", "binance"].includes(order?.payment_method) ? order : null,
+    refetch,
+  );
+
+  if (state === "loading") return null;
+
+  if (state === "denied") {
+    // 403 (commande d'un autre client) ou 404 (introuvable) : message générique,
+    // JAMAIS de détail — la seule sortie est le retour à l'accueil.
+    return (
+      <div className="mx-auto max-w-2xl py-20 text-center" data-testid="order-not-available">
+        <p className="font-display text-2xl font-bold">{t("order.notAvailable")}</p>
+        <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">{t("order.notAvailableBody")}</p>
+        <Button asChild className="mt-6 h-12 w-full max-w-xs rounded-full font-bold" data-testid="order-back-home">
+          <Link to="/">{t("order.backHome")}</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  // Récap dérivé de la commande lue — même forme que le résumé du checkout
+  // (OrderSummary, USSD et montants consomment les mêmes champs).
+  const summary = {
+    lines: (order.items || []).map((i) => ({ key: i.product_id, label: `${i.quantity} × ${i.name}` })),
+    pubgId: order.pubg_id, name: null,
+    method: paymentLabel(order.payment_method, t),
+    subtotal: order.subtotal ?? order.total, fee: order.payment_fee ?? 0,
+  };
+  const pending = order.status === "pending_payment";
+  const autoPending = pending && order.payment_method !== "manual" && order.payment_method !== "binance";
+
+  return (
+    <div className="mx-auto max-w-2xl pb-24 pt-6" data-testid="order-resume">
+      {/* Carte de la commande TOUJOURS visible en haut, composant de statut en dessous. */}
+      <OrderCard order={order} />
+      <div className="mt-4 space-y-3">
+        {pending && order.payment_method === "manual" && (
+          <>
+            {/* L'opérateur n'est pas renvoyé par l'API : le client le (re)choisit avant de payer. */}
+            <ManualProviderPicker provider={reference.provider} onSelect={(key) => setReference({ provider: key, value: "" })} />
+            <ProofPay order={order} config={config} summary={summary} reference={reference} onUpdated={setOrder} onConfirmed={refetch} />
+          </>
+        )}
+        {pending && autoPending && (
+          <section className="space-y-3" data-testid="resume-auto">
+            <PaymentCountdown order={order} onZero={refetch} />
+            {payInfo?.payment_url && !payInfo.simulated && (
+              <Button asChild className="h-12 w-full rounded-full font-bold" style={{ background: paymentColor(order.payment_method) }} data-testid="resume-payment-button">
+                <a href={payInfo.payment_url}>{t("checkout.resume")}</a>
+              </Button>
+            )}
+            {payInfo?.expires_at && <p className="text-center text-xs text-muted-foreground" data-testid="payment-deadline">{t("checkout.deadline", { time: new Date(payInfo.expires_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) })}</p>}
+          </section>
+        )}
+        {pending && order.payment_method === "binance" && (cryptoPayment
+          ? <BinancePay payment={cryptoPayment} orderId={order.id} onConfirmed={refetch} trackUrl="/suivi" />
+          : <PaymentCountdown order={order} onZero={refetch} />)}
+        {order.status === "proof_submitted" && <ProofPay order={order} onUpdated={setOrder} onConfirmed={refetch} />}
+        {order.status === "late_payment" && <LateScreen />}
+        {order.status === "expired" && <ProofExpired />}
+        {["cancelled", "failed"].includes(order.status) && <EndScreen order={order} />}
+        {/* Relance auto : comportement de la page de suivi conservé (dépassé/échoué). */}
+        {["failed", "expired"].includes(order.status) && !["manual", "binance"].includes(order.payment_method) && (
+          <Button onClick={retry} disabled={retrying} variant="outline" className="h-12 w-full rounded-full font-bold" data-testid="retry-payment-button">{t("checkout.retry")}</Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function OrderTrack() {
+  // PL-CHK-3 — sélecteur de route sans hook conditionnel : /orders/:orderId
+  // monte l'écran de reprise, toute autre route équipe la page de recherche.
+  const { orderId, orderNumber } = useParams();
+  if (orderId) return <OrderResume orderId={orderId} />;
+  return <OrderTrackSearch />;
+}
+
+function OrderTrackSearch() {
+  const { orderNumber } = useParams();
   const { t } = useLang();
   const { user } = useAuth();
-  const { orderNumber } = useParams();
   const [params] = useSearchParams();
   const [number, setNumber] = useState(orderNumber || "");
   const [pubgId, setPubgId] = useState(params.get("pubg_id") || "");
@@ -92,33 +278,8 @@ export default function OrderTrack() {
   };
   useEffect(() => { if (orderNumber && params.get("pubg_id")) search(orderNumber, params.get("pubg_id")); }, [orderNumber]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [payInfo, setPayInfo] = useState(null);
-
-  useEffect(() => {
-    if (!order || order.status !== "pending_payment" || order.payment_method === "manual") return;
-    let active = true;
-    const refresh = async () => {
-      try {
-        const { data } = await api.get(`/payments/${order.id}/status`);
-        if (!active) return;
-        setPayInfo(data);
-        if (data.order_status !== order.status) search(order.order_number, order.pubg_id);
-      } catch (_) { /* no payment yet */ }
-    };
-    refresh();
-    const id = setInterval(refresh, 5000);
-    return () => { active = false; clearInterval(id); };
-  }, [order]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const [retrying, setRetrying] = useState(false);
-  const retry = async () => {
-    setRetrying(true);
-    try {
-      const { data } = await api.post("/payments/initiate", { order_id: order.id });
-      if (data.payment_url && !data.simulated) { window.location.assign(data.payment_url); return; }
-      search(order.order_number, order.pubg_id);
-    } catch (e) { toast.error(errorMessage(e)); } finally { setRetrying(false); }
-  };
+  const payInfo = useAutoPaymentPoll(order, () => search(order.order_number, order.pubg_id));
+  const { retrying, retry } = usePaymentRetry(order, () => search(order.order_number, order.pubg_id));
 
   useEffect(() => {
     const ret = params.get("return");
@@ -176,6 +337,17 @@ export default function OrderTrack() {
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-2.5">
                       <span className="num text-xl text-foreground">{formatAr(o.total)}</span>
+                      {/* PL-CHK-3 — commande en attente : bouton de reprise menant à
+                          /orders/:id (écran complet ; opérateur manuel re-choisi là-bas
+                          car non persisté côté API). Labels par statut/méthode. */}
+                      {["pending_payment", "proof_submitted"].includes(o.status) && (
+                        <Button asChild size="sm" className="h-8 rounded-full px-4 text-xs font-bold" data-testid={`history-resume-${o.order_number}`}>
+                          <Link to={`/orders/${o.id}`}>
+                            {o.status === "proof_submitted" ? t("order.resumeView")
+                              : o.payment_method === "manual" ? t("order.resumeProof") : t("order.resumePay")}
+                          </Link>
+                        </Button>
+                      )}
                       <Button size="sm" variant="outline" className="h-8 rounded-full px-4 text-xs font-bold" data-testid={`history-track-${o.order_number}`}
                         onClick={() => { setNumber(o.order_number); setPubgId(o.pubg_id); search(o.order_number, o.pubg_id); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
                         {t("order.viewTrack")}
