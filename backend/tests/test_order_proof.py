@@ -32,7 +32,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from routers import evo as evo_router
 from routers import maintenance, orders
 from routers import payments as payment_router
-from services import binance_watcher, order_maintenance, proofs
+from services import (binance_watcher, fees, fiveone, notifications, order_maintenance, proofs, push)
 
 _env = dotenv_values(Path(__file__).resolve().parents[1] / ".env")
 _mongo = MongoClient(_env["MONGO_URL"])
@@ -141,7 +141,7 @@ def ctx(monkeypatch, client, loop):
     motor_db = async_client[name]
     sync_db = _mongo[name]
     for module in (order_maintenance, binance_watcher, orders, payment_router, core_db, core_identity,
-                   core_security, core_audit, evo_router, proofs):
+                   core_security, core_audit, evo_router, proofs, fees, notifications, push):
         monkeypatch.setattr(module, "db", motor_db)
     alerts = _Alerts()
     monkeypatch.setattr("services.notifications.schedule", alerts)
@@ -862,3 +862,333 @@ class TestStorageRoute:
         value[0] = None
         body = client.get("/api/admin/storage", headers=headers).json()
         assert body["status"] == "unknown" and body["db_bytes"] is None
+
+
+# --------------------------------------------------------------------------- #
+# PL-ORDER-CLIENT-1 — opérateur manuel, annulation client, agrégation, notifications.
+# --------------------------------------------------------------------------- #
+def _seed_catalog(ctx, game_id="pubg-mobile"):
+    """Jeu PUBG Mobile + un produit actif : la route de création exige les deux."""
+    ctx.db.games.insert_one({"id": game_id, "slug": game_id, "name": "PUBG Mobile", "active": True,
+                             "sort_order": 0})
+    ctx.db.products.insert_one({"id": "uc-60", "slug": "uc-60", "name": "60 UC", "type": "uc",
+                                "price": 1000, "active": True, "game_id": game_id,
+                                "duration_months": None})
+    return "uc-60"
+
+
+def _create_body(**extra):
+    body = {"pubg_id": "5123456789", "pseudo": "Acheteur",
+            "items": [{"product_id": "uc-60", "quantity": 1}],
+            "payment_method": "manual", "email": "client@example.test", "manual_operator": None}
+    body.update(extra)
+    return body
+
+
+def _create(client, headers=None, **extra):
+    return client.post("/api/orders", json=_create_body(**extra), headers=headers or {})
+
+
+def _cancel(client, order_id, reason="other", note=None, headers=None):
+    payload = {"reason": reason, **({"note": note} if note is not None else {})}
+    return client.post(f"/api/orders/{order_id}/cancel", json=payload, headers=headers or {})
+
+
+class _Pushes:
+    """Remplace `push.dispatch_to_users` : aucun réseau, aucune écriture, comptage exact."""
+
+    def __init__(self):
+        self.calls = []
+        self.error = None
+
+    async def __call__(self, user_ids, payload):
+        self.calls.append((list(user_ids), payload))
+        if self.error is not None:
+            raise self.error
+        count = len(user_ids)
+        return {"targeted": count, "sent": count, "expired": 0, "failed": 0, "ignored": 0,
+                "reasons": []}
+
+
+def _pushes(ctx, monkeypatch):
+    recorder = _Pushes()
+    monkeypatch.setattr(notifications.push, "configured", lambda: True)
+    monkeypatch.setattr(notifications.push, "dispatch_to_users", recorder)
+    return recorder
+
+
+class TestManualOperator:
+    def test_operator_stored_only_for_manual(self, client, monkeypatch, ctx):
+        _seed_catalog(ctx)
+        for operator in ("mvola", "orange"):
+            res = _create(client, manual_operator=operator)
+            assert res.status_code == 201
+            assert res.json()["manual_operator"] == operator
+            assert ctx.db.orders.find_one({"id": res.json()["id"]})["manual_operator"] == operator
+
+        body = _create_body()
+        body.pop("manual_operator")  # ancien client : champ absent
+        res = client.post("/api/orders", json=body)
+        assert res.status_code == 201 and res.json()["manual_operator"] is None
+
+        res = _create(client, manual_operator="airtel")
+        assert res.status_code == 422
+        assert ctx.db.orders.count_documents({}) == 3  # la commande invalide n'est jamais créée
+
+    def test_operator_is_ignored_for_a_non_manual_method(self, client, monkeypatch, ctx):
+        _seed_catalog(ctx)
+
+        async def provider():
+            return "fiveone"
+
+        monkeypatch.setattr(fiveone, "resolve_provider", provider)
+        res = _create(client, payment_method="mvola", payment_phone="0340000000",
+                      manual_operator="airtel")
+        assert res.status_code == 201
+        assert res.json()["manual_operator"] is None
+        assert ctx.db.orders.find_one({"id": res.json()["id"]})["manual_operator"] is None
+
+    def test_existing_order_reads_null_and_read_is_owner_only(self, client, ctx):
+        legacy = _order(ctx)  # aucune clé manual_operator (commande d'avant le lot)
+        guest_read = client.get(f"/api/orders/{legacy['id']}")
+        assert guest_read.status_code == 200 and guest_read.json()["manual_operator"] is None
+
+        _seed_catalog(ctx)
+        owner, owner_headers = _user(ctx)
+        _intruder, intruder_headers = _user(ctx)
+        created = _create(client, headers=owner_headers, manual_operator="mvola")
+        order_id = created.json()["id"]
+
+        assert client.get(f"/api/orders/{order_id}", headers=owner_headers).status_code == 200
+        assert client.get(f"/api/orders/{order_id}", headers=intruder_headers).status_code == 403
+        assert client.get(f"/api/orders/{order_id}").status_code == 403
+
+
+class TestOrderCancel:
+    def test_owner_cancels_releases_slot_and_keeps_index(self, client, ctx):
+        owner, headers = _user(ctx)
+        order = _order(ctx, user_id=owner["user_id"])
+        ctx.db.crypto_payments.insert_one({"id": "cp-1", "order_id": order["id"],
+                                           "slot_open": True, "status": "PENDING"})
+        before = ctx.db.crypto_payments.index_information()
+
+        res = _cancel(client, order["id"], reason="too_short", note="  trop   long ", headers=headers)
+        assert res.status_code == 200 and res.json() == {"ok": True, "status": "cancelled"}
+
+        doc = ctx.db.orders.find_one({"id": order["id"]})
+        assert doc["status"] == "cancelled"
+        assert doc["cancelled_by"] == "customer"
+        assert doc["cancel_reason"] == "too_short" and doc["cancel_note"] == "trop long"
+        assert doc["cancelled_at"] and "payment_deadline_at" not in doc
+        assert doc["history"][-1]["status"] == "cancelled"
+
+        payment = ctx.db.crypto_payments.find_one({"id": "cp-1"})
+        assert "slot_open" not in payment
+        assert payment["status"] == "FAILED" and payment["failure_reason"] == "order_cancelled"
+        # L'index unique partiel des créneaux n'est jamais modifié.
+        assert ctx.db.crypto_payments.index_information() == before
+
+    def test_guest_uuid_cancels_and_intruders_are_refused(self, client, ctx):
+        guest = _order(ctx)
+        assert _cancel(client, guest["id"]).status_code == 200
+
+        owner, _owner_headers = _user(ctx)
+        mine = _order(ctx, user_id=owner["user_id"])
+        _other, other_headers = _user(ctx)
+        res = _cancel(client, mine["id"], headers=other_headers)
+        assert res.status_code == 403
+        assert client.get(f"/api/orders/{mine['id']}").status_code == 403
+        unknown = client.post("/api/orders/does-not-exist/cancel", json={"reason": "other"})
+        assert unknown.status_code == 404
+
+    def test_invalid_reason_is_refused(self, client, ctx):
+        order = _order(ctx)
+        assert client.post(f"/api/orders/{order['id']}/cancel",
+                           json={"reason": "bored"}).status_code == 422
+        assert client.post(f"/api/orders/{order['id']}/cancel",
+                           json={"reason": "other", "note": "x" * 201}).status_code == 422
+        assert ctx.db.orders.find_one({"id": order["id"]})["status"] == "pending_payment"
+
+    def test_cancel_refused_after_proof_payment_or_final_status(self, client, ctx):
+        proved = _order(ctx, status="proof_submitted", payment_proofs=[_proof_entry()])
+        pending_with_proof = _order(ctx, payment_proofs=[_proof_entry()])
+        paid = _order(ctx, paid_at=_iso(), paid_attempt_ref="ref-1")
+        expired = _order(ctx, status="expired")
+
+        for order in (proved, pending_with_proof, paid, expired):
+            res = _cancel(client, order["id"])
+            assert res.status_code == 409
+            assert res.json()["detail"]["code"] == "cancel_not_allowed"
+            assert res.json()["detail"]["message"]
+            assert ctx.db.orders.find_one({"id": order["id"]})["status"] == order["status"]
+
+    def test_cancel_is_idempotent_for_the_customer_only(self, client, ctx):
+        order = _order(ctx)
+        assert _cancel(client, order["id"], reason="cannot_pay_now").status_code == 200
+        second = _cancel(client, order["id"], reason="wrong_info")
+        assert second.status_code == 200 and second.json() == {"ok": True, "status": "cancelled"}
+        # La raison d'origine n'est pas écrasée par la reprise idempotente.
+        assert ctx.db.orders.find_one({"id": order["id"]})["cancel_reason"] == "cannot_pay_now"
+
+        by_admin = _order(ctx, status="cancelled", cancelled_by="admin")
+        res = _cancel(client, by_admin["id"])
+        assert res.status_code == 409
+        assert res.json()["detail"]["code"] == "cancel_not_allowed"
+
+    def test_payment_arriving_mid_flight_is_not_overwritten(self, client, monkeypatch, ctx):
+        order = _order(ctx)
+        snapshot = dict(order)
+
+        async def racing_access(order_id, user):
+            # Le paiement arrive APRÈS la lecture d'accès et AVANT l'écriture d'annulation.
+            ctx.db.orders.update_one({"id": order_id},
+                                     {"$set": {"paid_at": _iso(), "paid_attempt_ref": "ref-race"}})
+            return snapshot
+
+        monkeypatch.setattr(orders, "_accessible_order", racing_access)
+        res = _cancel(client, order["id"])
+        assert res.status_code == 409
+        assert res.json()["detail"]["code"] == "cancel_conflict"
+
+        doc = ctx.db.orders.find_one({"id": order["id"]})
+        assert doc["status"] == "pending_payment"  # l'annulation n'a jamais été écrite
+        assert doc["paid_at"] and doc["paid_attempt_ref"] == "ref-race"
+
+    def test_ip_rate_limit(self, client, monkeypatch, ctx):
+        monkeypatch.setenv("ORDER_CANCEL_PER_HOUR_PER_IP", "2")
+        for _ in range(2):
+            assert _cancel(client, _order(ctx)["id"]).status_code == 200
+        assert _cancel(client, _order(ctx)["id"]).status_code == 429
+
+    def test_per_order_rate_limit(self, client, monkeypatch, ctx):
+        monkeypatch.setenv("ORDER_CANCEL_PER_HOUR_PER_ORDER", "1")
+        by_admin = _order(ctx, status="cancelled", cancelled_by="admin")
+        assert _cancel(client, by_admin["id"]).status_code == 409
+        assert _cancel(client, by_admin["id"]).status_code == 429
+
+
+class TestCancelReasonsAggregation:
+    def test_route_is_protected_and_aggregates(self, client, ctx):
+        assert client.get("/api/admin/orders/cancel-reasons").status_code == 401
+        _customer, customer_headers = _user(ctx)
+        assert client.get("/api/admin/orders/cancel-reasons",
+                          headers=customer_headers).status_code == 403
+        _no_perm, no_perm_headers = _user(ctx, role="admin", permissions=[])
+        assert client.get("/api/admin/orders/cancel-reasons",
+                          headers=no_perm_headers).status_code == 403
+
+        _admin, headers = _user(ctx, role="admin", permissions=["orders.manage"])
+        now = _iso()
+        for reason in ("too_short", "too_short", "other"):
+            _order(ctx, status="cancelled", cancelled_by="customer", cancel_reason=reason,
+                   cancelled_at=now)
+        old = _iso(datetime.now(timezone.utc) - timedelta(days=45))
+        _order(ctx, status="cancelled", cancelled_by="customer", cancel_reason="other",
+               cancelled_at=old, cancel_note="note d'annulation")
+
+        body = client.get("/api/admin/orders/cancel-reasons", headers=headers).json()
+        assert body == {"days": 30, "total": 3,
+                        "reasons": {"wrong_info": 0, "change_method": 0, "too_short": 2,
+                                    "cannot_pay_now": 0, "other": 1}}
+        assert client.get("/api/admin/orders/cancel-reasons?days=60",
+                          headers=headers).json()["total"] == 4
+        assert client.get("/api/admin/orders/cancel-reasons?days=0",
+                          headers=headers).status_code == 422
+
+        # Les réponses admin de commande portent la raison et la note d'annulation.
+        listed = client.get("/api/admin/orders", headers=headers).json()
+        noted = [order for order in listed if order.get("cancel_note")]
+        assert len(noted) == 1
+        assert noted[0]["cancel_reason"] == "other" and noted[0]["cancel_note"] == "note d'annulation"
+
+
+class TestCustomerNotifications:
+    def test_expiry_warning_is_sent_once(self, client, ctx, monkeypatch):
+        user, _headers = _user(ctx)
+        soon = _iso(datetime.now(timezone.utc) + timedelta(minutes=4))
+        order = _order(ctx, user_id=user["user_id"], payment_deadline_at=soon)
+        pushes = _pushes(ctx, monkeypatch)
+
+        assert _arun(order_maintenance.warn_expiring_orders())["expiry_warned"] == 1
+        doc = ctx.db.orders.find_one({"id": order["id"]})
+        assert doc["expiry_warned_at"] and doc["status"] == "pending_payment"
+
+        scheduled = ctx.alerts.named("notify_customer_payment_expiring")
+        assert len(scheduled) == 1
+        _arun(notifications.notify_customer_payment_expiring, *scheduled[0][1])
+        assert pushes.calls[0][0] == [user["user_id"]]
+        payload = pushes.calls[0][1]
+        assert payload["url"] == f"/orders/{order['id']}"
+        assert payload["title"] == "Il vous reste 5 minutes pour payer"
+        assert "Produit" in payload["body"] and "1 000 Ar" in payload["body"]
+
+        # Deuxième passage : marqueur déjà posé, aucun doublon.
+        assert _arun(order_maintenance.warn_expiring_orders())["expiry_warned"] == 0
+        assert len(ctx.alerts.named("notify_customer_payment_expiring")) == 1
+
+    def test_warning_ignores_proved_paid_cancelled_and_far_orders(self, client, ctx, monkeypatch):
+        soon = _iso(datetime.now(timezone.utc) + timedelta(minutes=4))
+        far = _iso(datetime.now(timezone.utc) + timedelta(minutes=20))
+        _pushes(ctx, monkeypatch)
+        _order(ctx, payment_deadline_at=soon, payment_proofs=[_proof_entry()])
+        _order(ctx, payment_deadline_at=soon, paid_at=_iso(), paid_attempt_ref="ref-1")
+        _order(ctx, payment_deadline_at=soon, status="cancelled")
+        _order(ctx, payment_deadline_at=soon, status="proof_submitted")
+        _order(ctx, payment_deadline_at=far)
+        due = _order(ctx, payment_deadline_at=soon)
+
+        assert _arun(order_maintenance.warn_expiring_orders()) == {"expiry_warned": 1}
+        assert [call[1][0] for call in ctx.alerts.named("notify_customer_payment_expiring")] == \
+               [due["id"]]
+        assert ctx.db.orders.count_documents({"expiry_warned_at": {"$exists": True}}) == 1
+
+    def test_expiry_notification_ignores_the_admin_setting(self, client, ctx, monkeypatch):
+        monkeypatch.delenv("ALERT_PAYMENT_EXPIRED", raising=False)
+        pushes = _pushes(ctx, monkeypatch)
+        user, _headers = _user(ctx)
+        past = _iso(datetime.now(timezone.utc) - timedelta(minutes=1))
+        fresh = _order(ctx, user_id=user["user_id"], payment_deadline_at=past)
+        already = _order(ctx, user_id=user["user_id"], payment_deadline_at=past,
+                         expired_notified_at=_iso())
+
+        assert _arun(order_maintenance.expire_due_orders())["expired"] == 2
+
+        scheduled = ctx.alerts.named("notify_customer_payment_expired")
+        assert [call[1][0] for call in scheduled] == [fresh["id"]]  # marqueur déjà posé : rien
+        assert ctx.db.orders.find_one({"id": fresh["id"]})["expired_notified_at"]
+        assert ctx.db.orders.find_one({"id": already["id"]})["expired_notified_at"]
+        # Le réglage admin n'a pas été touché pour activer la notification client.
+        assert not os.environ.get("ALERT_PAYMENT_EXPIRED")
+
+        _arun(notifications.notify_customer_payment_expired, *scheduled[0][1])
+        assert pushes.calls[0][1]["url"] == f"/orders/{fresh['id']}"
+        assert "expiré" in pushes.calls[0][1]["title"].lower()
+
+    def test_no_recipient_means_no_notification(self, client, ctx, monkeypatch):
+        pushes = _pushes(ctx, monkeypatch)
+        guest = _order(ctx)
+        _arun(notifications.notify_customer_payment_expired, guest["id"], guest["order_number"],
+              1000, "60 UC", "pubg-mobile", None)
+        assert pushes.calls == []
+        # Une commande invitée reçoit quand même son marqueur, mais rien n'est tenté.
+        soon = _iso(datetime.now(timezone.utc) + timedelta(minutes=4))
+        _order(ctx, payment_deadline_at=soon)
+        assert _arun(order_maintenance.warn_expiring_orders())["expiry_warned"] == 1
+        assert pushes.calls == []
+
+    def test_send_failure_never_raises(self, client, ctx, monkeypatch):
+        pushes = _pushes(ctx, monkeypatch)
+        pushes.error = RuntimeError("transport down")
+        result = _arun(notifications.notify_customer_payment_expired, "oid", "MGS-1", 1000,
+                       "60 UC", "pubg-mobile", "user_1")
+        assert result is None
+        assert ctx.db.alert_log.count_documents({"event": {"$regex": "payment_expir"}}) == 0
+
+    def test_language_falls_back_to_french(self, client, ctx):
+        assert _arun(notifications._customer_language, None) == "fr"
+        english, _headers = _user(ctx)
+        ctx.db.users.update_one({"user_id": english["user_id"]},
+                                {"$set": {"language": "en-US"}})
+        assert _arun(notifications._customer_language, english["user_id"]) == "en"
+        unknown, _headers = _user(ctx)
+        assert _arun(notifications._customer_language, unknown["user_id"]) == "fr"

@@ -1,3 +1,4 @@
+import logging
 import re
 import secrets
 import uuid
@@ -7,7 +8,7 @@ from fastapi import (APIRouter, BackgroundTasks, Depends, File, HTTPException, Q
                      UploadFile)
 from fastapi.responses import Response
 from pymongo.errors import DuplicateKeyError
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from core import ratelimit
 from core.audit import audit
@@ -28,6 +29,7 @@ from services.fzr_mapping import purchase_blocked, supplier_cost_usd
 from services.notifications import notify_new_order
 
 router = APIRouter(tags=["orders"])
+logger = logging.getLogger("mgs.orders")
 PUBLIC = {"_id": 0}
 # Suivi public : le numéro de commande et l'identifiant joueur suffisent au client ;
 # l'email et le téléphone de paiement ne doivent jamais sortir par cette route publique.
@@ -36,6 +38,9 @@ STATUSES = ["pending_payment", "awaiting_verification", "proof_submitted", "late
             "delivered", "cancelled", "failed", "expired"]
 SUBSCRIPTION_TYPES = ("prime", "prime_plus")
 SUBSCRIPTION_LABELS = {"prime": "Prime", "prime_plus": "Prime+"}
+# PL-ORDER-CLIENT-1 : opérateurs du paiement manuel, et raisons d'annulation côté client.
+MANUAL_OPERATORS = ("mvola", "orange")
+CANCEL_REASONS = ("wrong_info", "change_method", "too_short", "cannot_pay_now", "other")
 INACTIVE_STATUSES = ("cancelled", "failed", "expired")
 TRANSITIONS = {
     "pending_payment": {"paid", "cancelled", "failed", "expired", "proof_submitted", "late_payment"},
@@ -66,6 +71,9 @@ class OrderIn(BaseModel):
     items: list[OrderItemIn] = Field(min_length=1, max_length=20)
     payment_method: str = Field(pattern=r"^(mvola|orange|manual|binance)$")
     payment_phone: str | None = None
+    # PL-ORDER-CLIENT-1 : opérateur retenu pour un paiement manuel (`mvola` | `orange`).
+    # Ignoré pour toute autre méthode ; absent = null (les anciens clients continuent de marcher).
+    manual_operator: str | None = Field(default=None, max_length=10)
     manual_reference: str | None = Field(default=None, max_length=60)
     email: str | None = None
     game_id: str = Field(default=DEFAULT_GAME_ID, min_length=1, max_length=60)
@@ -98,6 +106,24 @@ class OrderIn(BaseModel):
         if len(digits) < 10:
             raise ValueError("Invalid phone number")
         return digits[-10:] if len(digits) > 10 else digits
+
+    @model_validator(mode="after")
+    def valid_manual_operator(self):
+        """422 générique si la valeur n'est pas un opérateur connu d'un paiement manuel.
+
+        Une valeur fournie pour une autre méthode est purement ignorée (aucun 422) : le champ ne
+        concerne que `payment_method == "manual"`.
+        """
+        if self.payment_method == "manual" and self.manual_operator is not None \
+                and self.manual_operator not in MANUAL_OPERATORS:
+            raise ValueError("Paramètre de paiement invalide.")
+        return self
+
+
+class CancelIn(BaseModel):
+    """Annulation par le client : raison fermée + note libre courte (PL-ORDER-CLIENT-1)."""
+    reason: str = Field(pattern=r"^(wrong_info|change_method|too_short|cannot_pay_now|other)$")
+    note: str | None = Field(default=None, max_length=200)
 
 
 class StatusIn(BaseModel):
@@ -132,6 +158,7 @@ def public_order(order: dict | None, *, admin: bool = False) -> dict | None:
         # Contrat stable pour le frontend : les champs du lot existent toujours (null si absents).
         order.setdefault("payment_deadline_at", None)
         order.setdefault("payment_proofs", [])
+        order.setdefault("manual_operator", None)  # commandes antérieures : null, sans migration
     if order and not admin and order.get("payment_proofs"):
         order["payment_proofs"] = [
             {key: value for key, value in proof.items() if key not in ("blob_name", "sha256")}
@@ -358,6 +385,7 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         "game_id": body.game_id, "identity_snapshot": identity_snapshot, "identity_key": identity_key_value,
         "items": items, "subtotal": total, "payment_fee": payment_fee, "total": total + payment_fee, "currency": "Ar",
         "payment_method": body.payment_method, "payment_provider": payment_provider,
+        "manual_operator": body.manual_operator if body.payment_method == "manual" else None,
         "payment_phone": body.payment_phone, "manual_reference": body.manual_reference,
         "status": status,
         # PL-ORDER-PROOF-1 : seul un paiement encore attendu porte l'échéance de 30 minutes.
@@ -624,6 +652,76 @@ async def remind_order_proof(order_id: str, request: Request, background: Backgr
             "next_at": (moment + timedelta(seconds=cooldown)).isoformat()}
 
 
+# --------------------------------------------------------------------------- #
+# PL-ORDER-CLIENT-1 — annulation par le client avec raison.
+# --------------------------------------------------------------------------- #
+def _cancel_error(detail: str, code: str) -> HTTPException:
+    """Même forme d'erreur structurée que `/proof` : `{code, message}` en 409."""
+    return HTTPException(status_code=409, detail={"code": code, "message": detail})
+
+
+def _clean_cancel_note(note: str | None) -> str | None:
+    """Note libre nettoyée (espaces/contrôles réduits) et bornée à 200 caractères."""
+    text = " ".join(str(note or "").split())
+    return text[:200] or None
+
+
+@router.post("/orders/{order_id}/cancel")
+async def cancel_order(order_id: str, body: CancelIn, request: Request,
+                       user=Depends(get_optional_user)):
+    """Annule une commande encore en attente de paiement, sans preuve ni paiement enregistré.
+
+    Un seul `update_one` avec le filtre complet : jamais de lecture puis écriture, donc un
+    paiement reçu au même instant n'est jamais écrasé. Les créneaux/verrous sont libérés
+    seulement APRÈS le succès, avec la fonction existante de l'expiration.
+    """
+    ip = ratelimit.client_ip(request)
+    ratelimit.check(f"cancel:ip:{ip}", ratelimit.setting("ORDER_CANCEL_PER_HOUR_PER_IP", 20), 3600)
+    order = await _accessible_order(order_id, user)
+
+    # Idempotence : une commande déjà annulée PAR LE CLIENT reste un succès.
+    if order.get("status") == "cancelled" and order.get("cancelled_by") == "customer":
+        return {"ok": True, "status": "cancelled"}
+    # Limite par commande : les reprises idempotentes ci-dessus ne la consomment pas.
+    ratelimit.check(f"cancel:order:{order_id}",
+                    ratelimit.setting("ORDER_CANCEL_PER_HOUR_PER_ORDER", 5), 3600)
+    if order.get("status") != "pending_payment":
+        raise _cancel_error("Cette commande ne peut plus être annulée.", "cancel_not_allowed")
+    if order.get("payment_proofs"):
+        raise _cancel_error("Une preuve a déjà été envoyée : l'annulation n'est plus possible.",
+                            "cancel_not_allowed")
+    if order.get("paid_at") or order.get("paid_attempt_ref"):
+        raise _cancel_error("Un paiement est déjà enregistré pour cette commande.",
+                            "cancel_not_allowed")
+
+    moment = datetime.now(timezone.utc)
+    now_iso = moment.isoformat()
+    note = _clean_cancel_note(body.note)
+    res = await db.orders.update_one(
+        {"id": order_id, "status": "pending_payment",
+         "paid_at": {"$exists": False}, "paid_attempt_ref": {"$exists": False},
+         "$or": [{"payment_proofs": {"$exists": False}}, {"payment_proofs": {"$size": 0}}]},
+        {"$set": {"status": "cancelled", "cancel_reason": body.reason, "cancel_note": note,
+                  "cancelled_at": now_iso, "cancelled_by": "customer", "updated_at": now_iso},
+         "$unset": {"payment_deadline_at": ""},
+         "$push": {"history": {"status": "cancelled", "at": now_iso}}},
+    )
+    if res.modified_count != 1:
+        fresh = await db.orders.find_one({"id": order_id}, PUBLIC)
+        if fresh and fresh.get("status") == "cancelled" and fresh.get("cancelled_by") == "customer":
+            return {"ok": True, "status": "cancelled"}
+        # La commande a changé entre la lecture d'accès et l'écriture : un paiement est arrivé.
+        raise _cancel_error("La commande a changé entre-temps.", "cancel_conflict")
+
+    try:
+        await order_maintenance.release_order_holds([order_id], now_iso, reason="order_cancelled")
+    except Exception as exc:  # la libération ne doit jamais annuler une annulation déjà écrite
+        logger.warning("Libération des créneaux impossible (%s)", type(exc).__name__)
+    await audit("order.cancelled", (user or {}).get("user_id") or f"ip:{ip}", order_id,
+                {"reason": body.reason})
+    return {"ok": True, "status": "cancelled"}
+
+
 # ---------- Admin ----------
 @router.get("/admin/orders", dependencies=[Depends(require_permission("orders.manage"))])
 async def admin_orders(status: str | None = None, method: str | None = None,
@@ -640,6 +738,22 @@ async def admin_orders(status: str | None = None, method: str | None = None,
         query["$or"] = [{"pubg_id": {"$regex": needle}}, {"pseudo": {"$regex": needle, "$options": "i"}},
                         {"order_number": {"$regex": needle.upper()}}, {"email": {"$regex": needle, "$options": "i"}}]
     return await db.orders.find(query, PUBLIC).sort("created_at", -1).to_list(min(limit, 1000))
+
+
+@router.get("/admin/orders/cancel-reasons", dependencies=[Depends(require_permission("orders.manage"))])
+async def admin_cancel_reasons(days: int = Query(default=30, ge=1, le=365)):
+    """Agrégat des annulations client par raison sur `days` jours. Aucune donnée de client."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    rows = await db.orders.aggregate([
+        {"$match": {"cancel_reason": {"$in": list(CANCEL_REASONS)},
+                    "cancelled_at": {"$gte": cutoff}}},
+        {"$group": {"_id": "$cancel_reason", "count": {"$sum": 1}}},
+    ]).to_list(len(CANCEL_REASONS))
+    counts = {reason: 0 for reason in CANCEL_REASONS}
+    for row in rows:
+        if row.get("_id") in counts:
+            counts[row["_id"]] = int(row.get("count") or 0)
+    return {"days": days, "total": sum(counts.values()), "reasons": counts}
 
 
 @router.get("/admin/orders/{order_id}/proofs/{index}")
