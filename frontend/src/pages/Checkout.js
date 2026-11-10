@@ -34,6 +34,20 @@ const DONE_STATUSES = ["paid", "delivered", "cancelled", "failed", "expired", "l
 const readPending = () => {
   try { return JSON.parse(sessionStorage.getItem(PENDING_KEY) || "null"); } catch (_) { return null; }
 };
+
+// PL-CHK-2-FIX1 — une 422 Pydantic (erreur de validation de modèle) arrive dans
+// `detail` sous forme de tableau décrivant chaque champ fautif ; l'afficher tel
+// quel montrerait un texte technique (« Value error, Invalid phone number »).
+// On mappe le champ fautif vers un libellé FR/EN via t() dans le composant.
+const FIELD_TEXT_KEYS = { payment_phone: "checkout.phoneError" };
+const validationDetails = (e) => {
+  const d = e?.response?.data?.detail;
+  return e?.response?.status === 422 && Array.isArray(d) ? d : null;
+};
+const validationField = (details) => {
+  const loc = details?.find((x) => Array.isArray(x?.loc) && x.loc.length > 1)?.loc;
+  return loc ? loc[loc.length - 1] : null;
+};
 const writePending = (order) => {
   try {
     if (order) sessionStorage.setItem(PENDING_KEY, JSON.stringify({ id: order.id, order_number: order.order_number, pubg_id: order.pubg_id, method: order.payment_method }));
@@ -203,7 +217,12 @@ export default function Checkout() {
     inFlight.current = true;
     setBusy(true);
     try { await fn(); } catch (e) {
-      toast.error(isCaptchaError(e) ? t("captcha.verifyAgain") : errorMessage(e));
+      // PL-CHK-2-FIX1 : les erreurs de validation Pydantic (422) sont traduites en
+      // libellés lisibles (champ fautif quand il est connu), pas le texte technique.
+      const vDetails = validationDetails(e);
+      toast.error(isCaptchaError(e)
+        ? t("captcha.verifyAgain")
+        : (vDetails ? t(FIELD_TEXT_KEYS[validationField(vDetails)] || "checkout.orderValidationError") : errorMessage(e)));
       if (isCaptchaError(e) && captcha.enabled) { captcha.expire(); setCaptchaKey((k) => k + 1); } // jeton à usage unique
     } finally { inFlight.current = false; setBusy(false); }
   };
@@ -220,7 +239,15 @@ export default function Checkout() {
         setCryptoPayment(data);
       } else {
         // MVola / Orange automatique : le numéro à débiter est saisi à l'étape 2.
-        await (order || createOrder(method, { payment_phone: phone }));
+        // PL-CHK-2-FIX1 — le manuel n'a PAS de numéro client (la preuve passe par
+        // l'USSD marchand, `PaymentFlow.ManualPanel` n'a pas de champ téléphone) :
+        // ici SANS `payment_phone`, que le backend accepte comme absent
+        // (routers/orders.py:68 `payment_phone: str | None` ; une chaîne vide
+        // est rejetée « Invalid phone number » par le validateur :92-100). Pour les méthodes auto, le
+        // numéro vide n'est jamais envoyé tel quel : on l'omet, le backend répond
+        // alors 400 « Payment phone number is required » au lieu d'une 422 Pydantic.
+        if (method === "manual") await (order || createOrder(method));
+        else await (order || createOrder(method, { payment_phone: phone || undefined }));
       }
       go(2); // étape Paiement (ProofPay / compte à rebours)
     });

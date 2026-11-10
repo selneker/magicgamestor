@@ -47,7 +47,7 @@ cart: { otherGame: "Votre panier contient des offres d'un autre jeu. Finalisez o
   reviews: { title: "Avis clients", customer: "Client" },
   checkout: {
       title: "Finaliser la commande", account: "Compte PUBG Mobile", pubgId: "ID PUBG Mobile (9–13 chiffres)", pseudo: "Pseudo en jeu", hint: "Votre ID se trouve dans votre profil PUBG Mobile.",
-      payment: "Mode de paiement", phone: "Numéro à débiter", phoneHint: "Vous recevrez une demande de validation sur ce numéro.", manual: "Paiement manuel (USSD)", reference: "Référence de transaction", refHint: "Reçue par SMS après votre paiement.", copy: "Copier", copied: "Numéro copié", ussd: "Payer via USSD",
+      payment: "Mode de paiement", phone: "Numéro à débiter", phoneHint: "Vous recevrez une demande de validation sur ce numéro.", phoneError: "Numéro à débiter invalide : vérifiez le numéro (10 chiffres).", orderValidationError: "Impossible de créer la commande : vérifiez les informations saisies puis réessayez.", manual: "Paiement manuel (USSD)", reference: "Référence de transaction", refHint: "Reçue par SMS après votre paiement.", copy: "Copier", copied: "Numéro copié", ussd: "Payer via USSD",
       send: "Envoyer la commande", ussdTitle: "Paiement USSD", confirmTitle: "Confirmez votre paiement", ussdAmount: "Montant", ussdNumber: "Numéro de paiement", ussdCode: "Code USSD",
       ussdSteps: ["Ouvrez votre service Mobile Money.", "Effectuez le paiement du montant indiqué.", "Attendez le SMS de confirmation.", "Revenez sur cette fenêtre.", "Envoyez les captures d'écran du SMS de confirmation."],
       ussdNote: "Après votre paiement, revenez ici et envoyez les captures d'écran de confirmation.", ussdNext: "J'ai payé — saisir ma référence", ussdCopied: "Code copié",
@@ -198,7 +198,7 @@ cart: { otherGame: "Your cart holds offers from another game. Check out or empty
   reviews: { title: "Customer reviews", customer: "Customer" },
   checkout: {
       title: "Checkout", account: "PUBG Mobile account", pubgId: "PUBG Mobile ID (9–13 digits)", pseudo: "In-game name", hint: "Your ID is in your PUBG Mobile profile.",
-      payment: "Payment method", phone: "Number to debit", phoneHint: "You will receive a validation request on this number.", manual: "Manual payment (USSD)", reference: "Transaction reference", refHint: "Received by SMS after your payment.", copy: "Copy", copied: "Number copied", ussd: "Pay via USSD",
+      payment: "Payment method", phone: "Number to debit", phoneHint: "You will receive a validation request on this number.", phoneError: "Invalid payment number: please check the number (10 digits).", orderValidationError: "Could not create the order: please check the entered information and try again.", manual: "Manual payment (USSD)", reference: "Transaction reference", refHint: "Received by SMS after your payment.", copy: "Copy", copied: "Number copied", ussd: "Pay via USSD",
       send: "Send my order", ussdTitle: "USSD payment", confirmTitle: "Confirm your payment", ussdAmount: "Amount", ussdNumber: "Payment number", ussdCode: "USSD code",
       ussdSteps: ["Open your Mobile Money service.", "Pay the amount shown above.", "Wait for the confirmation SMS.", "Come back to this window.", "Send screenshots of the confirmation SMS."],
       ussdNote: "After your payment, come back here and send the confirmation screenshots.", ussdNext: "I have paid — enter my reference", ussdCopied: "Code copied",

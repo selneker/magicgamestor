@@ -42,10 +42,13 @@ jest.mock("@/components/store/checkout/StepVerify", () => ({
   StepVerify: ({ onContinue }) => <button data-testid="stub-verify-continue" onClick={onContinue}>v</button>,
 }));
 jest.mock("@/components/store/PaymentFlow", () => ({
-  PaymentFlow: ({ setMethod, onContinue, busy }) => (
+  PaymentFlow: ({ setMethod, setPhone, onContinue, busy }) => (
     <>
       <button data-testid="stub-method-pick" onClick={() => setMethod("mvola")}>pick-m</button>
+      <button data-testid="stub-orange-pick" onClick={() => setMethod("orange")}>pick-o</button>
       <button data-testid="stub-manual-pick" onClick={() => setMethod("manual")}>pick-mf</button>
+      <button data-testid="stub-binance-pick" onClick={() => setMethod("binance")}>pick-b</button>
+      <button data-testid="stub-phone-set" onClick={() => setPhone("0341234567")}>phone</button>
       <button data-testid="stub-method-continue" disabled={busy} onClick={onContinue}>m</button>
     </>
   ),
@@ -151,10 +154,98 @@ test("manuel : création à l'étape 2 (step 3 = preuve), le payload n'a plus de
   expect(api.post).toHaveBeenCalledWith("/orders", expect.objectContaining({ payment_method: "manual" }));
   const body = api.post.mock.calls.find((c) => c[0] === "/orders")[1];
   expect(body.manual_reference).toBeUndefined();
+  // PL-CHK-2-FIX1 : le téléphone client n'existe pas pour le manuel (la
+  // preuve passe par l'USSD marchand) — jamais de champ vide dans le payload.
+  expect(body.payment_phone).toBeUndefined();
+  expect(body.payment_method).toBe("manual");
   expect(container.querySelector('[data-testid="checkout-screen-3"]')).not.toBeNull(); // écran Paiement (preuve)
   expect(container.querySelector('[data-testid="proof-drop-zone"]')).not.toBeNull();
   // Aucun champ de référence texte ne doit subsister.
   expect(container.querySelector('[data-testid="manual-reference"]')).toBeNull();
+  await act(async () => root.unmount());
+});
+
+// PL-CHK-2-FIX1 — payload réellement posté à l'étape 2, pour chaque méthode.
+// Tout numéro saisi part tel quel ; une méthode sans numéro (manuel, binance)
+// n'embarque JAMAIS de téléphone, et les méthodes auto ne l'envoient pas vide.
+test("MVola : le numéro à débiter saisi à l'étape 2 part dans le payload", async () => {
+  const { container, root } = await renderCheckout();
+  await toStepMethod(container);
+  await pick(container, "stub-phone-set");
+  await pick(container, "stub-method-pick");
+  await act(async () => { container.querySelector('[data-testid="stub-method-continue"]').click(); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+  const body = api.post.mock.calls.find((c) => c[0] === "/orders")[1];
+  expect(body).toEqual(expect.objectContaining({ payment_method: "mvola", payment_phone: "0341234567" }));
+  await act(async () => root.unmount());
+});
+
+test("Orange : le numéro à débiter part dans le payload", async () => {
+  const { container, root } = await renderCheckout();
+  await toStepMethod(container);
+  await pick(container, "stub-phone-set");
+  await pick(container, "stub-orange-pick");
+  await act(async () => { container.querySelector('[data-testid="stub-method-continue"]').click(); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+  const body = api.post.mock.calls.find((c) => c[0] === "/orders")[1];
+  expect(body).toEqual(expect.objectContaining({ payment_method: "orange", payment_phone: "0341234567" }));
+  await act(async () => root.unmount());
+});
+
+test("Binance : aucun téléphone dans le payload + initiation crypto", async () => {
+  const { container, root } = await renderCheckout();
+  await toStepMethod(container);
+  await pick(container, "stub-binance-pick");
+  await act(async () => { container.querySelector('[data-testid="stub-method-continue"]').click(); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+  const body = api.post.mock.calls.find((c) => c[0] === "/orders")[1];
+  expect(body.manual_reference).toBeUndefined();
+  expect(body.payment_phone).toBeUndefined();
+  expect(api.post.mock.calls.some((c) => c[0] === "/crypto/initiate")).toBe(true);
+  await act(async () => root.unmount());
+});
+
+test("auto sans numéro saisi : le téléphone est omis (jamais envoyé vide)", async () => {
+  const { container, root } = await renderCheckout();
+  await toStepMethod(container);
+  await pick(container, "stub-orange-pick");
+  await act(async () => { container.querySelector('[data-testid="stub-method-continue"]').click(); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+  const body = api.post.mock.calls.find((c) => c[0] === "/orders")[1];
+  expect(body.payment_method).toBe("orange");
+  expect(body.payment_phone).toBeUndefined(); // pas ""
+  await act(async () => root.unmount());
+});
+
+// PL-CHK-2-FIX1 — les 422 Pydantic sont affichées en français lisible.
+test("422 « Invalid phone number » : message FR lisible + on reste à l'étape 2", async () => {
+  api.post.mockImplementation((url) => {
+    if (url === "/orders") return Promise.reject({ response: { status: 422, data: { detail: [{ loc: ["body", "payment_phone"], msg: "Value error, Invalid phone number", type: "value_error" }] } } });
+    return Promise.resolve({ data: {} });
+  });
+  const { container, root } = await renderCheckout();
+  await toStepMethod(container);
+  await pick(container, "stub-binance-pick");
+  await act(async () => { container.querySelector('[data-testid="stub-method-continue"]').click(); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+  expect(toast.error).toHaveBeenCalledWith("Numéro à débiter invalide : vérifiez le numéro (10 chiffres).");
+  expect(container.querySelector('[data-testid="checkout-screen-2"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="checkout-screen-3"]')).toBeNull();
+  await act(async () => root.unmount());
+});
+
+test("422 sur un autre champ : message générique lisible (pas le texte technique)", async () => {
+  api.post.mockImplementation((url) => {
+    if (url === "/orders") return Promise.reject({ response: { status: 422, data: { detail: [{ loc: ["body", "pseudo"], msg: "Value error, too short", type: "value_error" }] } } });
+    return Promise.resolve({ data: {} });
+  });
+  const { container, root } = await renderCheckout();
+  await toStepMethod(container);
+  await pick(container, "stub-method-pick");
+  await act(async () => { container.querySelector('[data-testid="stub-method-continue"]').click(); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+  expect(toast.error).toHaveBeenCalledWith("Impossible de créer la commande : vérifiez les informations saisies puis réessayez.");
+  expect(container.querySelector('[data-testid="checkout-screen-2"]')).not.toBeNull();
   await act(async () => root.unmount());
 });
 
