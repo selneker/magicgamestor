@@ -217,3 +217,79 @@ test("ci-9 : la variable CSS de réserve du bas de page est posée quand la barr
   const reserve = document.documentElement.style.getPropertyValue("--bottom-chrome-reserve");
   expect(reserve).toContain("calc");
 });
+
+// ---------------------------------------------------------------- PL-NAV-1-COMPACT
+
+test("nav-1 : pastille compacte centrée — plus de flex-1 ni de flexGrow étirant les onglets", async () => {
+  const c = await mount();
+  const nav = q('[data-testid="bottom-nav"]', () => c);
+  expect(nav).not.toBeNull();
+  expect(nav.className).not.toContain("flex-1"); // jamais étirée sur toute la largeur
+  expect(q('[data-testid="bottom-nav-wrapper"]', () => c).className).toContain("justify-center");
+  // Aucun onglet n'est étiré par un flexGrow inline (l'ancien style {flexGrow: ...}).
+  for (const item of all('[data-testid^="bottom-nav-"]', () => c)) {
+    expect(item.getAttribute("style")).toBeNull();
+  }
+  // Cibles tactiles et hauteur de barre conservées (nav-outer 52 / pill 44 px, CSS).
+  expect(nav.className).toContain("nav-outer");
+});
+
+test("nav-2 : libellé réduit mais lisible, icônes proportionnelles, espacement réduit", async () => {
+  const c = await mount();
+  const nav = q('[data-testid="bottom-nav"]', () => c);
+  // Le mock NavLink de test ignore className (les <a> n'en portent pas) :
+  // on interroge la nav et les enfants internes, restitués tels quels.
+  expect(nav.className).toContain("gap-0.5"); // espace entre onglets réduit (avant gap-1)
+  const shop = q('[data-testid="bottom-nav-shop"]', () => c);
+  const label = shop.querySelector("span span"); // calque motion.span du libellé
+  expect(label.className).toContain("text-[12px]"); // avant 13.5 px, plancher 11 px
+  const icon = shop.querySelector("svg");
+  expect(icon.getAttribute("class")).toContain("h-[18px]"); // avant 21 px
+});
+
+test("nav-3 : le sélecteur de jeu est une grille de 2 colonnes, jamais une rangée", async () => {
+  const c = await mount();
+  await act(async () => { q('[data-testid="game-button"]', () => c).click(); });
+  const list = q('[data-testid="game-selector-list"]', () => c);
+  expect(list).not.toBeNull();
+  expect(list.className).toContain("grid-cols-2");
+  expect(list.className).toContain("overflow-y-auto");
+  expect(list.className).not.toContain("flex items-center");
+  // Toutes les cibles restent >= 44 px de haut et ont un libellé de jeu.
+  for (const card of all('[role="menuitemradio"]', () => c)) {
+    expect(card.className).toContain("min-h-[44px]");
+  }
+  const active = q('[data-testid="game-selector-item-pubg-mobile"]', () => c);
+  expect(active.getAttribute("aria-checked")).toBe("true");
+  expect(active.className).toContain("bg-primary"); // jeu actif clairement marqué
+  // Ancre : le panneau reste au-dessus du bouton manette (bottom + safe-area).
+  const panel = q('[data-testid="game-selector-panel"]', () => c);
+  expect(panel.className).toContain("bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.5rem)]");
+});
+
+test("nav-4 : bouton manette — conteneur rond positionné, image qui remplit le cercle, icône centrée", async () => {
+  global.__rrState.pathname = "/boutique";
+  global.__rrState.search = "?game=pubg-mobile";
+  const c = await mount();
+  const button = q('[data-testid="game-button"]', () => c);
+  // Le bouton est positionné : les calques absolus (image / icônes) ont le
+  // bouton lui-même pour conteneur — plus jamais le wrapper fixed 12 px plus
+  // bas (cause de l'image carrée qui débordait et de la manette décentrée).
+  expect(button.className).toContain("relative");
+  expect(button.className).toContain("overflow-hidden");
+  expect(button.className).toContain("nav-pill"); // cercle (border-radius 9999px, CSS)
+  const img = q("img", button);
+  expect(img).not.toBeNull();
+  expect(img.className).toContain("object-cover"); // remplit le cercle sans déformation
+  expect(img.className).toContain("h-full");
+  expect(img.className).toContain("w-full");
+  // Sans jeu actif : l'icône manette vit dans un calque plein-bouton centré.
+  global.__rrState.search = "";
+  await act(async () => { root.render(<Chrome />); });
+  const btn2 = q('[data-testid="game-button"]', () => c);
+  const layer = q('[data-testid="game-button-game-icon"]', () => c);
+  expect(layer.className).toContain("inset-0");
+  expect(layer.className).toContain("items-center");
+  expect(layer.className).toContain("justify-center");
+  expect(q("svg", btn2)).not.toBeNull();
+});

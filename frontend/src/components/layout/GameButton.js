@@ -11,6 +11,10 @@ import { useIsMobileViewport } from "@/hooks/useIsMobileViewport";
 // hauteur, même alignement) et ouvre le nouveau sélecteur en pill. Il affiche
 // l'icône du jeu courant quand la route en porte un (`?game=`), sinon la
 // manette générique. Desktop (>= 1024 px) : non rendu du tout.
+// PL-NAV-1-COMPACT — `relative` : les calques absolus d'AnimatePresence ont
+// désormais le BOUTON pour conteneur (avant : le wrapper fixed, 12 px plus
+// haut) — l'image du jeu remplit exactement le cercle (object-cover, clip
+// rond, aucun débord) et la manette / le ✕ sont parfaitement centrés.
 export function GameButton() {
   const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
@@ -40,7 +44,7 @@ export function GameButton() {
         data-testid="game-button"
         data-open={open ? "true" : "false"}
         initial={false}
-        className="nav-pill pointer-events-auto flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden border-2 border-ink bg-primary text-primary-foreground shadow-[0_6px_18px_hsl(var(--foreground)_/_.28)] dark:shadow-none active:scale-[0.96]"
+        className="nav-pill pointer-events-auto relative flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden border-2 border-ink bg-primary text-primary-foreground shadow-[0_6px_18px_hsl(var(--foreground)_/_.28)] dark:shadow-none active:scale-[0.96]"
       >
         <AnimatePresence initial={false} mode="popLayout">
           {open ? (

@@ -47,13 +47,17 @@ export function BottomNav() {
 
   return (
     <>
-      {/* Main navigation layer — stays behind the game-selector backdrop. */}
+      {/* Main navigation layer — stays behind the game-selector backdrop.
+          PL-NAV-1-COMPACT — pastille compacte CENTRÉE dans l'espace libre à
+          gauche du bouton manette (plus de flex-1 pleine largeur ni de
+          flexGrow étirant les onglets) ; pr-[4.5rem] garantit un écart de 8 px
+          avec le bouton (12 + 52 + 8), jamais de chevauchement à 320 px. */}
       <div
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex items-center px-3 pr-[3.75rem] pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex items-center justify-center px-3 pr-[4.5rem] pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden"
         data-testid="bottom-nav-wrapper"
       >
         <nav
-          className="liquid-nav nav-outer pointer-events-auto flex min-w-0 flex-1 items-center gap-1 px-1"
+          className="liquid-nav nav-outer pointer-events-auto flex min-w-0 max-w-full items-center gap-0.5 px-1"
           data-testid="bottom-nav"
           aria-label={t("nav.shop")}
         >
@@ -65,8 +69,7 @@ export function BottomNav() {
                 to={to}
                 data-testid={id}
                 aria-current={active ? "page" : undefined}
-                style={{ flexGrow: active ? 2.4 : 1, flexBasis: 0 }}
-                className={`nav-item-pill relative flex min-w-0 items-center justify-center overflow-hidden px-2 transition-[flex-grow,color] duration-[420ms] ease-out active:scale-[0.96] ${
+                className={`nav-item-pill relative flex min-w-0 items-center justify-center overflow-hidden px-1.5 transition-[color] duration-[420ms] ease-out active:scale-[0.96] ${
                   active ? "text-[#0A0A0A]" : "text-[#F4F3EE]/65"
                 }`}
               >
@@ -79,14 +82,14 @@ export function BottomNav() {
                   />
                 )}
                 <span className="relative z-10 flex items-center">
-                  <Icon className="h-[21px] w-[21px] shrink-0" strokeWidth={active ? 2.25 : 2} />
+                  <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={active ? 2.25 : 2} />
                   <motion.span
                     initial={false}
                     animate={{ width: active ? "auto" : 0, opacity: active ? 1 : 0 }}
                     transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
-                    className="overflow-hidden whitespace-nowrap text-[13.5px] font-semibold leading-none tracking-[-0.01em]"
+                    className="overflow-hidden whitespace-nowrap text-[12px] font-semibold leading-none tracking-[-0.01em]"
                   >
-                    <span className="block pl-2">{label}</span>
+                    <span className="block pl-1.5">{label}</span>
                   </motion.span>
                 </span>
               </NavLink>
