@@ -53,3 +53,23 @@ export function candidateOrderId() {
   }
   return p.id;
 }
+
+// PL-CHK-6 — une commande en attente s'offre (bannière « Continuer »), elle ne
+// s'impose jamais. Une commande mémorisée n'est UTILISABLE en reprise que si
+// elle est encore active ET payable ici : statut final ou introuvable = course
+// terminée, manuelle sans `manual_operator` = plus payable (PL-CHK-5 : écran
+// dédié « Recommencer »). Toute commande inutilisable fait mourir l'entrée en
+// silence — appliquée à CHAQUE lecture (bannière, page de commande).
+export const PENDING_ACTIVE_STATUSES = ["pending_payment", "proof_submitted"];
+
+export function isUsablePendingOrder(order) {
+  if (!order || !PENDING_ACTIVE_STATUSES.includes(order.status)) return false;
+  if (order.payment_method === "manual" && !order.manual_operator) return false;
+  return true;
+}
+
+// Cible « Recommencer » : écran 1 du jeu concerné (la boutique filtrée sur le
+// jeu de la commande, même lien que GameCard), ou l'accueil si jeu inconnu.
+export function restartTarget(order) {
+  return order?.game_id ? `/boutique?game=${order.game_id}` : "/";
+}

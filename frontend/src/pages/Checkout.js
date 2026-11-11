@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { AlertTriangle, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
-import { readPendingOrderId, writePendingOrderId, clearPendingOrderId } from "@/lib/pendingOrder"; // PL-CHK-3
+import { writePendingOrderId } from "@/lib/pendingOrder"; // PL-CHK-3
 import { useLang } from "@/context/LanguageContext";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -24,11 +24,16 @@ import { Button } from "@/components/ui/button";
 // (il vit à la fin, écran 4), aucun bloc de frais détaillé (une seule petite
 // ligne si des frais > 0 existent), aucun stepper, aucune carte explicative.
 // La commande est créée ICI puis redirection vers /orders/:id (écran 2), qui
-// est le SEUL écran de paiement (reprise PL-CHK-3 comprise).
+// est le SEUL écran de paiement. PL-CHK-6 : /commande ne lit plus la clé de
+// reprise — une commande en attente s'offre par la bannière, jamais ici.
 
-// Statuts qui clôturent le tunnel : la clé de reprise est retirée.
-const DONE_STATUSES = ["paid", "delivered", "cancelled", "failed", "expired", "late_payment"];
-const ACTIVE_STATUSES = ["pending_payment", "proof_submitted"];
+// PL-CHK-6 — PLUS AUCUNE reprise ici : une commande en attente s'offre
+// (bannière « Commande en cours ») et la liste des commandes la montre ; elle
+// ne s'impose JAMAIS. L'ancienne reprise PL-CHK-3 redirigeait /commande vers
+// /orders/:id pour TOUTE commande mémorisée active — y compris une commande
+// invalide (manuelle sans opérateur) : le client était bloqué hors du tunnel
+// et « Recommencer » ne purgeait pas la clé → boucle. La seule redirection du
+// tunnel reste celle qui suit immédiatement une création réussie.
 
 // PL-CHK-2-FIX1 : les 422 Pydantic sont traduites en libellés lisibles.
 const FIELD_TEXT_KEYS = { payment_phone: "checkout.phoneError", manual_operator: "checkout.orderValidationError" };
@@ -62,9 +67,6 @@ export default function Checkout() {
   const [autoVerify, setAutoVerify] = useState(0);
   const [identity, setIdentity] = useState(null);
   const [identityValues, setIdentityValues] = useState({});
-  // Reprise : un rechargement de /commande avec une commande en attente
-  // redirige vers l'écran de paiement — jamais de nouvelle commande.
-  const [recovering, setRecovering] = useState(() => !!readPendingOrderId());
   // Garde anti double-clic synchrone : un seul appel API part jamais.
   const inFlight = useRef(false);
   const captcha = useCaptcha();
@@ -94,19 +96,6 @@ export default function Checkout() {
     api.get("/payments/config").then(({ data }) => setConfig(data)).catch(() => {});
     api.get("/crypto/config").then(({ data }) => setCrypto(data)).catch(() => {});
   }, []);
-
-  // Reprise PL-CHK-3 : une commande en attente connue (invité ou compte) ouvre
-  // directement son écran de paiement — /commande ne recrée JAMAIS une commande
-  // par-dessus une commande active.
-  useEffect(() => {
-    const pending = readPendingOrderId(); // { id, createdAt } | null
-    if (!pending) { setRecovering(false); return; }
-    api.get(`/orders/${pending.id}`).then(({ data }) => {
-      if (ACTIVE_STATUSES.includes(data.status)) { navigate(`/orders/${data.id}`, { replace: true }); return; }
-      if (DONE_STATUSES.includes(data.status)) clearPendingOrderId();
-      setRecovering(false);
-    }).catch(() => { clearPendingOrderId(); setRecovering(false); });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Méthodes réellement actives (source : /payments/config + /crypto/config,
   // inventaire étape 0). Aucune méthode désactivée n'est jamais affichée :
@@ -254,7 +243,7 @@ export default function Checkout() {
 
   const canSubmit = !!verified && !!method && (method !== "binance" || !!network);
 
-  if (items.length === 0 && !recovering) {
+  if (items.length === 0) {
     return (
       <div className="mx-auto flex min-h-[100svh] max-w-[480px] flex-col" data-testid="checkout-form">
         <header className="flex h-[52px] flex-none items-center px-1">

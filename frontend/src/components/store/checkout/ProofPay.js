@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, ChevronDown, Loader2, Plus, X } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api, errorMessage, formatAr } from "@/lib/api";
+import { clearPendingOrderId, restartTarget } from "@/lib/pendingOrder";
 import { isCaptchaError } from "@/components/common/CaptchaWidget";
 import { useLang } from "@/context/LanguageContext";
 import { paymentLabel } from "@/lib/paymentLabels";
@@ -348,10 +349,15 @@ export function LateScreen() {
 
 export function EndScreen({ order }) {
   const { t } = useLang();
+  const navigate = useNavigate();
+  // PL-CHK-6 — « Recommencer » : la clé de reprise meurt PUIS l'écran 1 du jeu
+  // concerné s'ouvre (ou l'accueil si le jeu est inconnu).
+  const restart = () => { clearPendingOrderId(); navigate(restartTarget(order), { replace: true }); };
   return (
     <section className="mx-auto flex flex-1 flex-col items-center justify-center gap-3 py-10 text-center" data-testid="proof-cancelled">
       <p className="font-display text-[22px] font-extrabold">{t(`order.status.${order.status}`)}</p>
       <p className="mx-auto max-w-[290px] text-[13.5px] leading-snug text-muted-foreground">{t(`order.next.${order.status}`)}</p>
+      <Button type="button" onClick={restart} className="mt-3 h-12 w-full max-w-xs rounded-full font-extrabold" data-testid="proof-restart">{t("checkout.restart")}</Button>
       <Button asChild variant="outline" className="mt-2 h-12 w-full max-w-xs rounded-full font-bold" data-testid="proof-home"><Link to="/">{t("checkout.proofHome")}</Link></Button>
     </section>
   );
@@ -361,6 +367,11 @@ export function EndScreen({ order }) {
 
 export function ProofExpired({ order }) {
   const { t } = useLang();
+  const navigate = useNavigate();
+  // PL-CHK-6 — « Recommencer » : la clé de reprise meurt PUIS l'écran 1 du jeu
+  // concerné s'ouvre (ou l'accueil si le jeu est inconnu). L'ancien lien
+  // /boutique laissait la commande expirée mémorisée.
+  const restart = () => { clearPendingOrderId(); navigate(restartTarget(order), { replace: true }); };
   return (
     <section className="mx-auto flex flex-1 flex-col items-center justify-center gap-2.5 py-10 text-center" data-testid="proof-expired">
       {/* Icône horloge SVG EN LIGNE (maquette écran 8). */}
@@ -372,7 +383,7 @@ export function ProofExpired({ order }) {
       <p className="mx-auto max-w-[290px] text-[13.5px] leading-normal text-muted-foreground">
         {t("checkout.orderExpiredBody", { number: order?.order_number })}
       </p>
-      <Button asChild className="mt-3 h-12 w-full max-w-xs rounded-full font-extrabold" data-testid="proof-restart"><Link to="/boutique">{t("checkout.restart")}</Link></Button>
+      <Button type="button" onClick={restart} className="mt-3 h-12 w-full max-w-xs rounded-full font-extrabold" data-testid="proof-restart">{t("checkout.restart")}</Button>
     </section>
   );
 }

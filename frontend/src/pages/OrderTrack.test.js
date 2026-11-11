@@ -29,9 +29,10 @@ jest.mock("react-router-dom", () => {
     Link: ({ to, children, ...props }) => React.createElement("a", { ...props, href: to }, children),
     useParams: () => mockParams || { orderNumber: mockTrackOrder?.order_number || "" },
     useSearchParams: () => [new URLSearchParams(mockTrackOrder ? `pubg_id=${mockTrackOrder.pubg_id}` : ""), jest.fn()],
-    useNavigate: () => jest.fn(),
+    useNavigate: () => mockNavigate,
   };
 });
+const mockNavigate = jest.fn();
 jest.mock("@/lib/api", () => ({
   api: { get: jest.fn(), post: jest.fn() },
   formatAr: (v) => `${Number(v || 0).toLocaleString("fr-FR")} Ar`,
@@ -61,6 +62,8 @@ const baseOrder = {
 beforeEach(() => {
   const { api } = require("@/lib/api");
   api.get.mockReset(); api.post.mockReset();
+  localStorage.clear();
+  mockNavigate.mockClear();
   api.get.mockImplementation((url) => {
     if (url.includes("/orders/track")) return Promise.resolve({ data: mockTrackOrder });
     if (url.includes("/payments/") && url.endsWith("/status")) return Promise.resolve({ data: mockPayStatus });
@@ -152,7 +155,8 @@ describe("écran 2 — paiement manuel (MVola / Orange)", () => {
     await act(async () => root.unmount());
   });
 
-  test("ancienne commande sans manual_operator : AUCUN sélecteur, AUCUN numéro — message + « Recommencer »", async () => {
+  test("ancienne commande sans manual_operator : AUCUN sélecteur, AUCUN numéro — message + « Recommencer » effectif (PL-CHK-6)", async () => {
+    localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "ord-uuid-1", createdAt: new Date().toISOString() }));
     mockOrderGet = resumeOrder({ manual_operator: null });
     const { container, root } = await mountResume();
     // PL-CHK-5 : une méthode = un écran. Opérateur null → écran dédié, le
@@ -165,10 +169,30 @@ describe("écran 2 — paiement manuel (MVola / Orange)", () => {
     expect(container.querySelector('[data-testid="send-proof-button"]')).toBeNull();
     expect(container.querySelector('[data-testid="resume-unpayable"]').textContent)
       .toContain("ne peut plus être payée");
+    // PL-CHK-6 — sortie discrète vers l'accueil + « Recommencer » : la clé
+    // meurt PUIS l'écran 1 du jeu concerné (boutique filtrée sur ce jeu).
+    expect(container.querySelector('[data-testid="resume-back-home"]').getAttribute("href")).toBe("/");
     const restart = container.querySelector('[data-testid="restart-button"]');
     expect(restart).not.toBeNull();
-    expect(restart.getAttribute("href")).toBe("/boutique");
+    expect(restart.textContent).toBe("Recommencer");
+    await act(async () => { restart.click(); });
+    expect(mockNavigate).toHaveBeenCalledWith("/boutique?game=pubg-mobile", { replace: true });
+    expect(localStorage.getItem("mgs_pending_order_id")).toBeNull();
     await act(async () => root.unmount());
+  });
+
+  test("commande manuelle sans opérateur vue par l'API : la clé qui la pointe est purgée en silence", async () => {
+    localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "ord-uuid-1", createdAt: new Date().toISOString() }));
+    mockOrderGet = resumeOrder({ manual_operator: null });
+    await mountResume();
+    expect(localStorage.getItem("mgs_pending_order_id")).toBeNull();
+  });
+
+  test("statut final sur une AUTRE commande : la clé d'une autre commande n'est JAMAIS purgée", async () => {
+    localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "o-autre", createdAt: new Date().toISOString() }));
+    mockOrderGet = resumeOrder({ status: "paid" });
+    await mountResume();
+    expect(JSON.parse(localStorage.getItem("mgs_pending_order_id")).id).toBe("o-autre");
   });
 
   test("AUCUN récapitulatif (il vit à l'écran 4) et AUCUN code USSD", async () => {
@@ -286,6 +310,59 @@ describe("écran 2 — branches de statuts", () => {
     expect(container.querySelector('[data-testid="send-proof-button"]')).toBeNull();
     // Statut final : la mémorisation de reprise est purgée (PL-CHK-3).
     expect(localStorage.getItem("mgs_pending_order_id")).toBeNull();
+    await act(async () => root.unmount());
+  });
+
+  test.each([
+    ["expired", "proof-expired"], ["cancelled", "proof-cancelled"], ["failed", "proof-cancelled"],
+  ])("statut %s (PL-CHK-6) : « Recommencer » purge la clé et ramène à l'écran 1 du jeu", async (status, testid) => {
+    localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "ord-uuid-1", createdAt: new Date().toISOString() }));
+    mockOrderGet = resumeOrder({ status, manual_operator: null });
+    const { container, root } = await mountResume();
+    expect(container.querySelector(`[data-testid="${testid}"]`)).not.toBeNull();
+    const restart = container.querySelector('[data-testid="proof-restart"]');
+    expect(restart).not.toBeNull();
+    await act(async () => { restart.click(); });
+    expect(mockNavigate).toHaveBeenCalledWith("/boutique?game=pubg-mobile", { replace: true });
+    expect(localStorage.getItem("mgs_pending_order_id")).toBeNull();
+    await act(async () => root.unmount());
+  });
+
+  test.each([
+    ["expired", "proof-expired"], ["cancelled", "proof-cancelled"], ["failed", "proof-cancelled"],
+  ])("statut %s : « Recommencer » avec un jeu inconnu ramène à l'accueil", async (status, testid) => {
+    mockOrderGet = resumeOrder({ status, manual_operator: null, game_id: undefined });
+    const { container, root } = await mountResume();
+    await act(async () => { container.querySelector(`[data-testid="${testid}"] [data-testid="proof-restart"]`).click(); });
+    expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
+    await act(async () => root.unmount());
+  });
+
+  test("403/404 sur une commande mémorisée : la clé est purgée en silence", async () => {
+    localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "ord-uuid-1", createdAt: new Date().toISOString() }));
+    const { api } = require("@/lib/api");
+    api.get.mockImplementation((url) => url === "/payments/config"
+      ? Promise.resolve({ data: mockPayConfig })
+      : Promise.reject(Object.assign(new Error("nope"), { response: { status: 404 } })));
+    const { container, root } = await mountResume();
+    expect(container.querySelector('[data-testid="order-not-available"]')).not.toBeNull();
+    expect(localStorage.getItem("mgs_pending_order_id")).toBeNull();
+    await act(async () => root.unmount());
+  });
+
+  test("annulation confirmée : la clé de reprise est purgée (PL-CHK-6)", async () => {
+    localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "ord-uuid-1", createdAt: new Date().toISOString() }));
+    const { api } = require("@/lib/api");
+    api.post.mockResolvedValue({ data: { ok: true, status: "cancelled" } });
+    mockOrderGet = resumeOrder();
+    const { container, root } = await mountResume();
+    await act(async () => { container.querySelector('[data-testid="order-cancel-open"]').click(); });
+    await act(async () => { document.querySelector('[data-testid="cancel-reason-other"]').click(); });
+    await act(async () => { document.querySelector('[data-testid="cancel-confirm"]').click(); });
+    await act(async () => { await Promise.resolve(); });
+    expect(api.post).toHaveBeenCalledWith("/orders/ord-uuid-1/cancel", { reason: "other" });
+    expect(localStorage.getItem("mgs_pending_order_id")).toBeNull();
+    expect(mockNavigate).toHaveBeenCalledWith("/", { replace: true });
     await act(async () => root.unmount());
   });
 
