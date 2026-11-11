@@ -8,9 +8,12 @@ import { hidesBottomChrome } from "@/lib/bottomChrome";
 import { useIsMobileViewport } from "@/hooks/useIsMobileViewport";
 
 // PL-UI-BOTTOM-1 — Changement rapide de jeu en pill flottante, ancrée juste
-// au-dessus du bouton manette (8 px d'écart). Remplace l'ancien panneau plein
-// : une rangée de logos (cibles 44 px), jetons existants uniquement, 5 jeux
-// puis un entrée « Tous ». Desktop (>= 1024 px) : non rendu du tout.
+// au-dessus du bouton manette (8 px d'écart). Desktop (>= 1024 px) : non
+// rendu du tout.
+// PL-NAV-1-COMPACT — la pill redevient la GRILLE de 2 colonnes du début de la
+// fonctionnalité (f1d6e82) : une carte (pastille + nom) par jeu, jeu actif
+// marqué (fond néon + anneau), hauteur plafonnée à défilement vertical seul,
+// jamais de rangée horizontale ni de débord à 320 px.
 const MAX_ITEMS = 5;
 
 export function GameSelector() {
@@ -83,18 +86,22 @@ export function GameSelector() {
           exit={prefersReduced ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.96 }}
           transition={{ duration: prefersReduced ? 0 : 0.18, ease: "easeOut" }}
           className="fixed right-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.5rem)] z-[61]
-                     flex max-w-[calc(100vw-1.5rem)] items-center overflow-hidden rounded-[24px]
-                     border border-[color:var(--rule-strong)] bg-card px-1.5 py-1.5 text-[color:hsl(var(--card-foreground))]
+                     max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-[24px]
+                     border border-[color:var(--rule-strong)] bg-card text-[color:hsl(var(--card-foreground))]
                      shadow-[0_18px_44px_hsl(0_0%_0%_/_.22)] backdrop-blur-md md:hidden"
         >
-          {/* gap-1 (et non gap-2) : à 320 px la rangée de 6 cibles 44 px doit
-              tenir dans max-w 304 px (6*44 + 5*4 + 2*12 = 296 px), sinon
-              l'entrée « Tous » serait rognée par overflow-hidden. */}
-          <ul className="flex items-center gap-1" data-testid="game-selector-list">
+          {/* PL-NAV-1-COMPACT — grille de 2 colonnes (état d'origine de la
+              fonctionnalité, f1d6e82) : une carte par jeu, jamais de rangée
+              horizontale ; ancrée au-dessus du bouton manette, hauteur plafonnée
+              avec défilement VERTICAL seul, jamais masquée par la barre. */}
+          <ul
+            className="grid max-h-[min(58vh,320px)] grid-cols-2 gap-1.5 overflow-y-auto overflow-x-hidden p-1.5"
+            data-testid="game-selector-list"
+          >
             {games.slice(0, MAX_ITEMS).map((g) => {
               const isActive = g.id === selected?.id;
               return (
-                <li key={g.id}>
+                <li key={g.id} className="min-w-0">
                   <button
                     type="button"
                     role="menuitemradio"
@@ -103,22 +110,27 @@ export function GameSelector() {
                     title={g.name}
                     data-testid={`game-selector-item-${g.slug || g.id}`}
                     onClick={() => { selectGame(g.id); navigate(`/boutique?game=${g.id}`); }}
-                    className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A] ${
-                      isActive ? "ring-2 ring-[color:var(--brand-lime)] ring-offset-2 ring-offset-[color:hsl(var(--card))]" : ""
+                    className={`flex min-h-[44px] w-full flex-col items-center justify-center gap-1 rounded-[16px] p-2 transition-colors ${
+                      isActive
+                        ? "bg-primary text-[#0A0A0A] ring-2 ring-[color:var(--brand-lime)] ring-offset-2 ring-offset-[color:hsl(var(--card))]"
+                        : "border border-[color:var(--rule-strong)] text-[color:hsl(var(--foreground))]"
                     }`}
                   >
-                    {g.icon_url && !broken[g.id] ? (
-                      <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy"
-                        onError={() => setBroken((b) => ({ ...b, [g.id]: true }))} />
-                    ) : (
-                      <Gamepad2 className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
-                    )}
+                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full ${isActive ? "" : "border border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]"}`}>
+                      {g.icon_url && !broken[g.id] ? (
+                        <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy"
+                          onError={() => setBroken((b) => ({ ...b, [g.id]: true }))} />
+                      ) : (
+                        <Gamepad2 className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+                      )}
+                    </span>
+                    <span className="max-w-full truncate text-[11px] font-semibold leading-tight">{g.name}</span>
                   </button>
                 </li>
               );
             })}
             {games.length > MAX_ITEMS && (
-              <li>
+              <li className="min-w-0">
                 <button
                   type="button"
                   role="menuitem"
@@ -126,9 +138,12 @@ export function GameSelector() {
                   title={t("games.all")}
                   data-testid="game-selector-all"
                   onClick={() => navigate("/boutique")}
-                  className="flex h-11 w-11 items-center justify-center rounded-full border border-[color:var(--rule-strong)] text-[color:hsl(var(--muted-foreground))] transition-colors hover:bg-[color:hsl(var(--muted))] hover:text-[color:hsl(var(--foreground))]"
+                  className="flex min-h-[44px] w-full flex-col items-center justify-center gap-1 rounded-[16px] border border-[color:var(--rule-strong)] p-2 text-[color:hsl(var(--muted-foreground))] transition-colors hover:bg-[color:hsl(var(--muted))] hover:text-[color:hsl(var(--foreground))]"
                 >
-                  <LayoutGrid className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[color:var(--rule-strong)]">
+                    <LayoutGrid className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+                  </span>
+                  <span className="max-w-full truncate text-[11px] font-semibold leading-tight">{t("games.all")}</span>
                 </button>
               </li>
             )}
