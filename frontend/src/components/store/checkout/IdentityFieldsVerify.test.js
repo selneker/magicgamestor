@@ -2,6 +2,7 @@ import React, { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { api } from "@/lib/api";
 import { setMockLang } from "@/context/LanguageContext";
+import { recentPlayerIdList, rememberPlayerId } from "@/lib/recentPlayerIds";
 import { IdentityFieldsVerify } from "./IdentityFieldsVerify";
 
 // Les messages sont resolus contre le VRAI dictionnaire (FR et EN) : le test
@@ -90,6 +91,7 @@ let warnSpy;
 
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
+  global.localStorage.clear();
   api.post.mockReset();
   setMockLang("fr");
   warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
@@ -585,3 +587,108 @@ test("Restauration via initial : pseudo ET région réaffichés sans appeler le 
   } finally { await unmount(container, root); }
 });
 
+
+// --- PL-UX-3 : suggestions d'ID joueur déjà utilisés (stockage local) ----------
+
+// Les suggestions sont rendues dans le composant : le test lit le DOM rendu.
+const pastilles = (c) => Array.from(c.querySelectorAll('[data-testid^="identity-recent-id-"]'));
+
+test("PL-UX-3 : aucun ID mémorisé → aucune pastille", async () => {
+  global.localStorage.clear();
+  const { container, root } = await mount({ spec: PUBG_SPEC, gameId: "pubg-mobile", values: {} });
+  try {
+    expect(elOf(container, "identity-recent-ids")).toBeNull();
+    expect(pastilles(container)).toHaveLength(0);
+  } finally { await unmount(container, root); }
+});
+
+test("PL-UX-3 : les ID déjà utilisés apparaissent en pastilles, les plus récents d'abord", async () => {
+  rememberPlayerId("pubg-mobile", "111111111");
+  rememberPlayerId("pubg-mobile", "222222222");
+  const { container, root } = await mount({ spec: PUBG_SPEC, gameId: "pubg-mobile", values: {} });
+  try {
+    const pills = pastilles(container);
+    expect(pills.map((p) => p.textContent)).toEqual(["222222222", "111111111"]);
+    // Une seule ligne, pas de retour à la ligne, pas de défilement.
+    expect(elOf(container, "identity-recent-ids").className).toContain("overflow-hidden");
+    expect(elOf(container, "identity-recent-ids").className).not.toContain("flex-wrap");
+    // Zone tactile : 44 px de hauteur minimum (h-11).
+    expect(pills[0].className).toContain("h-11");
+    // Nom accessible et ligne de suggestions sur la ligne du bouton.
+    expect(pills[0].getAttribute("aria-label")).toBe("Utiliser l'ID 222222222");
+    expect(elOf(container, "identity-verify-row")).not.toBeNull();
+  } finally { await unmount(container, root); }
+});
+
+test("PL-UX-3 : les ID d'un AUTRE jeu ne sont jamais proposés", async () => {
+  rememberPlayerId("free-fire", "333333333");
+  const { container, root } = await mount({ spec: PUBG_SPEC, gameId: "pubg-mobile", values: {} });
+  try {
+    expect(pastilles(container)).toHaveLength(0);
+  } finally { await unmount(container, root); }
+});
+
+test("PL-UX-3 : une pastille remplit le champ, sans lancer la vérification", async () => {
+  rememberPlayerId("pubg-mobile", "444444444");
+  api.post.mockReset();
+  const setValues = jest.fn();
+  const { container, root } = await mount({ spec: PUBG_SPEC, gameId: "pubg-mobile", values: {}, setValues });
+  try {
+    await act(async () => { pastilles(container)[0].click(); });
+    expect(setValues).toHaveBeenCalledTimes(1);
+    const update = setValues.mock.calls[0][0];
+    expect(update({ player_id: "" })).toEqual({ player_id: "444444444" });
+    // Pas de vérification automatique : c'est le comportement actuel après saisie.
+    expect(api.post).not.toHaveBeenCalled();
+  } finally { await unmount(container, root); }
+});
+
+test("PL-UX-3 : après une vérification réussie, l'ID est mémorisé et les suggestions disparaissent", async () => {
+  global.localStorage.clear();
+  api.post.mockResolvedValue({ data: { valid: true, player_name: "Sel" } });
+  const { container, root } = await mount({ spec: PUBG_SPEC, gameId: "pubg-mobile", values: { player_id: "555555555" } });
+  try {
+    await verifier(container);
+    expect(elOf(container, "identity-verify-valid")).not.toBeNull();
+    // Les suggestions disparaissent tant que l'ID est vérifié.
+    expect(elOf(container, "identity-recent-ids")).toBeNull();
+    // L'ID est enregistré en tête de liste pour ce jeu.
+    expect(recentPlayerIdList("pubg-mobile")).toEqual(["555555555"]);
+  } finally { await unmount(container, root); }
+});
+
+test("PL-UX-3 : « Changer » (editing) fait réapparaître les suggestions", async () => {
+  rememberPlayerId("pubg-mobile", "666666666");
+  // `checkout: false` = l'écran de commande (le composant garde la ligne
+  // « Vérifier » visible même quand l'ID est déjà vérifié).
+  const { container, root } = await mount({
+    spec: PUBG_SPEC, gameId: "pubg-mobile", values: { player_id: "666666666" },
+    initial: { name: "Sel" }, editing: true, checkout: false,
+  });
+  try {
+    expect(elOf(container, "identity-recent-ids")).not.toBeNull();
+    expect(pastilles(container).map((p) => p.textContent)).toEqual(["666666666"]);
+  } finally { await unmount(container, root); }
+});
+
+test("PL-UX-3 : sans `editing`, un ID vérifié ne montre aucune suggestion", async () => {
+  rememberPlayerId("pubg-mobile", "777777777");
+  const { container, root } = await mount({
+    spec: PUBG_SPEC, gameId: "pubg-mobile", values: { player_id: "777777777" },
+    initial: { name: "Sel" }, checkout: false,
+  });
+  try {
+    expect(elOf(container, "identity-recent-ids")).toBeNull();
+  } finally { await unmount(container, root); }
+});
+
+test("PL-UX-3 : un ID déjà mémorisé ne crée pas de doublon", async () => {
+  global.localStorage.clear();
+  rememberPlayerId("pubg-mobile", "888888888");
+  api.post.mockResolvedValue({ data: { valid: true, player_name: "Sel" } });
+  const { container, root } = await mount({ spec: PUBG_SPEC, gameId: "pubg-mobile", values: { player_id: "888888888" } });
+  try {
+    await verifier(container);
+    expect(recentPlayerIdList("pubg-mobile")).toEqual(["888888888"]);
+  } finally { await unmount(container, root); }
+});

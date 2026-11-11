@@ -214,3 +214,55 @@ describe("PendingOrderBanner", () => {
     }
   });
 });
+
+// --- PL-UX-3 : bannière sur deux lignes, montant jamais coupé ----------------
+
+test("PL-UX-3 : le montant ne passe jamais à la ligne (espaces insécables + nowrap)", async () => {
+  mockUser = { user_id: "u1" };
+  const { api } = require("@/lib/api");
+  api.get.mockImplementation((url) => url === "/orders/me"
+    ? Promise.resolve({ data: [{ ...baseOrder, total: 1250000 }] })
+    : Promise.resolve({ data: {} }));
+  const { container, root } = await mount();
+  const amount = container.querySelector('[data-testid="pending-banner-amount"]');
+  expect(amount).not.toBeNull();
+  expect(amount.className).toContain("whitespace-nowrap");
+  expect(amount.className).toContain("shrink-0");
+  // Espace insécable entre les chiffres et « Ar ».
+  expect(amount.textContent).toMatch(/\u00A0Ar$/); // espace insécable avant « Ar »
+  expect(amount.textContent).not.toMatch(/ Ar$/);
+  await act(async () => root.unmount());
+});
+
+test("PL-UX-3 : titre lisible en entier sur une seule ligne", async () => {
+  mockUser = { user_id: "u1" };
+  const { api } = require("@/lib/api");
+  api.get.mockImplementation((url) => url === "/orders/me"
+    ? Promise.resolve({ data: [baseOrder] })
+    : Promise.resolve({ data: {} }));
+  const { container, root } = await mount();
+  const title = container.querySelector('[data-testid="pending-banner-title"]');
+  expect(title.textContent).toBe("Commande en cours");
+  expect(title.className).toContain("truncate");
+  await act(async () => root.unmount());
+});
+
+test("PL-UX-3 : la carte fait deux lignes — vignette, titre, montant / minuteur, bouton", async () => {
+  mockUser = { user_id: "u1" };
+  const { api } = require("@/lib/api");
+  api.get.mockImplementation((url) => url === "/orders/me"
+    ? Promise.resolve({ data: [baseOrder] })
+    : Promise.resolve({ data: {} }));
+  const { container, root } = await mount();
+  const card = container.querySelector('[data-testid="pending-order-banner"] section');
+  expect(card.className).not.toContain("flex-wrap"); // plus de tout en une seule ligne
+  // La vignette, le titre et le montant partagent la ligne 1.
+  expect(container.querySelector('[data-testid="banner-logo"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="pending-banner-title"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="pending-banner-amount"]')).not.toBeNull();
+  // Le minuteur et le bouton partagent la ligne 2.
+  expect(container.querySelector('[data-testid="payment-countdown"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="banner-continue"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="banner-continue"]').className).toContain("h-11");
+  await act(async () => root.unmount());
+});

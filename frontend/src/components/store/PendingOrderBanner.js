@@ -33,8 +33,9 @@ const visibleOn = (pathname = "") => pathname === "/" || VISIBLE_PREFIXES.some((
 const Slot = () => (
   // Hauteur RÉSERVÉE pendant le chargement : la carte qui apparaît ensuite
   // (ou l'absence de commande) ne provoque aucun saut de mise en page.
+  // PL-UX-3 — la carte fait deux lignes (40 + 8 + 44 + 24 = 116 px).
   <div aria-hidden="true" data-testid="pending-order-banner-loading" className="px-4 pt-3 sm:px-6">
-    <div className="min-h-[68px] rounded-[18px]" />
+    <div className="min-h-[116px] rounded-[18px]" />
   </div>
 );
 
@@ -90,28 +91,40 @@ export function PendingOrderBanner() {
   if (!visibleOn(pathname)) return null;
   if (!order) return loaded ? null : <Slot />;
   const game = games.find((g) => g.id === order.game_id);
+  // PL-UX-3 — le montant ne JAMAIS passe à la ligne : espaces insécables
+  // (chiffres + « Ar ») + `whitespace-nowrap` sur la ligne.
+  const amount = formatAr(order.total).replace(/[\s\u202f\u00a0]+(?=Ar$)/, "\u00A0");
 
   return (
     <div className="px-4 pt-3 sm:px-6" data-testid="pending-order-banner">
-      <section role="status" aria-label={t("order.banner.live")} className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[18px] border border-[color:var(--rule)] bg-card p-3">
-        <GameLogo game={game} className="h-10 w-10" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold leading-tight">
-            {order.status === "proof_submitted" ? t("order.banner.proofWaiting") : t("order.banner.live")}
-          </p>
-          <p className="num text-sm text-muted-foreground">{formatAr(order.total)}</p>
+      {/* PL-UX-3 — DEUX lignes dans la carte :
+          ligne 1 : vignette du jeu, titre (une seule ligne), montant ;
+          ligne 2 : « Payer sous mm:ss » (minuteur ambre, chiffres tabulaires) à
+          gauche, bouton « Continuer » à droite.
+          Le lien « Voir mes commandes » (plusieurs commandes actives) passe
+          sous le titre : la ligne 2 reste à deux éléments. */}
+      <section role="status" aria-label={t("order.banner.live")} className="rounded-[18px] border border-[color:var(--rule)] bg-card p-2.5 sm:p-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <GameLogo game={game} className="h-9 w-9 sm:h-10 sm:w-10" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-bold leading-tight sm:text-sm" data-testid="pending-banner-title">
+              {order.status === "proof_submitted" ? t("order.banner.proofWaiting") : t("order.banner.live")}
+            </p>
+            {more && (
+              <Link to="/suivi" className="mt-0.5 inline-block text-[11px] font-bold underline" data-testid="banner-view-orders">
+                {t("order.banner.viewOrders")}
+              </Link>
+            )}
+          </div>
+          <p className="num shrink-0 whitespace-nowrap text-[13px] font-bold text-foreground sm:text-sm" data-testid="pending-banner-amount">{amount}</p>
         </div>
-        {/* mm:ss + annonces 5 min / 1 min / expiration uniquement (composant partagé). */}
-        <PaymentCountdown order={order} onZero={refetch} />
-        <Button asChild className="h-11 shrink-0 rounded-full px-5 text-sm font-bold" data-testid="banner-continue">
-          <Link to={`/orders/${order.id}`}>{t("order.banner.continue")}</Link>
-        </Button>
-        {/* Multi-commandes actives (connecté uniquement) : accès à la liste complète. */}
-        {more && (
-          <Button asChild variant="outline" className="h-11 shrink-0 rounded-full px-5 text-sm font-bold" data-testid="banner-view-orders">
-            <Link to="/suivi">{t("order.banner.viewOrders")}</Link>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          {/* mm:ss + annonces 5 min / 1 min / expiration uniquement (composant partagé). */}
+          <PaymentCountdown order={order} onZero={refetch} />
+          <Button asChild className="h-11 shrink-0 rounded-full px-5 text-sm font-bold" data-testid="banner-continue">
+            <Link to={`/orders/${order.id}`}>{t("order.banner.continue")}</Link>
           </Button>
-        )}
+        </div>
       </section>
     </div>
   );

@@ -302,6 +302,10 @@ export default function Checkout() {
               spec={identitySpec} gameId={gameId}
               values={identityValues} setValues={setIdentityValues}
               onVerified={handleVerified} autoTrigger={autoVerify}
+              // PL-UX-3 : « Changer » rend le champ modifiable → les ID déjà
+              // utilisés réapparaissent (les suggestions restent masquées tant
+              // que l'ID est vérifié).
+              editing={editingId}
               initial={verified} />
           )}
         </div>
