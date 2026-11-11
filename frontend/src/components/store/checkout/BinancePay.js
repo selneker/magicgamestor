@@ -1,18 +1,28 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { QRCodeSVG } from "qrcode.react";
-import { AlertTriangle, Copy, Loader2, XCircle } from "lucide-react";
-import { toast } from "sonner";
-import { api, errorMessage } from "@/lib/api";
+import { Loader2, XCircle } from "lucide-react";
+import { api } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
+import { Diamond, KV } from "@/components/store/PaymentFlow";
 
 const POLL_MS = 8000;
+
+// PL-CHK-5 — BinancePay refait selon l'écran 6 de `apercu-checkout-binance.html`
+// (maquette fait foi) : deux étapes numérotées — ① montant exact / réseau /
+// adresse (tronquée au MILIEU « TXyz…R7k2 », la copie prend la valeur
+// COMPLÈTE), ② « Le paiement est détecté automatiquement. Aucune preuve à
+// envoyer. » — puis le bouton fixé « En attente du paiement… » (rendu par le
+// parent). Toute la logique existante est conservée : sondage
+// GET /crypto/{id}/status (détection automatique), JAMAIS de 2ᵉ initiation,
+// onConfirmed au statut CONFIRMED. L'écran tient dans 360 × 640 (plus de QR ni
+// de grande carte).
+const truncateMiddle = (s = "") => (s.length <= 12 ? s : `${s.slice(0, 4)}…${s.slice(-4)}`);
 
 export function BinancePay({ payment, orderId, onConfirmed, trackUrl }) {
   const { t } = useLang();
   const [p, setP] = useState(payment);
-  const [checking, setChecking] = useState(false);
+  const [detected, setDetected] = useState(payment?.status === "DETECTED");
 
   useEffect(() => {
     let stop = false;
@@ -21,7 +31,10 @@ export function BinancePay({ payment, orderId, onConfirmed, trackUrl }) {
       try {
         const { data } = await api.get(`/crypto/${orderId}/status`);
         if (stop) return;
-        if (data.payment) setP(data.payment);
+        if (data.payment) {
+          setP(data.payment);
+          if (data.payment.status === "DETECTED") setDetected(true);
+        }
         if (data.payment?.status === "CONFIRMED") return onConfirmed();
         if (data.payment?.status === "FAILED") return;
       } catch (_) { /* keep polling */ }
@@ -31,67 +44,44 @@ export function BinancePay({ payment, orderId, onConfirmed, trackUrl }) {
     return () => { stop = true; clearTimeout(timer); };
   }, [orderId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const copy = async (value) => {
-    try { await navigator.clipboard.writeText(value); toast.success(t("common.copied")); } catch { toast.error(t("common.error")); }
-  };
-
-  const paid = async () => {
-    setChecking(true);
-    try {
-      const { data } = await api.post(`/crypto/${orderId}/paid`);
-      if (data.payment) setP(data.payment);
-      if (data.payment?.status === "CONFIRMED") onConfirmed();
-    } catch (e) { toast.error(errorMessage(e)); }
-  };
-
+  // Paiement refusé (logique existante conservée) : écran dédié compact.
   if (p.status === "FAILED") {
     return (
-      <section className="rounded-[22px] border-2 border-[color:var(--rule)] bg-card p-6 text-center" data-testid="crypto-failed">
-        <XCircle className="mx-auto h-14 w-14 text-rose-500" />
-        <p className="mt-4 font-semibold">{t("checkout.cryptoFailed")}</p>
-        <Button asChild variant="outline" className="mt-6 h-12 w-full rounded-full font-bold"><Link to={trackUrl}>{t("checkout.viewOrder")}</Link></Button>
+      <section className="mt-4 rounded-[18px] border border-[color:var(--rule)] bg-card p-4 text-center" data-testid="crypto-failed">
+        <XCircle className="mx-auto h-10 w-10 text-destructive" aria-hidden="true" />
+        <p className="mt-2 text-sm font-semibold">{t("checkout.cryptoFailed")}</p>
+        <Button asChild variant="outline" className="mt-3 h-11 w-full rounded-full font-bold"><Link to={trackUrl}>{t("checkout.viewOrder")}</Link></Button>
       </section>
     );
   }
 
-  const expires = new Date(p.expires_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
   return (
-    <section className="space-y-4" data-testid="checkout-step-pay-binance">
-      <div className="rounded-[22px] border-2 border-[color:var(--rule)] bg-card p-4 sm:p-6">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-display text-xl font-bold">{t("checkout.binancePayTitle")}</h2>
-          <span className="rounded-full border border-foreground bg-primary px-3 py-1 text-xs font-black text-[#0A0A0A]" data-testid="crypto-network">{p.network}</span>
+    // Étapes numérotées (mêmes losanges 22 px / filet / copie nue que le
+    // paiement manuel — composants partagés PaymentFlow).
+    <section className="relative mt-5 pl-[34px]" data-testid="checkout-step-pay-binance">
+      <span className="absolute bottom-4 left-[11px] top-3.5 w-px bg-[color:var(--rule-strong)]" aria-hidden="true" />
+      <div className="relative mb-4">
+        <Diamond n={1} />
+        <h3 className="text-[16px] font-bold leading-[27px]" data-testid="crypto-amount-title">{t("checkout.binanceExactTitle")}</h3>
+        <div className="mt-1">
+          <KV label={t("checkout.binanceExactAmount")} value={`${p.amount_usdt} USDT`} copyValue={p.amount_usdt} testId="crypto-amount" />
+          <KV label={t("checkout.binanceNetwork")} value={p.network} copyValue={p.network} testId="crypto-network" />
+          <KV label={t("checkout.binanceAddress")} value={truncateMiddle(p.address)} copyValue={p.address} testId="crypto-address" />
+          {p.memo && <KV label={t("checkout.binanceMemo")} value={p.memo} copyValue={p.memo} testId="crypto-memo" />}
         </div>
-        <Field label={t("checkout.amount")} value={`${p.amount_usdt} USDT`} testId="crypto-amount" onCopy={() => copy(p.amount_usdt)} big />
-        <p className="mt-2 flex items-start gap-2 text-xs font-semibold text-amber-700 dark:text-amber-400"><AlertTriangle className="h-4 w-4 shrink-0" />{t("checkout.exactAmount")}</p>
-        <div className="mt-4 flex justify-center rounded-[16px] border-2 border-[color:var(--rule)] bg-white p-4" data-testid="crypto-qr"><QRCodeSVG value={p.address} size={168} /></div>
-        <Field label={t("checkout.walletAddress")} value={p.address} testId="crypto-address" onCopy={() => copy(p.address)} copyLabel={t("checkout.copyAddress")} copyTestId="copy-address" />
-        {p.memo && <Field label={t("checkout.memo")} value={p.memo} testId="crypto-memo" onCopy={() => copy(p.memo)} copyTestId="copy-memo" />}
-        <p className="mt-4 text-xs text-muted-foreground" data-testid="crypto-expires">{t("checkout.expiresAt", { time: expires })}</p>
       </div>
-      {(checking || p.status === "DETECTED") && (
-        <p className="flex items-center gap-2 rounded-[14px] border-2 border-[color:var(--rule)] bg-muted px-3 py-3 text-sm font-semibold" data-testid={p.status === "DETECTED" ? "crypto-detected" : "crypto-checking"}>
-          <Loader2 className="h-4 w-4 shrink-0 animate-spin" />{p.status === "DETECTED" ? t("checkout.cryptoDetected") : t("checkout.cryptoChecking")}
-        </p>
-      )}
-      {!checking && p.status === "WAITING" && (
-        <Button type="button" onClick={paid} data-testid="crypto-paid-button" className="h-12 w-full rounded-full text-base font-bold">{t("checkout.iPaid")}</Button>
-      )}
+      <div className="relative">
+        <Diamond n={2} />
+        {/* Détection automatique — jamais de preuve à envoyer. Quand le
+            provider signale la transaction (DETECTED), un accusé est affiché
+            sous le texte. */}
+        <p className="text-[14px] font-medium leading-snug text-muted-foreground" data-testid="resume-binance-noproof">{t("checkout.binanceNoProof")}</p>
+        {detected && (
+          <p className="mt-2 flex items-center gap-2 text-[13px] font-bold" data-testid="crypto-detected">
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />{t("checkout.cryptoDetected")}
+          </p>
+        )}
+      </div>
     </section>
-  );
-}
-
-function Field({ label, value, testId, onCopy, copyLabel, copyTestId, big }) {
-  const { t } = useLang();
-  return (
-    <div className="mt-4">
-      <p className="eyebrow">{label}</p>
-      <div className="mt-1 flex items-center justify-between gap-2">
-        <p className={`num min-w-0 break-all font-bold ${big ? "font-display text-3xl" : "text-sm"}`} data-testid={testId}>{value}</p>
-        <button type="button" onClick={onCopy} data-testid={copyTestId || `${testId}-copy`} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-full border border-[color:var(--rule-strong)] px-3 text-[11px] font-semibold text-muted-foreground transition-colors hover:border-foreground hover:bg-primary hover:text-[#0A0A0A]">
-          <Copy className="h-3.5 w-3.5" />{copyLabel || t("checkout.copy")}
-        </button>
-      </div>
-    </div>
   );
 }

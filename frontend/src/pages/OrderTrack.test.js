@@ -152,14 +152,22 @@ describe("écran 2 — paiement manuel (MVola / Orange)", () => {
     await act(async () => root.unmount());
   });
 
-  test("ancienne commande sans manual_operator : sélecteur d'opérateur affiché, changement met à jour le titre", async () => {
+  test("ancienne commande sans manual_operator : AUCUN sélecteur, AUCUN numéro — message + « Recommencer »", async () => {
     mockOrderGet = resumeOrder({ manual_operator: null });
     const { container, root } = await mountResume();
-    expect(container.querySelector('[data-testid="resume-operator-picker"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="manual-provider-mvola"]').getAttribute("aria-pressed")).toBe("true");
-    await act(async () => { container.querySelector('[data-testid="manual-provider-orange"]').click(); });
-    expect(container.querySelector('[data-testid="resume-pay-title"]').textContent).toBe("Ouvrir Orange Money pour payer");
-    expect(container.querySelector('[data-testid="merchant-number"]').textContent).toBe("034 34 123 45");
+    // PL-CHK-5 : une méthode = un écran. Opérateur null → écran dédié, le
+    // sélecteur PL-CHK-3 a été retiré (jamais rendu, jamais de numéro).
+    expect(container.querySelector('[data-testid="manual-provider-mvola"]')).toBeNull();
+    expect(container.querySelector('[data-testid="manual-provider-orange"]')).toBeNull();
+    expect(container.querySelector('[data-testid="resume-operator-picker"]')).toBeNull();
+    expect(container.querySelector('[data-testid="resume-pay-title"]')).toBeNull();
+    expect(container.querySelector('[data-testid="merchant-number"]')).toBeNull();
+    expect(container.querySelector('[data-testid="send-proof-button"]')).toBeNull();
+    expect(container.querySelector('[data-testid="resume-unpayable"]').textContent)
+      .toContain("ne peut plus être payée");
+    const restart = container.querySelector('[data-testid="restart-button"]');
+    expect(restart).not.toBeNull();
+    expect(restart.getAttribute("href")).toBe("/boutique");
     await act(async () => root.unmount());
   });
 

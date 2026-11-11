@@ -105,6 +105,12 @@ describe("feuille de preuve (écran 3)", () => {
     expect(document.querySelector('[data-testid="proof-recap"]').textContent).toContain("1 × 660 UC");
     expect(document.querySelector('[data-testid="proof-recap"]').textContent).toMatch(/2[\s\u00a0\u202f]500/);
     expect(document.querySelector('[data-testid="proof-exact-checkbox"]').getAttribute("aria-checked")).toBe("false");
+    // PL-CHK-5 — nouveau texte de la case (maquette) + pied FIXE : le bouton
+    // « Confirmer » vit dans le pied, HORS de la zone défilable.
+    expect(document.querySelector('[data-testid="proof-exact-row"]').textContent)
+      .toContain("J'ai déjà effectué le paiement.");
+    expect(document.querySelector('[data-testid="proof-sheet-footer"]').contains(document.querySelector('[data-testid="proof-submit"]'))).toBe(true);
+    expect(document.querySelector('[data-testid="proof-sheet-scroll"]').contains(document.querySelector('[data-testid="proof-submit"]'))).toBe(false);
     expect(document.querySelector('[data-testid="proof-submit"]').disabled).toBe(true);
     await act(async () => root.unmount());
   });

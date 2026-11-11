@@ -10,6 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useGames } from "@/context/GameContext";
 import { BackButton } from "@/components/common/BackButton";
 import { CaptchaWidget, isCaptchaError, useCaptcha } from "@/components/common/CaptchaWidget";
+import { CheckoutSheet } from "@/components/store/checkout/CheckoutSheet";
 import { IdentityFieldsVerify } from "@/components/store/checkout/IdentityFieldsVerify";
 import { PAYMENT_LOGOS, NetworkPicker, paymentFee } from "@/components/store/PaymentFlow";
 import { Button } from "@/components/ui/button";
@@ -351,30 +352,25 @@ export default function Checkout() {
         </Button>
       </div>
 
-      {/* Feuille « Vérification de sécurité » (écran 9) — TOUJOURS montée quand
-          le CAPTCHA est actif : le widget tourne invisiblement dedans
-          (interaction-only), la feuille n'apparaît que si Cloudflare demande
-          une action. visibility:hidden (pas display:none) : le widget reste
-          rendu ; aucune hauteur réservée dans la page (position:fixed). */}
+      {/* Feuille « Vérification de sécurité » (écran 9) — coquille partagée
+          PL-CHK-5 avec keepMounted : le widget tourne invisiblement DANS la
+          feuille fermée (interaction-only), la feuille n'apparaît que si
+          Cloudflare demande une action. */}
       {captcha.enabled && (
-        <div
-          className={`fixed inset-0 z-50 ${captchaOpen ? "" : "invisible pointer-events-none"}`}
-          role="dialog" aria-modal="true" aria-hidden={!captchaOpen} data-testid="captcha-sheet"
-          onKeyDown={(e) => { if (e.key === "Escape" && !busy) { pendingSubmit.current = false; setCaptchaOpen(false); } }}
+        <CheckoutSheet
+          open={captchaOpen} keepMounted testId="captcha-sheet"
+          busy={busy}
+          onOpenChange={(v) => { pendingSubmit.current = false; setCaptchaOpen(v); }}
+          title={t("checkout.captchaSheetTitle")}
+          footer={
+            <Button type="button" onClick={() => submitOrder()} disabled={!captcha.ready || busy} data-testid="captcha-sheet-submit" className="h-[52px] flex-1 rounded-full text-[15px] font-extrabold lg:h-[46px]">
+              {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.creating")}</> : t("checkout.placeOrder")}
+            </Button>
+          }
         >
-          <div className="absolute inset-0 bg-black/60" onClick={() => { if (!busy) { pendingSubmit.current = false; setCaptchaOpen(false); } }} />
-          <div className="absolute inset-x-0 bottom-0 rounded-t-[24px] border-t border-[color:var(--rule)] bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-1/2 lg:w-[480px] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-[24px]">
-            <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-[color:var(--rule-strong)]" aria-hidden="true" />
-            <h2 className="text-[18px] font-extrabold" data-testid="captcha-sheet-title">{t("checkout.captchaSheetTitle")}</h2>
-            <p className="mb-3 mt-0.5 text-[13px] leading-snug text-muted-foreground">{t("checkout.captchaSheetSub")}</p>
-            <CaptchaWidget key={captchaKey} ref={captcha.ref} onVerify={handleCaptchaVerify} onInteractive={(needed) => { if (needed) setCaptchaOpen(true); }} />
-            <div className="mt-3">
-              <Button type="button" onClick={() => submitOrder()} disabled={!captcha.ready || busy} data-testid="captcha-sheet-submit" className="h-[52px] w-full rounded-full text-[15px] font-extrabold">
-                {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.creating")}</> : t("checkout.placeOrder")}
-              </Button>
-            </div>
-          </div>
-        </div>
+          <p className="pb-2 text-[13px] leading-snug text-muted-foreground">{t("checkout.captchaSheetSub")}</p>
+          <CaptchaWidget key={captchaKey} ref={captcha.ref} onVerify={handleCaptchaVerify} onInteractive={(needed) => { if (needed) setCaptchaOpen(true); }} />
+        </CheckoutSheet>
       )}
     </div>
   );

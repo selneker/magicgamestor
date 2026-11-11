@@ -49,29 +49,10 @@ export function NetworkPicker({ crypto, network, setNetwork }) {
   );
 }
 
-// PL-CHK-3 / PL-CHK-4 — la pastille « opérateur » des commandes USSD :
-// partagée par l'écran 2 (commande ancienne sans `manual_operator` persisté) —
-// le client (re)choisit explicitement MVola ou Orange Money avant de payer.
-export function ManualProviderPicker({ provider, onSelect }) {
-  const { t } = useLang();
-  const PROVIDERS = [
-    { key: "mvola", label: "MVola", color: "var(--mvola)" },
-    { key: "orange", label: "Orange Money", color: "var(--orange)" },
-  ];
-  return (
-    <>
-      <p className="text-sm font-semibold">{t("checkout.chooseOperator")}</p>
-      <div className="flex gap-2">
-        {PROVIDERS.map((p) => (
-          <button key={p.key} type="button" data-testid={`manual-provider-${p.key}`} aria-pressed={provider === p.key} onClick={() => onSelect(p.key)} className={`rounded-full px-4 py-1.5 text-xs font-bold transition-opacity ${provider === p.key ? "text-ink" : "border bg-card text-muted-foreground hover:opacity-80"}`} style={provider === p.key ? { background: p.color } : undefined}>{p.label}</button>
-        ))}
-      </div>
-    </>
-  );
-}
-
-// Bouton de copie partagé (écran 2) : retour visuel « Copié » + annonce
-// lecteur d'écran polie (rôle status), cible tactile ≥ 44 px.
+// PL-CHK-5 — l'icône de copie est NUE (deux carrés arrondis, trait 1,6,
+// 20 × 20 px, gris des jetons), SANS cadre ni fond — comme Binance. La zone
+// tactile reste ≥ 44 px (léger retrait négatif à droite pour l'alignement
+// optique). Retour visuel « Copié » + annonce lecteur d'écran polie conservés.
 export function CopyButton({ value, label, testId }) {
   const { t } = useLang();
   const [copied, setCopied] = useState(false);
@@ -95,10 +76,36 @@ export function CopyButton({ value, label, testId }) {
     timer.current = setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <button type="button" onClick={copy} data-testid={testId} aria-label={copied ? t("checkout.copiedLabel") : label} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] border border-[color:var(--rule-strong)] text-muted-foreground transition-colors hover:border-foreground hover:text-foreground">
-      {copied ? <Check className="h-4 w-4 text-foreground" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
+    <button type="button" onClick={copy} data-testid={testId} aria-label={copied ? t("checkout.copiedLabel") : label} className="-mr-2 inline-flex h-11 w-11 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground motion-reduce:transition-none">
+      {copied ? <Check className="h-5 w-5" strokeWidth={1.6} aria-hidden="true" /> : <Copy className="h-5 w-5" strokeWidth={1.6} aria-hidden="true" />}
       <span role="status" className="sr-only">{copied ? t("checkout.copiedLabel") : ""}</span>
     </button>
+  );
+}
+
+/* Étapes numérotées de l'écran 2 (MVola / Orange / Binance) — partagées entre
+   OrderTrack et BinancePay. PL-CHK-5 : losanges 22 × 22 px, chiffre 11 px,
+   filet vertical aligné sur leur centre (maquette corrections : `.dia`
+   22 px, `.steps:before` à left:11px pour un padding de 34 px). */
+export function Diamond({ n }) {
+  return (
+    <span className="absolute -left-[34px] top-0 flex h-[22px] w-[22px] rotate-45 items-center justify-center rounded-[6px] bg-foreground" aria-hidden="true">
+      <span className="-rotate-45 text-[11px] font-extrabold text-background">{n}</span>
+    </span>
+  );
+}
+
+// Ligne clé/valeur d'une étape + bouton de copie nu (retour « Copié »).
+export function KV({ label, value, copyValue, testId }) {
+  const { t } = useLang();
+  return (
+    <div className="mt-3 flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="mt-0.5 num break-all text-[16px] font-bold" data-testid={testId}>{value}</p>
+      </div>
+      <CopyButton value={copyValue} label={`${t("checkout.copy")} ${label}`} testId={`copy-${testId}`} />
+    </div>
   );
 }
 

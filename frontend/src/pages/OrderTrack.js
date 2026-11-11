@@ -15,7 +15,7 @@ import { PaymentCountdown } from "@/components/store/checkout/PaymentCountdown";
 import { ProofWaiting, ProofSheet, LateScreen, EndScreen, ProofExpired } from "@/components/store/checkout/ProofPay";
 import { CancelSheet } from "@/components/store/checkout/CancelSheet";
 import { BinancePay } from "@/components/store/checkout/BinancePay";
-import { ManualProviderPicker, CopyButton, pretty } from "@/components/store/PaymentFlow";
+import { Diamond, KV, pretty } from "@/components/store/PaymentFlow";
 
 // PL-CHK-2 — proof_submitted / late_payment (preuves par captures) rejoignent
 // la famille « en attente » : bordure encrée, horloge — même style que les
@@ -127,8 +127,12 @@ const RESUME_DONE = ["paid", "delivered", "cancelled", "failed", "expired"];
 // (losanges, filet vertical), boutons de copie avec retour « Copié », bouton
 // fixé en bas. AUCUN récapitulatif (il vit à la fin, écran 4), aucune
 // explication longue. Binance : flux existant (détection automatique, aucune
-// preuve) — jamais de 2ᵉ initiation. Anciennes commandes sans `manual_operator`
-// persisté : le sélecteur d'opérateur de PL-CHK-3 s'affiche.
+// preuve) — jamais de 2ᵉ initiation.
+// PL-CHK-5 — PLUS AUCUN sélecteur d'opérateur : le choix est fait à l'écran 1
+// et vit dans `manual_operator` (envoyé à la création, Checkout.js:187 ; stocké
+// et relu par l'API). Une méthode = un écran, jamais les deux numéros.
+// `manual_operator` null (très ancienne commande) : aucun numéro n'est
+// affiché — message + « Recommencer ».
 export function OrderResume({ orderId }) {
   const { t } = useLang();
   const navigate = useNavigate();
@@ -136,7 +140,6 @@ export function OrderResume({ orderId }) {
   const [config, setConfig] = useState(null);
   const [cryptoPayment, setCryptoPayment] = useState(null);
   const [state, setState] = useState("loading"); // loading | ok | denied
-  const [operator, setOperator] = useState(null); // "mvola" | "orange"
   const [proofOpen, setProofOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
 
@@ -147,11 +150,10 @@ export function OrderResume({ orderId }) {
 
   useEffect(() => {
     let active = true;
-    setOrder(null); setCryptoPayment(null); setState("loading"); setOperator(null);
+    setOrder(null); setCryptoPayment(null); setState("loading");
     api.get(`/orders/${orderId}`).then(async ({ data }) => {
       if (!active) return;
       setOrder(data);
-      setOperator(data.manual_operator || null);
       setState("ok");
       // Binance : rouverture du slot USDT existant via GET /crypto/{id}/status
       // quand il est encore actif — JAMAIS de 2ᵉ initiation (PL-CHK-2).
@@ -222,12 +224,13 @@ export function OrderResume({ orderId }) {
   const manual = pending && order.payment_method === "manual";
   const binance = pending && order.payment_method === "binance";
   const autoPending = pending && !manual && !binance;
-  // Opérateur : champ persisté (PL-ORDER-CLIENT-1) ; null (ancienne commande)
-  // → sélecteur PL-CHK-3 affiché, repli local "mvola" pour le titre.
-  const op = operator || "mvola";
+  // PL-CHK-5 — l'opérateur affiché est TOUJOURS celui de la commande
+  // (`manual_operator`, champ persisté). Un opérateur null (très ancienne
+  // commande) n'affiche AUCUN numéro : écran dédié ci-dessous.
+  const op = order.manual_operator; // "mvola" | "orange" | null
   const opName = op === "orange" ? t("checkout.methodOrange") : t("checkout.methodMvola");
   const opTitle = op === "orange" ? t("checkout.payTitleOrange") : t("checkout.payTitleMvola");
-  const merchant = config?.providers?.[op];
+  const merchant = op ? config?.providers?.[op] : null;
   const payTotal = formatAr((order.subtotal ?? order.total) + (order.payment_fee ?? 0));
 
   return (
@@ -240,20 +243,24 @@ export function OrderResume({ orderId }) {
       ))}
 
       <div className="flex min-h-0 flex-1 flex-col px-1 pb-2">
-        {manual && (
+        {manual && !op && (
+          // PL-CHK-5 — très ancienne commande sans `manual_operator` : aucun
+          // numéro n'est affiché (une méthode = un écran), la commande ne peut
+          // plus être payée ici. Bouton fixé « Recommencer » (voir CTA bas).
+          <div className="flex flex-1 flex-col items-center justify-center py-10 text-center" data-testid="resume-unpayable">
+            <p className="max-w-[290px] text-[13.5px] leading-[1.5] text-muted-foreground">{t("checkout.cannotPayHere")}</p>
+          </div>
+        )}
+        {manual && op && (
           <>
-            {!order.manual_operator && (
-              <div className="pt-2" data-testid="resume-operator-picker">
-                <ManualProviderPicker provider={op} onSelect={setOperator} />
-              </div>
-            )}
             <h2 className="pt-3 font-display text-[24px] font-extrabold leading-[1.15]" data-testid="resume-pay-title">{opTitle}</h2>
             <div className="pt-2.5">
               <PaymentCountdown order={order} onZero={refetch} />
             </div>
-            {/* Deux étapes numérotées : losanges + filet vertical (maquette). */}
-            <div className="relative mt-5 pl-9" data-testid="resume-steps">
-              <span className="absolute bottom-4 left-[13px] top-3.5 w-px bg-[color:var(--rule-strong)]" aria-hidden="true" />
+            {/* Deux étapes numérotées : losanges 22 px + filet vertical aligné
+                sur leur centre (maquette corrections-paiement). */}
+            <div className="relative mt-5 pl-[34px]" data-testid="resume-steps">
+              <span className="absolute bottom-4 left-[11px] top-3.5 w-px bg-[color:var(--rule-strong)]" aria-hidden="true" />
               <div className="relative mb-4">
                 <Diamond n={1} />
                 <h3 className="text-[16px] font-bold leading-[27px]">{t("checkout.transferVia", { name: opName })}</h3>
@@ -310,10 +317,17 @@ export function OrderResume({ orderId }) {
       </div>
 
       {/* Boutons fixés en bas (mobile) ; ≥1024 px : flux normal. */}
-      {manual && (
+      {manual && op && (
         <div className="sticky bottom-0 z-10 flex-none bg-[color:hsl(var(--background))] px-1 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 lg:static lg:z-auto lg:bg-transparent lg:pb-2">
           <Button type="button" onClick={() => setProofOpen(true)} data-testid="send-proof-button" className="h-[52px] w-full rounded-full text-[15px] font-extrabold">
             {t("checkout.sendProof")}
+          </Button>
+        </div>
+      )}
+      {manual && !op && (
+        <div className="sticky bottom-0 z-10 flex-none bg-[color:hsl(var(--background))] px-1 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 lg:static lg:z-auto lg:bg-transparent lg:pb-2">
+          <Button asChild data-testid="restart-button" className="h-[52px] w-full rounded-full text-[15px] font-extrabold">
+            <Link to="/boutique">{t("checkout.restart")}</Link>
           </Button>
         </div>
       )}
@@ -330,8 +344,10 @@ export function OrderResume({ orderId }) {
         </div>
       )}
 
-      {/* Feuille 3 (preuve) et feuille 7 (annulation). */}
-      {manual && (
+      {/* Feuille 3 (preuve) et feuille 7 (annulation). La feuille de preuve
+          n'existe que pour une commande avec opérateur (aucun numéro = rien à
+          prouver). */}
+      {manual && op && (
         <ProofSheet
           open={proofOpen} onOpenChange={setProofOpen}
           order={order} summary={summary}
@@ -344,29 +360,6 @@ export function OrderResume({ orderId }) {
           onCancelled={() => navigate("/", { replace: true })}
           onConflict={refetch} />
       )}
-    </div>
-  );
-}
-
-// Losange numéroté (maquette : carré pivoté 45°, chiffre redressé).
-function Diamond({ n }) {
-  return (
-    <span className="absolute -left-9 top-0 flex h-[27px] w-[27px] rotate-45 items-center justify-center rounded-[6px] bg-foreground" aria-hidden="true">
-      <span className="-rotate-45 text-[13px] font-extrabold text-background">{n}</span>
-    </span>
-  );
-}
-
-// Ligne clé/valeur de l'étape 1 + bouton de copie (retour « Copié » polie).
-function KV({ label, value, copyValue, testId }) {
-  const { t } = useLang();
-  return (
-    <div className="mt-3.5 flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="mt-0.5 num break-all text-[16px] font-bold" data-testid={testId}>{value}</p>
-      </div>
-      <CopyButton value={copyValue} label={`${t("checkout.copy")} ${label}`} testId={`copy-${testId}`} />
     </div>
   );
 }

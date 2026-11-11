@@ -311,11 +311,12 @@ describe("écran 1 — CTA et création", () => {
     const { container, root } = await renderCheckout();
     await verify(container);
     await pick(container, "method-mvola");
-    // CTA sans jeton : la feuille « Vérification de sécurité » s'ouvre, la
-    // création est armée (pendingSubmit) ; le jeton déclenche l'envoi.
+    // CTA sans jeton : la feuille « Vérification de sécurité » s'ouvre (Radix
+    // portalisé dans document.body), la création est armée (pendingSubmit) ;
+    // le jeton déclenche l'envoi.
     await act(async () => { container.querySelector('[data-testid="checkout-submit"]').click(); });
     await act(async () => { await Promise.resolve(); });
-    expect(container.querySelector('[data-testid="captcha-sheet"]').className).not.toContain("invisible");
+    expect(document.querySelector('[data-testid="captcha-sheet"]').className).not.toContain("invisible");
     act(() => { turnstileOpts.callback("jeton-c1"); });
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     expect(toast.error).toHaveBeenCalledWith("Merci de refaire le contrôle de sécurité ci-dessus puis de réessayer.");
@@ -331,7 +332,7 @@ describe("écran 1 — CAPTCHA (écran 9)", () => {
     await pick(container, "method-mvola");
     await act(async () => { container.querySelector('[data-testid="checkout-submit"]').click(); });
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
-    expect(container.querySelector('[data-testid="captcha-sheet"]')).toBeNull();
+    expect(document.querySelector('[data-testid="captcha-sheet"]')).toBeNull();
     const body = api.post.mock.calls.find((c) => c[0] === "/orders")[1];
     expect(body.captcha_token).toBeUndefined();
     await act(async () => root.unmount());
@@ -345,10 +346,11 @@ describe("écran 1 — CAPTCHA (écran 9)", () => {
     await pick(container, "method-mvola");
     await act(async () => { container.querySelector('[data-testid="checkout-submit"]').click(); });
     await act(async () => { await Promise.resolve(); });
-    const sheet = container.querySelector('[data-testid="captcha-sheet"]');
+    // Feuille Radix portalisée dans document.body (coquille partagée PL-CHK-5).
+    const sheet = document.querySelector('[data-testid="captcha-sheet"]');
     expect(sheet).not.toBeNull();
     expect(sheet.className).not.toContain("invisible"); // feuille ouverte = visible
-    expect(container.querySelector('[data-testid="captcha-sheet-title"]').textContent)
+    expect(document.querySelector('[data-testid="captcha-sheet-title"]').textContent)
       .toBe("Vérification de sécurité");
     expect(api.post.mock.calls.some((c) => c[0] === "/orders")).toBe(false);
     act(() => { turnstileOpts.callback("jeton-c9"); });
@@ -365,10 +367,11 @@ describe("écran 1 — CAPTCHA (écran 9)", () => {
     await verify(container);
     await pick(container, "method-mvola");
     // CTA sans jeton : la feuille est TOUJOURS montée (widget invisible dedans)
-    // mais fermée ; l'ouverture arme la création (pendingSubmit).
+    // mais fermée ; l'ouverture arme la création (pendingSubmit). Radix
+    // portalisé dans document.body.
     await act(async () => { container.querySelector('[data-testid="checkout-submit"]').click(); });
     await act(async () => { await Promise.resolve(); });
-    const sheet = () => container.querySelector('[data-testid="captcha-sheet"]');
+    const sheet = () => document.querySelector('[data-testid="captcha-sheet"]');
     expect(sheet()).not.toBeNull();
     expect(sheet().className).not.toContain("invisible");
     act(() => { turnstileOpts["before-interactive-callback"](); });
