@@ -47,6 +47,7 @@ const future = (mins = 20) => new Date(Date.now() + mins * 60 * 1000).toISOStrin
 
 const baseOrder = {
   id: "ord-uuid-1", order_number: "MGS-C1", status: "pending_payment", payment_method: "manual",
+  manual_operator: "mvola", // PL-CHK-5/6 : toute commande manuelle neuve porte l'opérateur
   pubg_id: "123456789", pseudo: "Joueur", game_id: "pubg-mobile",
   items: [{ quantity: 1, name: "660 UC", line_total: 2500 }],
   created_at: "2026-11-07T10:00:00Z", created_at_desc: undefined, total: 2500, payment_fee: 0,
@@ -122,6 +123,38 @@ describe("PendingOrderBanner", () => {
     api.get.mockImplementation((url) => url === "/orders/me" ? Promise.resolve({ data: [{ ...baseOrder, status: "delivered" }] }) : Promise.resolve({ data: {} }));
     const { container, root } = await mount();
     expect(container.querySelector('[data-testid="pending-order-banner"]')).toBeNull();
+    await act(async () => root.unmount());
+  });
+
+  test("connecté (PL-CHK-6) : commande manuelle sans opérateur JAMAIS retenue — la valide plus récente passe devant", async () => {
+    mockUser = { user_id: "u1" };
+    const { api } = require("@/lib/api");
+    api.get.mockImplementation((url) => url === "/orders/me" ? Promise.resolve({ data: [
+      { ...baseOrder, manual_operator: null }, // plus récente mais invalide
+      { ...baseOrder, id: "ord-ok", order_number: "MGS-C2", manual_operator: "mvola", created_at: "2026-11-06T10:00:00Z" },
+    ] }) : Promise.resolve({ data: {} }));
+    const { container, root } = await mount();
+    expect(container.querySelector('[data-testid="banner-continue"]').getAttribute("href")).toBe("/orders/ord-ok");
+    expect(container.querySelector('[data-testid="banner-view-orders"]')).toBeNull(); // une seule VALIDE
+    await act(async () => root.unmount());
+  });
+
+  test("connecté (PL-CHK-6) : aucune commande valide (toutes sans opérateur) → bannière absente", async () => {
+    mockUser = { user_id: "u1" };
+    const { api } = require("@/lib/api");
+    api.get.mockImplementation((url) => url === "/orders/me" ? Promise.resolve({ data: [{ ...baseOrder, manual_operator: null }] }) : Promise.resolve({ data: {} }));
+    const { container, root } = await mount();
+    expect(container.querySelector('[data-testid="pending-order-banner"]')).toBeNull();
+    await act(async () => root.unmount());
+  });
+
+  test("invité (PL-CHK-6) : commande manuelle sans opérateur → jamais affichée, entrée purgée", async () => {
+    writePendingOrderId("ord-uuid-1", new Date().toISOString());
+    const { api } = require("@/lib/api");
+    api.get.mockImplementation((url) => url.startsWith("/orders/") ? Promise.resolve({ data: { ...baseOrder, manual_operator: null } }) : Promise.resolve({ data: {} }));
+    const { container, root } = await mount();
+    expect(container.querySelector('[data-testid="pending-order-banner"]')).toBeNull();
+    expect(global.localStorage.getItem("mgs_pending_order_id")).toBeNull();
     await act(async () => root.unmount());
   });
 

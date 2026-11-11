@@ -4,7 +4,7 @@ import { CheckCircle2, Clock, PackageCheck, Search, XCircle } from "lucide-react
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
 import { paymentColor, paymentLabel } from "@/lib/paymentLabels";
-import { clearPendingOrderId } from "@/lib/pendingOrder";
+import { clearPendingOrderId, readPendingOrderId, restartTarget } from "@/lib/pendingOrder";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { useGames } from "@/context/GameContext";
@@ -162,15 +162,25 @@ export function OrderResume({ orderId }) {
           if (active && st?.payment && st.payment.status !== "FAILED") setCryptoPayment(st.payment);
         }).catch(() => { /* sans slot : le compte à rebours reste le seul écran */ });
       }
-    }).catch(() => { if (active) setState("denied"); });
+    }).catch(() => {
+      // PL-CHK-6 — 403/404 sur la commande mémorisée : l'entrée meurt en
+      // silence (introuvable ou inaccessible = plus de reprise possible).
+      if (readPendingOrderId()?.id === orderId) clearPendingOrderId();
+      if (active) setState("denied");
+    });
     return () => { active = false; };
   }, [orderId]);
 
-  // Statut final / expiration vu par l'API : la mémorisation de reprise meurt
-  // (l'invité n'a plus de commande en attente à retrouver).
+  // PL-CHK-6 — toute commande mémorisée INVALIDE meurt : statut final vu par
+  // l'API (paid / delivered / cancelled / failed / expired), ou manuelle sans
+  // `manual_operator` (plus payable). La clé ne concerne que CETTE commande :
+  // une autre commande mémorisée n'est JAMAIS purgée par erreur.
   useEffect(() => {
-    if (order && RESUME_DONE.includes(order.status)) clearPendingOrderId();
-  }, [order?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!order || readPendingOrderId()?.id !== orderId) return;
+    const dead = RESUME_DONE.includes(order.status)
+      || (order.status === "pending_payment" && order.payment_method === "manual" && !order.manual_operator);
+    if (dead) clearPendingOrderId();
+  }, [order, orderId]);
 
   // Échéance atteinte ou provider signale un changement : état réel depuis l'API.
   const refetch = useCallback(() =>
@@ -195,6 +205,15 @@ export function OrderResume({ orderId }) {
   } : null;
 
   const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/"));
+
+  // PL-CHK-6 — « Recommencer » : la clé de reprise meurt PUIS l'écran 1 du jeu
+  // concerné s'ouvre (ou l'accueil si le jeu est inconnu). Remplace l'ancien
+  // lien /boutique muet : la commande invalide restait mémorisée et la
+  // bannière ou le tunnel pouvaient la reproposer à l'infini.
+  const restart = () => {
+    clearPendingOrderId();
+    navigate(restartTarget(order), { replace: true });
+  };
 
   const header = (right) => (
     <header className="flex h-[52px] flex-none items-center justify-between gap-2 px-1">
@@ -249,6 +268,10 @@ export function OrderResume({ orderId }) {
           // plus être payée ici. Bouton fixé « Recommencer » (voir CTA bas).
           <div className="flex flex-1 flex-col items-center justify-center py-10 text-center" data-testid="resume-unpayable">
             <p className="max-w-[290px] text-[13.5px] leading-[1.5] text-muted-foreground">{t("checkout.cannotPayHere")}</p>
+            {/* PL-CHK-6 — sortie discrète : l'accueil, sans créer de commande. */}
+            <Button asChild variant="outline" className="mt-2 h-12 w-full max-w-xs rounded-full font-bold" data-testid="resume-back-home">
+              <Link to="/">{t("order.backHome")}</Link>
+            </Button>
           </div>
         )}
         {manual && op && (
@@ -326,8 +349,8 @@ export function OrderResume({ orderId }) {
       )}
       {manual && !op && (
         <div className="sticky bottom-0 z-10 flex-none bg-[color:hsl(var(--background))] px-1 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 lg:static lg:z-auto lg:bg-transparent lg:pb-2">
-          <Button asChild data-testid="restart-button" className="h-[52px] w-full rounded-full text-[15px] font-extrabold">
-            <Link to="/boutique">{t("checkout.restart")}</Link>
+          <Button type="button" onClick={restart} data-testid="restart-button" className="h-[52px] w-full rounded-full text-[15px] font-extrabold">
+            {t("checkout.restart")}
           </Button>
         </div>
       )}
@@ -357,7 +380,10 @@ export function OrderResume({ orderId }) {
         <CancelSheet
           open={cancelOpen} onOpenChange={setCancelOpen}
           order={order}
-          onCancelled={() => navigate("/", { replace: true })}
+          // PL-CHK-6 — annulation réussie : la commande va être `cancelled`,
+          // la clé de reprise meurt immédiatement (le parent navigue sans
+          // refetch ; le 409 de conflit ne passe PAS ici, clé conservée).
+          onCancelled={() => { clearPendingOrderId(); navigate("/", { replace: true }); }}
           onConflict={refetch} />
       )}
     </div>

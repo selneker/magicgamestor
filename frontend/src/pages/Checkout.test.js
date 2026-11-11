@@ -383,35 +383,70 @@ describe("écran 1 — CAPTCHA (écran 9)", () => {
   });
 });
 
-describe("écran 1 — reprise PL-CHK-3", () => {
-  test("commande en attente mémorisée : redirection directe vers /orders/:id, aucune création", async () => {
+describe("PL-CHK-6 — le tunnel n'impose jamais une commande en attente", () => {
+  test("commande en attente mémorisée : AUCUN appel /orders/{id}, AUCUNE redirection — l'écran 1 reste utilisable", async () => {
     localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "o-reprise", createdAt: new Date().toISOString() }));
-    api.get.mockImplementation((url) => {
-      if (url === "/payments/config") return Promise.resolve({ data: CONFIG_ACTIVE });
-      if (url === "/crypto/config") return Promise.resolve({ data: CRYPTO_ON });
-      if (url === "/orders/o-reprise") return Promise.resolve({ data: mkOrder({ id: "o-reprise", order_number: "MGS-R1" }) });
-      return Promise.resolve({ data: {} });
-    });
     const { container, root } = await renderCheckout();
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
-    expect(mockNavigate).toHaveBeenCalledWith("/orders/o-reprise", { replace: true });
-    expect(api.post.mock.calls.some((c) => c[0] === "/orders")).toBe(false);
+    expect(api.get.mock.calls.some(([u]) => u.startsWith("/orders/"))).toBe(false);
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(container.querySelector('[data-testid="checkout-form"]')).not.toBeNull();
     await act(async () => root.unmount());
   });
 
-  test("commande finalisée mémorisée : la clé est purgée, l'écran 1 reste utilisable", async () => {
-    localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "o-finie", createdAt: new Date().toISOString() }));
+  test("commande mémorisée invalide (manuelle sans opérateur) : l'écran 1 reste utilisable, aucune lecture API", async () => {
+    localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "o-invalide", createdAt: new Date().toISOString() }));
     api.get.mockImplementation((url) => {
       if (url === "/payments/config") return Promise.resolve({ data: CONFIG_ACTIVE });
       if (url === "/crypto/config") return Promise.resolve({ data: CRYPTO_ON });
-      if (url === "/orders/o-finie") return Promise.resolve({ data: mkOrder({ id: "o-finie", status: "paid" }) });
+      if (url === "/orders/o-invalide") return Promise.resolve({ data: mkOrder({ id: "o-invalide", manual_operator: null }) });
       return Promise.resolve({ data: {} });
     });
     const { container, root } = await renderCheckout();
     await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    expect(api.get.mock.calls.some(([u]) => u.startsWith("/orders/"))).toBe(false);
     expect(mockNavigate).not.toHaveBeenCalled();
-    expect(localStorage.getItem("mgs_pending_order_id")).toBeNull();
     expect(container.querySelector('[data-testid="checkout-form"]')).not.toBeNull();
     await act(async () => root.unmount());
+  });
+
+  test("création réussie : la clé est REMPLACÉE (l'ancienne commande mémorisée est écrasée)", async () => {
+    localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "o-ancienne", createdAt: new Date().toISOString() }));
+    const { container, root } = await renderCheckout();
+    await verify(container);
+    await pick(container, "method-mvola");
+    await act(async () => { container.querySelector('[data-testid="checkout-submit"]').click(); });
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    const stored = JSON.parse(localStorage.getItem("mgs_pending_order_id"));
+    expect(stored.id).toBe("o1"); // plus jamais "o-ancienne"
+    expect(mockNavigate).toHaveBeenCalledWith("/orders/o1", { replace: true });
+    await act(async () => root.unmount());
+  });
+
+  test("panier vide + commande mémorisée : écran « panier vide », jamais de redirection (la bannière offre la commande)", async () => {
+    MOCK_CART_ITEMS = [];
+    localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "o-reprise", createdAt: new Date().toISOString() }));
+    const { container, root } = await renderCheckout();
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    expect(container.querySelector('[data-testid="checkout-empty"]')).not.toBeNull();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    await act(async () => root.unmount());
+  });
+
+  test("stockage indisponible : l'écran 1 fonctionne et la création réussit (clé ignorée en silence)", async () => {
+    const saved = { getItem: Storage.prototype.getItem, setItem: Storage.prototype.setItem, removeItem: Storage.prototype.removeItem };
+    const boom = () => { throw new Error("SecurityError"); };
+    Object.assign(Storage.prototype, { getItem: boom, setItem: boom, removeItem: boom });
+    try {
+      const { container, root } = await renderCheckout();
+      await verify(container);
+      await pick(container, "method-mvola");
+      await act(async () => { container.querySelector('[data-testid="checkout-submit"]').click(); });
+      await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+      expect(mockNavigate).toHaveBeenCalledWith("/orders/o1", { replace: true });
+      await act(async () => root.unmount());
+    } finally {
+      Object.assign(Storage.prototype, saved);
+    }
   });
 });

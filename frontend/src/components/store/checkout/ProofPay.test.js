@@ -22,9 +22,10 @@ jest.mock("react-router-dom", () => {
   const React = require("react");
   return {
     Link: ({ to, children, ...props }) => React.createElement("a", { href: to, ...props }, children),
-    useNavigate: () => jest.fn(),
+    useNavigate: () => mockNavigate,
   };
 });
+const mockNavigate = jest.fn();
 jest.mock("sonner", () => ({ toast: { message: jest.fn(), error: jest.fn(), success: jest.fn() } }));
 jest.mock("@/lib/api", () => ({
   api: { get: jest.fn(), post: jest.fn() },
@@ -91,6 +92,8 @@ beforeEach(() => {
   api.get.mockReset(); api.post.mockReset();
   api.get.mockImplementation(() => Promise.resolve({ data: {} }));
   api.post.mockImplementation(() => Promise.resolve({ data: {} }));
+  localStorage.clear();
+  mockNavigate.mockClear();
 });
 afterEach(() => {
   document.body.innerHTML = "";
@@ -323,12 +326,30 @@ describe("écrans de fin", () => {
     await act(async () => root.unmount());
   });
 
-  test("expired → écran 8 avec le n° de commande et « Recommencer » vers la boutique", async () => {
-    const { container, root } = await mountUi(<ProofExpired order={{ ...ORDER_PENDING, status: "expired" }} />);
+  test("expired → écran 8 : n° de commande + « Recommencer » purge la clé et ramène à l'écran 1 du jeu (PL-CHK-6)", async () => {
+    localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "o1", createdAt: new Date().toISOString() }));
+    const { container, root } = await mountUi(<ProofExpired order={{ ...ORDER_PENDING, status: "expired", game_id: "pubg-mobile" }} />);
     expect(container.querySelector('[data-testid="proof-expired"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="proof-expired-title"]').textContent).toBe("La commande a expiré");
     expect(container.querySelector('[data-testid="proof-expired"]').textContent).toContain("MGS-T1");
-    expect(container.querySelector('[data-testid="proof-restart"]').getAttribute("href")).toBe("/boutique");
+    const restart = container.querySelector('[data-testid="proof-restart"]');
+    expect(restart).not.toBeNull();
+    expect(restart.getAttribute("href")).toBeNull(); // handler, plus un lien muet
+    await act(async () => { restart.click(); });
+    expect(mockNavigate).toHaveBeenCalledWith("/boutique?game=pubg-mobile", { replace: true });
+    expect(localStorage.getItem("mgs_pending_order_id")).toBeNull();
+    await act(async () => root.unmount());
+  });
+
+  test("cancelled/failed (PL-CHK-6) : « Recommencer » + retour accueil discret", async () => {
+    localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "o1", createdAt: new Date().toISOString() }));
+    const { container, root } = await mountUi(<EndScreen order={{ ...ORDER_PENDING, status: "cancelled", game_id: "pubg-mobile" }} />);
+    expect(container.querySelector('[data-testid="proof-cancelled"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="proof-home"]').getAttribute("href")).toBe("/");
+    const restart = container.querySelector('[data-testid="proof-restart"]');
+    await act(async () => { restart.click(); });
+    expect(mockNavigate).toHaveBeenCalledWith("/boutique?game=pubg-mobile", { replace: true });
+    expect(localStorage.getItem("mgs_pending_order_id")).toBeNull();
     await act(async () => root.unmount());
   });
 });
