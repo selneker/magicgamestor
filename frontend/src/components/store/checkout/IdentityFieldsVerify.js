@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { api } from "@/lib/api";
 import { identityErrorKey } from "@/lib/identityErrors";
+import { readRecentPlayerIds, rememberPlayerId } from "@/lib/recentPlayerIds";
 import { useLang } from "@/context/LanguageContext";
 import { useGames } from "@/context/GameContext";
 import { Input } from "@/components/ui/input";
@@ -35,7 +36,7 @@ export const MAX_FIELD_FALLBACK = 60;
 
 export const fieldError = localError;
 
-export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onVerified, autoTrigger = 0, checkout = false, initial = null }) => {
+export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onVerified, autoTrigger = 0, checkout = false, initial = null, editing = false }) => {
   const { t, lang } = useLang();
   const { games } = useGames();
   // Nom du jeu tel que le backend le publie : sert à la boîte de confirmation
@@ -50,6 +51,21 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
   // Numéro de requête : une réponse qui n'est pas celle de la dernière requête,
   // ou qui arrive après une modification des champs, est ignorée.
   const reqId = useRef(0);
+
+  // PL-UX-3 — ID joueur déjà utilisés sur CETTE machine, pour CE jeu
+  // (localStorage, 10 max, les plus récents d'abord). Jamais de pseudo.
+  const [recentIds, setRecentIds] = useState([]);
+  const listRef = useRef(null);
+  const [visibleCount, setVisibleCount] = useState(Number.MAX_SAFE_INTEGER);
+
+  useEffect(() => {
+    setRecentIds(readRecentPlayerIds(gameId).map((e) => e.id));
+  }, [gameId]);
+
+  // Champ primaire : celui que le joueur identifie comme son compte (le
+  // backend garantit qu'un champ est `primary`). Les suggestions portent
+  // CETTE valeur — l'ID du joueur.
+  const primaryKey = (spec.find((f) => f.primary) || spec[0])?.key || null;
 
   // Un champ modifié invalide la vérification précédente : rien n'est mémorisé comme définitif.
   useEffect(() => {
@@ -90,6 +106,12 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         // n'est jamais inventée : vide / non-string -> null -> pas de ligne.
         const region = typeof data.region === "string" && data.region.trim() ? data.region.trim() : null;
         setState({ status: "valid", name: data.player_name, region });
+        // PL-UX-3 — l'ID vérifié devient une suggestion pour ce jeu (localStorage
+        // seulement, 10 max, aucun pseudo). Échec de stockage sans conséquence.
+        if (primaryKey && fields[primaryKey]) {
+          const next = rememberPlayerId(gameId, fields[primaryKey]);
+          setRecentIds(next.map((e) => e.id));
+        }
         onVerified({ name: data.player_name || null, region, fields });
       } else {
         // Tout le reste — `valid:false` avec son code (`invalid_id`,
@@ -122,11 +144,60 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoTrigger]);
 
+  // PL-UX-3 — suggestions d'ID déjà utilisés : visibles tant que l'ID n'est pas
+  // vérifié, et de nouveau après « Changer » (prop `editing` : le champ
+  // redevient modifiable). Elles disparaissent une fois l'ID vérifié.
+  const verifiedNow = state.status === "valid";
+  const showSuggestions = recentIds.length > 0 && (!verifiedNow || editing === true);
+  const visibleIds = showSuggestions ? recentIds.slice(0, visibleCount) : [];
+
+  // Mesure : seules les pastilles qui TIENNENT dans la largeur disponible à
+  // côté du bouton sont rendues (une seule ligne, jamais de défilement) ; les
+  // plus anciennes — donc les moins récentes — sont masquées.
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const measure = () => {
+      const width = el.clientWidth;
+      if (!width) return; // pas de mise en page (jsdom) : tout reste visible
+      const limit = el.getBoundingClientRect().right + 0.5;
+      let count = 0;
+      for (const child of Array.from(el.children)) {
+        const rect = child.getBoundingClientRect();
+        if (rect.right <= limit) count += 1;
+        else break;
+      }
+      setVisibleCount(count);
+    };
+    measure();
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(measure);
+      ro.observe(el);
+      return () => ro.disconnect();
+    }
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [recentIds, showSuggestions, visibleCount]);
+
+  // Remplit le champ primaire avec un ID déjà utilisé. La vérification n'est
+  // PAS déclenchée : c'est le comportement actuel après saisie (bouton
+  // « Vérifier » pressé par l'utilisateur).
+  const pickRecentId = (id) => {
+    if (!primaryKey) return;
+    setValues((v) => ({ ...(v || {}), [primaryKey]: id }));
+  };
+
   // Etat actif : fond encre + texte creme. Etat inactif : fond attenue +
   // avant-plan du theme, sans aucun effet au survol ni a l'appui.
+  // Sur la ligne des suggestions, le bouton garde sa largeur naturelle
+  // (`shrink-0`) : les pastilles occupent la place restante.
   const base = checkout
-    ? "mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-bold transition-opacity"
-    : "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-opacity";
+    ? (showSuggestions
+      ? "inline-flex h-12 min-w-fit shrink-0 items-center justify-center gap-2 rounded-full px-4 text-sm font-bold transition-opacity"
+      : "mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-bold transition-opacity")
+    : (showSuggestions
+      ? "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-opacity"
+      : "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-opacity");
   const skin = !complete
     ? "bg-muted text-foreground cursor-not-allowed"
     : busy
@@ -171,9 +242,37 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         </div>
       ))}
       {!(checkout && state.status === "valid") && (
-        <button type="button" data-testid="identity-verify-btn" onClick={verify} aria-disabled={inert} aria-busy={busy} className={`${base} ${skin}`}>
-          {state.status === "loading" ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" data-testid="identity-verify-loading" />{t("checkout.verifying")}</>) : t("checkout.verify")}
-        </button>
+        // PL-UX-3 — ligne unique : les ID déjà utilisés (à gauche, UNE seule
+        // ligne, les plus récents d'abord, les plus anciens masqués s'ils ne
+        // tiennent pas) puis le bouton « Vérifier ».
+        <div className={`flex items-center gap-2 ${checkout ? "mt-3" : ""}`} data-testid="identity-verify-row">
+          {showSuggestions && (
+            <div
+              ref={listRef}
+              role="group"
+              aria-label={t("checkout.recentIds")}
+              className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden"
+              data-testid="identity-recent-ids"
+            >
+              {visibleIds.map((id, i) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => pickRecentId(id)}
+                  aria-label={t("checkout.useRecentId", { id })}
+                  title={id}
+                  data-testid={`identity-recent-id-${i}`}
+                  className="inline-flex h-11 max-w-[9rem] shrink-0 items-center truncate rounded-full border border-[color:var(--rule-strong)] bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-[color:hsl(var(--muted))]"
+                >
+                  {id}
+                </button>
+              ))}
+            </div>
+          )}
+          <button type="button" data-testid="identity-verify-btn" onClick={verify} aria-disabled={inert} aria-busy={busy} className={`${base} ${skin}`}>
+            {state.status === "loading" ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" data-testid="identity-verify-loading" />{t("checkout.verifying")}</>) : t("checkout.verify")}
+          </button>
+        </div>
       )}
       {state.status === "valid" && checkout && (
         // PL-CHK-1 : ligne compacte (coche + pseudo) à la place du grand

@@ -152,3 +152,86 @@ test("liste admin : 404 sur un GET de preuve → vignette « Indisponible »", a
   expect(container.querySelector('[data-testid="admin-proof-0"] img')).toBeNull();
   await act(async () => root.unmount());
 });
+
+// --- PL-UX-3 : filtre de méthode de paiement --------------------------------
+// Depuis PL-ORDER-CLIENT-1, MVola/Orange Money sont des commandes
+// `payment_method: "manual"` + `manual_operator`. Le backend ne filtre que
+// par `payment_method` → le filtre opérateur est appliqué côté client.
+
+test("PL-UX-3 : toutes les méthodes sont proposées dans le filtre (Tous, MVola, Orange, USSD, USDT)", async () => {
+  const { METHOD_FILTERS } = require("./AdminOrders");
+  expect(METHOD_FILTERS.map((m) => m.value)).toEqual(["all", "mvola", "orange", "manual", "binance"]);
+  const t = (key) => key.split(".").reduce((acc, k) => (acc && acc[k] !== undefined ? acc[k] : undefined), require("@/i18n/translations").translations.fr) ?? key;
+  const labels = METHOD_FILTERS.map((m) => m.label(t));
+  expect(labels).toEqual(["Tous paiements", "MVola", "Orange Money", "USSD", "Binance USDT"]);
+});
+
+test("PL-UX-3 : un filtre opérateur n'envoie AUCUN `method` à l'API (le serveur ne le comprend pas)", () => {
+  const { adminOrdersParams } = require("./AdminOrders");
+  expect(adminOrdersParams({ status: "all", method: "mvola", q: "" })).toEqual({ status: "all", q: "" });
+  expect(adminOrdersParams({ status: "paid", method: "orange", q: "abc" })).toEqual({ status: "paid", q: "abc" });
+  // Les autres méthodes restent filtrées par le serveur.
+  expect(adminOrdersParams({ status: "all", method: "binance", q: "" })).toEqual({ status: "all", method: "binance", q: "" });
+  expect(adminOrdersParams({ status: "all", method: "manual", q: "" })).toEqual({ status: "all", method: "manual", q: "" });
+});
+
+test("PL-UX-3 : le filtre opérateur sépare MVola et Orange Money", () => {
+  const { filterOrdersByMethod, orderOperator } = require("./AdminOrders");
+  const orders = [
+    { order_number: "A", payment_method: "manual", manual_operator: "mvola" },
+    { order_number: "B", payment_method: "manual", manual_operator: "orange" },
+    { order_number: "C", payment_method: "manual", manual_operator: null },
+    { order_number: "D", payment_method: "mvola" }, // commande antérieure
+    { order_number: "E", payment_method: "binance" },
+  ];
+  expect(filterOrdersByMethod(orders, "mvola").map((o) => o.order_number)).toEqual(["A", "D"]);
+  expect(filterOrdersByMethod(orders, "orange").map((o) => o.order_number)).toEqual(["B"]);
+  // « Tous » et les méthodes filtrées par le serveur ne sont pas re-filtrées
+  // côté client (le serveur s'en charge).
+  expect(filterOrdersByMethod(orders, "all")).toHaveLength(5);
+  expect(filterOrdersByMethod(orders, "binance")).toHaveLength(5);
+  // Les commandes sans opérateur ne sont NI MVola NI Orange.
+  expect(orderOperator(orders[2])).toBeNull();
+});
+
+test("PL-UX-3 : la commande manuelle affiche son opérateur (MVola / Orange Money)", async () => {
+  mockOrders = [
+    order({ order_number: "MGS-MV2", payment_method: "manual", manual_operator: "mvola", manual_reference: "REF9" }),
+    order({ order_number: "MGS-OR2", payment_method: "manual", manual_operator: "orange" }),
+  ];
+  const { container, root } = await mountOrders();
+  expect(rowText(container, "MGS-MV2")).toContain("USSD · MVola · REF9");
+  expect(rowText(container, "MGS-OR2")).toContain("USSD · Orange Money");
+  await act(async () => root.unmount());
+});
+
+test("PL-UX-3 : le chargement initial interroge l'API avec le filtre « Tous »", async () => {
+  const { api } = require("@/lib/api");
+  await mountOrders();
+  expect(api.get).toHaveBeenCalledWith("/admin/orders", { params: { status: "all", method: "all", q: "" } });
+});
+
+test("PL-UX-3 : la limite du filtre opérateur est affichée (jamais cachée)", async () => {
+  const { AdminMethodOperatorNote } = require("./AdminOrders");
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => { root.render(<AdminMethodOperatorNote method="mvola" />); });
+  const note = container.querySelector('[data-testid="admin-method-operator-note"]');
+  expect(note).not.toBeNull();
+  expect(note.textContent).toContain("Filtre opérateur");
+  await act(async () => root.unmount());
+
+  const container2 = document.createElement("div");
+  document.body.appendChild(container2);
+  const root2 = createRoot(container2);
+  await act(async () => { root2.render(<AdminMethodOperatorNote method="all" />); });
+  expect(container2.querySelector('[data-testid="admin-method-operator-note"]')).toBeNull();
+  await act(async () => root2.unmount());
+});
+
+test("PL-UX-3 : sans filtre opérateur, aucune note de limite dans la liste", async () => {
+  const { container, root } = await mountOrders();
+  expect(container.querySelector('[data-testid="admin-method-operator-note"]')).toBeNull();
+  await act(async () => root.unmount());
+});

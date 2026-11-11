@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
-import { paymentLabel } from "@/lib/paymentLabels";
+import { paymentLabel, paymentOperatorLabel } from "@/lib/paymentLabels";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { StatusPill } from "@/pages/OrderTrack";
@@ -27,6 +27,60 @@ const TRANSITIONS = {
   delivered: [], cancelled: [],
 };
 const canDeliver = (s) => TRANSITIONS[s]?.includes("delivered");
+
+// PL-UX-3 — filtre de méthode de paiement.
+// Le backend filtre sur `payment_method` (UN seul scalaire :
+// `GET /admin/orders` → `query["payment_method"] = method`,
+// backend/routers/orders.py). Depuis PL-ORDER-CLIENT-1 (23d035a), MVola et
+// Orange Money sont des commandes `payment_method: "manual"` +
+// `manual_operator: "mvola" | "orange"` ; PL-CHK-4 (b4c439e) a fait passer le
+// tunnel sur ce modèle. Les filtres `method=mvola` / `method=orange` ne
+// renvoient donc PLUS AUCUNE commande — seul « USDT » répondait. Le backend
+// n'expose AUCUN paramètre d'opérateur : on n'invente rien.
+// → Les méthodes sont toutes restaurées dans le sélecteur, et le filtre
+// opérateur est appliqué côté client sur la fenêtre renvoyée par l'API
+// (les 200 commandes les plus récentes : `limit` par défaut du serveur).
+// La limite est affichée dans l'admin (data-testid
+// `admin-method-operator-note`), jamais cachée.
+export const METHOD_FILTERS = [
+  { value: "all", label: (t) => t("admin.allMethods") },
+  { value: "mvola", label: () => "MVola" },
+  { value: "orange", label: () => "Orange Money" },
+  { value: "manual", label: (t) => paymentLabel("manual", t) },
+  { value: "binance", label: (t) => paymentLabel("binance", t) },
+];
+
+// Filtres « opérateur » : le serveur ne sait pas les exprimer.
+export const OPERATOR_METHOD_FILTERS = ["mvola", "orange"];
+export const isOperatorFilter = (method) => OPERATOR_METHOD_FILTERS.includes(method);
+
+// Opérateur d'une commande : `manual_operator` pour les commandes manuelles
+// nouvelles, `payment_method` pour les commandes antérieures (mvola|orange).
+export const orderOperator = (o) => {
+  if (o.payment_method === "manual") return o.manual_operator || null;
+  if (o.payment_method === "mvola" || o.payment_method === "orange") return o.payment_method;
+  return null;
+};
+
+// Filtre opérateur appliqué à la liste reçue de l'API.
+export const filterOrdersByMethod = (orders, method) =>
+  (isOperatorFilter(method) ? orders.filter((o) => orderOperator(o) === method) : orders);
+
+// Paramètres envoyés à l'API : pour un filtre opérateur, AUCUN `method`
+// (le serveur ne le comprendrait pas et renverrait 0 commande) ; statut et
+// recherche restent filtrés côté serveur.
+export const adminOrdersParams = (filters) =>
+  (isOperatorFilter(filters.method)
+    ? { status: filters.status, q: filters.q }
+    : { ...filters });
+
+// PL-UX-3 — la limite du filtre opérateur est AFFICHÉE (jamais cachée) :
+// le filtre est appliqué côté client, sur la fenêtre renvoyée par l'API.
+export function AdminMethodOperatorNote({ method }) {
+  const { t } = useLang();
+  if (!isOperatorFilter(method)) return null;
+  return <p className="mt-2 text-xs text-muted-foreground" data-testid="admin-method-operator-note">{t("admin.methodOperatorNote")}</p>;
+}
 
 export default function AdminOrders() {
   const { t } = useLang();
@@ -67,14 +121,18 @@ export default function AdminOrders() {
   const [params, setParams] = useSearchParams();
   const focusedOrder = params.get("order");
   const [focusError, setFocusError] = useState("");
+  const requestFilters = useMemo(() => adminOrdersParams(filters), [filters]);
   const load = useCallback(async () => {
     try {
-      const { data } = focusedOrder ? await api.get(`/orders/${encodeURIComponent(focusedOrder)}`) : await api.get("/admin/orders", { params: filters });
+      const { data } = focusedOrder ? await api.get(`/orders/${encodeURIComponent(focusedOrder)}`) : await api.get("/admin/orders", { params: requestFilters });
       setOrders(focusedOrder ? [data] : data); setFocusError("");
     } catch (e) { if (focusedOrder) { setOrders([]); setFocusError(errorMessage(e)); } }
-  }, [filters, focusedOrder]);
+  }, [requestFilters, focusedOrder]);
   useEffect(() => { const id = setTimeout(load, 200); return () => clearTimeout(id); }, [load]);
   useEffect(() => { const id = setInterval(load, 15000); return () => clearInterval(id); }, [load]);
+
+  // Liste affichée : filtre opérateur côté client (le serveur ne le fait pas).
+  const visibleOrders = useMemo(() => filterOrdersByMethod(orders, filters.method), [orders, filters.method]);
 
   const setStatus = async (o, status) => {
     try { await api.patch(`/admin/orders/${o.id}`, { status }); toast.success(t(`order.status.${status}`)); load(); } catch (e) { toast.error(errorMessage(e)); }
@@ -100,19 +158,22 @@ export default function AdminOrders() {
         </Select>
         <Select value={filters.method} onValueChange={(v) => setFilters({ ...filters, method: v })}>
           <SelectTrigger className="h-10 w-44 rounded-full" data-testid="admin-filter-method"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem value="all">{t("admin.allMethods")}</SelectItem><SelectItem value="mvola">MVola</SelectItem><SelectItem value="orange">Orange Money</SelectItem><SelectItem value="manual">USSD</SelectItem><SelectItem value="binance">{paymentLabel("binance", t)}</SelectItem></SelectContent>
+          <SelectContent>{METHOD_FILTERS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label(t)}</SelectItem>)}</SelectContent>
         </Select>
         <Button variant="outline" size="icon" className="rounded-full" onClick={load} data-testid="admin-orders-refresh"><RefreshCw className="h-4 w-4" /></Button>
       </div>
+      {/* PL-UX-3 — le filtre opérateur est appliqué côté client (le backend ne
+          filtre que par `payment_method`) : la limite est dite, jamais cachée. */}
+      <AdminMethodOperatorNote method={filters.method} />
       <div className="mt-4 space-y-3">
-        {orders.length === 0 && <p className="rounded-2xl bg-white p-6 text-slate-500" data-testid="admin-orders-empty">{t("order.none")}</p>}
-        {orders.map((o) => (
+        {visibleOrders.length === 0 && <p className="rounded-2xl bg-white p-6 text-slate-500" data-testid="admin-orders-empty">{t("order.none")}</p>}
+        {visibleOrders.map((o) => (
           <article key={o.id} data-testid={`admin-order-${o.order_number}`} className="grid gap-3 rounded-2xl border border-slate-100 bg-white p-4 lg:grid-cols-[auto_1fr_auto] lg:items-center">
             <div><p className="flex items-center gap-1 num text-base text-foreground">{o.order_number}<CopyButton value={o.order_number} label="n° de commande" testId={`copy-order-${o.order_number}`} /></p><p className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground">{new Date(o.created_at).toLocaleString("fr-FR")}</p><div className="mt-1"><StatusPill status={o.status} /></div></div>
             <div className="text-sm">
               <p className="flex flex-wrap items-center gap-1 font-semibold text-slate-900">{o.pseudo} · <span className="font-mono">{o.pubg_id}</span><CopyButton value={o.pubg_id} label="PUBG ID" testId={`copy-pubg-${o.order_number}`} /></p>
               <p className="text-slate-600">{o.items.map((i) => `${i.quantity}× ${i.name}${i.season_name ? ` · ${i.season_name}` : ""}${i.week_key ? ` · sem. ${i.week_key}` : ""}`).join(", ")}</p>
-              <p className="flex flex-wrap items-center gap-1 text-xs text-slate-500">{o.payment_method === "manual" ? <>{paymentLabel(o.payment_method, t)}{o.manual_reference ? <> · {o.manual_reference}<CopyButton value={o.manual_reference} label="référence de transaction" testId={`copy-ref-${o.order_number}`} /></> : null}</> : o.payment_method === "binance" ? <>{paymentLabel(o.payment_method, t)}</> : <>{paymentLabel(o.payment_method, t)} · {o.payment_phone || ""}<CopyButton value={o.payment_phone} label="numéro de paiement" testId={`copy-phone-${o.order_number}`} /></>}{o.email ? ` · ${o.email}` : ""}</p>
+              <p className="flex flex-wrap items-center gap-1 text-xs text-slate-500">{o.payment_method === "manual" ? <>{paymentLabel(o.payment_method, t)}{o.manual_operator ? <> · {paymentOperatorLabel(o.manual_operator, t)}</> : null}{o.manual_reference ? <> · {o.manual_reference}<CopyButton value={o.manual_reference} label="référence de transaction" testId={`copy-ref-${o.order_number}`} /></> : null}</> : o.payment_method === "binance" ? <>{paymentLabel(o.payment_method, t)}</> : <>{paymentLabel(o.payment_method, t)} · {o.payment_phone || ""}<CopyButton value={o.payment_phone} label="numéro de paiement" testId={`copy-phone-${o.order_number}`} /></>}{o.email ? ` · ${o.email}` : ""}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="num text-xl text-foreground">{formatAr(o.total)}</span>
