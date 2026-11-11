@@ -36,14 +36,15 @@ export function PaymentCountdown({ order, onZero }) {
   }, [remaining, t, onZero]);
 
   if (!deadline) return null;
-  const urgent = remaining <= 300;
   const text = `${pad(Math.floor(remaining / 60))}:${pad(remaining % 60)}`;
+  // PL-CHK-5 — UNE seule ligne, comme Binance (maquette) : « Payer sous » en
+  // couleur de texte normale, le temps en couleur d'avertissement, 16 px gras,
+  // séparés de 8 px. La grande carte grise « Temps restant pour payer » est
+  // supprimée. role="timer" + annonces sr-only aux paliers inchangés.
   return (
-    <div className="flex items-center justify-between gap-3 rounded-[14px] bg-muted px-4 py-3" data-testid="payment-countdown">
-      <p className="min-w-0 text-sm font-semibold text-muted-foreground">{t("checkout.countdownLabel")}</p>
-      {/* role="timer" + aria-live off par défaut : valeur mise à jour chaque
-          seconde, non annoncée ; la région sr-only dit les paliers. */}
-      <p className={`num font-display text-2xl font-bold ${urgent ? "text-amber-700 dark:text-amber-400" : "text-foreground"}`} role="timer" data-testid="payment-countdown-value">{text}</p>
+    <div className="flex items-baseline gap-2 py-1" data-testid="payment-countdown">
+      <p className="text-[16px] leading-6 text-foreground">{t("checkout.countdownLabel")}</p>
+      <p className={`num font-display text-[16px] font-extrabold leading-6 text-amber-700 dark:text-amber-400`} role="timer" data-testid="payment-countdown-value">{text}</p>
       <span role="status" className="sr-only" data-testid="payment-countdown-announce">{announce}</span>
     </div>
   );

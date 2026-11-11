@@ -5,7 +5,7 @@ import { api, errorMessage, formatAr } from "@/lib/api";
 import { isCaptchaError } from "@/components/common/CaptchaWidget";
 import { useLang } from "@/context/LanguageContext";
 import { paymentLabel } from "@/lib/paymentLabels";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { CheckoutSheet } from "@/components/store/checkout/CheckoutSheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
@@ -127,71 +127,66 @@ export function ProofSheet({ open, onOpenChange, order, summary, onSubmitted, on
   };
 
   return (
-    // Feuille du bas accessible (Radix : focus piégé, Échap, aria-modal) ;
-    // fermeture par l'arrière-plan ou Échap REFUSÉE pendant l'envoi.
-    <Sheet open={open} onOpenChange={(v) => { if (!busy) onOpenChange(v); }}>
-      <SheetContent
-        side="bottom"
-        aria-describedby={undefined}
-        onInteractOutside={(e) => { if (busy) e.preventDefault(); }}
-        onEscapeKeyDown={(e) => { if (busy) e.preventDefault(); }}
-        className="gap-0 rounded-t-[24px] border-t border-[color:var(--rule)] bg-card px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2 [&>button]:hidden lg:inset-x-auto lg:left-1/2 lg:top-1/2 lg:w-[480px] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-[24px]"
-        data-testid="proof-sheet"
-      >
-        <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-[color:var(--rule-strong)]" aria-hidden="true" />
-        <SheetTitle className="text-[18px] font-extrabold" data-testid="proof-sheet-title">{t("checkout.proofSheetTitle")}</SheetTitle>
-        <p className="mt-2 text-sm font-bold">{t("checkout.proofTitle")}</p>
-        <p className="mb-3 mt-0.5 text-xs leading-[1.45] text-muted-foreground">{t("checkout.proofSheetHelp")}</p>
-
-        {/* Vignettes (vrais fichiers) + case « + n/3 » (plafond 3 au total,
-            preuves déjà envoyées comprises). */}
-        <div className="flex gap-2.5" data-testid="proof-thumbs">
-          {files.map((f, i) => (
-            <div key={f.url} className="relative h-[116px] w-[92px] shrink-0 overflow-hidden rounded-[14px] border border-[color:var(--rule)]" data-testid={`proof-thumb-${i}`}>
-              <img src={f.url} alt={f.name || t("checkout.proofAdd")} className="h-full w-full object-cover" />
-              <button type="button" onClick={() => remove(i)} data-testid={`proof-remove-${i}`}
-                aria-label={t("checkout.proofRemove", { n: i + 1 })}
-                className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-foreground/85 text-background">
-                <X className="h-3 w-3" aria-hidden="true" />
-              </button>
-            </div>
-          ))}
-          {left > 0 && (
-            <button type="button" onClick={() => inputRef.current?.click()} disabled={busy}
-              data-testid="proof-add-button"
-              className="flex h-[116px] w-[92px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[14px] border border-dashed border-[color:var(--rule-strong)] bg-muted/40 text-muted-foreground">
-              <Plus className="h-6 w-6" aria-hidden="true" />
-              <span className="text-xs font-semibold" aria-hidden="true">{t("checkout.proofCounter", { n: alreadySent + files.length + 1 })}</span>
-            </button>
-          )}
-        </div>
-        {/* Le champ lui-même est visuellement réduit ; libellé via aria-label. */}
-        <input
-          ref={inputRef} id="proof-input" type="file" accept="image/jpeg,image/png" multiple
-          onChange={(e) => addFiles(e.target.files)} data-testid="proof-input"
-          className="sr-only" aria-label={t("checkout.proofAddPhoto")} />
-        <p className="sr-only" aria-live="polite" data-testid="proof-count">{t("checkout.proofCounter", { n: alreadySent + files.length })}</p>
-
-        {/* Ligne récap UNIQUE (« 1 × 60 UC · ID … » + montant). */}
-        <p className="flex items-center justify-between gap-3 border-t border-[color:var(--rule)] pt-2.5 text-xs text-muted-foreground" data-testid="proof-recap">
-          <span className="min-w-0 truncate">{recap}{summary?.pubgId ? <> · ID <b className="text-foreground">{summary.pubgId}</b></> : null}</span>
-          <b className="shrink-0 text-foreground">{formatAr(amount)}</b>
-        </p>
-
-        {/* Case obligatoire : « J'ai déjà payé le montant exact. » */}
-        <label className="mt-3 flex cursor-pointer items-start gap-3 text-[13px] leading-[1.45]" data-testid="proof-exact-row">
-          <Checkbox checked={checked} onCheckedChange={(v) => setChecked(!!v)} data-testid="proof-exact-checkbox" className="mt-0.5" />
-          <span className="min-w-0 flex-1">{t("checkout.proofExactPaid")}</span>
-        </label>
-
-        <p role="alert" className={`mt-2 text-sm font-semibold ${error ? "" : "sr-only"}`} data-testid="proof-error" aria-live="assertive">{error || "\u00a0"}</p>
-
+    // PL-CHK-5 — coquille partagée (CheckoutSheet) : contenu défilable + pied
+    // FIXE où vit « Confirmer » (jamais coupé, même à 620 px de bureau) ;
+    // Radix : focus piégé, Échap, aria-modal ; fermeture REFUSÉE pendant
+    // l'envoi (busy).
+    <CheckoutSheet
+      open={open} onOpenChange={onOpenChange} busy={busy}
+      title={t("checkout.proofSheetTitle")} testId="proof-sheet"
+      footer={
         <Button type="button" onClick={submit} disabled={busy || files.length === 0 || !checked}
-          data-testid="proof-submit" className="mt-3 h-[52px] w-full rounded-full text-[15px] font-extrabold">
+          data-testid="proof-submit" className="h-[52px] flex-1 rounded-full text-[15px] font-extrabold lg:h-[46px]">
           {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.proofConfirming")}</> : t("checkout.proofConfirm")}
         </Button>
-      </SheetContent>
-    </Sheet>
+      }
+    >
+      <p className="text-sm font-bold">{t("checkout.proofTitle")}</p>
+      <p className="mb-3 mt-0.5 text-xs leading-[1.45] text-muted-foreground">{t("checkout.proofSheetHelp")}</p>
+
+      {/* Vignettes (vrais fichiers) + case « + n/3 » (plafond 3 au total,
+          preuves déjà envoyées comprises). */}
+      <div className="flex gap-2.5" data-testid="proof-thumbs">
+        {files.map((f, i) => (
+          <div key={f.url} className="relative h-[116px] w-[92px] shrink-0 overflow-hidden rounded-[14px] border border-[color:var(--rule)]" data-testid={`proof-thumb-${i}`}>
+            <img src={f.url} alt={f.name || t("checkout.proofAdd")} className="h-full w-full object-cover" />
+            <button type="button" onClick={() => remove(i)} data-testid={`proof-remove-${i}`}
+              aria-label={t("checkout.proofRemove", { n: i + 1 })}
+              className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-foreground/85 text-background">
+              <X className="h-3 w-3" aria-hidden="true" />
+            </button>
+          </div>
+        ))}
+        {left > 0 && (
+          <button type="button" onClick={() => inputRef.current?.click()} disabled={busy}
+            data-testid="proof-add-button"
+            className="flex h-[116px] w-[92px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[14px] border border-dashed border-[color:var(--rule-strong)] bg-muted/40 text-muted-foreground">
+            <Plus className="h-6 w-6" aria-hidden="true" />
+            <span className="text-xs font-semibold" aria-hidden="true">{t("checkout.proofCounter", { n: alreadySent + files.length + 1 })}</span>
+          </button>
+        )}
+      </div>
+      {/* Le champ lui-même est visuellement réduit ; libellé via aria-label. */}
+      <input
+        ref={inputRef} id="proof-input" type="file" accept="image/jpeg,image/png" multiple
+        onChange={(e) => addFiles(e.target.files)} data-testid="proof-input"
+        className="sr-only" aria-label={t("checkout.proofAddPhoto")} />
+      <p className="sr-only" aria-live="polite" data-testid="proof-count">{t("checkout.proofCounter", { n: alreadySent + files.length })}</p>
+
+      {/* Ligne récap UNIQUE (« 1 × 60 UC · ID … » + montant). */}
+      <p className="flex items-center justify-between gap-3 border-t border-[color:var(--rule)] pt-2.5 text-xs text-muted-foreground" data-testid="proof-recap">
+        <span className="min-w-0 truncate">{recap}{summary?.pubgId ? <> · ID <b className="text-foreground">{summary.pubgId}</b></> : null}</span>
+        <b className="shrink-0 text-foreground">{formatAr(amount)}</b>
+      </p>
+
+      {/* Case obligatoire : « J'ai déjà effectué le paiement. » (texte maquette). */}
+      <label className="mb-2 mt-3 flex cursor-pointer items-start gap-3 pb-2 text-[13px] leading-[1.45]" data-testid="proof-exact-row">
+        <Checkbox checked={checked} onCheckedChange={(v) => setChecked(!!v)} data-testid="proof-exact-checkbox" className="mt-0.5" />
+        <span className="min-w-0 flex-1">{t("checkout.proofExactPaid")}</span>
+      </label>
+
+      <p role="alert" className={`text-sm font-semibold ${error ? "" : "sr-only"}`} data-testid="proof-error" aria-live="assertive">{error || "\u00a0"}</p>
+    </CheckoutSheet>
   );
 }
 
