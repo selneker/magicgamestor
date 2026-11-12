@@ -32,10 +32,14 @@ const STYLE = {
   expired: ["border-foreground/40 bg-transparent text-muted-foreground", Clock],
 };
 
-export function StatusPill({ status }) {
+export function StatusPill({ status, small = false }) {
   const { t } = useLang();
   const [cls, Icon] = STYLE[status] || STYLE.pending_payment;
-  return <span data-testid={`status-${status}`} className={`inline-flex items-center gap-1.5 border px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${cls}`}><Icon className="h-3 w-3" strokeWidth={2.25} />{t(`order.status.${status}`)}</span>;
+  // PL-UX-5 — variante `small` (liste admin v2, maquette) : même boîte
+  // d'origine (bordure 1 px, rayon 0, majuscules, graisse 800, icône à
+  // gauche) mais plus petite : texte 9,5 px, marges 2 px × 6 px, icône 10 px,
+  // interlettrage 0,06 em. Défaut = style d'origine inchangé.
+  return <span data-testid={`status-${status}`} className={`inline-flex items-center border ${small ? "gap-1 px-1.5 py-[2px] text-[9.5px] tracking-[0.06em]" : "gap-1.5 px-2 py-1 text-[10px] tracking-[0.12em]"} font-black uppercase ${cls}`}><Icon className={small ? "h-2.5 w-2.5" : "h-3 w-3"} strokeWidth={2.25} />{t(`order.status.${status}`)}</span>;
 }
 
 // Game + identity captured on the order (snapshot), never assumed to be a PUBG ID.

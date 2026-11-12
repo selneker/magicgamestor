@@ -143,6 +143,9 @@ test("liste admin : bouton « Preuves (n) », AUCUNE image chargée ni affichée
   const button = container.querySelector('[data-testid="admin-proofs-button-MGS-PS"]');
   expect(button).not.toBeNull();
   expect(button.textContent).toContain("Preuves (2)");
+  // PL-UX-5 — rayon 8 px (jamais de pilule), 34 px sur bureau.
+  expect(button.className).toContain("rounded-[8px]");
+  expect(button.className).toContain("sm:h-[34px]");
   // AUCUNE requête d'image avant le clic, AUCUNE vignette dans la liste.
   expect(api.get).not.toHaveBeenCalledWith("/admin/orders/MGS-PS/proofs/0", { responseType: "blob" });
   expect(container.querySelector('[data-testid="admin-proof-0"]')).toBeNull();
@@ -251,26 +254,72 @@ test("PL-UX-3 : sans filtre opérateur, aucune note de limite dans la liste", as
 });
 
 
-// --- PL-UX-4 : carte de commande épurée (mobile/desktop) + bloc « Détails » ---
+// --- PL-UX-5 : carte admin v2 (maquette apercu-admin-commandes) -------------
 
-test("PL-UX-4 : la carte empile ses blocs sur mobile (colonne unique) et se range en colonnes au-dessus de 640 px", async () => {
+test("PL-UX-5 : grille bureau 3 colonnes fixes, badge d'origine plus petit, bouton « Marquer livrée » supprimé", async () => {
   mockOrders = [order({ order_number: "MGS-C1", payment_method: "manual", manual_operator: "mvola", total: 25000 })];
   const { container, root } = await mountOrders();
   const card = container.querySelector('[data-testid="admin-order-MGS-C1"]');
-  expect(card.className).toContain("grid-cols-1");
-  expect(card.className).toContain("sm:grid-cols-[auto_1fr_auto]");
-  // Montant : ligne 2 du mobile, colonne 3 du desktop.
+  expect(card.className).toContain("sm:grid-cols-[215px_1fr_auto]");
+  // Badge : boîte d'origine (bordure, majuscules, graisse 800) en plus petit
+  // (texte 9,5 px, marges 2 px × 6 px, icône 10 px).
+  const badge = card.querySelector('[data-testid="status-paid"]');
+  expect(badge.className).toContain("text-[9.5px]");
+  expect(badge.className).toContain("px-1.5");
+  expect(badge.className).toContain("py-[2px]");
+  // Le bouton « Marquer livrée » n'existe plus : le sélecteur de statut
+  // appelle exactement la même route (même setStatus → PATCH {status}).
+  expect(card.querySelector('[data-testid="admin-deliver-MGS-C1"]')).toBeNull();
+  expect(card.querySelector('[data-testid="admin-status-select-MGS-C1"]')).not.toBeNull();
+  // Montant en colonne 3.
   const total = container.querySelector('[data-testid="admin-order-total-MGS-C1"]');
   expect(total).not.toBeNull();
-  expect(total.className).toContain("shrink-0");
   expect(total.className).toContain("sm:col-start-3");
-  // Sélecteur de statut : pleine largeur sur mobile (cible 44 px).
-  const select = container.querySelector('[data-testid="admin-status-select-MGS-C1"]');
+  // Icône de copie : petit carré bordé d'origine (20 px, rayon 3 px).
+  const copy = card.querySelector('[data-testid="copy-pubg-MGS-C1"]');
+  expect(copy.className).toContain("h-5 w-5");
+  expect(copy.className).toContain("rounded-[3px]");
+  await act(async () => root.unmount());
+});
+
+test("PL-UX-5 : cartes mobiles repliées par défaut, ouverture/fermeture avec aria-expanded", async () => {
+  mockOrders = [order({ order_number: "MGS-C2", payment_method: "manual" })];
+  const { container, root } = await mountOrders();
+  const toggle = container.querySelector('[data-testid="admin-order-toggle-MGS-C2"]');
+  const body = container.querySelector('[data-testid="admin-order-body-MGS-C2"]');
+  expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  expect(toggle.getAttribute("aria-controls")).toBe("admin-order-body-MGS-C2");
+  expect(body.className).toContain("hidden");
+  expect(body.textContent).toContain("Joueur");
+  await act(async () => { toggle.click(); });
+  expect(toggle.getAttribute("aria-expanded")).toBe("true");
+  expect(body.className).not.toContain("hidden");
+  expect(body.className).toContain("block");
+  await act(async () => { toggle.click(); });
+  expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  expect(body.className).toContain("hidden");
+  await act(async () => root.unmount());
+});
+
+test("PL-UX-5 : sélecteur pleine largeur 44 px sur mobile (rayon 8 px), email coupé, Preuves masqué sans preuve", async () => {
+  mockOrders = [order({ order_number: "MGS-C3", payment_method: "manual" })];
+  const { container, root } = await mountOrders();
+  const select = container.querySelector('[data-testid="admin-status-select-MGS-C3"]');
   expect(select.className).toContain("w-full");
   expect(select.className).toContain("h-11");
-  // Email : coupé proprement (jamais de débordement).
-  const email = container.querySelector('[data-testid="admin-order-email-MGS-C1"]');
+  expect(select.className).toContain("rounded-[8px]");
+  expect(select.className).toContain("border-ink");
+  const email = container.querySelector('[data-testid="admin-order-email-MGS-C3"]');
   expect(email.className).toContain("truncate");
+  expect(container.querySelector('[data-testid="admin-proofs-button-MGS-C3"]')).toBeNull();
+  await act(async () => root.unmount());
+});
+
+test("PL-UX-5 : les actions inchangées restent (simulation payée/échouée sur commande en attente non manuelle)", async () => {
+  mockOrders = [order({ order_number: "MGS-C4", payment_method: "binance", status: "pending_payment" })];
+  const { container, root } = await mountOrders();
+  expect(container.querySelector('[data-testid="admin-simulate-paid-MGS-C4"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="admin-simulate-failed-MGS-C4"]')).not.toBeNull();
   await act(async () => root.unmount());
 });
 

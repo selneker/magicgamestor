@@ -99,30 +99,33 @@ export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, mapComponents
   };
 
   return (
-    <div className="col-span-full space-y-2 rounded-xl bg-slate-50 px-3 py-2.5 text-xs dark:bg-slate-800/40" data-testid={`fzr-block-${order.order_number}`}>
-      <div className="flex flex-wrap items-center gap-2">
-        {/* PL-UX-4 — le nom du fournisseur ne s'affiche PLUS dans l'admin :
-            le bloc s'appelle « Détails » et garde l'information utile
+    // PL-UX-5 — plus de grande barre grise : une ligne « Détails » + chevron
+    // sous séparateur 1 px (maquette). Le contenu repliable, l'action
+    // « Envoyer » et le rafraîchissement restent inchangés derrière.
+    <div className="col-span-full text-xs" data-testid={`fzr-block-${order.order_number}`}>
+      <div className="flex flex-wrap items-center gap-2 border-t border-[color:var(--rule)] pt-[9px]">
+        {/* PL-UX-4/5 — le nom du fournisseur ne s'affiche PAS dans l'admin :
+            le lien s'appelle « Détails » et garde l'information utile
             (état de livraison, référence fournisseur, erreur, action
             « Envoyer »). Le contenu détaillé reste repliable. */}
-        <span className="font-black uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">{t("admin.details")}</span>
+        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={open ? t("admin.fzr.collapse") : t("admin.fzr.expand")} title={open ? t("admin.fzr.collapse") : t("admin.fzr.expand")} className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-foreground" data-testid={`fzr-toggle-${order.order_number}`}>
+          {t("admin.details")}
+          {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        </button>
         {readyCount > 0 && order.status === "paid" && (
-          <Button size="sm" className="h-7 rounded-full text-xs" onClick={openPreflight} disabled={busy} data-testid={`fzr-send-${order.order_number}`}>
+          <Button size="sm" className="h-7 rounded-[8px] text-xs" onClick={openPreflight} disabled={busy} data-testid={`fzr-send-${order.order_number}`}>
             {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />}
             {t("admin.fzr.send")} ({readyCount})
           </Button>
         )}
         {open && canRefresh && (
-          <Button size="sm" variant="outline" className="h-7 rounded-full text-xs" onClick={refresh} disabled={busy} data-testid={`fzr-refresh-${order.order_number}`}>
+          <Button size="sm" variant="outline" className="h-7 rounded-[8px] text-xs" onClick={refresh} disabled={busy} data-testid={`fzr-refresh-${order.order_number}`}>
             <RefreshCw className="mr-1 h-3 w-3" />{t("admin.fzr.refresh")}
           </Button>
         )}
-        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label={open ? t("admin.fzr.collapse") : t("admin.fzr.expand")} title={open ? t("admin.fzr.collapse") : t("admin.fzr.expand")} className="ml-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-black/5 hover:text-foreground dark:text-slate-400 dark:hover:bg-white/10" data-testid={`fzr-toggle-${order.order_number}`}>
-          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </button>
       </div>
       {open && (
-      <ul className="space-y-1.5">
+      <ul className="space-y-1.5 pt-2">
         {items.map((item, idx) => {
           const comps = mapComponents[item.product_id];
           const qty = Math.max(1, item.quantity || 1);

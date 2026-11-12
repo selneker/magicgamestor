@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { RefreshCw, Trash2 } from "lucide-react";
+import { ChevronDown, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
 import { paymentLabel, paymentOperatorLabel } from "@/lib/paymentLabels";
@@ -26,7 +26,6 @@ const TRANSITIONS = {
   paid: ["delivered", "cancelled"], failed: ["paid", "cancelled"], expired: ["paid", "cancelled", "late_payment"],
   delivered: [], cancelled: [],
 };
-const canDeliver = (s) => TRANSITIONS[s]?.includes("delivered");
 
 // PL-UX-3 — filtre de méthode de paiement.
 // Le backend filtre sur `payment_method` (UN seul scalaire :
@@ -80,6 +79,117 @@ export function AdminMethodOperatorNote({ method }) {
   const { t } = useLang();
   if (!isOperatorFilter(method)) return null;
   return <p className="mt-2 text-xs text-muted-foreground" data-testid="admin-method-operator-note">{t("admin.methodOperatorNote")}</p>;
+}
+
+// PL-UX-5 — une carte par commande, d'après la maquette validée
+// (repports/maquettes/apercu-admin-commandes.html) : mobile (≤ 640 px) =
+// bloc repliable (en-tête cliquable + chevron 180°, repliée par défaut) ;
+// bureau = grille 3 colonnes fixes `215px | 1fr | auto` (18 px), sans
+// bouton « Marquer livrée » (le sélecteur de statut appelle exactement la
+// même route — voir setStatus). Un seul DOM : sur bureau le bloc replié se
+// dissout en cellules de grille (`sm:contents`) et la flèche disparaît.
+// Composant dédié : l'état ouvert/fermé est LOCAL à la carte (non
+// persistant, repliée par défaut) et survit au rechargement périodique de
+// la liste grâce à l'identité React stable (clé = id de commande).
+function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCount, isSuperAdmin, onStatus, onRemove, onSimulate, onChanged }) {
+  const { t } = useLang();
+  const [open, setOpen] = useState(false);
+  const itemsText = o.items.map((i) => `${i.quantity}× ${i.name}${i.season_name ? ` · ${i.season_name}` : ""}${i.week_key ? ` · sem. ${i.week_key}` : ""}`).join(", ");
+  return (
+    <article data-testid={`admin-order-${o.order_number}`} className="rounded-[16px] border border-[color:var(--rule)] bg-white px-4 py-[14px] sm:grid sm:grid-cols-[215px_1fr_auto] sm:items-start sm:gap-[18px]">
+      {/* En-tête. Mobile : la tête du bloc repliable — un <button> PUR (la
+          maquette ne met PAS d'icône de copie dans l'en-tête fermé, ce qui
+          évite aussi d'imbriquer un bouton de copie dans le bouton de
+          repli) : tout l'en-tête est cliquable, chevron bas = fermé,
+          chevron haut = ouvert (rotation 180°, 200 ms, coupée sous
+          prefers-reduced-motion). Bureau : colonne 1 = div (n° + copie,
+          date, badge) — pas de repli sur bureau, donc pas de bouton et
+          aria-expanded reste vrai uniquement là où il existe. */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls={`admin-order-body-${o.order_number}`}
+        data-testid={`admin-order-toggle-${o.order_number}`}
+        className="w-full cursor-pointer text-left focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-foreground sm:hidden"
+      >
+        <span className="flex items-start justify-between gap-2.5">
+          <span className="block min-w-0">
+            <span className="num block truncate text-[14px] font-bold text-foreground">{o.order_number}</span>
+            <span className="num mt-[2px] block text-[11px] tracking-[0.04em] text-muted-foreground">{new Date(o.created_at).toLocaleString("fr-FR")}</span>
+            <span className="mt-[7px] block"><StatusPill status={o.status} small /></span>
+          </span>
+          <span aria-hidden="true" className="mt-0.5 inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[8px] border border-[color:var(--rule-strong)] bg-background text-foreground">
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`} />
+          </span>
+        </span>
+      </button>
+      <div className="hidden min-w-0 sm:col-start-1 sm:row-start-1 sm:block">
+        <span className="flex items-center gap-1.5 text-[14px] font-bold text-foreground">
+          <span className="num truncate">{o.order_number}</span>
+          <CopyButton small value={o.order_number} label="n° de commande" testId={`copy-order-${o.order_number}`} />
+        </span>
+        <span className="num mt-[2px] block text-[11px] tracking-[0.04em] text-muted-foreground">{new Date(o.created_at).toLocaleString("fr-FR")}</span>
+        <span className="mt-[7px] block"><StatusPill status={o.status} small /></span>
+      </div>
+
+      {/* Ligne résumé du mobile (produit … montant) ; sur bureau, la ligne se
+          dissout : produit en colonne 2, montant en colonne 3. */}
+      <div className="mt-2 flex items-baseline justify-between gap-3 sm:contents">
+        <p className="min-w-0 truncate text-sm text-muted-foreground sm:col-start-2 sm:row-start-2">{itemsText}</p>
+        <p className="num shrink-0 text-[17px] font-extrabold text-foreground sm:col-start-3 sm:row-start-1" data-testid={`admin-order-total-${o.order_number}`}>{formatAr(o.total)}</p>
+      </div>
+
+      {/* Corps replié du mobile ; sur bureau, dissolution en cellules :
+          joueur (col. 2, l. 1), paiement + email (col. 2, l. 3), actions
+          (col. 3, l. 2-3), bloc Détails (pleine largeur, dernière ligne). */}
+      <div
+        id={`admin-order-body-${o.order_number}`}
+        data-testid={`admin-order-body-${o.order_number}`}
+        className={`${open ? "block" : "hidden"} min-w-0 border-t border-[color:var(--rule)] pt-2.5 sm:contents`}
+      >
+        <p className="flex min-w-0 items-center gap-1.5 text-[14px] font-semibold text-slate-900 sm:col-start-2 sm:row-start-1">
+          <span className="min-w-0 truncate">{o.pseudo}</span>
+          <span aria-hidden="true">·</span>
+          <span className="num font-mono">{o.pubg_id}</span>
+          <CopyButton small value={o.pubg_id} label="PUBG ID" testId={`copy-pubg-${o.order_number}`} />
+        </p>
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-muted-foreground sm:col-start-2 sm:row-start-3">
+          <span className="shrink-0">
+            {o.payment_method === "manual" && o.manual_operator
+              ? <>{paymentLabel(o.payment_method, t)} · <span className="font-semibold text-foreground">{paymentOperatorLabel(o.manual_operator, t)}</span></>
+              : <span className="font-semibold text-foreground">{paymentLabel(o.payment_method, t)}</span>}
+            {o.payment_method === "manual"
+              ? (o.manual_reference ? <> · {o.manual_reference} <CopyButton value={o.manual_reference} label="référence de transaction" testId={`copy-ref-${o.order_number}`} /></> : null)
+              : (o.payment_method !== "binance" && o.payment_phone ? <> · {o.payment_phone} <CopyButton value={o.payment_phone} label="numéro de paiement" testId={`copy-phone-${o.order_number}`} /></> : null)}
+          </span>
+          {o.email && (
+            <span className="min-w-0 max-w-full basis-full truncate sm:basis-auto" data-testid={`admin-order-email-${o.order_number}`}>
+              <span className="hidden sm:inline">· </span>{o.email}
+            </span>
+          )}
+        </p>
+        {/* Actions : le sélecteur de statut REMPLACE le bouton « Marquer
+            livrée » (même route, mêmes effets) ; « Preuves (n) » seulement
+            s'il y a au moins une preuve ; suppression réservée super-admin.
+            Mobile : sélecteur pleine largeur 44 px, Preuves flexible 44 px,
+            suppression 44 px. Bureau : 34 px, rayon 8 px, aligné à droite. */}
+        <div className="flex flex-wrap items-center gap-2 sm:col-start-3 sm:row-span-2 sm:row-start-2 sm:justify-end">
+          <Select value={o.status} onValueChange={(v) => onStatus(o, v)} disabled={!TRANSITIONS[o.status]?.length}>
+            <SelectTrigger className="mt-2.5 h-11 w-full rounded-[8px] border-ink font-semibold text-xs sm:mt-0 sm:h-[34px] sm:w-[235px] sm:shrink-0" data-testid={`admin-status-select-${o.order_number}`}><SelectValue /></SelectTrigger>
+            <SelectContent>{STATUSES.filter((s) => s === o.status || TRANSITIONS[o.status]?.includes(s)).map((s) => <SelectItem key={s} value={s}>{t(`order.status.${s}`)}</SelectItem>)}</SelectContent>
+          </Select>
+          <OrderProofs order={o} className="h-11 flex-1 sm:h-[34px] sm:flex-none" />
+          {o.status === "pending_payment" && o.payment_method !== "manual" && (
+            <><Button className="h-11 rounded-[8px] text-xs sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "completed")} data-testid={`admin-simulate-paid-${o.order_number}`}>{t("admin.forcePaid")}</Button>
+            <Button className="h-11 rounded-[8px] text-xs sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "failed")} data-testid={`admin-simulate-failed-${o.order_number}`}>{t("admin.forceFailed")}</Button></>
+          )}
+          {isSuperAdmin && <Button size="icon" variant="ghost" className="h-11 w-11 shrink-0 rounded-[8px] text-slate-400 hover:text-rose-600 sm:h-[34px] sm:w-[34px]" onClick={() => onRemove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
+        </div>
+        <FzrFulfillment order={o} mappedIds={mappedIds} mapStatus={mapStatus} mapComponents={mapComponents} readyCount={readyCount} onChanged={onChanged} />
+      </div>
+    </article>
+  );
 }
 
 export default function AdminOrders() {
@@ -165,82 +275,23 @@ export default function AdminOrders() {
       {/* PL-UX-3 — le filtre opérateur est appliqué côté client (le backend ne
           filtre que par `payment_method`) : la limite est dite, jamais cachée. */}
       <AdminMethodOperatorNote method={filters.method} />
-      <div className="mt-4 space-y-3">
+      <div className="mt-4 space-y-2.5">
         {visibleOrders.length === 0 && <p className="rounded-2xl bg-white p-6 text-slate-500" data-testid="admin-orders-empty">{t("order.none")}</p>}
-        {visibleOrders.map((o) => {
-          // PL-UX-4 — une seule ligne de données par zone, réutilisée par les
-          // deux mises en page (mobile empilée / desktop en colonnes).
-          const itemsText = o.items.map((i) => `${i.quantity}× ${i.name}${i.season_name ? ` · ${i.season_name}` : ""}${i.week_key ? ` · sem. ${i.week_key}` : ""}`).join(", ");
-          const paymentText = o.payment_method === "manual"
-            ? `${paymentLabel(o.payment_method, t)}${o.manual_operator ? ` · ${paymentOperatorLabel(o.manual_operator, t)}` : ""}`
-            : o.payment_method === "binance"
-              ? paymentLabel(o.payment_method, t)
-              : `${paymentLabel(o.payment_method, t)}${o.payment_phone ? ` · ${o.payment_phone}` : ""}`;
-          return (
-          // PL-UX-4 — mobile (≤ 640 px) : 4 lignes — (1) n° de commande,
-          // date, statut ; (2) produit + montant ; (3) joueur, paiement,
-          // email ; (4) actions. Desktop : la disposition en colonnes est
-          // conservée (colonne 1 = n°/date/statut, colonne 2 = joueur /
-          // produit / paiement, colonne 3 = montant + actions), le montant
-          // passant au-dessus des actions.
-          <article key={o.id} data-testid={`admin-order-${o.order_number}`} className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-100 bg-white p-4 sm:grid-cols-[auto_1fr_auto] sm:items-start sm:gap-x-4 sm:gap-y-2">
-            {/* Ligne 1 (mobile) / colonne 1 (desktop). */}
-            <div className="min-w-0 sm:col-start-1 sm:row-start-1">
-              <p className="flex items-center gap-1 num text-base font-bold text-foreground">
-                {o.order_number}
-                <CopyButton bare value={o.order_number} label="n° de commande" testId={`copy-order-${o.order_number}`} />
-              </p>
-              <p className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground">{new Date(o.created_at).toLocaleString("fr-FR")}</p>
-              <div className="mt-1"><StatusPill status={o.status} /></div>
-            </div>
-
-            {/* Ligne 2 (mobile) : produit à gauche, montant à droite.
-                Desktop : les deux enfants deviennent des cellules (produit
-                colonne 2, montant colonne 3). */}
-            <div className="flex items-baseline justify-between gap-3 sm:contents">
-              <p className="min-w-0 truncate text-sm text-slate-600 sm:col-start-2 sm:row-start-2">{itemsText}</p>
-              <p className="num shrink-0 text-xl font-bold text-foreground sm:col-start-3 sm:row-start-1" data-testid={`admin-order-total-${o.order_number}`}>{formatAr(o.total)}</p>
-            </div>
-
-            {/* Ligne 3 (mobile) : joueur, paiement, email. Desktop : les
-                enfants deviennent des cellules (colonne 2). */}
-            <div className="min-w-0 sm:contents">
-              <p className="flex items-center gap-1 font-semibold text-slate-900 sm:col-start-2 sm:row-start-1">
-                {o.pseudo} · <span className="num font-mono">{o.pubg_id}</span>
-                <CopyButton bare value={o.pubg_id} label="PUBG ID" testId={`copy-pubg-${o.order_number}`} />
-              </p>
-              <p className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-slate-500 sm:col-start-2 sm:row-start-3">
-                <span className="shrink-0">{paymentText}{o.payment_method === "manual" && o.manual_reference ? ` · ${o.manual_reference}` : null}</span>
-                {o.payment_method === "manual" && o.manual_reference && (
-                  <CopyButton value={o.manual_reference} label="référence de transaction" testId={`copy-ref-${o.order_number}`} />
-                )}
-                {o.payment_method !== "manual" && o.payment_method !== "binance" && o.payment_phone && (
-                  <CopyButton value={o.payment_phone} label="numéro de paiement" testId={`copy-phone-${o.order_number}`} />
-                )}
-                {o.email && <span className="min-w-0 max-w-full truncate" data-testid={`admin-order-email-${o.order_number}`}>· {o.email}</span>}
-              </p>
-            </div>
-
-            {/* Ligne 4 (mobile) / colonne 3 (desktop) : les actions. */}
-            <div className="flex flex-wrap items-center gap-2 sm:col-start-3 sm:row-start-2 sm:row-span-2 sm:justify-end">
-              <Select value={o.status} onValueChange={(v) => setStatus(o, v)} disabled={!TRANSITIONS[o.status]?.length}>
-                <SelectTrigger className="h-11 w-full rounded-full text-xs sm:h-9 sm:w-44" data-testid={`admin-status-select-${o.order_number}`}><SelectValue /></SelectTrigger>
-                <SelectContent>{STATUSES.filter((s) => s === o.status || TRANSITIONS[o.status]?.includes(s)).map((s) => <SelectItem key={s} value={s}>{t(`order.status.${s}`)}</SelectItem>)}</SelectContent>
-              </Select>
-              {canDeliver(o.status) && <Button className="h-11 min-w-[9rem] flex-1 rounded-full sm:h-9 sm:min-w-0 sm:flex-none" onClick={() => setStatus(o, "delivered")} data-testid={`admin-deliver-${o.order_number}`}>{t("admin.markDelivered")}</Button>}
-              {o.status === "pending_payment" && o.payment_method !== "manual" && (
-                <><Button className="h-11 rounded-full text-xs sm:h-9" variant="outline" onClick={() => simulate(o, "completed")} data-testid={`admin-simulate-paid-${o.order_number}`}>{t("admin.forcePaid")}</Button>
-                <Button className="h-11 rounded-full text-xs sm:h-9" variant="outline" onClick={() => simulate(o, "failed")} data-testid={`admin-simulate-failed-${o.order_number}`}>{t("admin.forceFailed")}</Button></>
-              )}
-              {isSuperAdmin && <Button size="icon" variant="ghost" className="h-11 w-11 rounded-full text-slate-400 hover:text-rose-600 sm:h-9 sm:w-9" onClick={() => remove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
-              {/* PL-UX-4 — les preuves ne sont plus des miniatures dans la
-                  liste : un seul bouton, la visionneuse se charge au clic. */}
-              <OrderProofs order={o} />
-            </div>
-            <FzrFulfillment order={o} mappedIds={mappedIds} mapStatus={mapStatus} mapComponents={mapComponents} readyCount={readyCount(o)} onChanged={load} />
-          </article>
-          );
-        })}
+        {visibleOrders.map((o) => (
+          <AdminOrderCard
+            key={o.id}
+            order={o}
+            mappedIds={mappedIds}
+            mapStatus={mapStatus}
+            mapComponents={mapComponents}
+            readyCount={readyCount(o)}
+            isSuperAdmin={isSuperAdmin}
+            onStatus={setStatus}
+            onRemove={remove}
+            onSimulate={simulate}
+            onChanged={load}
+          />
+        ))}
       </div>
     </div>
   );
