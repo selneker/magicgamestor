@@ -46,6 +46,8 @@ RETRY_ALERTS = {
     "storage_warning": ("Stockage bientôt saturé (rappel)", "/admin/commandes"),
     "stock_unavailable": ("Produit devenu indisponible (rappel)", "/admin/catalogue"),
     "stock_restored": ("Produit de nouveau disponible (rappel)", "/admin/catalogue"),
+    "stock_list_absent": ("Produit absent de la liste fournisseur (rappel)", "/admin/catalogue"),
+    "stock_list_suspect": ("Relevé de disponibilité ignoré (rappel)", "/admin/catalogue"),
 }
 
 
@@ -358,6 +360,24 @@ async def notify_stock_restored(product_name: str, product_id: str) -> None:
     await _critical("stock_restored", "Produit de nouveau disponible",
                     _line(product_name, "De nouveau proposé à la vente"),
                     ADMIN_CATALOG_URL, None, tag=product_id or None)
+
+
+# --------------------------------------------------------------------------- #
+# PL-STOCK-2 — signaux indirects : liste des offres fournisseur.
+# `observe` n'agit jamais sur la vente ; l'alerte sert à décider, pas à bloquer.
+# --------------------------------------------------------------------------- #
+async def notify_stock_list_absent(product_name: str, product_id: str) -> None:
+    """Produit absent de la liste d'offres fournisseur (une alerte par transition)."""
+    await _critical("stock_list_absent", "Produit absent de la liste fournisseur",
+                    _line(product_name, "Vérifiez sa disponibilité"),
+                    ADMIN_CATALOG_URL, None, tag=product_id or None)
+
+
+async def notify_stock_list_suspect() -> None:
+    """Relevé ignoré : trop d'offres disparues d'un coup, aucun produit n'a été modifié."""
+    await _critical("stock_list_suspect", "Relevé de disponibilité ignoré",
+                    "Réponse suspecte : trop d'offres disparues d'un coup. Aucun produit modifié.",
+                    ADMIN_CATALOG_URL, None)
 
 
 async def notify_crypto_unmatched(reason: str, amount: Any = None, coin: str | None = None,

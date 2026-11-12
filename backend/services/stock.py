@@ -46,7 +46,9 @@ STOCK_ERROR_WORDS = (
     "rupture de stock", "rupture stock", "stock épuisé", "stock epuise",
 )
 
-ADMIN_FIELDS = ("supplier_available", "supplier_checked_at", "manual_unavailable")
+ADMIN_FIELDS = ("supplier_available", "supplier_checked_at", "manual_unavailable",
+                "absent_from_supplier_list", "supplier_list_checked_at", "absent_streak",
+                "absent_first_at")
 REASON_SUPPLIER = "supplier_out_of_stock"
 REASON_ADMIN = "admin"
 
@@ -138,12 +140,41 @@ def public_fields(product: dict | None, now: datetime | None = None) -> dict:
             "unavailable_reason": unavailable_reason(product, now)}
 
 
-def admin_fields(product: dict | None, now: datetime | None = None) -> dict:
-    """Champs ajoutés aux réponses ADMIN (état effectif + horodatage + forçage)."""
+def mapping_offer_ids(mapping: dict | None) -> list[str]:
+    """Offres fournisseur exigées par un produit (direct ou composé), ids vides ignorés.
+
+    Un `offer_id` null ou vide n'est jamais une absence : il est simplement inexploitable.
+    """
+    if not mapping:
+        return []
+    if mapping.get("mode", "direct") == "composite":
+        raw = [c.get("offer_id") for c in mapping.get("components") or []]
+    else:
+        raw = [mapping.get("offer_id")]
+    return [str(offer).strip() for offer in raw if str(offer or "").strip()]
+
+
+def admin_fields(product: dict | None, now: datetime | None = None,
+                 refund_counts: dict[str, int] | None = None) -> dict:
+    """Champs ajoutés aux réponses ADMIN (état effectif + horodatage + forçage + observation).
+
+    `refund_counts` (offre → clients remboursés) est fourni par l'appelant en une seule requête ;
+    sans lui, `refund_count_window` n'est pas inventé et le champ est absent.
+    """
     product = product or {}
-    return {"supplier_available": supplier_state(product, now),
-            "supplier_checked_at": product.get("supplier_checked_at"),
-            "manual_unavailable": bool(product.get("manual_unavailable"))}
+    fields = {
+        "supplier_available": supplier_state(product, now),
+        "supplier_checked_at": product.get("supplier_checked_at"),
+        "manual_unavailable": bool(product.get("manual_unavailable")),
+        # PL-STOCK-2 : observation de la liste fournisseur (`observe` ne bloque jamais la vente).
+        "absent_from_supplier_list": bool(product.get("absent_from_supplier_list")),
+        "supplier_list_checked_at": product.get("supplier_list_checked_at"),
+    }
+    if refund_counts is not None:
+        fields["refund_count_window"] = max(
+            (int(refund_counts.get(offer, 0)) for offer in mapping_offer_ids(product.get("fazercards_mapping"))),
+            default=0)
+    return fields
 
 
 def is_out_of_stock_error(exc: BaseException) -> bool:

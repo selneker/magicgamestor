@@ -12,7 +12,7 @@ from core.audit import audit
 from core.db import db
 from core.games import DEFAULT_GAME_ID
 from core.security import require_admin, require_permission, require_super_admin
-from services import fazercards, fzr_fulfillment, fzr_mapping, providers, stock
+from services import fazercards, fzr_fulfillment, fzr_mapping, providers, stock, stock_signals
 
 router = APIRouter(tags=["fazercards-fulfillment"])
 logger = logging.getLogger("mgs.fzr")
@@ -178,14 +178,18 @@ async def fzr_mappings(game: str | None = None):
                                                           "price": 1, "uc_amount": 1, "duration_months": 1,
                                                           "active": 1, "game_id": 1, "requires_mapping": 1,
                                                           "fazercards_mapping": 1, "supplier_available": 1,
-                                                          "supplier_checked_at": 1, "manual_unavailable": 1}).sort("sort_order", 1)]
+                                                          "supplier_checked_at": 1, "manual_unavailable": 1,
+                                                          "absent_from_supplier_list": 1,
+                                                          "supplier_list_checked_at": 1}).sort("sort_order", 1)]
+    # PL-STOCK-2 : compteurs de remboursements en UNE requête pour toute la liste.
+    refund_counts = await stock_signals.refund_window_counts()
     for p in products:
         mapping = p.get("fazercards_mapping")
         p["mapping_status"] = fzr_mapping.mapping_status(mapping)
         p["fulfillable"] = fzr_mapping.fulfillable(mapping)
         p["supplier_cost_usd"] = fzr_mapping.supplier_cost_usd(mapping, p.get("game_id"))
-        # PL-STOCK-1 (G) : état fournisseur exposé à l'ADMIN uniquement.
-        p.update(stock.admin_fields(p))
+        # PL-STOCK-1 (G) / PL-STOCK-2 (4) : état fournisseur + observation, ADMIN uniquement.
+        p.update(stock.admin_fields(p, refund_counts=refund_counts))
     return {"products": products, "game": game}
 
 
