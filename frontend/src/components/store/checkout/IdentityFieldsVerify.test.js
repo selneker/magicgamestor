@@ -692,3 +692,22 @@ test("PL-UX-3 : un ID déjà mémorisé ne crée pas de doublon", async () => {
     expect(recentPlayerIdList("pubg-mobile")).toEqual(["888888888"]);
   } finally { await unmount(container, root); }
 });
+
+
+test("PL-UX-4 : la pastille d'ID est SOBRE — sans bordure, fond neutre, chiffres tabulaires", async () => {
+  rememberPlayerId("pubg-mobile", "512398471");
+  const { container, root } = await mount({ spec: PUBG_SPEC, gameId: "pubg-mobile", values: {} });
+  try {
+    const pill = pastilles(container)[0];
+    // Plus de bordure sur le bouton dessiné…
+    expect(pill.className).not.toContain("border");
+    // …le dessin est le petit badge neutre (même fond que le bouton « Vérifier »).
+    const badge = pill.querySelector("span");
+    expect(badge.className).toContain("bg-muted");
+    expect(badge.className).toContain("text-xs");
+    expect(badge.className).toContain("num"); // chiffres tabulaires
+    // La zone tactile reste de 44 px (hauteur du bouton), le dessin non.
+    expect(pill.className).toContain("h-11");
+    expect(pill.className).not.toContain("px-3");
+  } finally { await unmount(container, root); }
+});

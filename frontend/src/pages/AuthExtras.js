@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { toast } from "sonner";
-import { api, errorMessage } from "@/lib/api";
+import { api } from "@/lib/api";
+import { authErrorKey } from "@/lib/authErrors";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { BackButton } from "@/components/common/BackButton";
@@ -42,7 +43,8 @@ export function ForgotPassword() {
     e.preventDefault(); setBusy(true);
     try { await api.post("/auth/forgot-password", { email, captcha_token: captcha.tokenFor() }); setSent(true); }
     catch (err) {
-      toast.error(isCaptchaError(err) ? t("captcha.verifyAgain") : errorMessage(err));
+      // PL-UX-4 — message français (jamais le détail anglais du serveur).
+      toast.error(isCaptchaError(err) ? t("captcha.required") : t(authErrorKey(err)));
       if (captcha.enabled) { captcha.expire(); setCaptchaKey((k) => k + 1); } // jeton à usage unique
     } finally { setBusy(false); }
   };
@@ -71,7 +73,8 @@ export function ResetPassword() {
     if (form.password !== form.confirm) return toast.error(t("auth.passwordMismatch"));
     setBusy(true);
     try { await api.post("/auth/reset-password", { token, password: form.password }); toast.success(t("auth.resetDone")); navigate("/connexion", { replace: true }); }
-    catch (err) { toast.error(errorMessage(err)); } finally { setBusy(false); }
+    // PL-UX-4 — lien invalide/expiré (400) ou erreur serveur : message français.
+    catch (err) { toast.error(t(authErrorKey(err, "auth.errorInvalidLink"))); } finally { setBusy(false); }
   };
   return (
     <Shell title={t("auth.resetTitle")} subtitle={t("auth.resetSub")} testId="reset-password-page">

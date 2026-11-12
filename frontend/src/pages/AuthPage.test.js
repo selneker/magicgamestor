@@ -15,7 +15,7 @@ jest.mock("react-router-dom", () => {
   };
 });
 jest.mock("sonner", () => ({ toast: { message: jest.fn(), error: jest.fn(), success: jest.fn() } }));
-jest.mock("@/lib/api", () => ({ api: { get: jest.fn(), post: jest.fn() }, errorMessage: (e) => `Erreur: ${e?.message || e?.response?.data?.code || "inconnue"}` }));
+jest.mock("@/lib/api", () => ({ api: { get: jest.fn(), post: jest.fn() } }));
 jest.mock("@/context/AuthContext", () => ({ useAuth: () => ({ user: null, setUser: jest.fn() }) }));
 jest.mock("@/context/LanguageContext", () => {
   const { translations } = jest.requireActual("@/i18n/translations");
@@ -129,7 +129,8 @@ test("CAPTCHA avec clé : connexion — pas de widget au départ, il apparaît a
   // premier essai (sans jeton — pas encore exigé côté client)
   await fillAndSubmit(container);
   expect(api.post).toHaveBeenLastCalledWith("/auth/login", expect.not.objectContaining({ captcha_token: "jeton" }));
-  expect(container.querySelector('[data-testid="auth-error"]').textContent).toContain("Erreur");
+  // PL-UX-4 — message français issu de la correspondance d'erreurs (plus le détail du mock).
+  expect(container.querySelector('[data-testid="auth-error"]').textContent).toBe("Une erreur est survenue. Réessayez.");
   // le widget apparaît maintenant (laisser le temps de le résoudre)
   await flushCaptcha();
   expect(container.querySelector('[data-testid="captcha-widget"]')).not.toBeNull();
@@ -152,7 +153,8 @@ test("CAPTCHA : erreur serveur liée au CAPTCHA → message dédié + widget ré
   await fillAndSubmit(container);          // échec → widget affiché
   act(() => { turnstileOpts.callback("jeton-r1"); });
   await act(async () => { container.querySelector("form").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
-  expect(container.querySelector('[data-testid="auth-error"]').textContent).toContain("Merci de refaire le contrôle de sécurité");
+  // PL-UX-4 : message dédié « contrôle de sécurité requis » (l'API l'a demandé).
+  expect(container.querySelector('[data-testid="auth-error"]').textContent).toContain("Contrôle de sécurité requis");
   const submitBtn = container.querySelector('[data-testid="auth-submit"]');
   expect(submitBtn.disabled).toBe(true); // jeton à usage unique : l'ancien ne sert plus
   await act(async () => root.unmount());
@@ -192,5 +194,65 @@ test("CAPTCHA échec CDN : formulaire bloqué, message inline, « Réessayer » 
   // Un utilisateur réel ne peut que cliquer le bouton (désactivé) : rien ne part
   await act(async () => { submitBtn.click(); });
   expect(api.post).not.toHaveBeenCalled();
+  await act(async () => root.unmount());
+});
+
+
+/* PL-UX-4 — message d'erreur FRANÇAIS (jamais le détail anglais du serveur)
+   et widget Turnstile VISIBLE quand l'API exige le contrôle de sécurité. */
+
+test("PL-UX-4 : mauvais identifiants → message français, jamais « Invalid email or password »", async () => {
+  api.post.mockRejectedValueOnce({ response: { status: 401, data: { detail: "Invalid email or password" } } });
+  const { container, root } = await renderLogin();
+  await fillAndSubmit(container);
+  const error = container.querySelector('[data-testid="auth-error"]');
+  expect(error.textContent).toBe("Identifiants invalides : vérifiez votre e-mail et votre mot de passe.");
+  expect(error.textContent).not.toContain("Invalid email or password");
+  expect(error.getAttribute("role")).toBe("alert");
+  await act(async () => root.unmount());
+});
+
+test("PL-UX-4 : erreur inconnue → texte français générique, jamais l'anglais du serveur", async () => {
+  api.post.mockRejectedValueOnce({ response: { status: 500, data: { detail: "Internal Server Error" } } });
+  const { container, root } = await renderLogin();
+  await fillAndSubmit(container);
+  const error = container.querySelector('[data-testid="auth-error"]');
+  expect(error.textContent).toBe("Service indisponible pour le moment. Réessayez plus tard.");
+  expect(error.textContent).not.toContain("Internal Server Error");
+  await act(async () => root.unmount());
+});
+
+test("PL-UX-4 : `captcha_required` → le widget devient VISIBLE, message français, bouton toujours là", async () => {
+  process.env[ENV_VAR] = TEST_KEY;
+  stubTurnstile();
+  api.post.mockRejectedValueOnce({ response: { status: 400, data: { code: "captcha_required", detail: "Vérification anti-robot requise." } } });
+  const { container, root } = await renderLogin();
+  await flushCaptcha();
+  await fillAndSubmit(container);
+  await flushCaptcha();
+  // Le widget est monté ET visible (apparence « always », plus « interaction-only »).
+  expect(container.querySelector('[data-testid="captcha-widget"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="captcha-widget-label"]')).not.toBeNull();
+  expect(turnstileOpts.appearance).toBe("always");
+  // Message français clair.
+  const error = container.querySelector('[data-testid="auth-error"]');
+  expect(error.textContent).toContain("Contrôle de sécurité requis");
+  expect(error.textContent).not.toContain("Vérification anti-robot requise.");
+  // Le bouton de soumission n'est pas masqué : il est là, en attente du jeton.
+  expect(container.querySelector('[data-testid="auth-submit"]')).not.toBeNull();
+  await act(async () => root.unmount());
+});
+
+test("PL-UX-4 : un échec d'identifiants ordinaire ne force PAS l'affichage du widget", async () => {
+  process.env[ENV_VAR] = TEST_KEY;
+  stubTurnstile();
+  api.post.mockRejectedValueOnce({ response: { status: 401, data: { detail: "Invalid email or password" } } });
+  const { container, root } = await renderLogin();
+  await flushCaptcha();
+  await fillAndSubmit(container);
+  await flushCaptcha();
+  expect(container.querySelector('[data-testid="captcha-widget"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="captcha-widget-label"]')).toBeNull();
+  expect(turnstileOpts.appearance).toBe("interaction-only");
   await act(async () => root.unmount());
 });

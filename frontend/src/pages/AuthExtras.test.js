@@ -16,7 +16,6 @@ jest.mock("react-router-dom", () => {
 jest.mock("sonner", () => ({ toast: { message: jest.fn(), error: jest.fn(), success: jest.fn() } }));
 jest.mock("@/lib/api", () => ({
   api: { get: jest.fn(), post: jest.fn() },
-  errorMessage: (e) => `Erreur: ${e?.message || e?.response?.data?.code || "inconnue"}`,
 }));
 jest.mock("@/context/AuthContext", () => ({ useAuth: () => ({ user: null }) }));
 jest.mock("@/context/LanguageContext", () => {
@@ -109,7 +108,8 @@ test("erreur serveur CAPTCHA : message dédié « Merci de refaire le contrôle 
   setValue(container.querySelector('[data-testid="forgot-email-input"]'), "a@b.c");
   act(() => { turnstileOpts.callback("jeton-f1"); });
   await submitForm(container);
-  expect(toast.error).toHaveBeenCalledWith("Merci de refaire le contrôle de sécurité ci-dessus puis de réessayer.");
+  // PL-UX-4 : message dédié « contrôle de sécurité requis ».
+  expect(toast.error).toHaveBeenCalledWith("Contrôle de sécurité requis : termine la vérification ci-dessus puis réessaie.");
   expect(container.querySelector('[data-testid="forgot-submit"]').disabled).toBe(true); // jeton à usage unique vidé
   await act(async () => root.unmount());
 });

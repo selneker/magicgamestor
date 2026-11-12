@@ -167,32 +167,80 @@ export default function AdminOrders() {
       <AdminMethodOperatorNote method={filters.method} />
       <div className="mt-4 space-y-3">
         {visibleOrders.length === 0 && <p className="rounded-2xl bg-white p-6 text-slate-500" data-testid="admin-orders-empty">{t("order.none")}</p>}
-        {visibleOrders.map((o) => (
-          <article key={o.id} data-testid={`admin-order-${o.order_number}`} className="grid gap-3 rounded-2xl border border-slate-100 bg-white p-4 lg:grid-cols-[auto_1fr_auto] lg:items-center">
-            <div><p className="flex items-center gap-1 num text-base text-foreground">{o.order_number}<CopyButton value={o.order_number} label="n° de commande" testId={`copy-order-${o.order_number}`} /></p><p className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground">{new Date(o.created_at).toLocaleString("fr-FR")}</p><div className="mt-1"><StatusPill status={o.status} /></div></div>
-            <div className="text-sm">
-              <p className="flex flex-wrap items-center gap-1 font-semibold text-slate-900">{o.pseudo} · <span className="font-mono">{o.pubg_id}</span><CopyButton value={o.pubg_id} label="PUBG ID" testId={`copy-pubg-${o.order_number}`} /></p>
-              <p className="text-slate-600">{o.items.map((i) => `${i.quantity}× ${i.name}${i.season_name ? ` · ${i.season_name}` : ""}${i.week_key ? ` · sem. ${i.week_key}` : ""}`).join(", ")}</p>
-              <p className="flex flex-wrap items-center gap-1 text-xs text-slate-500">{o.payment_method === "manual" ? <>{paymentLabel(o.payment_method, t)}{o.manual_operator ? <> · {paymentOperatorLabel(o.manual_operator, t)}</> : null}{o.manual_reference ? <> · {o.manual_reference}<CopyButton value={o.manual_reference} label="référence de transaction" testId={`copy-ref-${o.order_number}`} /></> : null}</> : o.payment_method === "binance" ? <>{paymentLabel(o.payment_method, t)}</> : <>{paymentLabel(o.payment_method, t)} · {o.payment_phone || ""}<CopyButton value={o.payment_phone} label="numéro de paiement" testId={`copy-phone-${o.order_number}`} /></>}{o.email ? ` · ${o.email}` : ""}</p>
+        {visibleOrders.map((o) => {
+          // PL-UX-4 — une seule ligne de données par zone, réutilisée par les
+          // deux mises en page (mobile empilée / desktop en colonnes).
+          const itemsText = o.items.map((i) => `${i.quantity}× ${i.name}${i.season_name ? ` · ${i.season_name}` : ""}${i.week_key ? ` · sem. ${i.week_key}` : ""}`).join(", ");
+          const paymentText = o.payment_method === "manual"
+            ? `${paymentLabel(o.payment_method, t)}${o.manual_operator ? ` · ${paymentOperatorLabel(o.manual_operator, t)}` : ""}`
+            : o.payment_method === "binance"
+              ? paymentLabel(o.payment_method, t)
+              : `${paymentLabel(o.payment_method, t)}${o.payment_phone ? ` · ${o.payment_phone}` : ""}`;
+          return (
+          // PL-UX-4 — mobile (≤ 640 px) : 4 lignes — (1) n° de commande,
+          // date, statut ; (2) produit + montant ; (3) joueur, paiement,
+          // email ; (4) actions. Desktop : la disposition en colonnes est
+          // conservée (colonne 1 = n°/date/statut, colonne 2 = joueur /
+          // produit / paiement, colonne 3 = montant + actions), le montant
+          // passant au-dessus des actions.
+          <article key={o.id} data-testid={`admin-order-${o.order_number}`} className="grid grid-cols-1 gap-3 rounded-2xl border border-slate-100 bg-white p-4 sm:grid-cols-[auto_1fr_auto] sm:items-start sm:gap-x-4 sm:gap-y-2">
+            {/* Ligne 1 (mobile) / colonne 1 (desktop). */}
+            <div className="min-w-0 sm:col-start-1 sm:row-start-1">
+              <p className="flex items-center gap-1 num text-base font-bold text-foreground">
+                {o.order_number}
+                <CopyButton bare value={o.order_number} label="n° de commande" testId={`copy-order-${o.order_number}`} />
+              </p>
+              <p className="text-[11px] uppercase tracking-[0.1em] text-muted-foreground">{new Date(o.created_at).toLocaleString("fr-FR")}</p>
+              <div className="mt-1"><StatusPill status={o.status} /></div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="num text-xl text-foreground">{formatAr(o.total)}</span>
+
+            {/* Ligne 2 (mobile) : produit à gauche, montant à droite.
+                Desktop : les deux enfants deviennent des cellules (produit
+                colonne 2, montant colonne 3). */}
+            <div className="flex items-baseline justify-between gap-3 sm:contents">
+              <p className="min-w-0 truncate text-sm text-slate-600 sm:col-start-2 sm:row-start-2">{itemsText}</p>
+              <p className="num shrink-0 text-xl font-bold text-foreground sm:col-start-3 sm:row-start-1" data-testid={`admin-order-total-${o.order_number}`}>{formatAr(o.total)}</p>
+            </div>
+
+            {/* Ligne 3 (mobile) : joueur, paiement, email. Desktop : les
+                enfants deviennent des cellules (colonne 2). */}
+            <div className="min-w-0 sm:contents">
+              <p className="flex items-center gap-1 font-semibold text-slate-900 sm:col-start-2 sm:row-start-1">
+                {o.pseudo} · <span className="num font-mono">{o.pubg_id}</span>
+                <CopyButton bare value={o.pubg_id} label="PUBG ID" testId={`copy-pubg-${o.order_number}`} />
+              </p>
+              <p className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-slate-500 sm:col-start-2 sm:row-start-3">
+                <span className="shrink-0">{paymentText}{o.payment_method === "manual" && o.manual_reference ? ` · ${o.manual_reference}` : null}</span>
+                {o.payment_method === "manual" && o.manual_reference && (
+                  <CopyButton value={o.manual_reference} label="référence de transaction" testId={`copy-ref-${o.order_number}`} />
+                )}
+                {o.payment_method !== "manual" && o.payment_method !== "binance" && o.payment_phone && (
+                  <CopyButton value={o.payment_phone} label="numéro de paiement" testId={`copy-phone-${o.order_number}`} />
+                )}
+                {o.email && <span className="min-w-0 max-w-full truncate" data-testid={`admin-order-email-${o.order_number}`}>· {o.email}</span>}
+              </p>
+            </div>
+
+            {/* Ligne 4 (mobile) / colonne 3 (desktop) : les actions. */}
+            <div className="flex flex-wrap items-center gap-2 sm:col-start-3 sm:row-start-2 sm:row-span-2 sm:justify-end">
               <Select value={o.status} onValueChange={(v) => setStatus(o, v)} disabled={!TRANSITIONS[o.status]?.length}>
-                <SelectTrigger className="h-9 w-44 rounded-full text-xs" data-testid={`admin-status-select-${o.order_number}`}><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-11 w-full rounded-full text-xs sm:h-9 sm:w-44" data-testid={`admin-status-select-${o.order_number}`}><SelectValue /></SelectTrigger>
                 <SelectContent>{STATUSES.filter((s) => s === o.status || TRANSITIONS[o.status]?.includes(s)).map((s) => <SelectItem key={s} value={s}>{t(`order.status.${s}`)}</SelectItem>)}</SelectContent>
               </Select>
-              {canDeliver(o.status) && <Button size="sm" onClick={() => setStatus(o, "delivered")} data-testid={`admin-deliver-${o.order_number}`}>{t("admin.markDelivered")}</Button>}
+              {canDeliver(o.status) && <Button className="h-11 min-w-[9rem] flex-1 rounded-full sm:h-9 sm:min-w-0 sm:flex-none" onClick={() => setStatus(o, "delivered")} data-testid={`admin-deliver-${o.order_number}`}>{t("admin.markDelivered")}</Button>}
               {o.status === "pending_payment" && o.payment_method !== "manual" && (
-                <><Button size="sm" variant="outline" className="rounded-full text-xs" onClick={() => simulate(o, "completed")} data-testid={`admin-simulate-paid-${o.order_number}`}>{t("admin.forcePaid")}</Button>
-                <Button size="sm" variant="outline" className="rounded-full text-xs" onClick={() => simulate(o, "failed")} data-testid={`admin-simulate-failed-${o.order_number}`}>{t("admin.forceFailed")}</Button></>
+                <><Button className="h-11 rounded-full text-xs sm:h-9" variant="outline" onClick={() => simulate(o, "completed")} data-testid={`admin-simulate-paid-${o.order_number}`}>{t("admin.forcePaid")}</Button>
+                <Button className="h-11 rounded-full text-xs sm:h-9" variant="outline" onClick={() => simulate(o, "failed")} data-testid={`admin-simulate-failed-${o.order_number}`}>{t("admin.forceFailed")}</Button></>
               )}
-              {isSuperAdmin && <Button size="icon" variant="ghost" className="rounded-full text-slate-400 hover:text-rose-600" onClick={() => remove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
+              {isSuperAdmin && <Button size="icon" variant="ghost" className="h-11 w-11 rounded-full text-slate-400 hover:text-rose-600 sm:h-9 sm:w-9" onClick={() => remove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
+              {/* PL-UX-4 — les preuves ne sont plus des miniatures dans la
+                  liste : un seul bouton, la visionneuse se charge au clic. */}
+              <OrderProofs order={o} />
             </div>
             <FzrFulfillment order={o} mappedIds={mappedIds} mapStatus={mapStatus} mapComponents={mapComponents} readyCount={readyCount(o)} onChanged={load} />
-            {/* PL-CHK-2 — preuves de paiement : affichage uniquement, aucune action admin modifiée. */}
-            <OrderProofs order={o} />
           </article>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

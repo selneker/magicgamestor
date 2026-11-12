@@ -21,7 +21,12 @@ jest.mock("@/lib/api", () => ({
 }));
 jest.mock("@/context/LanguageContext", () => ({
   useLang: () => ({
-    t: (key) => key.split(".").reduce((acc, k) => (acc && acc[k] !== undefined ? acc[k] : undefined), require("@/i18n/translations").translations.fr) ?? key,
+    // PL-UX-4 — le mock interpete les variables ({n}) comme le vrai `t()`.
+    t: (key, vars) => {
+      let s = key.split(".").reduce((acc, k) => (acc && acc[k] !== undefined ? acc[k] : undefined), require("@/i18n/translations").translations.fr) ?? key;
+      if (vars) Object.entries(vars).forEach(([k, v]) => { s = s.replace(`{${k}}`, v); });
+      return s;
+    },
     lang: "fr",
   }),
 }));
@@ -34,6 +39,10 @@ jest.mock("@/components/admin/FzrFulfillment", () => ({
 }));
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
+
+// PL-UX-4 — le rendu admin (Radix Select par commande) dépasse 5 s sur cette
+// machine : on élargit le délai plutôt que de laisser un test au hasard.
+jest.setTimeout(30000);
 
 const order = (overrides) => ({
   id: overrides.order_number, order_number: overrides.order_number,
@@ -119,37 +128,42 @@ test("liste admin : les statuts proof_submitted et late_payment ont leur libell�
   await act(async () => root.unmount());
 });
 
-test("liste admin : section Preuves avec vignette téléchargée (GET auth par index)", async () => {
+// PL-UX-4 — la liste n'affiche PLUS de vignette : un seul bouton
+// « Preuves (n) », et les images ne sont téléchargées qu'au clic.
+test("liste admin : bouton « Preuves (n) », AUCUNE image chargée ni affichée dans la liste", async () => {
   const { api } = require("@/lib/api");
   api.get.mockImplementation((url) => {
     if (url === "/admin/fazercards/mappings") return Promise.resolve({ data: { products: [] } });
     if (url === "/admin/orders") return Promise.resolve({ data: mockOrders });
-    if (url === "/admin/orders/MGS-PS/proofs/0") return Promise.resolve({ data: new Blob(["x"], { type: "image/png" }) });
-    if (url === "/admin/orders/MGS-PS/proofs/1") return Promise.reject({ response: { status: 410 } });
+    if (url.startsWith("/admin/orders/MGS-PS/proofs/")) return Promise.resolve({ data: new Blob(["x"], { type: "image/png" }) });
     return Promise.resolve({ data: {} });
   });
-  mockOrders = [order({ order_number: "MGS-PS", payment_method: "manual", status: "proof_submitted", payment_proofs: [{ size: 1024 * 1024 * 2, uploaded_at: "2026-11-10T10:00:00Z" }, { size: 10, uploaded_at: "2026-11-10T10:01:00Z" }] })];
+  mockOrders = [order({ order_number: "MGS-PS", payment_method: "manual", status: "proof_submitted", payment_proofs: [{ size: 10, uploaded_at: "2026-11-10T10:00:00Z" }, { size: 10, uploaded_at: "2026-11-10T10:01:00Z" }] })];
   const { container, root } = await mountOrders();
-  expect(api.get).toHaveBeenCalledWith("/admin/orders/MGS-PS/proofs/0", { responseType: "blob" });
-  expect(container.querySelector('[data-testid="admin-proofs"]')).not.toBeNull();
-  expect(container.querySelector('[data-testid="admin-proof-0"] img')).not.toBeNull();
-  expect(container.querySelector('[data-testid="admin-proof-gone-1"]')).not.toBeNull();
-  expect(container.querySelector('[data-testid="admin-proof-meta-0"]').textContent).toContain("Mo");
+  const button = container.querySelector('[data-testid="admin-proofs-button-MGS-PS"]');
+  expect(button).not.toBeNull();
+  expect(button.textContent).toContain("Preuves (2)");
+  // AUCUNE requête d'image avant le clic, AUCUNE vignette dans la liste.
+  expect(api.get).not.toHaveBeenCalledWith("/admin/orders/MGS-PS/proofs/0", { responseType: "blob" });
+  expect(container.querySelector('[data-testid="admin-proof-0"]')).toBeNull();
+  expect(container.querySelector("img")).toBeNull();
   await act(async () => root.unmount());
 });
 
-test("liste admin : 404 sur un GET de preuve → vignette « Indisponible »", async () => {
+test("liste admin : clic sur « Preuves » → la visionneuse s'ouvre et charge l'image", async () => {
   const { api } = require("@/lib/api");
   api.get.mockImplementation((url) => {
     if (url === "/admin/fazercards/mappings") return Promise.resolve({ data: { products: [] } });
     if (url === "/admin/orders") return Promise.resolve({ data: mockOrders });
-    if (url.startsWith("/admin/orders/MGS-PS/proofs/")) return Promise.reject({ response: { status: 404 } });
+    if (url.startsWith("/admin/orders/MGS-PS/proofs/")) return Promise.resolve({ data: new Blob(["x"], { type: "image/png" }) });
     return Promise.resolve({ data: {} });
   });
   mockOrders = [order({ order_number: "MGS-PS", payment_method: "manual", status: "proof_submitted", payment_proofs: [{ size: 10, uploaded_at: "2026-11-10T10:00:00Z" }] })];
   const { container, root } = await mountOrders();
-  expect(container.querySelector('[data-testid="admin-proof-unavailable-0"]')).not.toBeNull();
-  expect(container.querySelector('[data-testid="admin-proof-0"] img')).toBeNull();
+  await act(async () => { container.querySelector('[data-testid="admin-proofs-button-MGS-PS"]').click(); });
+  await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+  expect(container.querySelector('[data-testid="proof-viewer"]')).not.toBeNull();
+  expect(api.get).toHaveBeenCalledWith("/admin/orders/MGS-PS/proofs/0", { responseType: "blob" });
   await act(async () => root.unmount());
 });
 
@@ -233,5 +247,39 @@ test("PL-UX-3 : la limite du filtre opérateur est affichée (jamais cachée)", 
 test("PL-UX-3 : sans filtre opérateur, aucune note de limite dans la liste", async () => {
   const { container, root } = await mountOrders();
   expect(container.querySelector('[data-testid="admin-method-operator-note"]')).toBeNull();
+  await act(async () => root.unmount());
+});
+
+
+// --- PL-UX-4 : carte de commande épurée (mobile/desktop) + bloc « Détails » ---
+
+test("PL-UX-4 : la carte empile ses blocs sur mobile (colonne unique) et se range en colonnes au-dessus de 640 px", async () => {
+  mockOrders = [order({ order_number: "MGS-C1", payment_method: "manual", manual_operator: "mvola", total: 25000 })];
+  const { container, root } = await mountOrders();
+  const card = container.querySelector('[data-testid="admin-order-MGS-C1"]');
+  expect(card.className).toContain("grid-cols-1");
+  expect(card.className).toContain("sm:grid-cols-[auto_1fr_auto]");
+  // Montant : ligne 2 du mobile, colonne 3 du desktop.
+  const total = container.querySelector('[data-testid="admin-order-total-MGS-C1"]');
+  expect(total).not.toBeNull();
+  expect(total.className).toContain("shrink-0");
+  expect(total.className).toContain("sm:col-start-3");
+  // Sélecteur de statut : pleine largeur sur mobile (cible 44 px).
+  const select = container.querySelector('[data-testid="admin-status-select-MGS-C1"]');
+  expect(select.className).toContain("w-full");
+  expect(select.className).toContain("h-11");
+  // Email : coupé proprement (jamais de débordement).
+  const email = container.querySelector('[data-testid="admin-order-email-MGS-C1"]');
+  expect(email.className).toContain("truncate");
+  await act(async () => root.unmount());
+});
+
+// Le bloc « Détails » (ex-« FAZERCARDS ») est testé dans son propre fichier
+// (components/admin/FzrFulfillment.test.js) : ici il est mocké.
+
+test("PL-UX-4 : aucun bouton « Preuves » quand la commande n'a pas de preuve", async () => {
+  mockOrders = [order({ order_number: "MGS-NP", payment_method: "manual" })];
+  const { container, root } = await mountOrders();
+  expect(container.querySelector('[data-testid="admin-proofs-button-MGS-NP"]')).toBeNull();
   await act(async () => root.unmount());
 });
