@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 from core.db import db
 from core.games import DEFAULT_GAME_ID, check_product_type, public_game_ids
 from core.security import ADMIN_ROLES, get_optional_user, require_permission
-from services import stock
+from services import stock, stock_signals
 from services.fzr_mapping import mapping_ok
 
 router = APIRouter(tags=["products"])
@@ -17,11 +17,12 @@ PUBLIC = {"_id": 0}
 SUPPLIER_FIELDS = stock.ADMIN_FIELDS
 
 
-def _public(p: dict, admin: bool = False) -> dict:
+def _public(p: dict, admin: bool = False, refund_counts: dict[str, int] | None = None) -> dict:
     """Vue publique : coût fournisseur jamais exposé + drapeau achetable.
 
     `purchasable`/`unavailable_reason` sont calculés par `services.stock` (règle unique). Les
-    champs d'état fournisseur sont retirés de la vue publique ; `admin=True` les rajoute.
+    champs d'état fournisseur sont retirés de la vue publique ; `admin=True` les rajoute, avec
+    les compteurs de remboursements quand l'appelant les a déjà lus (`refund_counts`).
     """
     product = dict(p)
     mapping = product.pop("fazercards_mapping", None)
@@ -30,7 +31,7 @@ def _public(p: dict, admin: bool = False) -> dict:
     for field in SUPPLIER_FIELDS:
         product.pop(field, None)
     if admin:
-        product.update(stock.admin_fields(status))
+        product.update(stock.admin_fields(status, refund_counts=refund_counts))
     product.setdefault("game_id", DEFAULT_GAME_ID)  # products created before Phase 1
     return product
 
@@ -104,8 +105,10 @@ async def list_products(
     if q:
         query["$or"] = [{"name": {"$regex": re.escape(q), "$options": "i"}}, {"slug": {"$regex": re.escape(q), "$options": "i"}}]
     sort_map = {"default": [("sort_order", 1)], "price_asc": [("price", 1)], "price_desc": [("price", -1)], "uc_desc": [("uc_amount", -1)]}
-    return [_public(p, admin=include_inactive)
-            for p in await db.products.find(query, PUBLIC).sort(sort_map[sort]).to_list(500)]
+    rows = await db.products.find(query, PUBLIC).sort(sort_map[sort]).to_list(500)
+    # PL-STOCK-2 : compteurs de remboursements lus en UNE requête, uniquement pour la vue admin.
+    refund_counts = await stock_signals.refund_window_counts() if include_inactive else None
+    return [_public(p, admin=include_inactive, refund_counts=refund_counts) for p in rows]
 
 
 @router.get("/products/{slug}")
@@ -180,7 +183,7 @@ async def set_product_availability(product_id: str, body: AvailabilityIn,
                                                  actor=admin.get("user_id") or "admin")
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
-    return _public(product, admin=True)
+    return _public(product, admin=True, refund_counts=await stock_signals.refund_window_counts())
 
 
 @router.delete("/admin/products/{product_id}", dependencies=[Depends(require_permission("catalog.manage"))])

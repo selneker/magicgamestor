@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from core.db import db
-from services import notifications, proofs, stock
+from services import notifications, proofs, stock, stock_signals
 
 logger = logging.getLogger("mgs.order_maintenance")
 
@@ -286,7 +286,9 @@ async def run_all(now: datetime | None = None) -> dict:
                        # PL-PROOF-QUOTA-1 : alerte précoce quotidienne, dans la tâche cron existante.
                        ("storage_warning", proofs.check_storage_warnings),
                        # PL-STOCK-1 (B/H) : un état fournisseur périmé redevient « inconnu ».
-                       ("stock_expiry", stock.expire_stale_states)):
+                       ("stock_expiry", stock.expire_stale_states),
+                       # PL-STOCK-2 : relevé de la liste des offres (observe par défaut).
+                       ("stock_offers", stock_signals.sync_offers)):
         try:
             result.update(await func(moment))
         except Exception as exc:  # déjà protégé, ceinture et bretelles

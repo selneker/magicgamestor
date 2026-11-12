@@ -19,7 +19,7 @@ from fastapi import HTTPException
 from core.audit import audit
 from core.db import db
 from core.games import DEFAULT_GAME_ID
-from services import fazercards, fzr_mapping, notifications, providers, stock
+from services import fazercards, fzr_mapping, notifications, providers, stock, stock_signals
 from services.providers.base import OrderStatus
 
 logger = logging.getLogger("mgs.fzr")
@@ -325,6 +325,18 @@ async def _update_record(order_id: str, path, fields: dict):
         **{f"{path}.{k}": v for k, v in fields.items()}, f"{path}.updated_at": _now(), "updated_at": _now()}})
 
 
+async def _signal_refund(order: dict, line_index: int, record: dict | None, raw: dict | None,
+                         source: str, actor: str) -> None:
+    """PL-STOCK-2 : remboursement fournisseur → signal de stock. Ne lève jamais."""
+    try:
+        await stock_signals.record_supplier_refund(
+            order=order, line_index=line_index, offer_id=(record or {}).get("offer_id"),
+            provider_order_id=(record or {}).get("provider_order_id"), raw=raw,
+            fallback_reason=(record or {}).get("last_error"), source=source, actor=actor)
+    except Exception as exc:  # type: ignore[attr-defined]
+        logger.warning("Signal de remboursement ignoré (%s)", type(exc).__name__)
+
+
 async def _fulfill_unit(order: dict, line: dict, actor: str) -> dict:
     """Claim atomique + POST /topups/order pour UNE unité. Retry réutilise la même Idempotency-Key."""
     order_id, idx, cidx, path = order["id"], line["index"], line["component_index"], line["path"]
@@ -384,6 +396,11 @@ async def _fulfill_unit(order: dict, line: dict, actor: str) -> dict:
         "supplier_price_usd": line["price_usd"], "idempotency_key": line["idempotency_key"]})
     if provider.normalize_status(provider_status) in PROVIDER_ALERT_NORMALIZED:
         await audit("fzr.provider_failed", actor, order_id, {"provider_status": provider_status, "line": idx, "component": cidx})
+    if provider.normalize_status(provider_status) == OrderStatus.REFUND:
+        # PL-STOCK-2 : le fournisseur accepte puis rembourse — c'est le signal de rupture réel.
+        await _signal_refund(order, idx, {"offer_id": line["offer_id"],
+                                          "provider_order_id": provider_order.id},
+                             provider_order.raw, "create", actor)
     await _sync_mgs_status(order_id, actor)
     updated = await db.orders.find_one({"id": order_id}, PUBLIC)
     return unit_record(updated, unit)
@@ -431,6 +448,9 @@ async def refresh_status(order_id: str, actor: str) -> dict:
         await _update_record(order_id, u["path"], {"provider_status": provider_status})
         if prov.normalize_status(provider_status) in PROVIDER_ALERT_NORMALIZED:
             await audit("fzr.provider_failed", actor, order_id, {"provider_status": provider_status, "line": u["line_index"], "component": u["component_index"]})
+        if prov.normalize_status(provider_status) == OrderStatus.REFUND:
+            # PL-STOCK-2 : remboursement constaté au sondage.
+            await _signal_refund(order, u["line_index"], rec, provider_order.raw, "refresh", actor)
     await _sync_mgs_status(order_id, actor)
     updated = await db.orders.find_one({"id": order_id}, PUBLIC)
     if _is_legacy_single(updated, units):
@@ -505,6 +525,10 @@ async def apply_webhook_event(event: dict) -> dict:
         await _update_record(order["id"], target["path"], {"provider_status": provider_status})
         if prov.normalize_status(provider_status) in PROVIDER_ALERT_NORMALIZED:
             await audit("fzr.provider_failed", "webhook:fazercards", order["id"], {"provider_status": provider_status, "line": target["line_index"], "component": target["component_index"]})
+        if prov.normalize_status(provider_status) == OrderStatus.REFUND:
+            # PL-STOCK-2 : remboursement poussé par le webhook.
+            await _signal_refund(order, target["line_index"], unit_record(order, target), data,
+                                 "webhook", "webhook:fazercards")
         await _sync_mgs_status(order["id"], "webhook:fazercards")
         await audit("fzr.webhook_status", "fazercards", order["id"],
                     {"provider_order_id": provider_order_id, "status": provider_status,
