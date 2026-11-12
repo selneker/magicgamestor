@@ -261,6 +261,15 @@ test("PL-UX-5 : grille bureau 3 colonnes fixes, badge d'origine plus petit, bout
   const { container, root } = await mountOrders();
   const card = container.querySelector('[data-testid="admin-order-MGS-C1"]');
   expect(card.className).toContain("sm:grid-cols-[215px_1fr_auto]");
+  // Resserré (maquette) : pas de gouttière verticale — l'espacement vient de
+  // marges internes identiques à la maquette (produit +3 px, actions +10 px),
+  // l'en-tête chevauche les 3 lignes (aucune ligne étirée, aucun grand blanc).
+  expect(card.className).toContain("sm:gap-y-0");
+  expect(card.querySelector('[data-testid="copy-order-MGS-C1"]').closest("div").className).toContain("sm:row-span-3");
+  expect(card.querySelector('[data-testid="copy-pubg-MGS-C1"]').closest("p").nextElementSibling.className).toContain("mt-1.5");
+  const product = Array.from(card.querySelectorAll("p")).find((p) => p.className.includes("sm:mt-[3px]"));
+  expect(product).toBeDefined();
+  expect(card.querySelector('[data-testid="admin-status-select-MGS-C1"]').closest("div").className).toContain("sm:mt-[10px]");
   // Badge : boîte d'origine (bordure, majuscules, graisse 800) en plus petit
   // (texte 9,5 px, marges 2 px × 6 px, icône 10 px).
   const badge = card.querySelector('[data-testid="status-paid"]');

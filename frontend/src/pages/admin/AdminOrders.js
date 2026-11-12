@@ -96,7 +96,7 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
   const [open, setOpen] = useState(false);
   const itemsText = o.items.map((i) => `${i.quantity}× ${i.name}${i.season_name ? ` · ${i.season_name}` : ""}${i.week_key ? ` · sem. ${i.week_key}` : ""}`).join(", ");
   return (
-    <article data-testid={`admin-order-${o.order_number}`} className="rounded-[16px] border border-[color:var(--rule)] bg-white px-4 py-[14px] sm:grid sm:grid-cols-[215px_1fr_auto] sm:items-start sm:gap-[18px]">
+    <article data-testid={`admin-order-${o.order_number}`} className="rounded-[16px] border border-[color:var(--rule)] bg-white px-4 py-[14px] sm:grid sm:grid-cols-[215px_1fr_auto] sm:items-start sm:gap-x-[18px] sm:gap-y-0">
       {/* En-tête. Mobile : la tête du bloc repliable — un <button> PUR (la
           maquette ne met PAS d'icône de copie dans l'en-tête fermé, ce qui
           évite aussi d'imbriquer un bouton de copie dans le bouton de
@@ -116,7 +116,7 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
         <span className="flex items-start justify-between gap-2.5">
           <span className="block min-w-0">
             <span className="num block truncate text-[14px] font-bold text-foreground">{o.order_number}</span>
-            <span className="num mt-[2px] block text-[11px] tracking-[0.04em] text-muted-foreground">{new Date(o.created_at).toLocaleString("fr-FR")}</span>
+            <span className="num mt-[2px] block text-[11px] tracking-[0.04em] text-muted-foreground">{`${new Date(o.created_at).toLocaleDateString("fr-FR")} ${new Date(o.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`}</span>
             <span className="mt-[7px] block"><StatusPill status={o.status} small /></span>
           </span>
           <span aria-hidden="true" className="mt-0.5 inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[8px] border border-[color:var(--rule-strong)] bg-background text-foreground">
@@ -124,7 +124,13 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
           </span>
         </span>
       </button>
-      <div className="hidden min-w-0 sm:col-start-1 sm:row-start-1 sm:block">
+      {/* PL-UX-5 (resserré) : la maquette empile chaque colonne en UNE cellule
+          (joueur → produit à 3 px → paiement à 6 px ; montant → actions à
+          10 px). Ici l'en-tête chevauche donc les 3 lignes (row-span-3) et
+          l'espacement vertical vient de marges internes identiques à la
+          maquette (gap-y-0), PAS de gouttières de grille : aucune ligne
+          étirée, aucun grand blanc. */}
+      <div className="hidden min-w-0 sm:col-start-1 sm:row-start-1 sm:row-span-3 sm:block">
         <span className="flex items-center gap-1.5 text-[14px] font-bold text-foreground">
           <span className="num truncate">{o.order_number}</span>
           <CopyButton small value={o.order_number} label="n° de commande" testId={`copy-order-${o.order_number}`} />
@@ -136,13 +142,14 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
       {/* Ligne résumé du mobile (produit … montant) ; sur bureau, la ligne se
           dissout : produit en colonne 2, montant en colonne 3. */}
       <div className="mt-2 flex items-baseline justify-between gap-3 sm:contents">
-        <p className="min-w-0 truncate text-sm text-muted-foreground sm:col-start-2 sm:row-start-2">{itemsText}</p>
-        <p className="num shrink-0 text-[17px] font-extrabold text-foreground sm:col-start-3 sm:row-start-1" data-testid={`admin-order-total-${o.order_number}`}>{formatAr(o.total)}</p>
+        <p className="min-w-0 truncate text-sm text-muted-foreground sm:col-start-2 sm:row-start-2 sm:mt-[3px]">{itemsText}</p>
+        <p className="num shrink-0 text-[17px] font-extrabold text-foreground sm:col-start-3 sm:row-start-1 sm:text-right" data-testid={`admin-order-total-${o.order_number}`}>{formatAr(o.total)}</p>
       </div>
 
       {/* Corps replié du mobile ; sur bureau, dissolution en cellules :
-          joueur (col. 2, l. 1), paiement + email (col. 2, l. 3), actions
-          (col. 3, l. 2-3), bloc Détails (pleine largeur, dernière ligne). */}
+          joueur (col. 2, l. 1), produit (col. 2, l. 2, +3 px), paiement +
+          email (col. 2, l. 3, +6 px), actions (col. 3, l. 2, +10 px),
+          bloc Détails (pleine largeur, dernière ligne). */}
       <div
         id={`admin-order-body-${o.order_number}`}
         data-testid={`admin-order-body-${o.order_number}`}
@@ -174,7 +181,7 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
             s'il y a au moins une preuve ; suppression réservée super-admin.
             Mobile : sélecteur pleine largeur 44 px, Preuves flexible 44 px,
             suppression 44 px. Bureau : 34 px, rayon 8 px, aligné à droite. */}
-        <div className="flex flex-wrap items-center gap-2 sm:col-start-3 sm:row-span-2 sm:row-start-2 sm:justify-end">
+        <div className="flex flex-wrap items-center gap-2 sm:col-start-3 sm:row-start-2 sm:mt-[10px] sm:justify-end">
           <Select value={o.status} onValueChange={(v) => onStatus(o, v)} disabled={!TRANSITIONS[o.status]?.length}>
             <SelectTrigger className="mt-2.5 h-11 w-full rounded-[8px] border-ink font-semibold text-xs sm:mt-0 sm:h-[34px] sm:w-[235px] sm:shrink-0" data-testid={`admin-status-select-${o.order_number}`}><SelectValue /></SelectTrigger>
             <SelectContent>{STATUSES.filter((s) => s === o.status || TRANSITIONS[o.status]?.includes(s)).map((s) => <SelectItem key={s} value={s}>{t(`order.status.${s}`)}</SelectItem>)}</SelectContent>
