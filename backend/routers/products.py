@@ -8,18 +8,31 @@ from pydantic import BaseModel, Field, field_validator
 from core.db import db
 from core.games import DEFAULT_GAME_ID, check_product_type, public_game_ids
 from core.security import ADMIN_ROLES, get_optional_user, require_permission
+from services import stock
 from services.fzr_mapping import mapping_ok
 
 router = APIRouter(tags=["products"])
 PUBLIC = {"_id": 0}
+# Champs d'état fournisseur : ADMIN uniquement (jamais dans une réponse publique).
+SUPPLIER_FIELDS = stock.ADMIN_FIELDS
 
 
-def _public(p: dict) -> dict:
-    """Vue publique : coût fournisseur jamais exposé + drapeau achetable."""
-    mapping = p.pop("fazercards_mapping", None)
-    p["purchasable"] = not p.get("requires_mapping") or mapping_ok(mapping)
-    p.setdefault("game_id", DEFAULT_GAME_ID)  # products created before Phase 1
-    return p
+def _public(p: dict, admin: bool = False) -> dict:
+    """Vue publique : coût fournisseur jamais exposé + drapeau achetable.
+
+    `purchasable`/`unavailable_reason` sont calculés par `services.stock` (règle unique). Les
+    champs d'état fournisseur sont retirés de la vue publique ; `admin=True` les rajoute.
+    """
+    product = dict(p)
+    mapping = product.pop("fazercards_mapping", None)
+    status = {**product, "fazercards_mapping": mapping}
+    product.update(stock.public_fields(status))
+    for field in SUPPLIER_FIELDS:
+        product.pop(field, None)
+    if admin:
+        product.update(stock.admin_fields(status))
+    product.setdefault("game_id", DEFAULT_GAME_ID)  # products created before Phase 1
+    return product
 
 
 class ProductIn(BaseModel):
@@ -91,7 +104,8 @@ async def list_products(
     if q:
         query["$or"] = [{"name": {"$regex": re.escape(q), "$options": "i"}}, {"slug": {"$regex": re.escape(q), "$options": "i"}}]
     sort_map = {"default": [("sort_order", 1)], "price_asc": [("price", 1)], "price_desc": [("price", -1)], "uc_desc": [("uc_amount", -1)]}
-    return [_public(p) for p in await db.products.find(query, PUBLIC).sort(sort_map[sort]).to_list(500)]
+    return [_public(p, admin=include_inactive)
+            for p in await db.products.find(query, PUBLIC).sort(sort_map[sort]).to_list(500)]
 
 
 @router.get("/products/{slug}")
@@ -149,6 +163,24 @@ async def update_product(product_id: str, body: ProductIn):
             raise HTTPException(status_code=409, detail="⚠ Dernier produit actif de ce jeu : désactivez le jeu (Admin → Jeux) avant, sinon sa boutique deviendrait vide.")
     await db.products.update_one({"id": product_id}, {"$set": data})
     return await db.products.find_one({"id": product_id}, PUBLIC)
+
+
+class AvailabilityIn(BaseModel):
+    manual_unavailable: bool
+
+
+@router.patch("/admin/products/{product_id}/availability")
+async def set_product_availability(product_id: str, body: AvailabilityIn,
+                                   admin=Depends(require_permission("catalog.manage"))):
+    """PL-STOCK-1 (D) — forçage manuel de l'indisponibilité, journalisé dans l'audit.
+
+    Indépendant du fournisseur : retirer le forçage ne touche pas `supplier_available`.
+    """
+    product = await stock.set_manual_unavailable(product_id, body.manual_unavailable,
+                                                 actor=admin.get("user_id") or "admin")
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return _public(product, admin=True)
 
 
 @router.delete("/admin/products/{product_id}", dependencies=[Depends(require_permission("catalog.manage"))])

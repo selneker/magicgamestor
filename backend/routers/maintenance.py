@@ -2,7 +2,8 @@
 
 Appelée par cron-job.org (pas par le navigateur), protégée par le même en-tête `X-Cron-Token`
 que les relances PL-NOTIF-4. Réponse réduite à des compteurs : aucune donnée de commande, aucun
-écho du jeton.
+écho du jeton. PL-STOCK-1 y branche aussi l'expiration des états fournisseur périmés : aucune
+route cron supplémentaire à configurer côté hébergeur.
 """
 import logging
 
@@ -23,4 +24,4 @@ async def run(request: Request):
     except Exception as exc:  # la réponse du cron reste stable même en cas de panne inattendue
         logger.warning("Tâches commandes/preuves impossible (%s)", type(exc).__name__)
         return {"expiry_warned": 0, "expired": 0, "released_crypto": 0, "purged_orders": 0,
-                "purged_blobs": 0, "storage_alerts": 0}
+                "purged_blobs": 0, "storage_alerts": 0, "stock_expired": 0, "stock_restored": 0}

@@ -34,6 +34,8 @@ DEFAULT_EVENTS = frozenset({
     "proof_storage_full",
     "proof_db_full",
     "storage_warning",
+    "stock_unavailable",
+    "stock_restored",
     "test",
 })
 

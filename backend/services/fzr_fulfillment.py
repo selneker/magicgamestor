@@ -19,7 +19,7 @@ from fastapi import HTTPException
 from core.audit import audit
 from core.db import db
 from core.games import DEFAULT_GAME_ID
-from services import fazercards, fzr_mapping, notifications, providers
+from services import fazercards, fzr_mapping, notifications, providers, stock
 from services.providers.base import OrderStatus
 
 logger = logging.getLogger("mgs.fzr")
@@ -366,6 +366,13 @@ async def _fulfill_unit(order: dict, line: dict, actor: str) -> dict:
     except providers.ProviderOrderError as exc:
         await _update_record(order_id, path, {"status": "error", "last_error": exc.error})
         await audit("fzr.order_error", actor, order_id, {"error": exc.error, "code": exc.code, "http": exc.status_code, "line": idx, "component": cidx})
+        # PL-STOCK-1 (C) : rupture de stock explicitement signalée → le produit n'est plus
+        # achetable immédiatement. La commande suit son flux inchangé ; ce marquage ne lève jamais.
+        if stock.is_out_of_stock_error(exc):
+            item = (order.get("items") or [])[idx] if idx < len(order.get("items") or []) else {}
+            await stock.mark_supplier_unavailable(
+                {"id": item.get("product_id"), "name": item.get("name")},
+                actor=actor, source="delivery")
         raise HTTPException(status_code=409 if exc.status_code < 500 else 502,
                             detail=f"Commande fournisseur refusée : {exc.error}")
     provider_status = provider_order.status
