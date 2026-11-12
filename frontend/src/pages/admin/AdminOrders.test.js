@@ -265,10 +265,19 @@ test("PL-UX-5 : grille bureau 3 colonnes fixes, badge d'origine plus petit, bout
   // marges internes identiques à la maquette (produit +3 px, actions +10 px),
   // l'en-tête chevauche les 3 lignes (aucune ligne étirée, aucun grand blanc).
   expect(card.className).toContain("sm:gap-y-0");
-  expect(card.querySelector('[data-testid="copy-order-MGS-C1"]').closest("div").className).toContain("sm:row-span-3");
-  expect(card.querySelector('[data-testid="copy-pubg-MGS-C1"]').closest("p").nextElementSibling.className).toContain("mt-1.5");
-  const product = Array.from(card.querySelectorAll("p")).find((p) => p.className.includes("sm:mt-[3px]"));
-  expect(product).toBeDefined();
+  // Aligné (maquette) : les 3 colonnes sont des piles autonomes à cheval sur
+  // les lignes 1-2 ; produit aligné avec la date (+2 px), paiement/email
+  // aligné avec le badge de statut (+3 px), actions à +10 px du montant.
+  expect(card.querySelector('[data-testid="copy-order-MGS-C1"]').closest("div").className).toContain("sm:row-span-2");
+  const playerLine = card.querySelector('[data-testid="copy-pubg-MGS-C1"]').closest("p");
+  expect(playerLine.parentElement.className).toContain("sm:row-span-2");
+  const productLine = playerLine.nextElementSibling;
+  expect(productLine.className).toContain("sm:mt-[2px]");
+  expect(productLine.className).toContain("hidden");
+  expect(productLine.className).toContain("sm:block");
+  const metaLine = productLine.nextElementSibling;
+  expect(metaLine.className).toContain("mt-1.5");
+  expect(metaLine.className).toContain("sm:mt-[3px]");
   expect(card.querySelector('[data-testid="admin-status-select-MGS-C1"]').closest("div").className).toContain("sm:mt-[10px]");
   // Badge : boîte d'origine (bordure, majuscules, graisse 800) en plus petit
   // (texte 9,5 px, marges 2 px × 6 px, icône 10 px).
