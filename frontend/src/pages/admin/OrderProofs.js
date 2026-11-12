@@ -10,7 +10,7 @@ import { ProofViewer } from "@/components/admin/ProofViewer";
 // plein écran (GET authentifié par cookies, comme avant) ; une preuve purgée
 // (410) affiche un message explicite.
 
-export function OrderProofs({ order }) {
+export function OrderProofs({ order, className = "" }) {
   const { t } = useLang();
   const proofs = order.payment_proofs || [];
   const [open, setOpen] = useState(false);
@@ -24,7 +24,9 @@ export function OrderProofs({ order }) {
         onClick={() => setOpen(true)}
         data-testid={`admin-proofs-button-${order.order_number}`}
         aria-label={t("admin.proofsButtonAria", { n: proofs.length })}
-        className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full border border-[color:var(--rule-strong)] px-4 text-xs font-bold text-foreground transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-foreground"
+        // PL-UX-5 — rayon 8 px (jamais de pilule) ; la hauteur et la largeur
+        // (flexible sur mobile, fixe sur bureau) viennent de className.
+        className={`inline-flex items-center justify-center gap-1.5 rounded-[8px] border border-[color:var(--rule-strong)] px-4 text-xs font-bold text-foreground transition-colors hover:bg-muted focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-foreground ${className}`}
       >
         <Image className="h-4 w-4" aria-hidden="true" />
         {t("admin.proofsButton", { n: proofs.length })}

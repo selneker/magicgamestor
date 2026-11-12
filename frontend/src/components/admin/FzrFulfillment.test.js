@@ -56,3 +56,22 @@ test("PL-UX-4 : l'information de livraison reste accessible (référence fournis
   expect(container.textContent).toContain("FZ-42");
   await act(async () => root.unmount());
 });
+
+// PL-UX-5 — maquette : plus de grande barre grise, le lien discret
+// « Détails » + chevron devient le repli, rayons 8 px sur les boutons.
+test("PL-UX-5 : plus de barre grise, lien « Détails » + chevron, rayons 8 px", async () => {
+  const { container, root } = await mount({ readyCount: 2, mappedIds: { p1: true } });
+  const block = container.querySelector('[data-testid="fzr-block-MGS-1"]');
+  expect(block.className).not.toContain("bg-slate-50");
+  const toggle = container.querySelector('[data-testid="fzr-toggle-MGS-1"]');
+  expect(toggle.textContent).toContain("Détails");
+  expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  expect(toggle.className).toContain("font-semibold");
+  expect(container.querySelector('[data-testid="fzr-send-MGS-1"]').className).toContain("rounded-[8px]");
+  // Le contenu détaillé reste caché tant que le lien n'est pas actionné.
+  expect(container.textContent).not.toContain("FZ-42");
+  await act(async () => { toggle.click(); });
+  expect(toggle.getAttribute("aria-expanded")).toBe("true");
+  expect(container.textContent).toContain("FZ-42");
+  await act(async () => root.unmount());
+});
