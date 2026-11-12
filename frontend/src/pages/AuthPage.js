@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { api, errorMessage } from "@/lib/api";
+import { api } from "@/lib/api";
+import { authErrorKey } from "@/lib/authErrors";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { startGoogleLogin } from "@/components/AuthCallback";
@@ -28,6 +29,11 @@ export default function AuthPage({ mode = "login" }) {
   const captcha = useCaptcha();
   const [captchaKey, setCaptchaKey] = useState(0);
   const [loginFailed, setLoginFailed] = useState(false);
+  // PL-UX-4 — l'API a demandé le contrôle de sécurité (`captcha_required`) :
+  // le widget doit alors être VISIBLE (en `interaction-only` il restait
+  // invisible : formulaire bloqué, rien à faire). Un échec d'identifiants
+  // ordinaire ne force PAS l'affichage.
+  const [captchaRequired, setCaptchaRequired] = useState(false);
   const showCaptcha = captcha.enabled && (mode === "register" || loginFailed);
   const from = location.state?.from || "/";
 
@@ -43,9 +49,14 @@ export default function AuthPage({ mode = "login" }) {
       setUser(data.user);
       if (mode === "register") toast.message(t("auth.verifySent"));
       setLoginFailed(false);
+      setCaptchaRequired(false);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(isCaptchaError(err) ? t("captcha.verifyAgain") : errorMessage(err));
+      // PL-UX-4 — jamais le texte anglais du serveur : code d'erreur s'il
+      // existe, sinon statut HTTP, sinon message générique français.
+      const captchaError = isCaptchaError(err);
+      if (captchaError) setCaptchaRequired(true);
+      setError(captchaError ? t("captcha.required") : t(authErrorKey(err)));
       if (mode === "login") setLoginFailed(true);
       if (showCaptcha) { captcha.expire(); setCaptchaKey((k) => k + 1); } // jeton à usage unique
     } finally { setBusy(false); }
@@ -94,8 +105,13 @@ export default function AuthPage({ mode = "login" }) {
               <Link to="/mot-de-passe-oublie" className="text-xs font-medium text-muted-foreground hover:text-foreground" data-testid="login-forgot-password-link">{t("auth.forgot")}</Link>
             </div>
           )}
-          {showCaptcha && <CaptchaWidget key={captchaKey} ref={captcha.ref} onVerify={captcha.onVerify} onError={captcha.onError} />}
-          {error && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700" data-testid="auth-error">{error}</p>}
+          {showCaptcha && <CaptchaWidget key={captchaKey} ref={captcha.ref} onVerify={captcha.onVerify} onError={captcha.onError} visible={captchaRequired} />}
+          {/* PL-UX-4 — contraste AA garanti : le fond ET le texte viennent du
+              même couple de jetons (--destructive / --destructive-foreground),
+              ils bougent ensemble dans les deux thèmes. (L'ancien
+              `bg-rose-50` était remappé en gris par le CSS : texte rose sur
+              gris sombre = 1,7:1 en thème sombre.) */}
+          {error && <p role="alert" className="rounded-xl bg-destructive p-3 text-sm font-semibold text-destructive-foreground" data-testid="auth-error">{error}</p>}
           <Button type="submit" disabled={busy || (captcha.enabled && showCaptcha && !captcha.ready)} className="h-11 w-full rounded-full text-base font-bold" data-testid="auth-submit">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.submit")}</Button>
         </form>
         <p className="mt-4 text-center text-sm text-slate-500">

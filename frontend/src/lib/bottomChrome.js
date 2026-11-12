@@ -21,6 +21,17 @@ const FOCUSED_PREFIXES = ["/commande", "/orders/", "/connexion", "/inscription",
 export const isFocusedRoute = (pathname = "") =>
   FOCUSED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
+// PL-UX-4 — l'admin n'a pas de pied de page : ni le footer du site, ni son
+// bandeau. Les pages PUBLIQUES gardent le leur. (La barre de navigation basse
+// de l'admin reste : c'est la navigation mobile de l'admin, l'équivalent de
+// sa barre latérale desktop — sans elle, l'admin serait inaccessible en
+// mobile.)
+export const isAdminRoute = (pathname = "") => pathname.startsWith("/admin");
+
+// PL-UX-4 — le footer du site est montré partout SAUF en mode « focalisé »
+// et dans l'admin (qui n'a aucun pied de page).
+export const showsSiteFooter = (pathname = "") => !isFocusedRoute(pathname) && !isAdminRoute(pathname);
+
 // A product page renders its own sticky buy bar (Product.js), which occupies the
 // same slot just above the bottom nav.
 export const isProductRoute = (pathname = "") => pathname.startsWith("/produit/");

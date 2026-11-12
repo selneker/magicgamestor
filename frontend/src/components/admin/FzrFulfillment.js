@@ -101,7 +101,11 @@ export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, mapComponents
   return (
     <div className="col-span-full space-y-2 rounded-xl bg-slate-50 px-3 py-2.5 text-xs dark:bg-slate-800/40" data-testid={`fzr-block-${order.order_number}`}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-black uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">FazerCards</span>
+        {/* PL-UX-4 — le nom du fournisseur ne s'affiche PLUS dans l'admin :
+            le bloc s'appelle « Détails » et garde l'information utile
+            (état de livraison, référence fournisseur, erreur, action
+            « Envoyer »). Le contenu détaillé reste repliable. */}
+        <span className="font-black uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">{t("admin.details")}</span>
         {readyCount > 0 && order.status === "paid" && (
           <Button size="sm" className="h-7 rounded-full text-xs" onClick={openPreflight} disabled={busy} data-testid={`fzr-send-${order.order_number}`}>
             {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />}

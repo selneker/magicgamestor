@@ -79,7 +79,7 @@ export function isCaptchaError(err) {
   return /captcha|turnstile/i.test(code) || /captcha|turnstile/i.test(detail);
 }
 
-export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onError, onInteractive }, ref) {
+export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onError, onInteractive, visible = false }, ref) {
   const { t, lang } = useLang();
   // Échec de chargement du CDN Cloudflare : STOP fail-closed — le formulaire
   // reste bloqué jeton manquant ; on affiche un message inline + un bouton
@@ -108,7 +108,12 @@ export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onErr
           theme: widgetTheme(),
           size: widgetSize(),
           // PL-CHK-4 — invisible jusqu'à ce que Cloudflare demande une action.
-          appearance: "interaction-only",
+          // PL-UX-4 — `visible` : quand l'API a EXPLICITE demanded le contrôle
+          // (`captcha_required`), le widget doit être VISIBLE (sinon le
+          // formulaire est bloqué sans rien à faire) : on passe alors en
+          // apparence « always ». Un échec d'identifiants ordinaire ne force
+          // rien : le comportement escaladé reste inchangé.
+          appearance: visible ? "always" : "interaction-only",
           // Langue du site (codes courts "fr" / "en" ; valeur inconnue → repli auto).
           language: lang === "en" ? "en" : "fr",
           callback: (token) => onVerifyRef.current(token),
@@ -130,7 +135,7 @@ export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onErr
         widgetIdRef.current = null;
       }
     };
-  }, [failed, attempt, lang]); // lang : le widget est re-rendu avec la nouvelle langue
+  }, [failed, attempt, lang, visible]); // visible : ré-rendu du widget (apparence)
 
   // Jeton à usage unique : après une erreur serveur liée au CAPTCHA, le formulaire
   // appelle reset() → Turnstile propose un nouveau challenge, le parent vide son jeton.
@@ -158,7 +163,17 @@ export const CaptchaWidget = forwardRef(function CaptchaWidget({ onVerify, onErr
   // Conteneur : toute la largeur, aligné à gauche ; avec `interaction-only`
   // le widget n'occupe AUCUNE place tant que Cloudflare ne demande rien
   // (aucune hauteur réservée, aucun saut de mise en page).
-  return <div ref={containerRef} className="w-full text-left" data-testid="captcha-widget" />;
+  // PL-UX-4 — en mode `visible` (contrôle exigé par l'API), le widget est
+  // affiché : un libellé français le nomme et le cadre le sépare du reste
+  // de la carte. Le bouton de soumission reste SOUS le widget (jamais masqué).
+  return (
+    <div className="w-full" data-testid="captcha-widget">
+      {visible && (
+        <p className="mb-1.5 text-xs font-semibold text-muted-foreground" data-testid="captcha-widget-label">{t("captcha.label")}</p>
+      )}
+      <div ref={containerRef} className="w-full text-left" />
+    </div>
+  );
 });
 
 /**

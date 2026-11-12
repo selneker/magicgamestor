@@ -255,6 +255,10 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
               data-testid="identity-recent-ids"
             >
               {visibleIds.map((id, i) => (
+                // PL-UX-4 — pastille SOBRE : même fond neutre, même hauteur de
+                // texte et même padding que le bouton « Vérifier l'ID », SANS
+                // bordure. La zone tactile reste de 44 px (hauteur du bouton)
+                // alors que le dessin ne change pas de taille.
                 <button
                   key={id}
                   type="button"
@@ -262,9 +266,9 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
                   aria-label={t("checkout.useRecentId", { id })}
                   title={id}
                   data-testid={`identity-recent-id-${i}`}
-                  className="inline-flex h-11 max-w-[9rem] shrink-0 items-center truncate rounded-full border border-[color:var(--rule-strong)] bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-[color:hsl(var(--muted))]"
+                  className="inline-flex h-11 min-w-[44px] shrink-0 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-foreground"
                 >
-                  {id}
+                  <span className="num max-w-[9rem] truncate rounded-full bg-muted px-3 py-1.5 text-xs font-semibold leading-none text-foreground">{id}</span>
                 </button>
               ))}
             </div>
