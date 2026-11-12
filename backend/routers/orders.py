@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import (APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, Request,
                      UploadFile)
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from pymongo.errors import DuplicateKeyError
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -24,6 +24,7 @@ from services import notifications
 from services import order_maintenance
 from services import payments as gw
 from services import proofs as proof_store
+from services import stock
 from services.fulfillment import on_order_paid
 from services.fzr_mapping import purchase_blocked, supplier_cost_usd
 from services.notifications import notify_new_order
@@ -359,6 +360,16 @@ async def create_order(body: OrderIn, background_tasks: BackgroundTasks, request
         blocked = purchase_blocked(p)
         if blocked:
             raise HTTPException(status_code=409, detail=blocked)
+    # PL-STOCK-1 (F) : garde d'achat recalculée ICI (jamais la valeur affichée par le catalogue).
+    # Rien n'est écrit : ni commande, ni verrou d'abonnement, ni réservation Pack évolutif.
+    unavailable = sorted(p["id"] for p in products.values() if not stock.purchasable(p))
+    if unavailable:
+        return JSONResponse(status_code=409, content={
+            "detail": "Un ou plusieurs produits ne sont plus disponibles à l'achat. "
+                      "Retirez-les de votre panier pour continuer.",
+            "code": "product_unavailable",
+            "product_ids": unavailable,
+        })
     items, total = [], 0
     for line in body.items:
         p = products[line.product_id]

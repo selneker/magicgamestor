@@ -12,7 +12,7 @@ from core.audit import audit
 from core.db import db
 from core.games import DEFAULT_GAME_ID
 from core.security import require_admin, require_permission, require_super_admin
-from services import fazercards, fzr_fulfillment, fzr_mapping, providers
+from services import fazercards, fzr_fulfillment, fzr_mapping, providers, stock
 
 router = APIRouter(tags=["fazercards-fulfillment"])
 logger = logging.getLogger("mgs.fzr")
@@ -177,12 +177,15 @@ async def fzr_mappings(game: str | None = None):
     products = [p async for p in db.products.find(query, {"_id": 0, "id": 1, "slug": 1, "name": 1, "type": 1,
                                                           "price": 1, "uc_amount": 1, "duration_months": 1,
                                                           "active": 1, "game_id": 1, "requires_mapping": 1,
-                                                          "fazercards_mapping": 1}).sort("sort_order", 1)]
+                                                          "fazercards_mapping": 1, "supplier_available": 1,
+                                                          "supplier_checked_at": 1, "manual_unavailable": 1}).sort("sort_order", 1)]
     for p in products:
         mapping = p.get("fazercards_mapping")
         p["mapping_status"] = fzr_mapping.mapping_status(mapping)
         p["fulfillable"] = fzr_mapping.fulfillable(mapping)
         p["supplier_cost_usd"] = fzr_mapping.supplier_cost_usd(mapping, p.get("game_id"))
+        # PL-STOCK-1 (G) : état fournisseur exposé à l'ADMIN uniquement.
+        p.update(stock.admin_fields(p))
     return {"products": products, "game": game}
 
 

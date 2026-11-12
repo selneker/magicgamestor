@@ -44,6 +44,8 @@ RETRY_ALERTS = {
     "proof_storage_full": ("Stockage des preuves saturé (rappel)", "/admin/commandes"),
     "proof_db_full": ("Base MongoDB saturée (rappel)", "/admin/commandes"),
     "storage_warning": ("Stockage bientôt saturé (rappel)", "/admin/commandes"),
+    "stock_unavailable": ("Produit devenu indisponible (rappel)", "/admin/catalogue"),
+    "stock_restored": ("Produit de nouveau disponible (rappel)", "/admin/catalogue"),
 }
 
 
@@ -225,6 +227,7 @@ async def notify_new_message(conversation_id: str, sender_name: str, text: str) 
 INTERNAL_PAYMENT_SOURCES = ("simulation", "manual")
 ADMIN_ORDERS_URL = "/admin/commandes"
 ADMIN_PAYMENTS_URL = "/admin/paiements"
+ADMIN_CATALOG_URL = "/admin/catalogue"
 
 # Motifs Binance -> libellé admin court (les slugs internes ne sont jamais affichés).
 CRYPTO_REASONS = {
@@ -337,6 +340,24 @@ async def notify_delivery_blocked(order_id: str | None, ref: str | None, code: s
     await _critical("delivery_blocked", "Livraison bloquée",
                     _line(f"Commande {ref}" if ref else "Commande", motif),
                     ADMIN_ORDERS_URL, f"delblock:{ref}:{code}", order_ref=ref or None, tag=order_id)
+
+
+# --------------------------------------------------------------------------- #
+# PL-STOCK-1 — disponibilité fournisseur : une alerte par TRANSITION, jamais par cycle.
+# Aucun nom de fournisseur, aucun identifiant technique : le libellé produit suffit à l'admin.
+# --------------------------------------------------------------------------- #
+async def notify_stock_unavailable(product_name: str, product_id: str) -> None:
+    """Produit devenu non achetable (rupture constatée à la livraison)."""
+    await _critical("stock_unavailable", "Produit indisponible",
+                    _line(product_name, "Rupture de stock fournisseur", "Retiré de la vente"),
+                    ADMIN_CATALOG_URL, None, tag=product_id or None)
+
+
+async def notify_stock_restored(product_name: str, product_id: str) -> None:
+    """Produit redevenu achetable automatiquement (état fournisseur périmé remis à « inconnu »)."""
+    await _critical("stock_restored", "Produit de nouveau disponible",
+                    _line(product_name, "De nouveau proposé à la vente"),
+                    ADMIN_CATALOG_URL, None, tag=product_id or None)
 
 
 async def notify_crypto_unmatched(reason: str, amount: Any = None, coin: str | None = None,
