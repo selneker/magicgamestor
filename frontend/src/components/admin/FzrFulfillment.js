@@ -100,10 +100,11 @@ export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, mapComponents
 
   return (
     // PL-UX-5 — plus de grande barre grise : une ligne « Détails » + chevron
-    // sous séparateur 1 px (maquette). Le contenu repliable, l'action
+    // sous séparateur 1 px (maquette .det : marge haute 10 px, padding
+    // 9 px, bordure 1 px). Le contenu repliable, l'action
     // « Envoyer » et le rafraîchissement restent inchangés derrière.
     <div className="col-span-full text-xs" data-testid={`fzr-block-${order.order_number}`}>
-      <div className="flex flex-wrap items-center gap-2 border-t border-[color:var(--rule)] pt-[9px]">
+      <div className="mt-[10px] flex flex-wrap items-center gap-2 border-t border-[color:var(--rule)] pt-[9px]">
         {/* PL-UX-4/5 — le nom du fournisseur ne s'affiche PAS dans l'admin :
             le lien s'appelle « Détails » et garde l'information utile
             (état de livraison, référence fournisseur, erreur, action
