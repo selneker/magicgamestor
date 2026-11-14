@@ -164,6 +164,8 @@ cart: { otherGame: "Votre panier contient des offres d'un autre jeu. Finalisez o
       // PL-005-FE-01 — historique refait (/commandes + /commandes/:id).
       tabs: { all: "Toutes", progress: "En cours", done: "Terminées" },
       helpAsk: "Besoin d'aide ?", chat: "Chat", copyNumber: "Copier le numéro de commande",
+      // PL-005-FE-02 — /suivi : bouton de recherche (composant fourni) + état visiteur.
+      searchPlaceholder: "N° de commande ou ID joueur", loginToSee: "Connectez-vous pour voir vos commandes",
       detail: {
         product: "Produit", playerId: "ID joueur", method: "Méthode", orderedAt: "Commandée le",
         detailsAria: "Afficher ou masquer les informations de paiement",
@@ -389,6 +391,8 @@ cart: { otherGame: "Your cart holds offers from another game. Check out or empty
       // PL-005-FE-01 — reworked order history (/commandes + /commandes/:id).
       tabs: { all: "All", progress: "In progress", done: "Completed" },
       helpAsk: "Need help?", chat: "Chat", copyNumber: "Copy order number",
+      // PL-005-FE-02 — /suivi: search button (provided component) + guest state.
+      searchPlaceholder: "Order number or player ID", loginToSee: "Log in to see your orders",
       detail: {
         product: "Product", playerId: "Player ID", method: "Method", orderedAt: "Ordered on",
         detailsAria: "Show or hide payment information",

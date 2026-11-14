@@ -76,6 +76,11 @@
         --status-done: hsl(150 100% 24%);     /* vert « livrée » */
         --status-progress: hsl(75 100% 22%);  /* olive « payée / en cours » (famille lime) */
         --status-refund: hsl(40 100% 29%);    /* or « remboursée » */
+        /* PL-005-FE-02 — badge « Annulée » sans rouge (maquette RONDE 2) :
+           en clair le blanc à 62 % échouerait sur la crème, la maquette le
+           prévoit explicitement → encre du thème à 62 % et bordure encre 30 %. */
+        --badge-cancel-text: hsl(var(--foreground) / .62);
+        --badge-cancel-border: hsl(var(--foreground) / .3);
     }
     .dark {
         --background: 0 0% 17%;        /* #2B2B2B */
@@ -125,6 +130,10 @@
         --status-done: #3DDB8A;
         --status-progress: hsl(72 99% 50%);   /* lime de marque */
         --status-refund: #F0B90B;
+        /* PL-005-FE-02 — badge « Annulée » : blanc ~62 % + bordure fine 30 %,
+            valeurs de la maquette RONDE 2 (thème sombre). */
+        --badge-cancel-text: rgba(255,255,255,.62);
+        --badge-cancel-border: rgba(255,255,255,.3);
     }
     * { border-color: var(--rule); }
     html { scroll-behavior: smooth; overflow-x: hidden; }
@@ -346,3 +355,39 @@
         font-family: var(--font-body);
     }
 }
+
+/* ── PL-005-FE-02 — CommandButton (composant fourni, ANNEXE A) ───────────
+   Valeurs d'origine du composant (thème sombre = valeurs du composant).
+   Elles vivent ICI et pas en style inline : c'est ce qui permet au thème
+   clair de remapper les variables sur les tokens du site pour garder AA. */
+.command-btn {
+    --cb-bg: #2c2c2c;
+    --cb-bg-hover: #333333;
+    --cb-text: rgba(255,255,255,.85);
+    --cb-strong: #fff;
+    --cb-placeholder: rgba(255,255,255,.35);
+    /* Valeurs d'origine du composant (.5) ajustées : blanc 50 % sur le fond
+       #2c2c2c tombe à 4,14:1 (< AA pour le libellé « Ctrl » des kbd) —
+       58 % → ~4,97:1 (audit de contraste, audit-contrast.mjs). */
+    --cb-muted: rgba(255,255,255,.58);
+    --cb-key: rgba(255,255,255,.07);
+    --cb-key-on: rgba(255,255,255,.18);
+}
+/* Thème clair : mapping sur les tokens (encre / crème). Le blanc à 35 % du
+   composant tomberait à ~1,6:1 sur la crème — la pilule devient encre et son
+   texte crème ; le placeholder passe à 62 % (≥ 4,5:1 sur l'encre). */
+:root:not(.dark) .command-btn {
+    --cb-bg: hsl(var(--foreground));
+    --cb-bg-hover: hsl(var(--foreground) / .92);
+    --cb-text: hsl(var(--background) / .85);
+    --cb-strong: hsl(var(--background));
+    --cb-placeholder: hsl(var(--background) / .62);
+    --cb-muted: hsl(var(--background) / .5);
+    --cb-key: hsl(var(--background) / .07);
+    --cb-key-on: hsl(var(--background) / .18);
+}
+/* PL-005-FE-02 — maquette RONDE 2, tâche 7 : sur les pages liste / détail /
+   reçu / barre du bas de l'historique, AUCUN texte au-dessus de 600.
+   `.num` (non-layered, 700) gagne sur `font-semibold` de Tailwind : il est
+   neutralisé à l'intérieur du conteneur de ces pages. */
+.order-history-weight .num { font-weight: 600; }
