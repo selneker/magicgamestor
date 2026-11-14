@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { CheckCircle2, Clock, PackageCheck, Search, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, PackageCheck, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
 import { paymentColor, paymentLabel } from "@/lib/paymentLabels";
@@ -8,9 +8,10 @@ import { clearPendingOrderId, readPendingOrderId, restartTarget } from "@/lib/pe
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { useGames } from "@/context/GameContext";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BackButton } from "@/components/common/BackButton";
+import CommandButton from "@/components/store/CommandButton";
+import OrderHistory from "@/pages/OrderHistory";
 import { PaymentCountdown } from "@/components/store/checkout/PaymentCountdown";
 import { ProofWaiting, ProofSheet, LateScreen, EndScreen, ProofExpired } from "@/components/store/checkout/ProofPay";
 import { CancelSheet } from "@/components/store/checkout/CancelSheet";
@@ -208,7 +209,13 @@ export function OrderResume({ orderId }) {
     subtotal: order.subtotal ?? order.total, fee: order.payment_fee ?? 0,
   } : null;
 
-  const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/"));
+  // PL-005-FE-02 (tâche 0) — l'ancien fallback `navigate("/")` était un PUSH :
+  // quand /orders/:id est la PREMIÈRE entrée d'historique (accès direct,
+  // nouvel onglet, idx = 0), le retour empilait / puis le navigateur
+  // « revenait » à /orders/:id → oscillation infinie. Désormais le retour est
+  // une navigation EXPLICITE vers la page des commandes (/suivi), en replace
+  // pour ne jamais empiler l'écran de paiement au-dessus de lui-même.
+  const back = () => navigate("/suivi", { replace: true });
 
   // PL-CHK-6 — « Recommencer » : la clé de reprise meurt PUIS l'écran 1 du jeu
   // concerné s'ouvre (ou l'accueil si le jeu est inconnu). Remplace l'ancien
@@ -219,10 +226,19 @@ export function OrderResume({ orderId }) {
     navigate(restartTarget(order), { replace: true });
   };
 
+  // PL-005-FE-02 (tâche 13) — sortie rapide visible sur PC (≥1024 px) vers la
+  // page des commandes /suivi, à côté de « Annuler la commande ». Mobile : la
+  // flèche de retour (BackButton, même composant que le détail) suffit.
   const header = (right) => (
     <header className="flex h-[52px] flex-none items-center justify-between gap-2 px-1">
       <BackButton onClick={back} testId="order-back" />
-      {right}
+      <div className="flex flex-none items-center gap-3">
+        <Link to="/suivi" data-testid="order-exit-suivi"
+          className="hidden min-h-[44px] items-center text-xs font-semibold text-muted-foreground underline decoration-dotted underline-offset-[3px] lg:inline-flex">
+          {t("order.viewTrack")}
+        </Link>
+        {right}
+      </div>
     </header>
   );
 
@@ -402,62 +418,136 @@ export default function OrderTrack() {
   return <OrderTrackSearch />;
 }
 
+// PL-005-FE-02 — /suivi devient la page « COMMANDES » (libellé inchangé) :
+// titre + bouton de recherche (composant fourni, tâche 2) et, pour un client
+// connecté, l'historique directement affiché (composant OrderHistory
+// réutilisé, jamais dupliqué — tâche 1). L'ancien formulaire « numéro + ID
+// joueur » disparaît. /commandes redirige ici (App.js, OrdersRedirect).
+//
+// Recherche (tâche 2, `onSearch`) :
+//  • connecté → filtre LOCAL de la liste (numéro, ID joueur, produit,
+//    insensible à la casse) appliqué par OrderHistory ; si rien ne correspond
+//    et que la saisie ressemble à MGS-xxxxxx, l'API de suivi existante
+//    (GET /orders/track) prend le relais ;
+//  • invité → la même API, qui exige AUSSI l'ID joueur → un second champ
+//    compact du même style apparaît sous le bouton, uniquement dans ce cas.
 function OrderTrackSearch() {
   const { orderNumber } = useParams();
   const { t } = useLang();
   const { user } = useAuth();
   const [params] = useSearchParams();
-  const [number, setNumber] = useState(orderNumber || "");
-  const [pubgId, setPubgId] = useState(params.get("pubg_id") || "");
+  const [query, setQuery] = useState(orderNumber || "");
+  const [playerId, setPlayerId] = useState(params.get("pubg_id") || "");
+  const [needPlayer, setNeedPlayer] = useState(false);
   const [order, setOrder] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const search = async (n = number, p = pubgId) => {
-    if (!n || !p) return;
+  const search = useCallback(async (n, p) => {
+    const number = n ?? query;
+    const pid = p ?? playerId;
+    if (!number || !pid) return;
     setBusy(true); setError(""); setOrder(null);
-    try { const { data } = await api.get("/orders/track", { params: { order_number: n, pubg_id: p } }); setOrder(data); }
+    try { const { data } = await api.get("/orders/track", { params: { order_number: number, pubg_id: pid } }); setOrder(data); setNeedPlayer(false); }
     catch (e) { setError(e.response?.status === 404 ? t("order.notFound") : errorMessage(e)); }
     finally { setBusy(false); }
-  };
-  useEffect(() => { if (orderNumber && params.get("pubg_id")) search(orderNumber, params.get("pubg_id")); }, [orderNumber]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [query, playerId, t]);
 
-  const payInfo = useAutoPaymentPoll(order, () => search(order.order_number, order.pubg_id));
-  const { retrying, retry } = usePaymentRetry(order, () => search(order.order_number, order.pubg_id));
+  // Compteur remonté par OrderHistory après filtrage local (connecté) :
+  // rien ne correspond et la saisie ressemble à un numéro → champ ID joueur.
+  const onHistoryResult = useCallback((count, q) => {
+    setNeedPlayer(Boolean(q) && !order && count === 0 && /^MGS-/i.test(q));
+  }, [order]);
+
+  const onSearch = (q) => {
+    setQuery(q); setOrder(null); setError("");
+    if (user) return; // le filtre local passe par OrderHistory (query)
+    setNeedPlayer(true); // invité : l'API exige aussi l'ID joueur
+  };
+
+  // Lien profond historique (/suivi/:orderNumber?pubg_id=…) : lance la
+  // recherche automatiquement pour un invité ; un client connecté voit
+  // déjà tout l'historique.
+  useEffect(() => {
+    if (user || !orderNumber || !params.get("pubg_id")) return;
+    search(orderNumber, params.get("pubg_id"));
+  }, [orderNumber]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const ret = params.get("return");
     if (ret === "failure") toast.error(t("order.next.failed"));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const payInfo = useAutoPaymentPoll(order, () => order && search(order.order_number, order.pubg_id));
+  const { retrying, retry } = usePaymentRetry(order, () => order && search(order.order_number, order.pubg_id));
+
+  // Second champ compact, même style que le bouton (variables --cb-*), sous
+  // le bouton — uniquement quand l'appel de suivi exige l'ID joueur.
+  const playerField = needPlayer && (
+    <form
+      onSubmit={(e) => { e.preventDefault(); search(); }}
+      className="mt-2 flex justify-end"
+      data-testid="suivi-player-form"
+    >
+      <input
+        data-testid="suivi-player-id"
+        value={playerId}
+        onChange={(e) => setPlayerId(e.target.value.replace(/\D/g, ""))}
+        placeholder={t("checkout.pubgId")}
+        aria-label={t("checkout.pubgId")}
+        inputMode="numeric"
+        className="command-btn h-10 w-full max-w-[260px] bg-[color:var(--cb-bg)] pl-3.5 pr-2.5 text-sm text-[color:var(--cb-strong)] outline-none placeholder:text-[color:var(--cb-placeholder)]"
+        style={{ borderRadius: 20 }}
+      />
+    </form>
+  );
+
+  const result = order && (
+    <div className="mt-4 space-y-3" data-testid="suivi-result">
+      <OrderCard order={order} />
+      {order.status === "pending_payment" && payInfo?.payment_url && !payInfo.simulated && (
+        <Button asChild className="h-12 w-full rounded-full font-bold" style={{ background: paymentColor(order.payment_method) }} data-testid="resume-payment-button">
+          <a href={payInfo.payment_url}>{t("checkout.resume")}</a>
+        </Button>
+      )}
+      {order.status === "pending_payment" && payInfo?.expires_at && <p className="text-center text-xs text-muted-foreground" data-testid="payment-deadline">{t("checkout.deadline", { time: new Date(payInfo.expires_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) })}</p>}
+      {["failed", "expired"].includes(order.status) && !["manual", "binance"].includes(order.payment_method) && (
+        <Button onClick={retry} disabled={retrying} variant="outline" className="h-12 w-full rounded-full font-bold" data-testid="retry-payment-button">{t("checkout.retry")}</Button>
+      )}
+    </div>
+  );
+
   return (
-    <div className="mx-auto max-w-2xl pb-24 pt-6">
-      <h1 className="font-display text-3xl font-bold text-slate-900 sm:text-4xl">{t("order.track")}</h1>
-      {user && <p className="mt-1 text-sm text-slate-500"><Link to="/commandes" className="font-semibold text-primary" data-testid="go-to-account">{t("account.orders")} →</Link></p>}
-      <form onSubmit={(e) => { e.preventDefault(); search(); }} className="mt-6 grid gap-3 rounded-[2rem] border border-slate-100 bg-white p-5 sm:grid-cols-[1fr_1fr_auto]" data-testid="track-form">
-        <Input data-testid="track-order-number" value={number} onChange={(e) => setNumber(e.target.value.toUpperCase())} placeholder="MGS-XXXXXX" className="h-12 rounded-xl font-mono" required />
-        <Input data-testid="track-pubg-id" value={pubgId} onChange={(e) => setPubgId(e.target.value.replace(/\D/g, ""))} placeholder={t("checkout.pubgId")} className="h-12 rounded-xl" required inputMode="numeric" />
-        <Button type="submit" disabled={busy} className="h-12 rounded-xl px-5 font-bold" data-testid="track-submit"><Search className="mr-2 h-4 w-4" />{t("order.find")}</Button>
-      </form>
+    <div className="mx-auto w-full max-w-[480px] px-4 pb-24 pt-4 lg:max-w-[760px]" data-testid="suivi-page">
+      {/* En-tête : titre à gauche, bouton de recherche à droite (maquette
+          écran 3). Client connecté : le bouton est un affaire de bureau
+          (écran 1 mobile n'en montre pas) ; visiteur : il est la fonction
+          principale de la page, visible partout. */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <h1 className="font-display text-[19px] font-semibold">{user ? t("account.orders") : t("order.track")}</h1>
+        <CommandButton
+          className={user ? "hidden lg:inline-flex" : ""}
+          onSearch={onSearch}
+          placeholder={t("order.searchPlaceholder")}
+        >
+          {t("order.find")}
+        </CommandButton>
+      </div>
+      {playerField}
       {error && <p className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700" data-testid="track-error">{error}</p>}
-      {order && (
-        <div className="mt-6 space-y-3">
-          <OrderCard order={order} />
-          {order.status === "pending_payment" && payInfo?.payment_url && !payInfo.simulated && (
-            <Button asChild className="h-12 w-full rounded-full font-bold" style={{ background: paymentColor(order.payment_method) }} data-testid="resume-payment-button">
-              <a href={payInfo.payment_url}>{t("checkout.resume")}</a>
-            </Button>
-          )}
-          {order.status === "pending_payment" && payInfo?.expires_at && <p className="text-center text-xs text-muted-foreground" data-testid="payment-deadline">{t("checkout.deadline", { time: new Date(payInfo.expires_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) })}</p>}
-          {["failed", "expired"].includes(order.status) && !["manual", "binance"].includes(order.payment_method) && (
-            <Button onClick={retry} disabled={retrying} variant="outline" className="h-12 w-full rounded-full font-bold" data-testid="retry-payment-button">{t("checkout.retry")}</Button>
-          )}
+      {result}
+      {user ? (
+        // Historique directement affiché (composant réutilisé, tâche 1) ;
+        // le filtre de recherche est passé en prop.
+        <OrderHistory query={query.trim()} onResult={onHistoryResult} />
+      ) : (
+        <div className="mt-6 rounded-[18px] border bg-card p-5 text-center" data-testid="suivi-guest">
+          <p className="text-sm text-muted-foreground" data-testid="suivi-guest-note">{t("order.loginToSee")}</p>
+          <Button asChild className="mt-3 h-11 rounded-full px-6 font-semibold" data-testid="suivi-login">
+            <Link to="/connexion">{t("auth.login")}</Link>
+          </Button>
         </div>
       )}
-      {/* PL-005-FE-01 — l'historique « Mes commandes » vit désormais sur
-          /commandes (liste refaite d'après la maquette, onglets + cartes
-          arrondies). /suivi reste l'écran de recherche par numéro pour les
-          invités et les accès ponctuels. */}
     </div>
   );
 }

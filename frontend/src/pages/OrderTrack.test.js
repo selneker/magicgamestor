@@ -5,8 +5,11 @@ import OrderTrack, { OrderCard } from "./OrderTrack";
 // PL-CHK-4 — écran 2 « Paiement » (/orders/:id) : titres par méthode, compte à
 // rebours, étapes losanges avec numéros marchands ISSUS DE LA CONFIG (jamais
 // écrits en dur), bouton de preuve fixé en bas, feuille d'annulation (écran 7),
-// branches de statuts, 403/404 → message générique. La page de recherche
-// (/suivi) reste couverte par ses propres tests (PL-CHK-3 conservés).
+// branches de statuts, 403/404 → message générique.
+// PL-005-FE-02 — /suivi devient la page « COMMANDES » : bouton de recherche
+// (composant fourni), historique embarqué (OrderHistory réutilisé), état
+// invité ; tâche 0 : la flèche du paiement ramène à /suivi en replace (fin de
+// la boucle de navigation).
 let mockTrackOrder = null;
 let mockPayStatus = {};
 // Écran de reprise : paramètres de route et API.
@@ -50,6 +53,12 @@ jest.mock("@/context/LanguageContext", () => ({
 }));
 jest.mock("@/context/AuthContext", () => ({ useAuth: () => ({ user: mockUser }) }));
 jest.mock("@/context/GameContext", () => ({ useGames: () => ({ games: [] }) }));
+// PL-005-FE-02 — /suivi embarque OrderHistory (qui consomme le panier pour le
+// point d'entrée IA) : aucun provider n'est monté, mock direct.
+jest.mock("@/context/CartContext", () => ({
+  useCart: () => ({ add: jest.fn(() => ({ ok: true })), setOpen: jest.fn(), items: [] }),
+  addFeedback: (r) => r.ok,
+}));
 
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -397,15 +406,55 @@ describe("écran 2 — branches de statuts", () => {
   }, 12000);
 });
 
-describe("PL-005-FE-01 — l'historique quitte /suivi pour /commandes", () => {
-  test("/suivi : plus de section historique (liste refaite sur /commandes), formulaire de recherche intact", async () => {
+describe("PL-005-FE-02 — /suivi « COMMANDES » (liste embarquée + recherche)", () => {
+  // Tâches 1 et 2 — le titre + bouton de recherche remplacent le formulaire ;
+  // l'historique est embarqué (composant OrderHistory réutilisé).
+  test("connecté : bouton de recherche + historique embarqué, plus aucun formulaire 2 champs", async () => {
     mockUser = { user_id: "u1" };
-    mockHistory = [{ ...baseOrder, id: "ord-uuid-1" }];
+    mockHistory = [{ ...baseOrder, id: "ord-uuid-1", order_number: "MGS-B1" }];
     const { container, root } = await mount(<OrderTrack />);
-    expect(container.querySelector('[data-testid="track-form"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="order-history"]')).toBeNull();
-    expect(container.querySelector('[data-testid="order-history-toggle"]')).toBeNull();
-    expect(container.querySelector('[data-testid="order-history-empty"]')).toBeNull();
+    expect(container.querySelector('[data-testid="track-form"]')).toBeNull();
+    expect(container.querySelector('[data-testid="command-button-trigger"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="command-button-trigger"]').textContent).toContain("Rechercher");
+    expect(container.querySelector('[data-testid="order-history-page"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="order-history-card-MGS-B1"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="suivi-guest"]')).toBeNull();
+    await act(async () => root.unmount());
+  });
+
+  test("invité : message + bouton de connexion, historique jamais rendu", async () => {
+    const { container, root } = await mount(<OrderTrack />);
+    expect(container.querySelector('[data-testid="suivi-guest"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="suivi-guest-note"]').textContent)
+      .toBe(require("@/i18n/translations").translations.fr.order.loginToSee);
+    expect(container.querySelector('[data-testid="suivi-login"]').getAttribute("href")).toBe("/connexion");
+    expect(container.querySelector('[data-testid="order-history-page"]')).toBeNull();
+    expect(container.querySelector('[data-testid="command-button-trigger"]')).not.toBeNull();
+    await act(async () => root.unmount());
+  });
+});
+
+describe("PL-005-FE-02 (tâche 0) — fin de la boucle de navigation", () => {
+  // Avant : back = history.idx > 0 ? navigate(-1) : navigate("/") — le
+  // fallback PUSH faisait osciller /orders/:id ↔ / (accès direct, idx = 0).
+  // Après : navigation EXPLICITE en replace vers /suivi, toujours.
+  test("flèche du paiement → navigate('/suivi', { replace: true })", async () => {
+    mockOrderGet = resumeOrder();
+    const { container, root } = await mountResume();
+    await act(async () => container.querySelector('[data-testid="order-back"]').dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(mockNavigate).toHaveBeenCalledWith("/suivi", { replace: true });
+    expect(mockNavigate).not.toHaveBeenCalledWith(-1);
+    expect(mockNavigate).not.toHaveBeenCalledWith("/");
+    await act(async () => root.unmount());
+  });
+
+  test("page invité inaccessible 403 : le lien de sortie rapide (PC) pointe /suivi", async () => {
+    const { api } = require("@/lib/api");
+    api.get.mockImplementation((url) => url === "/payments/config"
+      ? Promise.resolve({ data: mockPayConfig })
+      : Promise.reject(Object.assign(new Error("nope"), { response: { status: 403 } })));
+    const { container, root } = await mountResume();
+    expect(container.querySelector('[data-testid="order-exit-suivi"]').getAttribute("href")).toBe("/suivi");
     await act(async () => root.unmount());
   });
 });

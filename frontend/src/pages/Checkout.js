@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AlertTriangle, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
@@ -118,7 +118,11 @@ export default function Checkout() {
 
   const receiveText = items.map((i) => `${i.qty} × ${i.name}`).join(", ");
 
-  const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate("/boutique"));
+  // PL-005-FE-02 (tâche 0) — même bug que l'écran de paiement : le fallback
+  // `navigate("/boutique")` était un PUSH (oscillation quand /commande est la
+  // première entrée d'historique). Le retour est désormais une navigation
+  // EXPLICITE en replace vers la boutique — jamais un empilement.
+  const back = () => navigate("/boutique", { replace: true });
 
   const setVerified = useCallback((v) => {
     setVerifiedState(v);
@@ -266,7 +270,16 @@ export default function Checkout() {
       <header className="flex h-[52px] flex-none items-center gap-2 px-1">
         <BackButton onClick={back} testId="checkout-back" />
         <h1 className="min-w-0 flex-1 truncate text-[16px] font-extrabold leading-tight" data-testid="checkout-title">{game?.name || t("checkout.title")}</h1>
-        <span className="h-8 w-8 shrink-0" aria-hidden="true" />
+        {/* PL-005-FE-02 (tâche 13) — sortie rapide PC vers la page des
+            commandes /suivi (le span vide, équilibre de l'en-tête, est
+            remplacé). Mobile : la flèche suffit. */}
+        <Link
+          to="/suivi"
+          data-testid="checkout-exit"
+          className="hidden min-h-[44px] flex-none items-center text-xs font-semibold text-muted-foreground underline decoration-dotted underline-offset-[3px] lg:inline-flex"
+        >
+          {t("order.viewTrack")}
+        </Link>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col px-1 pb-2">

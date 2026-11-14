@@ -20,7 +20,8 @@ import Product from "@/pages/Product";
 import Checkout from "@/pages/Checkout";
 import CheckoutConfirm from "@/pages/CheckoutConfirm";
 import OrderTrack from "@/pages/OrderTrack";
-import OrderHistory, { OrderDetail } from "@/pages/OrderHistory";
+import { OrderDetail } from "@/pages/OrderHistory";
+import OrdersRedirect from "@/components/common/OrdersRedirect";
 import PackEvolutif from "@/pages/PackEvolutif";
 import { Privacy, Terms } from "@/pages/Legal";
 import Events from "@/pages/Events";
@@ -57,11 +58,13 @@ function AppRouter() {
           {/* PL-CHK-3 : écran de reprise d'une commande (UUID invité ou propriétaire). */}
           <Route path="/orders/:orderId" element={<OrderTrack />} />
           {/* PL-005-FE-01 : historique client refait (maquette
-              apercu-historique-commandes.html) — liste /commandes, détail
-              /commandes/:orderId. Protégées comme /compte : données
-              personnelles du compte, les invités passent par /suivi (recherche
-              par numéro) ou /orders/:id (reprise). */}
-          <Route path="/commandes" element={<ProtectedRoute><OrderHistory /></ProtectedRoute>} />
+              apercu-historique-commandes.html) — détail /commandes/:orderId,
+              protégée comme /compte : données personnelles du compte.
+              PL-005-FE-02 : la liste vit directement sur /suivi (historique
+              embarqué dans la page de suivi) — /commandes devient une
+              redirection replace, les invités passent par /suivi ou
+              /orders/:id (reprise). */}
+          <Route path="/commandes" element={<OrdersRedirect />} />
           <Route path="/commandes/:orderId" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
           <Route path="/pack-evolutif" element={<PackEvolutif />} />
           <Route path="/terms" element={<Terms />} />

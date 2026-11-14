@@ -354,15 +354,19 @@ const PAGES = [
   // GET /orders/{id} via trackOrder. `refunded` n'existe pas encore cote API
   // (famille preparee) : le mock simule l'etat futur pour mesurer l'or des
   // des que le statut apparaitra.
-  { name: "commandes", path: "/commandes", loggedIn: true, ordersMe: [
+  // PL-005-FE-02 — la liste vit sur /suivi (CommandButton + OrderHistory
+  // embarqué) ; /commandes n'est qu'une redirection replace. `suivi-visiteur`
+  // mesure l'état invité (message + bouton de connexion + bouton recherche).
+  { name: "suivi", path: "/suivi", loggedIn: true, ordersMe: [
     HISTO_ORDER({ id: "ord_1", status: "pending_payment" }),
     HISTO_ORDER({ id: "ord_2", order_number: "MGS-123457", status: "delivered", paid_at: "2026-11-13T17:00:00Z" }),
     HISTO_ORDER({ id: "ord_3", order_number: "MGS-123458", status: "cancelled", cancel_reason: "cannot_pay_now", cancelled_at: "2026-11-13T17:05:00Z" }),
     HISTO_ORDER({ id: "ord_4", order_number: "MGS-123459", status: "refunded" }),
   ] },
-  { name: "commandes-paiement", path: "/commandes/ord_1", loggedIn: true, trackOrder: HISTO_ORDER({ status: "paid" }) },
-  { name: "commandes-livree", path: "/commandes/ord_1", loggedIn: true, trackOrder: HISTO_ORDER({ status: "delivered", paid_at: "2026-11-13T17:00:00Z" }) },
-  { name: "commandes-annulee", path: "/commandes/ord_1", loggedIn: true, trackOrder: HISTO_ORDER({ status: "cancelled", cancel_reason: "cannot_pay_now", cancelled_at: "2026-11-13T17:00:00Z", payment_proofs: [{ size: 10, content_type: "image/jpeg" }] }) },
+  { name: "suivi-visiteur", path: "/suivi", loggedIn: false },
+  { name: "suivi-detail-paiement", path: "/commandes/ord_1", loggedIn: true, trackOrder: HISTO_ORDER({ status: "paid" }) },
+  { name: "suivi-detail-livree", path: "/commandes/ord_1", loggedIn: true, trackOrder: HISTO_ORDER({ status: "delivered", paid_at: "2026-11-13T17:00:00Z" }) },
+  { name: "suivi-detail-annulee", path: "/commandes/ord_1", loggedIn: true, trackOrder: HISTO_ORDER({ status: "cancelled", cancel_reason: "cannot_pay_now", cancelled_at: "2026-11-13T17:00:00Z", payment_proofs: [{ size: 10, content_type: "image/jpeg" }] }) },
   // Etats du parcours d'identite multi-jeux (messages de verification).
   { name: "verif-invalide", path: "/commande", step: "verify", game: "mobile-legends",
     validate: { valid: false, code: "invalid_id" } },
@@ -571,6 +575,15 @@ const fill = async (pg, selector, value) => {
 
 // Amene le checkout a l'ecran demande.
 const driveCheckout = async (pg, step) => {
+  // PL-005-FE-02 — état du bouton de recherche de /suivi (écran 3, ouvert) :
+  // clic sur la pilule pour l'ouvrir (la page est déjà rendue), puis mesure.
+  if (step === "recherche") {
+    const trigger = await pg.$('[data-testid="command-button-trigger"]');
+    if (!trigger) return false;
+    await trigger.click();
+    await pg.waitForTimeout(600);
+    return true;
+  }
   // Etat INITIAL de l'ecran de verification : champ vide, donc bouton
   // « Verifier l'ID » desactive. C'est l'etat que voit le client a son
   // arrivee sur le checkout : il doit etre mesure tel quel.
