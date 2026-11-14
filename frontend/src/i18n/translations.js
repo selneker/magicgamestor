@@ -3,6 +3,26 @@ export const translations = {
     nav: { shop: "Boutique", uc: "Achat {UC}", prime: "Abonnement", evo: "Pack évolutif", events: "Event", eventsFull: "Événements", orders: "Commandes", account: "Compte", admin: "Admin", login: "Connexion", logout: "Déconnexion", track: "Suivi", cart: "Panier", support: "Support", messages: "Messages", pointsAria: "{n} points" },
     games: { title: "Jeux", select: "Choisir un jeu", current: "Jeu sélectionné", all: "Tous", seeAll: "Voir tous les jeux", search: "Rechercher un jeu…", searchEmptyTitle: "Aucun jeu trouvé", searchEmpty: "Aucun jeu ne correspond à votre recherche. Essayez un autre mot.", allCount: "{n} jeux affichés", allSub: "Tous les jeux ouverts à la vente sur la boutique.", eyebrow: "Boutique", pickTitle: "Choisissez votre jeu", pickSubtitle: "Sélectionnez un jeu pour afficher son catalogue.", comingSoon: "Bientôt", active: "Actif", empty: "Aucun jeu disponible pour le moment." },
     profile: { backToShop: "Boutique", loyalty: "Points fidélité", quickAccess: "Accès rapide", preferences: "Préférences", security: "Sécurité", helpLegal: "Aide & légal", editProfile: "Modifier mon profil", pubgCard: "Ma PUBG Player Card", myOrders: "Mes commandes", language: "Langue", theme: "Thème", themeLight: "Clair", themeDark: "Sombre", themeSystem: "Système", password: "Mot de passe", deleteAccount: "Supprimer mon compte", helpSupport: "Aide & support", privacy: "Confidentialité", terms: "Conditions d'utilisation", avatarLocked: "Avatar non modifiable" },
+    // Textes de référencement (titres et descriptions lus par Google et les
+    // réseaux sociaux) : jamais affichés dans l'interface, mais localisés
+    // comme le reste du site.
+    seo: {
+      homeTitle: "UC PUBG Mobile à Madagascar",
+      homeDescription: "Achetez vos UC PUBG Mobile, Prime et Prime+ à Madagascar. Prix en ariary, paiement MVola, Orange Money ou Binance USDT, compte joueur vérifié avant paiement.",
+      gamesTitle: "Jeux mobiles disponibles",
+      gamesDescription: "Tous les jeux ouverts à la vente sur Magic Game Store : recharges PUBG Mobile, UC, abonnements Prime et packs évolutifs, payés en ariary à Madagascar.",
+      catalogTitle: "Boutique de recharges de jeux",
+      catalogDescription: "Packs {game} : UC, Prime, Prime+ et packs évolutifs. Prix en ariary, paiement MVola, Orange Money ou Binance USDT, livraison sur compte vérifié.",
+      eventsTitle: "Événements & promotions",
+      eventsDescription: "Promotions et événements jeux mobiles à Madagascar : offres UC PUBG Mobile, packs évolutifs et Royal Pass, réservés aux joueurs malgaches.",
+      packTitle: "Packs évolutifs PUBG Mobile",
+      packDescription: "Packs évolutifs PUBG Mobile : achetez votre progression, vérifiez votre ID joueur puis payez par MVola, Orange Money ou Binance USDT.",
+      termsTitle: "Conditions d'utilisation",
+      termsDescription: "Conditions d'utilisation de Magic Game Store : commandes, prix en ariary, paiements MVola, Orange Money et USDT, livraison et remboursement.",
+      privacyTitle: "Politique de confidentialité",
+      privacyDescription: "Politique de confidentialité de Magic Game Store : données collectées, cookies, conservation et suppression de votre compte client.",
+      productDescription: "Recharge {game} livrée sur votre compte joueur vérifié. Prix en ariary, paiement MVola, Orange Money ou Binance USDT, suivi de commande en temps réel.",
+    },
     store: {
       heroEyebrow: "Recharges de jeux · Madagascar", heroA: "Rechargez vos jeux.", heroB: "Sans détour.",
       heroSub: "Choisissez votre jeu, vérifiez votre compte joueur, payez par Mobile Money ou USDT. Chaque commande est suivie jusqu'à la livraison.",
@@ -196,6 +216,25 @@ cart: { otherGame: "Votre panier contient des offres d'un autre jeu. Finalisez o
     nav: { shop: "Shop", uc: "Buy {UC}", prime: "Subscription", evo: "Evolving Pack", events: "Event", eventsFull: "Events", orders: "Orders", account: "Account", admin: "Admin", login: "Log in", logout: "Log out", track: "Track", cart: "Cart", support: "Support", messages: "Messages", pointsAria: "{n} points" },
     games: { title: "Games", select: "Pick a game", current: "Selected game", all: "All", seeAll: "See all games", search: "Search a game…", searchEmptyTitle: "No game found", searchEmpty: "No game matches your search. Try another word.", allCount: "{n} games shown", allSub: "Every game open for sale in the store.", eyebrow: "Shop", pickTitle: "Choose your game", pickSubtitle: "Pick a game to open its catalog.", comingSoon: "Coming soon", active: "Active", empty: "No game available right now." },
     profile: { backToShop: "Shop", loyalty: "Loyalty points", quickAccess: "Quick access", preferences: "Preferences", security: "Security", helpLegal: "Help & legal", editProfile: "Edit my profile", pubgCard: "My PUBG Player Card", myOrders: "My orders", language: "Language", theme: "Theme", themeLight: "Light", themeDark: "Dark", themeSystem: "System", password: "Password", deleteAccount: "Delete my account", helpSupport: "Help & support", privacy: "Privacy", terms: "Terms of use", avatarLocked: "Avatar locked" },
+    // Search-engine copy (titles and descriptions read by Google and social
+    // networks): never rendered in the UI, but localised like the rest.
+    seo: {
+      homeTitle: "PUBG Mobile UC in Madagascar",
+      homeDescription: "Buy PUBG Mobile UC, Prime and Prime+ in Madagascar. Prices in ariary, pay with MVola, Orange Money or Binance USDT. Player account verified before payment.",
+      gamesTitle: "Available mobile games",
+      gamesDescription: "Every game open for sale on Magic Game Store: PUBG Mobile top-ups, UC, Prime subscriptions and evolving packs, priced in ariary for Madagascar.",
+      catalogTitle: "Game top-up store",
+      catalogDescription: "{game} packs: UC, Prime, Prime+ and evolving packs. Prices in ariary, pay with MVola, Orange Money or Binance USDT, delivered to a verified account.",
+      eventsTitle: "Events & promotions",
+      eventsDescription: "Mobile game promotions and events in Madagascar: PUBG Mobile UC offers, evolving packs and Royal Pass, for Malagasy players.",
+      packTitle: "PUBG Mobile evolving packs",
+      packDescription: "PUBG Mobile evolving packs: buy your progression, verify your player ID then pay with MVola, Orange Money or Binance USDT.",
+      termsTitle: "Terms of use",
+      termsDescription: "Magic Game Store terms of use: orders, prices in ariary, MVola, Orange Money and USDT payments, delivery and refunds.",
+      privacyTitle: "Privacy policy",
+      privacyDescription: "Magic Game Store privacy policy: data collected, cookies, retention and deletion of your customer account.",
+      productDescription: "{game} top-up delivered to your verified player account. Prices in ariary, pay with MVola, Orange Money or Binance USDT, real-time order tracking.",
+    },
     store: {
       heroEyebrow: "Game top-ups · Madagascar", heroA: "Top up your games.", heroB: "No detours.",
       heroSub: "Pick your game, verify your player account, pay with Mobile Money or USDT. Every order is tracked until delivery.",

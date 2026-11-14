@@ -1,4 +1,5 @@
 import { useLang } from "@/context/LanguageContext";
+import { usePageMeta } from "@/lib/catalog";
 
 const CONTACT_EMAIL = "contact@magicgame.store";
 const UPDATED = { fr: "28 septembre 2026", en: "September 28, 2026" };
@@ -79,8 +80,9 @@ const PRIVACY = {
   ],
 };
 
-function LegalPage({ title, sections, testid }) {
+function LegalPage({ title, sections, testid, metaTitle, metaDescription }) {
   const { lang } = useLang();
+  usePageMeta(metaTitle, metaDescription);
   return (
     <article className="mx-auto max-w-3xl pb-24 pt-8" data-testid={testid}>
       <h1 className="font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">{title}</h1>
@@ -102,11 +104,11 @@ function LegalPage({ title, sections, testid }) {
 }
 
 export function Terms() {
-  const { lang } = useLang();
-  return <LegalPage testid="terms-page" title={lang === "en" ? "Terms of use" : "Conditions d'utilisation"} sections={TERMS[lang] || TERMS.fr} />;
+  const { lang, t } = useLang();
+  return <LegalPage testid="terms-page" metaTitle={t("seo.termsTitle")} metaDescription={t("seo.termsDescription")} title={lang === "en" ? "Terms of use" : "Conditions d'utilisation"} sections={TERMS[lang] || TERMS.fr} />;
 }
 
 export function Privacy() {
-  const { lang } = useLang();
-  return <LegalPage testid="privacy-page" title={lang === "en" ? "Privacy policy" : "Politique de confidentialité"} sections={PRIVACY[lang] || PRIVACY.fr} />;
+  const { lang, t } = useLang();
+  return <LegalPage testid="privacy-page" metaTitle={t("seo.privacyTitle")} metaDescription={t("seo.privacyDescription")} title={lang === "en" ? "Privacy policy" : "Politique de confidentialité"} sections={PRIVACY[lang] || PRIVACY.fr} />;
 }

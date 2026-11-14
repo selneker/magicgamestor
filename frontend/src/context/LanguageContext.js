@@ -1,10 +1,15 @@
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { translations } from "@/i18n/translations";
 
 const LanguageContext = createContext(null);
 
 export function LanguageProvider({ children }) {
   const [lang, setLangState] = useState(() => localStorage.getItem("mgs_lang") || "fr");
+  // `lang` est aussi une information de référencement : l'attribut <html lang>
+  // doit refléter la langue dès le premier rendu (pas seulement au clic).
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
   const setLang = useCallback((l) => {
     localStorage.setItem("mgs_lang", l);
     setLangState(l);

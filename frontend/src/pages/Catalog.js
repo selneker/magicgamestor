@@ -31,7 +31,7 @@ function ProductSection({ id, title, products, popularIds, bestUnitId }) {
 // `/boutique` without `?game=` always shows this picker; only backend-authorized games are listed.
 function GamePicker({ games, onPick }) {
   const { t } = useLang();
-  usePageMeta(t("games.pickTitle"));
+  usePageMeta(t("seo.catalogTitle"), t("seo.gamesDescription"));
   return (
     <div className="pb-24 pt-6" data-testid="game-picker">
       <div className="border-b pb-5">
@@ -100,7 +100,10 @@ export default function Catalog() {
   // Libellé monétaire du jeu pour les titres (« Packs Diamants », « Prix par CP »…) ;
   // « UC » seulement en dernier recours si le jeu n'a pas de monnaie configurée (comportement historique PUBG).
   const currencyLabel = currencyOf(currentGame) || "UC";
-  usePageMeta(currentGame ? `${currentGame.name} — ${t("catalog.title")}` : null);
+  usePageMeta(
+    currentGame ? `${currentGame.name} — ${t("catalog.title")}` : t("seo.catalogTitle"),
+    currentGame ? t("seo.catalogDescription", { game: currentGame.name }) : t("seo.gamesDescription"),
+  );
 
   const update = (patch) => {
     const next = new URLSearchParams(params);

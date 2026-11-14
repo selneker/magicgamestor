@@ -5,9 +5,11 @@ import { toast } from "sonner";
 import { api, sessionId } from "@/lib/api";
 import { useLang, localized } from "@/context/LanguageContext";
 import { Button } from "@/components/ui/button";
+import { usePageMeta } from "@/lib/catalog";
 
 export default function Events() {
   const { t, lang } = useLang();
+  usePageMeta(t("seo.eventsTitle"), t("seo.eventsDescription"));
   const [events, setEvents] = useState([]);
   const [liked, setLiked] = useState(() => new Set(JSON.parse(localStorage.getItem("mgs_liked") || "[]")));
 

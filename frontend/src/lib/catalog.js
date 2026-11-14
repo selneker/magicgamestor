@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { DEFAULT_TITLE, PAGE_JSONLD_ID, SITE_NAME, setJsonLd, setMeta, setProperty } from "@/lib/seo";
 
 export const DEFAULT_GAME = "pubg-mobile";
 export const gameOf = (p) => p?.game_id || DEFAULT_GAME;
@@ -19,9 +20,30 @@ export const productFigure = (p, game, lang) => {
   return { value: typeLabel(game, p.type, lang), unit: "" };
 };
 
-export function usePageMeta(title, description) {
+// Métadonnées d'une page : titre, description, Open Graph / Twitter et, si la
+// page en fournit, un bloc JSON-LD (schema.org) propre à la page. La canonical,
+// les robots et les mots-clés sont gérés route par route par <SeoManager/>.
+export function usePageMeta(title, description, options = {}) {
+  const jsonLd = options?.jsonLd;
+  const enabled = options?.enabled !== false;
+  const jsonLdKey = jsonLd ? JSON.stringify(jsonLd) : "";
   useEffect(() => {
-    document.title = title ? `${title} · Magic Game Store` : "Magic Game Store — Recharges de jeux à Madagascar";
-    if (description) document.querySelector('meta[name="description"]')?.setAttribute("content", description);
-  }, [title, description]);
+    if (!enabled) return undefined;
+    const fullTitle = title ? `${title} · ${SITE_NAME}` : DEFAULT_TITLE;
+    document.title = fullTitle;
+    setProperty("og:title", fullTitle);
+    setMeta("twitter:title", fullTitle);
+    if (description) {
+      setMeta("description", description);
+      setProperty("og:description", description);
+      setMeta("twitter:description", description);
+    }
+    if (jsonLdKey) setJsonLd(PAGE_JSONLD_ID, JSON.parse(jsonLdKey));
+    return () => {
+      // Le JSON-LD de page ne doit pas survivre à la navigation : sans ça,
+      // Google lit le produit d'une page précédente sur la page suivante.
+      // (L'effet suivant le réécrit s'il y a lieu.)
+      document.getElementById(PAGE_JSONLD_ID)?.remove();
+    };
+  }, [title, description, jsonLdKey, enabled]);
 }

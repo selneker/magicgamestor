@@ -19,7 +19,7 @@ const DEBOUNCE_MS = 250;
 export default function Games() {
   const { t } = useLang();
   const { games, loadingGames } = useGames();
-  usePageMeta(t("games.pickTitle"));
+  usePageMeta(t("seo.gamesTitle"), t("seo.gamesDescription"));
   const [raw, setRaw] = useState("");
   const [query, setQuery] = useState("");
   // Délai de frappe : l'état de recherche suit la saisie avec DEBOUNCE_MS.

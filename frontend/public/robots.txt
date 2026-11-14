@@ -1,0 +1,20 @@
+# robots.txt — Magic Game Store (https://magicgame.store)
+# Pages publiques indexables ; espace client, commande, paiement et
+# administration exclus de l'index.
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /compte
+Disallow: /commande
+Disallow: /chat
+Disallow: /support
+Disallow: /connexion
+Disallow: /inscription
+Disallow: /mot-de-passe-oublie
+Disallow: /reinitialiser
+Disallow: /verifier-email
+Disallow: /suivi
+Disallow: /orders
+
+Sitemap: https://magicgame.store/sitemap.xml

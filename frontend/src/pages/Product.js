@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ChevronLeft, ShieldCheck, ShoppingBag, Zap } from "lucide-react";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ import { GameLogo } from "@/pages/Home";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { gameOf, productFigure, typeLabel, usePageMeta } from "@/lib/catalog";
+import { SITE_URL, absoluteImage } from "@/lib/seo";
 
 export default function Product() {
   const { slug } = useParams();
@@ -21,7 +22,50 @@ export default function Product() {
   const [product, setProduct] = useState(null);
   const [missing, setMissing] = useState(false);
   const [imgOk, setImgOk] = useState(true);
-  usePageMeta(product ? productName(product, lang) : null, product ? localized(product, "description", lang) : undefined);
+  const game = useMemo(() => (product ? games.find((g) => g.id === gameOf(product)) : null), [games, product]);
+  const productNameValue = product ? productName(product, lang) : "";
+  const productDescription = product
+    ? localized(product, "description", lang)
+      || (game?.name ? t("seo.productDescription", { game: game.name }) : t("seo.gamesDescription"))
+    : undefined;
+  // Fiche produit + fil d'Ariane en schema.org : c'est ce que Google lit pour
+  // afficher le prix, la disponibilité et le chemin dans les résultats.
+  const productJsonLd = useMemo(() => {
+    if (!product) return undefined;
+    const available = product.purchasable !== false;
+    const url = `${SITE_URL}/produit/${product.slug}`;
+    return {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Product",
+          name: productNameValue,
+          description: productDescription,
+          sku: product.slug,
+          image: [absoluteImage(product.image_url)],
+          brand: { "@type": "Brand", name: "Magic Game Store" },
+          category: game?.name || undefined,
+          offers: {
+            "@type": "Offer",
+            url,
+            price: Number(product.price),
+            priceCurrency: "MGA",
+            availability: available ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+            seller: { "@type": "Organization", name: "Magic Game Store" },
+          },
+        },
+        {
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Magic Game Store", item: `${SITE_URL}/` },
+            { "@type": "ListItem", position: 2, name: game?.name || t("catalog.title"), item: `${SITE_URL}/boutique${game ? `?game=${encodeURIComponent(game.id)}` : ""}` },
+            { "@type": "ListItem", position: 3, name: productNameValue, item: url },
+          ],
+        },
+      ],
+    };
+  }, [product, productNameValue, productDescription, game, t]);
+  usePageMeta(productNameValue || null, productDescription, { jsonLd: productJsonLd });
 
   useEffect(() => {
     setProduct(null); setMissing(false); setImgOk(true);
@@ -39,7 +83,6 @@ export default function Product() {
   }
   if (!product) return <div className="grid gap-6 py-8 lg:grid-cols-2"><Skeleton className="h-80 rounded-[18px]" /><Skeleton className="h-80 rounded-[18px]" /></div>;
 
-  const game = games.find((g) => g.id === gameOf(product));
   const { value, unit } = productFigure(product, game, lang);
   const available = product.purchasable !== false;
   const discount = product.old_price ? Math.round((1 - product.price / product.old_price) * 100) : 0;

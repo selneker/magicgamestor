@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, ArrowUp, ArrowUpRight, Gamepad2, HelpCircle, MessageCircle, Receipt, ShieldCheck, Wallet } from "lucide-react";
@@ -230,7 +230,18 @@ export default function Home() {
   const [products, setProducts] = useState(null);
   const [subs, setSubs] = useState(null);
   const [events, setEvents] = useState([]);
-  usePageMeta(null, t("store.heroSub"));
+  // FAQ de la page d'accueil → données structurées FAQPage : Google peut
+  // afficher ces questions directement dans les résultats de recherche.
+  const faqJsonLd = useMemo(() => ({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: ["1", "2", "3", "4"].map((i) => ({
+      "@type": "Question",
+      name: t(`store.faq${i}q`),
+      acceptedAnswer: { "@type": "Answer", text: t(`store.faq${i}a`) },
+    })),
+  }), [t]);
+  usePageMeta(t("seo.homeTitle"), t("seo.homeDescription"), { jsonLd: faqJsonLd });
   useEffect(() => {
     Promise.all([
       api.get("/products", { params: { popular: true } }),

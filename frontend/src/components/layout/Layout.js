@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { CartDrawer } from "@/components/store/CartDrawer";
 import { GameProvider } from "@/context/GameContext";
 import { PageTransition } from "@/components/layout/PageTransition";
+import SeoManager from "@/components/layout/SeoManager";
 import { useLocation } from "react-router-dom";
 import { hidesBottomChrome, isFocusedRoute, showsSiteFooter } from "@/lib/bottomChrome";
 
@@ -26,6 +27,7 @@ export default function Layout() {
   const withFooter = showsSiteFooter(pathname);
   return (
     <GameProvider>
+      <SeoManager />
       <div className="min-h-screen bg-background overflow-x-hidden">
         {!focused && <Header />}
         {!focused && <PendingOrderBanner />}

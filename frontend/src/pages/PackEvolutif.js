@@ -8,11 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { usePageMeta } from "@/lib/catalog";
 
 export default function PackEvolutif({ embedded = false, products = null }) {
   const { t, lang } = useLang();
   const { add } = useCart();
   const navigate = useNavigate();
+  // Cette page est aussi rendue en mode `embedded` dans le catalogue : dans ce
+  // cas elle ne doit pas écraser les métadonnées de la page catalogue.
+  usePageMeta(t("seo.packTitle"), t("seo.packDescription"), { enabled: !embedded });
   const [offers, setOffers] = useState(null);
   const [seasonInfo, setSeasonInfo] = useState(null);
   const [selected, setSelected] = useState(null);
