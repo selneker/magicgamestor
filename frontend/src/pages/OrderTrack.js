@@ -412,13 +412,6 @@ function OrderTrackSearch() {
   const [order, setOrder] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [history, setHistory] = useState(null);
-  const [showAll, setShowAll] = useState(false);
-
-  useEffect(() => {
-    if (!user) { setHistory(null); return; }
-    api.get("/orders/me").then((r) => setHistory(r.data)).catch(() => setHistory([]));
-  }, [user]);
 
   const search = async (n = number, p = pubgId) => {
     if (!n || !p) return;
@@ -440,7 +433,7 @@ function OrderTrackSearch() {
   return (
     <div className="mx-auto max-w-2xl pb-24 pt-6">
       <h1 className="font-display text-3xl font-bold text-slate-900 sm:text-4xl">{t("order.track")}</h1>
-      {user && <p className="mt-1 text-sm text-slate-500"><Link to="/compte" className="font-semibold text-primary" data-testid="go-to-account">{t("account.orders")} →</Link></p>}
+      {user && <p className="mt-1 text-sm text-slate-500"><Link to="/commandes" className="font-semibold text-primary" data-testid="go-to-account">{t("account.orders")} →</Link></p>}
       <form onSubmit={(e) => { e.preventDefault(); search(); }} className="mt-6 grid gap-3 rounded-[2rem] border border-slate-100 bg-white p-5 sm:grid-cols-[1fr_1fr_auto]" data-testid="track-form">
         <Input data-testid="track-order-number" value={number} onChange={(e) => setNumber(e.target.value.toUpperCase())} placeholder="MGS-XXXXXX" className="h-12 rounded-xl font-mono" required />
         <Input data-testid="track-pubg-id" value={pubgId} onChange={(e) => setPubgId(e.target.value.replace(/\D/g, ""))} placeholder={t("checkout.pubgId")} className="h-12 rounded-xl" required inputMode="numeric" />
@@ -461,55 +454,10 @@ function OrderTrackSearch() {
           )}
         </div>
       )}
-      {user && history && (
-        <section className="mt-12" data-testid="order-history">
-          <div className="flex items-end justify-between gap-3">
-            <h2 className="font-display text-xl font-bold text-slate-900 sm:text-2xl">{t("order.history")}</h2>
-            {history.length > 5 && (
-              <button onClick={() => setShowAll((s) => !s)} className="text-sm font-semibold text-primary" data-testid="order-history-toggle">
-                {showAll ? t("order.seeLess") : `${t("order.seeAll")} (${history.length})`}
-              </button>
-            )}
-          </div>
-          {history.length === 0 ? (
-            <p className="mt-4 rounded-2xl border border-slate-100 bg-white p-6 text-sm text-slate-500" data-testid="order-history-empty">{t("order.historyEmpty")}</p>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {history.slice(0, showAll ? 100 : 5).map((o) => (
-                <li key={o.id} data-testid={`history-order-${o.order_number}`} className="rounded-2xl border border-slate-100 bg-white p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-                    <div className="min-w-0">
-                      <p className="flex flex-wrap items-center gap-2.5">
-                        <span className="num text-lg text-foreground">{o.order_number}</span>
-                        <StatusPill status={o.status} />
-                      </p>
-                      <p className="mt-2 truncate text-sm font-medium text-slate-700">{o.items.map((i) => `${i.quantity}× ${i.name}`).join(", ")}</p>
-                      <p className="mt-1.5 text-xs text-slate-500">{new Date(o.created_at).toLocaleString("fr-FR")} · <OrderIdentity order={o} /></p>
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end gap-2.5">
-                      <span className="num text-xl text-foreground">{formatAr(o.total)}</span>
-                      {/* PL-CHK-3 — commande en attente : bouton de reprise menant à
-                          /orders/:id (écran complet). Labels par statut/méthode. */}
-                      {["pending_payment", "proof_submitted"].includes(o.status) && (
-                        <Button asChild size="sm" className="h-8 rounded-full px-4 text-xs font-bold" data-testid={`history-resume-${o.order_number}`}>
-                          <Link to={`/orders/${o.id}`}>
-                            {o.status === "proof_submitted" ? t("order.resumeView")
-                              : o.payment_method === "manual" ? t("order.resumeProof") : t("order.resumePay")}
-                          </Link>
-                        </Button>
-                      )}
-                      <Button size="sm" variant="outline" className="h-8 rounded-full px-4 text-xs font-bold" data-testid={`history-track-${o.order_number}`}
-                        onClick={() => { setNumber(o.order_number); setPubgId(o.pubg_id); search(o.order_number, o.pubg_id); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
-                        {t("order.viewTrack")}
-                      </Button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
+      {/* PL-005-FE-01 — l'historique « Mes commandes » vit désormais sur
+          /commandes (liste refaite d'après la maquette, onglets + cartes
+          arrondies). /suivi reste l'écran de recherche par numéro pour les
+          invités et les accès ponctuels. */}
     </div>
   );
 }

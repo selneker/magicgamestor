@@ -155,12 +155,25 @@ cart: { otherGame: "Votre panier contient des offres d'un autre jeu. Finalisez o
       title: "Commande", track: "Suivre une commande", number: "Numéro de commande", find: "Rechercher", notFound: "Commande introuvable.", items: "Articles", method: "Paiement", methodOther: "Autre", date: "Date", none: "Aucune commande pour le moment.",
       history: "Historique de mes achats", historyEmpty: "Aucun achat pour le moment. Vos commandes apparaîtront ici.", viewTrack: "Voir le suivi", seeAll: "Voir tout", seeLess: "Voir moins",
       latePayment: "Un paiement a été reçu après le délai de 15 minutes. Notre équipe vérifie et vous recontacte.",
-      status: { pending_payment: "Paiement en attente", awaiting_verification: "Vérification en cours", proof_submitted: "Preuve en vérification", late_payment: "Paiement tardif, en vérification", paid: "Payée — livraison en cours", delivered: "Livrée", cancelled: "Annulée", failed: "Paiement échoué", expired: "Paiement expiré" },
+      status: { pending_payment: "Paiement en attente", awaiting_verification: "Vérification en cours", proof_submitted: "Preuve en vérification", late_payment: "Paiement tardif, en vérification", paid: "Payée — livraison en cours", delivered: "Livrée", cancelled: "Annulée", failed: "Paiement échoué", expired: "Paiement expiré", refunded: "Remboursée" },
       next: { pending_payment: "Validez le paiement sur votre téléphone.", awaiting_verification: "Nous vérifions votre référence. Livraison sous peu.", proof_submitted: "Nous vérifions vos captures d'écran. Livraison sous peu.", late_payment: "Paiement reçu après expiration, notre équipe vérifie votre commande.", paid: "Paiement reçu. Vos UC arrivent sur votre compte.", delivered: "C'est livré ! Bon jeu.", cancelled: "Contactez-nous si c'est une erreur.", failed: "Le paiement n'a pas abouti. Vous pouvez réessayer.", expired: "Le délai de paiement est dépassé. Relancez le paiement pour obtenir un nouveau lien." },
       // PL-CHK-3 — reprise de commande : bannière + écran /orders/:id + boutons de liste.
       banner: { live: "Commande en cours", continue: "Continuer", viewOrders: "Voir mes commandes", proofWaiting: "Preuve envoyée · vérification en cours" },
       resumePay: "Continuer le paiement", resumeProof: "Envoyer la preuve", resumeView: "Voir l'état",
       notAvailable: "Commande indisponible", notAvailableBody: "Cette commande n'est pas accessible depuis ce compte ou ce navigateur.", backHome: "Retour à l'accueil",
+      // PL-005-FE-01 — historique refait (/commandes + /commandes/:id).
+      tabs: { all: "Toutes", progress: "En cours", done: "Terminées" },
+      helpAsk: "Besoin d'aide ?", chat: "Chat", copyNumber: "Copier le numéro de commande",
+      detail: {
+        product: "Produit", playerId: "ID joueur", method: "Méthode", orderedAt: "Commandée le",
+        detailsAria: "Afficher ou masquer les informations de paiement",
+        helpRow: "Besoin d'aide avec cette commande", receiptAction: "Télécharger le reçu", orderAgain: "Commander à nouveau",
+        extra: { proofs: "Preuves de paiement", proofCount: "{n} preuve(s) envoyée(s)", cancelReason: "Raison de l'annulation", note: "Message", cancelledAt: "Annulée le" },
+      },
+      receipt: {
+        title: "Reçu", status: "Statut", game: "Jeu", product: "Produit", playerId: "ID joueur", method: "Méthode de paiement", amount: "Montant", fee: "Frais de paiement",
+        footer: "Reçu généré par magicgame.store. Conservez-le pour toute réclamation.",
+      },
     },
     account: { title: "Mon compte", profile: "Profil", name: "Nom", phone: "Téléphone", pubgIds: "Mes IDs PUBG", save: "Enregistrer", saved: "Profil mis à jour", orders: "Mes commandes", memberSince: "Membre depuis",
       pubgCard: { title: "Ma PUBG Player Card", pubgId: "PUBG ID", kd: "K/D", clan: "Clan", collection: "Niveau de collection", collectionLabel: "COLLECTION", download: "Télécharger ma carte", save: "Enregistrer", saved: "Carte enregistrée", empty: "Complétez vos informations PUBG pour générer votre carte.", complete: "Compléter mon profil", brand: "MAGIC GAME STORE", subtitle: "PUBG PLAYER CARD", placeholder: "—", edit: "Modifier ma carte", cancel: "Annuler" },
@@ -367,12 +380,25 @@ cart: { otherGame: "Your cart holds offers from another game. Check out or empty
       title: "Order", track: "Track an order", number: "Order number", find: "Find", notFound: "Order not found.", items: "Items", method: "Payment", methodOther: "Other", date: "Date", none: "No orders yet.",
       history: "My purchase history", historyEmpty: "No purchases yet. Your orders will appear here.", viewTrack: "View tracking", seeAll: "See all", seeLess: "See less",
       latePayment: "A payment was received after the 15-minute deadline. Our team is checking and will contact you.",
-      status: { pending_payment: "Payment pending", awaiting_verification: "Under verification", proof_submitted: "Proof under review", late_payment: "Late payment, under review", paid: "Paid — delivering", delivered: "Delivered", cancelled: "Cancelled", failed: "Payment failed", expired: "Payment expired" },
+      status: { pending_payment: "Payment pending", awaiting_verification: "Under verification", proof_submitted: "Proof under review", late_payment: "Late payment, under review", paid: "Paid — delivering", delivered: "Delivered", cancelled: "Cancelled", failed: "Payment failed", expired: "Payment expired", refunded: "Refunded" },
       next: { pending_payment: "Validate the payment on your phone.", awaiting_verification: "We are checking your reference. Delivery shortly.", proof_submitted: "We are reviewing your screenshots. Delivery shortly.", late_payment: "Payment received after expiry, our team is reviewing your order.", paid: "Payment received. Your UC are on the way.", delivered: "Delivered! Enjoy the game.", cancelled: "Contact us if this is a mistake.", failed: "Payment did not go through. You can retry.", expired: "The payment window has passed. Retry to get a new payment link." },
       // PL-CHK-3 — order resume: banner + /orders/:id screen + list buttons.
       banner: { live: "Order in progress", continue: "Continue", viewOrders: "View my orders", proofWaiting: "Proof sent · under review" },
       resumePay: "Continue payment", resumeProof: "Send proof", resumeView: "View status",
       notAvailable: "Order unavailable", notAvailableBody: "This order is not accessible from this account or browser.", backHome: "Back to home",
+      // PL-005-FE-01 — reworked order history (/commandes + /commandes/:id).
+      tabs: { all: "All", progress: "In progress", done: "Completed" },
+      helpAsk: "Need help?", chat: "Chat", copyNumber: "Copy order number",
+      detail: {
+        product: "Product", playerId: "Player ID", method: "Method", orderedAt: "Ordered on",
+        detailsAria: "Show or hide payment information",
+        helpRow: "Need help with this order", receiptAction: "Download receipt", orderAgain: "Order again",
+        extra: { proofs: "Payment proofs", proofCount: "{n} proof(s) submitted", cancelReason: "Cancellation reason", note: "Message", cancelledAt: "Cancelled on" },
+      },
+      receipt: {
+        title: "Receipt", status: "Status", game: "Game", product: "Product", playerId: "Player ID", method: "Payment method", amount: "Amount", fee: "Payment fee",
+        footer: "Receipt generated by magicgame.store. Keep it for any claim.",
+      },
     },
     account: { title: "My account", profile: "Profile", name: "Name", phone: "Phone", pubgIds: "My PUBG IDs", save: "Save", saved: "Profile updated", orders: "My orders", memberSince: "Member since",
       pubgCard: { title: "My PUBG Player Card", pubgId: "PUBG ID", kd: "K/D", clan: "Clan", collection: "Collection Level", collectionLabel: "COLLECTION", download: "Download my card", save: "Save", saved: "Card saved", empty: "Complete your PUBG information to generate your card.", complete: "Complete my profile", brand: "MAGIC GAME STORE", subtitle: "PUBG PLAYER CARD", placeholder: "—", edit: "Edit my card", cancel: "Cancel" },

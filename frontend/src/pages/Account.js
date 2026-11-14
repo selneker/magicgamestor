@@ -203,7 +203,7 @@ export default function Account() {
           <PubgPlayerCard />
         </ExpandableBlock>
 
-        <Row icon={ReceiptText} label={t("profile.myOrders")} helper={t("order.history")} to="/suivi" testid="row-my-orders" />
+        <Row icon={ReceiptText} label={t("profile.myOrders")} helper={t("order.history")} to="/commandes" testid="row-my-orders" />
         <Row icon={Coins} label={t("loyalty.title")} helper={points !== null ? `${points} pts` : undefined} to="/compte/points" testid="row-loyalty" accent />
       </Section>
 

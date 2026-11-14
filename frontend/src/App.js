@@ -20,6 +20,7 @@ import Product from "@/pages/Product";
 import Checkout from "@/pages/Checkout";
 import CheckoutConfirm from "@/pages/CheckoutConfirm";
 import OrderTrack from "@/pages/OrderTrack";
+import OrderHistory, { OrderDetail } from "@/pages/OrderHistory";
 import PackEvolutif from "@/pages/PackEvolutif";
 import { Privacy, Terms } from "@/pages/Legal";
 import Events from "@/pages/Events";
@@ -55,6 +56,13 @@ function AppRouter() {
           <Route path="/suivi/:orderNumber" element={<OrderTrack />} />
           {/* PL-CHK-3 : écran de reprise d'une commande (UUID invité ou propriétaire). */}
           <Route path="/orders/:orderId" element={<OrderTrack />} />
+          {/* PL-005-FE-01 : historique client refait (maquette
+              apercu-historique-commandes.html) — liste /commandes, détail
+              /commandes/:orderId. Protégées comme /compte : données
+              personnelles du compte, les invités passent par /suivi (recherche
+              par numéro) ou /orders/:id (reprise). */}
+          <Route path="/commandes" element={<ProtectedRoute><OrderHistory /></ProtectedRoute>} />
+          <Route path="/commandes/:orderId" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
           <Route path="/pack-evolutif" element={<PackEvolutif />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
