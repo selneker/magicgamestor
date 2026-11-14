@@ -397,23 +397,15 @@ describe("écran 2 — branches de statuts", () => {
   }, 12000);
 });
 
-describe("PL-CHK-3 — boutons de reprise dans la liste des commandes", () => {
-  const hist = (overrides = {}) => ({ ...baseOrder, id: "ord-uuid-1", ...overrides });
-
-  test("pending manual → « Envoyer la preuve », pending auto → « Continuer le paiement », proof_submitted → « Voir l'état »", async () => {
+describe("PL-005-FE-01 — l'historique quitte /suivi pour /commandes", () => {
+  test("/suivi : plus de section historique (liste refaite sur /commandes), formulaire de recherche intact", async () => {
     mockUser = { user_id: "u1" };
-    mockHistory = [
-      hist({ order_number: "MGS-D1", payment_method: "manual" }),
-      hist({ order_number: "MGS-D2", id: "ord-auto", payment_method: "mvola" }),
-      hist({ order_number: "MGS-D3", id: "ord-proof", status: "proof_submitted" }),
-      hist({ order_number: "MGS-D4", id: "ord-done", status: "delivered" }),
-    ];
+    mockHistory = [{ ...baseOrder, id: "ord-uuid-1" }];
     const { container, root } = await mount(<OrderTrack />);
-    expect(container.querySelector('[data-testid="history-resume-MGS-D1"]').getAttribute("href")).toBe("/orders/ord-uuid-1");
-    expect(container.querySelector('[data-testid="history-resume-MGS-D1"]').textContent).toBe("Envoyer la preuve");
-    expect(container.querySelector('[data-testid="history-resume-MGS-D2"]').textContent).toBe("Continuer le paiement");
-    expect(container.querySelector('[data-testid="history-resume-MGS-D3"]').textContent).toBe("Voir l'état");
-    expect(container.querySelector('[data-testid="history-resume-MGS-D4"]')).toBeNull(); // statut final : pas de bouton
+    expect(container.querySelector('[data-testid="track-form"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="order-history"]')).toBeNull();
+    expect(container.querySelector('[data-testid="order-history-toggle"]')).toBeNull();
+    expect(container.querySelector('[data-testid="order-history-empty"]')).toBeNull();
     await act(async () => root.unmount());
   });
 });

@@ -67,6 +67,15 @@
            (loader, icônes, og-image) — plus sombre que la crème --cream. */
         --brand-lime: #CBFE01;
         --brand-sand: #E9E2D8;
+        /* PL-005-FE-01 — couleurs de statut de l'historique client (maquette
+           historique commandes) : texte seul sur badge bordé à fond transparent,
+           jamais un fond plein. En clair, des variantes sombres lisibles sur la
+           carte blanche (>= 4,5:1) ; en sombre, les couleurs vives de la
+           maquette (>= 7:1). « en attente » = --muted-foreground et
+           « annulée/échec » = --destructive : jetons existants. */
+        --status-done: hsl(150 100% 24%);     /* vert « livrée » */
+        --status-progress: hsl(75 100% 22%);  /* olive « payée / en cours » (famille lime) */
+        --status-refund: hsl(40 100% 29%);    /* or « remboursée » */
     }
     .dark {
         --background: 0 0% 17%;        /* #2B2B2B */
@@ -112,6 +121,10 @@
         --card-badge-bg: var(--neo-card-bg);
         --card-shadow: var(--neo-card-bg);
         --card-focus: var(--neo-card-bg);
+        /* PL-005-FE-01 — mêmes statuts en sombre : couleurs de la maquette. */
+        --status-done: #3DDB8A;
+        --status-progress: hsl(72 99% 50%);   /* lime de marque */
+        --status-refund: #F0B90B;
     }
     * { border-color: var(--rule); }
     html { scroll-behavior: smooth; overflow-x: hidden; }
@@ -299,3 +312,37 @@
    Radix (select, dropdown…) utilisent leur propre overflow-x-hidden comme
    conteneur de scroll voulu et ne doivent pas changer. */
 .min-h-screen.bg-background.overflow-x-hidden { overflow-x: clip !important; }
+
+/* PL-005-FE-01 — reçu imprimable (bouton « Télécharger le reçu » du détail de
+   commande). Couleurs fixes papier/encre : l'impression ne dépend pas du
+   thème actif (un reçu sombre gaspillerait l'encre et brouillerait le PDF).
+   Tokens sur :root : la règle @media print les lit depuis body. */
+:root {
+    --receipt-paper: #ffffff;
+    --receipt-ink: #111111;
+    --receipt-muted: #545452;
+    --receipt-line: #d8d8d2;
+}
+/* À l'impression : seule la vue reçu est peinte (tout le reste est caché par
+   la visibilité), posée en haut de la première page. `body.receipt-print`
+   n'est posé QUE par le bouton « Télécharger le reçu » — Ctrl+P sans le
+   bouton imprime la page normale. */
+@media print {
+    body.receipt-print * { visibility: hidden !important; }
+    body.receipt-print .order-receipt,
+    body.receipt-print .order-receipt * { visibility: visible !important; }
+    /* Le fond du thème (sombre compris) ne doit jamais atteindre le papier :
+       « graphiques d'arrière-plan » coché ou pas, le reçu reste papier blanc. */
+    body.receipt-print { background: var(--receipt-paper) !important; }
+    body.receipt-print .order-receipt {
+        display: block !important;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        padding: 24px;
+        background: var(--receipt-paper);
+        color: var(--receipt-ink);
+        font-family: var(--font-body);
+    }
+}

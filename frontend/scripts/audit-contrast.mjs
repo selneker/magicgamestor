@@ -221,6 +221,20 @@ const RESUME_ORDER = (over = {}) => ({
   payment_phone: undefined, ...over,
 });
 
+// PL-005-FE-01 — historique refait (/commandes, /commandes/:id) : commande
+// typique d'une carte UC, avec date, jeu et snapshot d'identité (les champs
+// que OrderHistory lit). Les variantes de détail (payée, livrée, annulée)
+// passent par les overrides de PAGES, comme RESUME_ORDER.
+const HISTO_ORDER = (over = {}) => ({
+  ...ORDER,
+  status: "paid",
+  created_at: "2026-11-13T16:30:00Z",
+  game_id: "pubg-mobile",
+  items: [{ product_id: "p1", slug: "660-uc", name: "660 UC", quantity: 1, price: 2500, line_total: 2500 }],
+  identity_snapshot: { source: "verified", fields: { player_id: "52328390220" } },
+  ...over,
+});
+
 // PL-CHK-2 — petites captures PNG valides (1×1) pour l'état « vignettes » de
 // l'étape 3 manuelle : le même flux que le client (champ file multiple).
 const TINY_PNG = Buffer.from(
@@ -290,7 +304,9 @@ const mockApi = (pathname, page = {}) => {
   if (pathname.includes("/loyalty/me")) return { balance: { total: 1200, earned: 1200, promo: 0 }, ledger: [], config: {} };
   if (pathname.includes("/loyalty/rewards")) return [];
   if (pathname.includes("/loyalty/transfers")) return [];
-  if (pathname.includes("/orders/me")) return [ORDER];
+  // PL-005-FE-01 — la liste peut être variée par page (les quatre familles de
+  // badge doivent être peintes sur /commandes pour être mesurées).
+  if (pathname.includes("/orders/me")) return page.ordersMe || [ORDER];
   // PL-CHK-2/PL-CHK-4 — reprise/compte à rebours : GET /orders/{id} renvoie
   // l'état réel DE LA PAGE AUDITÉE (opérateur, statut).
   if (/\/orders\/(?!me)[\w-]+$/.test(pathname)) return page.trackOrder || ORDER;
@@ -331,6 +347,22 @@ const PAGES = [
   { name: "compte", path: "/compte", loggedIn: true },
   { name: "suivi", path: "/suivi", loggedIn: true },
   { name: "fidelite", path: "/compte/points", loggedIn: true },
+  // PL-005-FE-01 — historique refait : liste /commandes (onglets + cartes)
+  // et detail /commandes/:id (paiement en cours, livree avec coche verte,
+  // annulee avec repli preuves/annulation). /orders/me renvoie les quatre
+  // familles de statut (la liste filtre localement) ; le detail lit
+  // GET /orders/{id} via trackOrder. `refunded` n'existe pas encore cote API
+  // (famille preparee) : le mock simule l'etat futur pour mesurer l'or des
+  // des que le statut apparaitra.
+  { name: "commandes", path: "/commandes", loggedIn: true, ordersMe: [
+    HISTO_ORDER({ id: "ord_1", status: "pending_payment" }),
+    HISTO_ORDER({ id: "ord_2", order_number: "MGS-123457", status: "delivered", paid_at: "2026-11-13T17:00:00Z" }),
+    HISTO_ORDER({ id: "ord_3", order_number: "MGS-123458", status: "cancelled", cancel_reason: "cannot_pay_now", cancelled_at: "2026-11-13T17:05:00Z" }),
+    HISTO_ORDER({ id: "ord_4", order_number: "MGS-123459", status: "refunded" }),
+  ] },
+  { name: "commandes-paiement", path: "/commandes/ord_1", loggedIn: true, trackOrder: HISTO_ORDER({ status: "paid" }) },
+  { name: "commandes-livree", path: "/commandes/ord_1", loggedIn: true, trackOrder: HISTO_ORDER({ status: "delivered", paid_at: "2026-11-13T17:00:00Z" }) },
+  { name: "commandes-annulee", path: "/commandes/ord_1", loggedIn: true, trackOrder: HISTO_ORDER({ status: "cancelled", cancel_reason: "cannot_pay_now", cancelled_at: "2026-11-13T17:00:00Z", payment_proofs: [{ size: 10, content_type: "image/jpeg" }] }) },
   // Etats du parcours d'identite multi-jeux (messages de verification).
   { name: "verif-invalide", path: "/commande", step: "verify", game: "mobile-legends",
     validate: { valid: false, code: "invalid_id" } },
