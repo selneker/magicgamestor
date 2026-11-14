@@ -77,7 +77,9 @@ export function CopyButton({ value, label, testId }) {
   };
   return (
     <button type="button" onClick={copy} data-testid={testId} aria-label={copied ? t("checkout.copiedLabel") : label} className="-mr-2 inline-flex h-11 w-11 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground motion-reduce:transition-none">
-      {copied ? <Check className="h-5 w-5" strokeWidth={1.6} aria-hidden="true" /> : <Copy className="h-5 w-5" strokeWidth={1.6} aria-hidden="true" />}
+      {/* Icône réduite à 16 px (retour design : 20 px étaient trop grands) ;
+          la zone tactile reste h-11 w-11 = 44 px (règle du projet). */}
+      {copied ? <Check className="h-4 w-4" strokeWidth={1.6} aria-hidden="true" /> : <Copy className="h-4 w-4" strokeWidth={1.6} aria-hidden="true" />}
       <span role="status" className="sr-only">{copied ? t("checkout.copiedLabel") : ""}</span>
     </button>
   );

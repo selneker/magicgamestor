@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Check, ChevronDown, ChevronRight, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, MessageCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import { api, formatAr } from "@/lib/api";
 import { paymentLabel, paymentOperatorLabel } from "@/lib/paymentLabels";
@@ -717,7 +717,8 @@ export function OrderDetail() {
           data-testid="order-chat-button"
           className="inline-flex h-12 w-[92px] flex-none items-center justify-center gap-1.5 rounded-[999px] bg-[color:var(--brand-lime)] text-[13.5px] font-semibold text-ink"
         >
-          <span aria-hidden="true" className="text-[12px] leading-none">💬</span>
+          {/* Retour design : icône de message (jamais l'emoji 💬). */}
+          <MessageCircle className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
           {t("order.chat")}
         </button>
         {resumeTarget ? (
