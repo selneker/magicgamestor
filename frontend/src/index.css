@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── PL-005-FE-03 — polices auto-hébergées (PL-DS-003) ────────────────────
+   Les 4 fichiers variables .woff2 (latin + latin-ext, licence OFL) sont dans
+   public/fonts/ et déclarés dans un <style> de public/index.html : CRA
+   (css-loader) traite chaque url() d'ici comme un module à résoudre depuis
+   src/ et échoue sur un chemin public — le HTML, lui, n'est pas transformé.
+   font-display: swap + preload de la police de TEXTE uniquement (Onest latin). */
+
 @layer base {
     :root {
         --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
@@ -11,29 +18,29 @@
            Utilisee par les surfaces d'encre (panneaux, barre panier, selecteur
            de jeu) et par leur texte : une surface d'encre reste noire et son
            texte creme, quelle que soit la theme. */
-        --cream: 48 20% 94%;          /* #F4F3EE */
-        --background: var(--cream);   /* #F4F3EE */
-        --foreground: 0 0% 4%;         /* #0A0A0A */
+        --cream: 45 35% 93%;          /* #F4F1E8 — crème de la maquette PL-DS-003 */
+        --background: var(--cream);   /* #F4F1E8 */
+        --foreground: 0 0% 7%;         /* #111111 — encre de la maquette */
         --card: 0 0% 100%;
-        --card-foreground: 0 0% 4%;
+        --card-foreground: 0 0% 7%;
         --popover: 0 0% 100%;
-        --popover-foreground: 0 0% 4%;
-        --primary: 72 99% 50%;         /* #C5FE02 */
+        --popover-foreground: 0 0% 7%;
+        --primary: 170 100% 50%;       /* #D4FF00 — néon de la maquette PL-DS-003 */
         --primary-foreground: 0 0% 4%;
-        --secondary: 0 0% 4%;
-        --secondary-foreground: 48 20% 94%;
+        --secondary: 0 0% 7%;
+        --secondary-foreground: 45 35% 93%;
         --muted: 48 14% 90%;
         --muted-foreground: 60 3% 32%; /* accessible on the light background */
-        --accent: 72 99% 50%;
+        --accent: 170 100% 50%;
         --accent-foreground: 0 0% 4%;
         --destructive: 6 78% 45%;
         --destructive-foreground: 0 0% 100%;
         --border: 0 0% 4%;
         --input: 0 0% 4%;
-        --ring: 72 99% 42%;
+        --ring: 170 100% 42%;
         --radius: 10px;
-        --rule: hsl(0 0% 4% / .15);
-        --rule-strong: hsl(0 0% 4% / .38);
+        --rule: hsl(0 0% 7% / .15);
+        --rule-strong: hsl(0 0% 7% / .38);
         --shadow-brut: 3px 3px 0 hsl(0 0% 4% / .18);
         --mvola: #00A651;
         --orange: #FF7900;
@@ -65,7 +72,7 @@
            (~1,1:1) : réservé aux accents sur surfaces d'encre (>= 15:1) et aux
            boutons secondaires posés sur le noir. Le sable est un fond de marque
            (loader, icônes, og-image) — plus sombre que la crème --cream. */
-        --brand-lime: #CBFE01;
+        --brand-lime: #D4FF00;
         --brand-sand: #E9E2D8;
         /* PL-005-FE-01 — couleurs de statut de l'historique client (maquette
            historique commandes) : texte seul sur badge bordé à fond transparent,
@@ -81,21 +88,44 @@
            prévoit explicitement → encre du thème à 62 % et bordure encre 30 %. */
         --badge-cancel-text: hsl(var(--foreground) / .62);
         --badge-cancel-border: hsl(var(--foreground) / .3);
+        /* PL-005-FE-03 — palette de marque PL-DS-003 (mg-brand.css) : encre,
+           crème, néon (via --primary) et accents. Jetons FIXES (identiques dans
+           les deux thèmes) : ce sont des couleurs de marque, pas de surface.
+           Le néon n'est jamais posé en TEXTE sur fond clair (~1,1:1) : fond
+           avec texte encre, ou accent sur surface d'encre. */
+        --brand-ink: #111111;
+        --brand-cream: #F4F1E8;
+        --brand-neon: #D4FF00;          /* = --primary — alias explicite pour les usages fixes */
+        --brand-violet: #5c4ade;        /* violet profond — texte crème dessus */
+        --brand-violet-soft: #e9ccff;   /* texte encre dessus */
+        --brand-blue: #4da2ff;          /* texte encre dessus */
+        --brand-yellow: #ffd731;        /* texte encre dessus */
+        --brand-green: #55db9c;         /* texte encre dessus */
+        --brand-orange: #fb4903;        /* texte crème dessus */
+        --brand-glacier: #dceeff;       /* texte encre dessus */
+        /* Panneau d'accueil « à panneaux » : surface crème posée sur le fond
+           encre (maquette). En sombre, inversion : panneau gris encre clair
+           (#1F1F1F, déjà dans la palette) sur fond encre #111111. */
+        --panel: 45 35% 93%;
+        --panel-ink: 0 0% 7%;
+        --panel-muted: 60 3% 32%;
     }
     .dark {
-        --background: 0 0% 17%;        /* #2B2B2B */
-        --foreground: 48 20% 94%;
-        --card: 0 0% 20%;              /* #333333 */
-        --card-foreground: 48 20% 94%;
-        --popover: 0 0% 22%;
-        --popover-foreground: 48 20% 94%;
-        --primary: 72 99% 50%;
+        /* PL-005-FE-03 — thème sombre = inversion encre/crème (la maquette
+           n'a qu'un thème clair ; les accents restent identiques). */
+        --background: 0 0% 7%;        /* #111111 — l'encre devient le fond */
+        --foreground: 45 35% 93%;     /* #F4F1E8 — la crème devient le texte */
+        --card: 0 0% 12%;             /* #1F1F1F — déjà dans la palette */
+        --card-foreground: 45 35% 93%;
+        --popover: 0 0% 14%;          /* #232323 — déjà dans la palette */
+        --popover-foreground: 45 35% 93%;
+        --primary: 170 100% 50%;
         --primary-foreground: 0 0% 4%;
-        --secondary: 48 20% 94%;
-        --secondary-foreground: 0 0% 4%;
-        --muted: 0 0% 24%;
+        --secondary: 45 35% 93%;
+        --secondary-foreground: 0 0% 7%;
+        --muted: 0 0% 14%;
         --muted-foreground: 60 4% 68%;
-        --accent: 72 99% 50%;
+        --accent: 170 100% 50%;
         --accent-foreground: 0 0% 4%;
         --destructive: 6 90% 70%;          /* #F77B6E */
         /* Le rouge est utilise comme fond (bouton, pastille, icone) ET comme
@@ -103,12 +133,16 @@
            texte encre pose dessus : 5,4:1 comme texte sur le fond de page,
            4,8:1 sur une carte, 7,6:1 comme fond. */
         --destructive-foreground: 0 0% 4%;
-        --border: 48 12% 82%;
-        --input: 48 12% 82%;
-        --ring: 72 99% 50%;
-        --rule: hsl(48 20% 94% / .15);
-        --rule-strong: hsl(48 20% 94% / .4);
+        --border: 45 35% 93%;
+        --input: 45 35% 93%;
+        --ring: 170 100% 50%;
+        --rule: hsl(45 35% 93% / .15);
+        --rule-strong: hsl(45 35% 93% / .4);
         --shadow-brut: 3px 3px 0 hsl(0 0% 0% / .35);
+        /* Panneau d'accueil en sombre : surface #1F1F1F, texte crème. */
+        --panel: 0 0% 12%;
+        --panel-ink: 45 35% 93%;
+        --panel-muted: 60 4% 68%;
         /* Neo-brutalist card tokens (same in dark mode) */
         --neo-card-bg: #D4FF00;
         --neo-text: #111111;
@@ -119,7 +153,7 @@
         --card-ink: hsl(var(--cream));
         --card-ink-muted: hsl(var(--cream) / .72);
         --card-border: hsl(var(--cream) / .16);
-        --card-pill-bg: #1F1F1F;
+        --card-pill-bg: #111111;
         --card-cta-bg: var(--neo-card-bg);
         --card-cta-fg: #111111;
         --admin-ink-muted: hsl(var(--cream) / .75);
@@ -268,10 +302,10 @@
 .rounded-full { border-radius: 10px !important; }
 .rounded-full[class*="h-1"], .rounded-full[class*="w-1"], .rounded-full[class*="h-2"], .rounded-full[class*="w-2"], .rounded-full[class*="h-3"], span.rounded-full { border-radius: 9999px !important; }
 .nav-pill, .nav-pill.rounded-full { border-radius: 9999px !important; }
-/* Mobile bottom navigation — same height as the mobile header (h-14 = 56 px slab
-   ≤ 52 px), compact active pill (44 px ≥ the 44 px touch target). */
-.nav-outer { height: 52px; border-radius: 26px !important; }
-.nav-item-pill, .nav-item-pill.rounded-full { height: 44px; border-radius: 22px !important; }
+/* Mobile bottom navigation — PL-005-FE-03 (§4) : plus grande et plus lisible
+   que la maquette : cible tactile 48 px par entrée, pilule externe 60 px. */
+.nav-outer { height: 60px; border-radius: 30px !important; }
+.nav-item-pill, .nav-item-pill.rounded-full { height: 48px; border-radius: 24px !important; }
 .game-backdrop {
     background: rgba(0, 0, 0, .28);
     -webkit-backdrop-filter: blur(14px) saturate(130%); backdrop-filter: blur(14px) saturate(130%);

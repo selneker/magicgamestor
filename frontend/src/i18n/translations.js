@@ -1,6 +1,6 @@
 export const translations = {
   fr: {
-    nav: { shop: "Boutique", uc: "Achat {UC}", prime: "Abonnement", evo: "Pack évolutif", events: "Event", eventsFull: "Événements", orders: "Commandes", account: "Compte", admin: "Admin", login: "Connexion", logout: "Déconnexion", track: "Suivi", cart: "Panier", support: "Support", messages: "Messages", pointsAria: "{n} points" },
+    nav: { shop: "Boutique", uc: "Achat {UC}", prime: "Abonnement", evo: "Pack évolutif", events: "Event", eventsFull: "Événements", orders: "Commandes", account: "Compte", admin: "Admin", login: "Connexion", logout: "Déconnexion", track: "Suivi", cart: "Panier", support: "Support", messages: "Messages", pointsAria: "{n} points", points: "Points fidélité", menu: "Menu", openMenu: "Ouvrir le menu", closeMenu: "Fermer le menu", mainNav: "Navigation principale" },
     games: { title: "Jeux", select: "Choisir un jeu", current: "Jeu sélectionné", all: "Tous", seeAll: "Voir tous les jeux", search: "Rechercher un jeu…", searchEmptyTitle: "Aucun jeu trouvé", searchEmpty: "Aucun jeu ne correspond à votre recherche. Essayez un autre mot.", allCount: "{n} jeux affichés", allSub: "Tous les jeux ouverts à la vente sur la boutique.", eyebrow: "Boutique", pickTitle: "Choisissez votre jeu", pickSubtitle: "Sélectionnez un jeu pour afficher son catalogue.", comingSoon: "Bientôt", active: "Actif", empty: "Aucun jeu disponible pour le moment." },
     profile: { backToShop: "Boutique", loyalty: "Points fidélité", quickAccess: "Accès rapide", preferences: "Préférences", security: "Sécurité", helpLegal: "Aide & légal", editProfile: "Modifier mon profil", pubgCard: "Ma PUBG Player Card", myOrders: "Mes commandes", language: "Langue", theme: "Thème", themeLight: "Clair", themeDark: "Sombre", themeSystem: "Système", password: "Mot de passe", deleteAccount: "Supprimer mon compte", helpSupport: "Aide & support", privacy: "Confidentialité", terms: "Conditions d'utilisation", avatarLocked: "Avatar non modifiable" },
     // Textes de référencement (titres et descriptions lus par Google et les
@@ -26,7 +26,8 @@ export const translations = {
     store: {
       heroEyebrow: "Recharges de jeux · Madagascar", heroA: "Rechargez vos jeux.", heroB: "Sans détour.",
       heroSub: "Choisissez votre jeu, vérifiez votre compte joueur, payez par Mobile Money ou USDT. Chaque commande est suivie jusqu'à la livraison.",
-      ctaShop: "Choisir un jeu", ctaTrack: "Suivre une commande", gamesTitle: "Jeux disponibles", gamesSub: "Seuls les jeux réellement ouverts à la vente apparaissent ici.",
+      bannerCta: "Recharger",
+      ctaShop: "Choisir un jeu", ctaTrack: "Suivre une commande", gamesTitle: "Jeux disponibles", gamesSub: "Seuls les jeux réellement ouverts à la vente apparaissent ici.", seeShop: "Voir la boutique",
       offersTitle: "Offres populaires", offersSub: "Prix en Ariary, mis à jour par notre équipe.", stepsTitle: "Comment ça marche", step1: "Choisissez un pack", step1d: "Parcourez le catalogue du jeu et ajoutez votre offre.",
       step2: "Vérifiez votre compte", step2d: "Saisissez les identifiants demandés par le jeu : nous les validons avant le paiement.", step3: "Payez et suivez", step3d: "MVola, Orange Money ou Binance USDT. Suivi en temps réel.",
       payTitle: "Moyens de paiement", supportTitle: "Une question ?", supportSub: "Notre équipe répond sur le chat, WhatsApp ou par téléphone.", supportCta: "Ouvrir le chat",
@@ -43,7 +44,6 @@ export const translations = {
       faq3q: "Comment suivre ma commande ?", faq3a: "Depuis « Commandes », entrez votre numéro de commande pour voir son statut en temps réel.",
       faq4q: "Dois-je vérifier mon identifiant de jeu ?", faq4a: "Oui. Nous validons votre identifiant avant le paiement pour livrer sur le bon compte.",
     },
-    status: { online: "Admin en ligne", offline: "Admin hors ligne" },
     hero: {
       eyebrow: "Magic Game Store · PUBG Mobile · Madagascar",
       title: "Achetez vos {UC} plus simplement",
@@ -196,7 +196,7 @@ cart: { otherGame: "Votre panier contient des offres d'un autre jeu. Finalisez o
       transferRules: "Minimum {min} pts · {daily} pts / jour · {monthly} pts / mois · le destinataire doit accepter sous 48 h.", status: { pending: "en attente", accepted: "accepté", cancelled: "annulé", expired: "expiré" } },
     events: { title: "Événements", subtitle: "Offres et promotions exclusives", buy: "Acheter maintenant", like: "J'aime", share: "Partager", shared: "Lien copié !", empty: "Aucun événement pour le moment." },
     evo: { title: "Pack évolutif", subtitle: "Offres exclusives PUBG Mobile, limitées par ID PUBG Mobile. Vérifiez votre éligibilité avant de payer.", specials: "Packs spéciaux", buy: "Acheter", soon: "Bientôt disponible", pubgLabel: "ID PUBG Mobile (9–13 chiffres)", check: "Vérifier l'éligibilité", checking: "Vérification…", eligible: "Éligible ! Vous pouvez continuer vers le paiement.", continue: "Continuer vers le paiement", invalidId: "ID PUBG Mobile invalide (9 à 13 chiffres).", season: "Saison active", noSeason: "Aucune saison active", empty: "Aucune offre disponible pour le moment.", hint: "La limitation s'applique à votre ID PUBG Mobile, elle est vérifiée avant le paiement puis revérifiée à la création de la commande. Une commande annulée ou échouée ne consomme pas votre droit d'achat.", limit: { season: "1 fois par saison", lifetime: "1 seule fois par ID", week: "1 fois par semaine" } },
-    footer: { tagline: "La référence PUBG Mobile à Madagascar. Paiement rapide, livraison instantanée.", nav: "Navigation", support: "Support", report: "Signaler un bug", terms: "Conditions d'utilisation", privacy: "Politique de confidentialité", made: "Made with // by Surazy_Player", tickerLabel: "Informations utiles", tickerMessages: ["MVola, Orange Money et Binance USDT acceptés", "Support par chat avec un vrai humain", "Suivi de commande en temps réel"], ticker: "UC LIVRÉS SUR VOTRE COMPTE PUBG // PRIME & PRIME+ GÉRÉS SANS COMPLICATION // SUIVI DE COMMANDE EN TEMPS RÉEL // ÉVÉNEMENTS ET PROMOS AU MÊME ENDROIT // SUPPORT PAR CHAT AVEC UN VRAI HUMAIN // MVOLA & ORANGE MONEY // " },
+    footer: { tagline: "La référence PUBG Mobile à Madagascar. Paiement rapide, livraison instantanée.", headlineA: "Rechargez.", headlineB: "Puis faites tout arriver.", nav: "Navigation", support: "Support", report: "Signaler un bug", terms: "Conditions d'utilisation", privacy: "Politique de confidentialité", made: "Made with // by Surazy_Player", phoneLabel: "Téléphone", tickerLabel: "Informations utiles", tickerMessages: ["MVola, Orange Money et Binance USDT acceptés", "Support par chat avec un vrai humain", "Suivi de commande en temps réel"], ticker: "UC LIVRÉS SUR VOTRE COMPTE PUBG // PRIME & PRIME+ GÉRÉS SANS COMPLICATION // SUIVI DE COMMANDE EN TEMPS RÉEL // ÉVÉNEMENTS ET PROMOS AU MÊME ENDROIT // SUPPORT PAR CHAT AVEC UN VRAI HUMAIN // MVOLA & ORANGE MONEY // " },
     admin: { more: "Plus", chat: "Chat", chatUnread: "{count} non lus",
       // PL-UX-4 — bloc de livraison renommé « Détails » (le nom du fournisseur ne s'affiche plus) + visionneuse de preuves.
       details: "Détails", proofsButton: "Preuves ({n})", proofsButtonAria: "Voir les {n} preuves de paiement",
@@ -228,7 +228,7 @@ cart: { otherGame: "Votre panier contient des offres d'un autre jeu. Finalisez o
     error: { title: "Une erreur est survenue", body: "La page n'a pas pu s'afficher. Rechargez la page pour réessayer.", reload: "Recharger" },
   },
   en: {
-    nav: { shop: "Shop", uc: "Buy {UC}", prime: "Subscription", evo: "Evolving Pack", events: "Event", eventsFull: "Events", orders: "Orders", account: "Account", admin: "Admin", login: "Log in", logout: "Log out", track: "Track", cart: "Cart", support: "Support", messages: "Messages", pointsAria: "{n} points" },
+    nav: { shop: "Shop", uc: "Buy {UC}", prime: "Subscription", evo: "Evolving Pack", events: "Event", eventsFull: "Events", orders: "Orders", account: "Account", admin: "Admin", login: "Log in", logout: "Log out", track: "Track", cart: "Cart", support: "Support", messages: "Messages", pointsAria: "{n} points", points: "Loyalty points", menu: "Menu", openMenu: "Open menu", closeMenu: "Close menu", mainNav: "Main navigation" },
     games: { title: "Games", select: "Pick a game", current: "Selected game", all: "All", seeAll: "See all games", search: "Search a game…", searchEmptyTitle: "No game found", searchEmpty: "No game matches your search. Try another word.", allCount: "{n} games shown", allSub: "Every game open for sale in the store.", eyebrow: "Shop", pickTitle: "Choose your game", pickSubtitle: "Pick a game to open its catalog.", comingSoon: "Coming soon", active: "Active", empty: "No game available right now." },
     profile: { backToShop: "Shop", loyalty: "Loyalty points", quickAccess: "Quick access", preferences: "Preferences", security: "Security", helpLegal: "Help & legal", editProfile: "Edit my profile", pubgCard: "My PUBG Player Card", myOrders: "My orders", language: "Language", theme: "Theme", themeLight: "Light", themeDark: "Dark", themeSystem: "System", password: "Password", deleteAccount: "Delete my account", helpSupport: "Help & support", privacy: "Privacy", terms: "Terms of use", avatarLocked: "Avatar locked" },
     // Search-engine copy (titles and descriptions read by Google and social
@@ -253,7 +253,8 @@ cart: { otherGame: "Votre panier contient des offres d'un autre jeu. Finalisez o
     store: {
       heroEyebrow: "Game top-ups · Madagascar", heroA: "Top up your games.", heroB: "No detours.",
       heroSub: "Pick your game, verify your player account, pay with Mobile Money or USDT. Every order is tracked until delivery.",
-      ctaShop: "Choose a game", ctaTrack: "Track an order", gamesTitle: "Available games", gamesSub: "Only games that are genuinely open for sale appear here.",
+      bannerCta: "Top up",
+      ctaShop: "Choose a game", ctaTrack: "Track an order", gamesTitle: "Available games", gamesSub: "Only games that are genuinely open for sale appear here.", seeShop: "View the shop",
       offersTitle: "Popular offers", offersSub: "Prices in Ariary, maintained by our team.", stepsTitle: "How it works", step1: "Pick a pack", step1d: "Browse the game's catalogue and add your offer.",
       step2: "Verify your account", step2d: "Enter the identifiers the game requires: we validate them before payment.", step3: "Pay and track", step3d: "MVola, Orange Money or Binance USDT. Real-time tracking.",
       payTitle: "Payment methods", supportTitle: "Questions?", supportSub: "Our team answers on chat, WhatsApp or by phone.", supportCta: "Open chat",
@@ -270,7 +271,6 @@ cart: { otherGame: "Votre panier contient des offres d'un autre jeu. Finalisez o
       faq3q: "How do I track my order?", faq3a: "From “Orders”, enter your order number to see its status in real time.",
       faq4q: "Do I need to verify my game ID?", faq4a: "Yes. We validate your ID before payment to deliver to the right account.",
     },
-    status: { online: "Admin online", offline: "Admin offline" },
     hero: {
       eyebrow: "Magic Game Store · PUBG Mobile · Madagascar",
       title: "Buy your {UC} more simply",
@@ -423,7 +423,7 @@ cart: { otherGame: "Your cart holds offers from another game. Check out or empty
       transferRules: "Minimum {min} pts · {daily} pts / day · {monthly} pts / month · recipient must accept within 48h.", status: { pending: "pending", accepted: "accepted", cancelled: "cancelled", expired: "expired" } },
     events: { title: "Events", subtitle: "Exclusive offers and promotions", buy: "Buy now", like: "Like", share: "Share", shared: "Link copied!", empty: "No events yet." },
     evo: { title: "Evolving Pack", subtitle: "Exclusive PUBG Mobile offers, limited per PUBG Mobile ID. Check your eligibility before paying.", specials: "Special packs", buy: "Buy", soon: "Coming soon", pubgLabel: "PUBG Mobile ID (9–13 digits)", check: "Check eligibility", checking: "Checking…", eligible: "Eligible! You can proceed to payment.", continue: "Proceed to payment", invalidId: "Invalid PUBG Mobile ID (9 to 13 digits).", season: "Active season", noSeason: "No active season", empty: "No offers available right now.", hint: "The limit applies to your PUBG Mobile ID, it is checked before payment and re-checked when the order is created. A cancelled or failed order does not consume your purchase right.", limit: { season: "Once per season", lifetime: "Once per ID (lifetime)", week: "Once per week" } },
-    footer: { tagline: "Madagascar's PUBG Mobile reference. Fast payment, instant delivery.", nav: "Navigation", support: "Support", report: "Report a bug", terms: "Terms of use", privacy: "Privacy policy", made: "Made with // by Surazy_Player", tickerLabel: "Useful information", tickerMessages: ["MVola, Orange Money and Binance USDT accepted", "Chat support with a real human", "Real-time order tracking"], ticker: "UC DELIVERED TO YOUR PUBG ACCOUNT // PRIME & PRIME+ MANAGED WITHOUT HASSLE // REAL-TIME ORDER TRACKING // EVENTS AND DEALS IN ONE PLACE // CHAT SUPPORT WITH A REAL HUMAN // MVOLA & ORANGE MONEY // " },
+    footer: { tagline: "Madagascar's PUBG Mobile reference. Fast payment, instant delivery.", headlineA: "Top up.", headlineB: "Then let everything arrive.", nav: "Navigation", support: "Support", report: "Report a bug", terms: "Terms of use", privacy: "Privacy policy", made: "Made with // by Surazy_Player", phoneLabel: "Phone", tickerLabel: "Useful information", tickerMessages: ["MVola, Orange Money and Binance USDT accepted", "Chat support with a real human", "Real-time order tracking"], ticker: "UC DELIVERED TO YOUR PUBG ACCOUNT // PRIME & PRIME+ MANAGED WITHOUT HASSLE // REAL-TIME ORDER TRACKING // EVENTS AND DEALS IN ONE PLACE // CHAT SUPPORT WITH A REAL HUMAN // MVOLA & ORANGE MONEY // " },
     admin: { more: "More", chat: "Chat", chatUnread: "{count} unread",
       // PL-UX-4 — delivery block renamed "Details" (the supplier name is no longer shown) + proof viewer.
       details: "Details", proofsButton: "Proofs ({n})", proofsButtonAria: "View the {n} payment proofs",

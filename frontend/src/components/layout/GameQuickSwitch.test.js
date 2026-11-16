@@ -244,7 +244,7 @@ test("nav-2 : libellé réduit mais lisible, icônes proportionnelles, espacemen
   const label = shop.querySelector("span span"); // calque motion.span du libellé
   expect(label.className).toContain("text-[12px]"); // avant 13.5 px, plancher 11 px
   const icon = shop.querySelector("svg");
-  expect(icon.getAttribute("class")).toContain("h-[18px]"); // avant 21 px
+  expect(icon.getAttribute("class")).toContain("h-6 w-6"); // PL-005-FE-03 : agrandies à 24 px (§4)
 });
 
 test("nav-3 : le sélecteur de jeu est une grille de 2 colonnes, jamais une rangée", async () => {
