@@ -70,19 +70,19 @@ export function BottomNav() {
                 data-testid={id}
                 aria-current={active ? "page" : undefined}
                 className={`nav-item-pill relative flex min-w-0 items-center justify-center overflow-hidden px-1.5 transition-[color] duration-[420ms] ease-out active:scale-[0.96] ${
-                  active ? "text-[#0A0A0A]" : "text-[#F4F3EE]/65"
+                  active ? "text-[color:var(--brand-ink)]" : "text-[color:hsl(var(--cream)/.65)]"
                 }`}
               >
                 {active && (
                   <motion.span
                     layoutId="bottom-nav-active-pill"
-                    className="nav-item-pill absolute inset-0 bg-primary shadow-[0_2px_10px_hsl(72_99%_50%_/_.28)]"
+                    className="nav-item-pill absolute inset-0 bg-primary shadow-[0_2px_10px_hsl(170_100%_50%_/_.28)]"
                     transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
                     aria-hidden="true"
                   />
                 )}
                 <span className="relative z-10 flex items-center">
-                  <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={active ? 2.25 : 2} />
+                  <Icon className="h-6 w-6 shrink-0" strokeWidth={active ? 2.25 : 2} />
                   <motion.span
                     initial={false}
                     animate={{ width: active ? "auto" : 0, opacity: active ? 1 : 0 }}

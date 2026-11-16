@@ -11,9 +11,9 @@ jest.mock("react-router-dom", () => {
   const React = require("react");
   const Anchor = ({ to, end, className, children, ...props }) => {
     const cls = typeof className === "function" ? className({ isActive: false }) : className;
-    return React.createElement("a", { ...props, className: cls }, children);
+    return React.createElement("a", { ...props, "data-to": to, className: cls }, children);
   };
-  return { Link: Anchor, NavLink: Anchor };
+  return { Link: Anchor, NavLink: Anchor, useLocation: () => ({ pathname: global.mockPathname || "/" }) };
 });
 jest.mock("@/lib/api", () => ({ api: { get: jest.fn(), post: jest.fn() } }));
 jest.mock("@/context/LanguageContext", () => ({ useLang: () => ({ t: (k, vars) => (k === "nav.pointsAria" && vars ? `${vars.n} points` : k), lang: "fr" }) }));
@@ -168,4 +168,62 @@ test("repli au défilement : désactivé avec prefers-reduced-motion", async () 
     setScrollY(0);
     setViewportWidth(1024);
   }
+});
+
+// ---- PL-005-FE-03 : base design system ----
+
+test("PL-005-FE-03 : aucun indicateur « admin en ligne » — ni élément, ni appel /settings/status", async () => {
+  const { container, root } = await mountHeader();
+  expect(container.querySelector('[data-testid="admin-status-badge"]')).toBeNull();
+  expect(container.textContent).not.toContain("status.online");
+  expect(container.textContent).not.toContain("status.offline");
+  expect(api.get).not.toHaveBeenCalledWith("/settings/status");
+  await act(async () => root.unmount());
+  container.remove();
+});
+
+test("PL-005-FE-03 : pilule desktop — 4 entrées, mêmes routes, entrée active au /boutique", async () => {
+  global.mockPathname = "/boutique";
+  try {
+    const { container, root } = await mountHeader();
+    const nav = container.querySelector('[data-testid="desktop-nav"]');
+    expect(nav).not.toBeNull();
+    const entries = [...nav.querySelectorAll("a")].map((a) => a.getAttribute("data-to"));
+    expect(entries).toEqual(["/boutique", "/evenements", "/suivi", "/chat"]);
+    const active = nav.querySelector('[aria-current="page"]');
+    expect(active).not.toBeNull();
+    expect(active.getAttribute("data-to")).toBe("/boutique");
+    expect(active.getAttribute("data-testid")).toBe("desktop-nav-shop");
+    await act(async () => root.unmount());
+    container.remove();
+  } finally {
+    global.mockPathname = undefined;
+  }
+});
+
+test("PL-005-FE-03 : menu desktop — ouvre (aria-expanded), client simple sans Admin, ferme à Escape", async () => {
+  const { container, root } = await mountHeader();
+  await act(async () => { resolveMe({ data: { user_id: "u1", role: "customer" } }); });
+  const btn = container.querySelector('[data-testid="desktop-menu-button"]');
+  expect(btn).not.toBeNull();
+  expect(btn.getAttribute("aria-expanded")).toBe("false");
+  await act(async () => { btn.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  const menu = container.querySelector('[data-testid="desktop-menu"]');
+  expect(menu).not.toBeNull();
+  expect(btn.getAttribute("aria-expanded")).toBe("true");
+  expect(container.querySelector('[data-testid="desktop-menu-admin"]')).toBeNull();
+  await act(async () => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
+  expect(container.querySelector('[data-testid="desktop-menu"]')).toBeNull();
+  await act(async () => root.unmount());
+  container.remove();
+});
+
+test("PL-005-FE-03 : menu desktop — l'admin voit l'entrée Admin", async () => {
+  const { container, root } = await mountHeader();
+  await act(async () => { resolveMe({ data: { user_id: "a1", role: "admin" } }); });
+  const btn = container.querySelector('[data-testid="desktop-menu-button"]');
+  await act(async () => { btn.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  expect(container.querySelector('[data-testid="desktop-menu-admin"]')).not.toBeNull();
+  await act(async () => root.unmount());
+  container.remove();
 });
