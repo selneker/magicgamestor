@@ -30,6 +30,9 @@ export function Footer() {
               <a href="tel:+261383905692" className="footer-social-link is--wide" data-card-reveal="card" data-testid="footer-phone">
                 {t("footer.phoneLabel")} · 038 39 056 92
               </a>
+              <a href="#" className="footer-social-link is--wide" data-card-reveal="card" data-testid="footer-discord">
+                {t("footer.discord")}
+              </a>
             </div>
             <div className="footer-row-col is--last" data-card-reveal="card">
               <div className="footer-block-content">
