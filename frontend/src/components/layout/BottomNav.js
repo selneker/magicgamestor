@@ -76,7 +76,7 @@ export function BottomNav() {
                 {active && (
                   <motion.span
                     layoutId="bottom-nav-active-pill"
-                    className="nav-item-pill absolute inset-0 bg-primary shadow-[0_2px_10px_hsl(170_100%_50%_/_.28)]"
+                    className="nav-item-pill absolute inset-0 bg-primary shadow-[0_2px_10px_hsl(var(--primary)/_.28)]"
                     transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
                     aria-hidden="true"
                   />

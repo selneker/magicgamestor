@@ -93,19 +93,47 @@ test("header : utilisateur déconnecté (401 confirmé) → le bouton Connexion 
   container.remove();
 });
 
-// ---- PL-BRAND-1 : logo, pastille compacte, repli au défilement ----
+// ---- PL-005-FE-08 : pilule Slush mobile + panier épinglé ----
 
-function setScrollY(y) {
-  Object.defineProperty(window, "scrollY", { value: y, configurable: true });
-}
-// jsdom fait 1024 px de large : le repli n'agit que sous 768 px.
-function setViewportWidth(w) {
-  Object.defineProperty(window, "innerWidth", { value: w, configurable: true });
-}
-async function scroll(container, root, y) {
-  setScrollY(y);
-  await act(async () => { window.dispatchEvent(new Event("scroll")); });
-}
+test("PL-005-FE-08 : pilule mobile — logo, points, compte, panier épinglé, burger ; ancienne barre disparue", async () => {
+  api.get.mockImplementation((url) => {
+    if (url === "/auth/me") return Promise.resolve({ data: { user_id: "u1", role: "customer", name: "Test" } });
+    if (url === "/settings/status") return Promise.resolve({ data: { online: true } });
+    if (url === "/loyalty/me") return Promise.resolve({ data: { balance: { total: 2500 } } });
+    return Promise.resolve({ data: {} });
+  });
+  const { container, root } = await mountHeader();
+  await act(async () => {});
+  const pill = container.querySelector('[data-testid="header-mobile"]');
+  expect(pill).not.toBeNull();
+  expect(pill.querySelector('[data-testid="header-logo-mobile"]')).not.toBeNull();
+  expect(pill.querySelector('[data-testid="header-loyalty-pill"]')).not.toBeNull();
+  expect(pill.querySelector('[data-testid="account-button"]')).not.toBeNull();
+  expect(pill.querySelector('[data-testid="cart-button-mobile"]')).not.toBeNull();
+  expect(pill.querySelectorAll('[data-testid="desktop-menu-button"]').length).toBe(1);
+  // l'ancienne barre glass n'est plus rendue
+  expect(container.querySelector('[data-testid="header-mobile-bar"]')).toBeNull();
+  expect(container.querySelector("header")).toBeNull();
+  await act(async () => root.unmount());
+  container.remove();
+});
+
+test("PL-005-FE-08 : menu mobile — le burger ouvre un panneau avec les pages + compte, ferme à Escape", async () => {
+  const { container, root } = await mountHeader();
+  await act(async () => { resolveMe({ data: { user_id: "u1", role: "customer" } }); });
+  const btns = container.querySelectorAll('[data-testid="desktop-menu-button"]');
+  const mobileBtn = btns[btns.length - 1];
+  expect(mobileBtn).not.toBeNull();
+  await act(async () => { mobileBtn.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+  const menu = container.querySelector('[data-testid="desktop-menu"]');
+  expect(menu).not.toBeNull();
+  const targets = [...menu.querySelectorAll("a")].map((a) => a.getAttribute("data-to"));
+  expect(targets).toEqual(["/boutique", "/evenements", "/suivi", "/chat", "/compte", "/compte/points"]);
+  await act(async () => { document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })); });
+  expect(container.querySelector('[data-testid="desktop-menu"]')).toBeNull();
+  await act(async () => root.unmount());
+  container.remove();
+});
 
 test("header : le texte de marque est remplacé par le logo SVG (aria-label = nom du magasin)", async () => {
   const { container, root } = await mountHeader();
@@ -134,40 +162,6 @@ test("pastille de points mobile : valeur abrégée, pas de libellé pts, solde e
   expect(pill.textContent).not.toContain("pts"); // libellé retiré sur mobile
   await act(async () => root.unmount());
   container.remove();
-});
-
-test("repli au défilement : caché en descendant, réapparaît en remontant", async () => {
-  setViewportWidth(390);
-  const { container, root } = await mountHeader();
-  const header = container.querySelector("header");
-  expect(header.getAttribute("data-collapsed")).toBe("false");
-  await scroll(container, root, 300);
-  await scroll(container, root, 500);
-  expect(header.getAttribute("data-collapsed")).toBe("true");
-  await scroll(container, root, 200);
-  expect(header.getAttribute("data-collapsed")).toBe("false");
-  await act(async () => root.unmount());
-  container.remove();
-  setScrollY(0);
-  setViewportWidth(1024);
-});
-
-test("repli au défilement : désactivé avec prefers-reduced-motion", async () => {
-  setViewportWidth(390);
-  window.matchMedia = jest.fn().mockReturnValue({ matches: true });
-  try {
-    const { container, root } = await mountHeader();
-    const header = container.querySelector("header");
-    await scroll(container, root, 300);
-    await scroll(container, root, 500);
-    expect(header.getAttribute("data-collapsed")).toBe("false");
-    await act(async () => root.unmount());
-    container.remove();
-  } finally {
-    delete window.matchMedia;
-    setScrollY(0);
-    setViewportWidth(1024);
-  }
 });
 
 // ---- PL-005-FE-03 : base design system ----
