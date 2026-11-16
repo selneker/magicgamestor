@@ -60,10 +60,10 @@ export default function AdminPayments() {
                 <p className="flex items-center gap-2 font-display text-base font-bold leading-tight">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border border-[color:var(--rule-strong)] bg-background"><p.icon className="h-4 w-4" strokeWidth={2} /></span>
                   {p.label}
-                  {p.sandbox && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">{t("admin.sandbox")}</span>}
+                  {p.sandbox && <span className="rounded-full bg-card px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-foreground">{t("admin.sandbox")}</span>}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">{p.hint}</p>
-                {!p.ok && <p className="mt-1 text-xs font-semibold text-rose-600" data-testid={`${p.testid}-not-configured`}>{t("admin.fiveoneNotConfigured")}</p>}
+                {!p.ok && <p className="mt-1 text-xs font-semibold text-foreground" data-testid={`${p.testid}-not-configured`}>{t("admin.fiveoneNotConfigured")}</p>}
               </div>
               <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                 <span className="w-8 text-right text-xs font-bold uppercase tracking-widest" data-testid={`${p.testid}-state`}>{settings === null ? "…" : settings[p.key] ? "ON" : "OFF"}</span>

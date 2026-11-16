@@ -157,7 +157,7 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
         className={`${open ? "block" : "hidden"} min-w-0 border-t border-[color:var(--rule)] pt-2.5 sm:contents`}
       >
         <div className="min-w-0 sm:col-start-2 sm:row-span-2 sm:row-start-1">
-          <p className="flex min-w-0 items-center gap-1.5 text-[14px] font-semibold text-slate-900">
+          <p className="flex min-w-0 items-center gap-1.5 text-[14px] font-semibold text-foreground">
             <span className="min-w-0 truncate">{o.pseudo}</span>
             <span aria-hidden="true">·</span>
             <span className="num font-mono">{o.pubg_id}</span>

@@ -29,7 +29,7 @@ function Readiness({ readiness, compact = false }) {
       <li className="text-sm font-bold">Préparation à la vente {readiness.ready ? "— complète" : "— incomplète"}</li>
       {readiness.checks.map((c) => (
         <li key={c.key} className="flex items-start gap-2 text-xs" data-testid={`readiness-${c.key}`}>
-          {c.ok ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" /> : <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-600" />}
+          {c.ok ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground" /> : <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-foreground" />}
           <span><b>{CHECK_LABELS[c.key] || c.key}</b> — {c.detail}</span>
         </li>
       ))}
@@ -99,7 +99,7 @@ export default function AdminGames() {
   };
 
   const field = (k, label, type = "text", disabled = false) => (
-    <label className="text-sm font-semibold text-slate-700">{label}
+    <label className="text-sm font-semibold text-foreground">{label}
       <Input data-testid={`game-field-${k}`} type={type} disabled={disabled} value={editing[k] ?? ""}
         onChange={(e) => setEditing({ ...editing, [k]: e.target.value })} className="mt-1 h-10 rounded-xl" />
     </label>
@@ -127,8 +127,8 @@ export default function AdminGames() {
                 : <Gamepad2 className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="break-words font-display text-sm font-bold leading-snug text-slate-900 sm:text-base">{g.name}</p>
-              <p className="mt-0.5 break-words text-xs text-slate-500">{g.id} · {g.active ? t("admin.active") : t("admin.inactive")}</p>
+              <p className="break-words font-display text-sm font-bold leading-snug text-foreground sm:text-base">{g.name}</p>
+              <p className="mt-0.5 break-words text-xs text-muted-foreground">{g.id} · {g.active ? t("admin.active") : t("admin.inactive")}</p>
               <div className="mt-1.5" data-testid={`game-readiness-badge-${g.id}`}><Readiness readiness={g.readiness} compact /></div>
             </div>
             <div className="flex shrink-0 items-center gap-1">
@@ -145,7 +145,7 @@ export default function AdminGames() {
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent aria-describedby={undefined} className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-2xl" data-testid="game-dialog">
           <DialogHeader><DialogTitle className="font-display">{editing?._existing ? t("admin.edit") : t("admin.newGame")}</DialogTitle></DialogHeader>
-          <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+          <p className="rounded-xl border border-foreground bg-card p-3 text-xs text-foreground">
             Pour préparer un nouveau jeu : définissez ses champs d'identité joueur, son unité de monnaie,
             associez ses catégories FazerCards et liez chaque pack dans Admin → Fournisseur.
             Le jeu ne pourra être activé que lorsque sa configuration ET son catalogue livrable seront réels.
@@ -156,24 +156,24 @@ export default function AdminGames() {
               {field("name", t("admin.gameName"))}
               {field("slug", "Slug")}
               {field("sort_order", t("admin.sortOrder"), "number")}
-              <label className="text-sm font-semibold text-slate-700">Unité de monnaie
+              <label className="text-sm font-semibold text-foreground">Unité de monnaie
                 <Input data-testid="game-field-currency_label" maxLength={24} placeholder="UC, Diamants, Coins…"
                   value={editing.currency_label ?? ""} onChange={(e) => setEditing({ ...editing, currency_label: e.target.value })} className="mt-1 h-10 rounded-xl" />
-                <span className="mt-1 block text-xs font-normal text-slate-500">Utilisée pour nommer la monnaie des packs dans la boutique (ex. UC, Diamants).</span>
+                <span className="mt-1 block text-xs font-normal text-muted-foreground">Utilisée pour nommer la monnaie des packs dans la boutique (ex. UC, Diamants).</span>
               </label>
-              <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Catégorie de validation FazerCards
+              <label className="text-sm font-semibold text-foreground sm:col-span-2">Catégorie de validation FazerCards
                 <Input data-testid="game-field-fazercards_validation_category" placeholder="ex: ff_validation_cat"
                   value={editing.fazercards_validation_category ?? ""} onChange={(e) => setEditing({ ...editing, fazercards_validation_category: e.target.value })} className="mt-1 h-10 rounded-xl" />
-                <span className="mt-1 block text-xs font-normal text-slate-500">ID de la catégorie d'espace de validation chez FazerCards (distinct des catégories commerciales). À renseigner par l'admin pour ce jeu ; laissé vide, la validation d'identité n'est pas disponible pour ce jeu.</span>
+                <span className="mt-1 block text-xs font-normal text-muted-foreground">ID de la catégorie d'espace de validation chez FazerCards (distinct des catégories commerciales). À renseigner par l'admin pour ce jeu ; laissé vide, la validation d'identité n'est pas disponible pour ce jeu.</span>
               </label>
-              <label className="text-sm font-semibold text-slate-700">Logo URL
+              <label className="text-sm font-semibold text-foreground">Logo URL
                 <Input data-testid="game-field-icon_url" type="url" inputMode="url" placeholder="https://example.com/logo.png"
                   value={editing.icon_url ?? ""} onChange={(e) => setEditing({ ...editing, icon_url: e.target.value })} className="mt-1 h-10 rounded-xl" />
               </label>
-              <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Description FR
+              <label className="text-sm font-semibold text-foreground sm:col-span-2">Description FR
                 <Textarea value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} className="mt-1 rounded-xl" data-testid="game-field-description" />
               </label>
-              <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Description EN
+              <label className="text-sm font-semibold text-foreground sm:col-span-2">Description EN
                 <Textarea value={editing.description_en ?? ""} onChange={(e) => setEditing({ ...editing, description_en: e.target.value })} className="mt-1 rounded-xl" data-testid="game-field-description_en" />
               </label>
               <label className="flex items-center gap-2 text-sm font-semibold">
@@ -186,13 +186,13 @@ export default function AdminGames() {
                     <Plus className="mr-1 h-3.5 w-3.5" />Ajouter un champ
                   </Button>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Exigés par le fournisseur pour ce jeu (ex. <code>player_id</code>, <code>zone_id</code>, <code>server</code>).
                   Le checkout affiche exactement ces champs. Aucune clé n'est imposée ; cochez « principale » pour la valeur de suivi.
                 </p>
                 <div className="mt-3 space-y-2">
                   {(editing.identity_fields || []).length === 0 && (
-                    <p className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 p-2 text-xs text-amber-800" data-testid="game-identity-empty">
+                    <p className="rounded-xl border border-dashed border-border bg-muted/30 p-2 text-xs text-muted-foreground" data-testid="game-identity-empty">
                       Aucun champ défini : l'activation publique de ce jeu sera refusée.
                     </p>
                   )}
@@ -220,14 +220,14 @@ export default function AdminGames() {
                     <Plus className="mr-1 h-3.5 w-3.5" />Ajouter un type
                   </Button>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Classement interne des packs de ce jeu (ex. <code>cp</code> « CP », <code>battle_pass</code> « Battle Pass », <code>diamonds</code> « Diamants »).
                   Distinct des catégories FazerCards : chaque pack reste lié à une offre réelle dans Admin → Fournisseur.
                   {editing.id !== "pubg-mobile" && " Les clés prime, prime_plus et evo sont réservées à PUBG Mobile."}
                 </p>
                 <div className="mt-3 space-y-2">
                   {(editing.product_types || []).length === 0 && (
-                    <p className="rounded-xl border border-dashed border-amber-300 bg-amber-50/60 p-2 text-xs text-amber-800" data-testid="game-types-empty">Aucun type : aucun pack ne pourra être créé pour ce jeu.</p>
+                    <p className="rounded-xl border border-dashed border-border bg-muted/30 p-2 text-xs text-muted-foreground" data-testid="game-types-empty">Aucun type : aucun pack ne pourra être créé pour ce jeu.</p>
                   )}
                   {(editing.product_types || []).map((pt, i) => (
                     <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2" data-testid={`game-type-row-${i}`}>

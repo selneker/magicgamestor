@@ -150,30 +150,30 @@ export default function AdminProducts() {
           {editing && (
             <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
               {field("name", "Nom (FR)")}{field("name_en", "Name (EN)")}{field("slug", "Slug")}
-              <label className="text-sm font-semibold text-slate-700">Jeu associé
+              <label className="text-sm font-semibold text-foreground">Jeu associé
                 <Select value={editing.game_id || "pubg-mobile"} onValueChange={(v) => setEditing({ ...editing, game_id: v, type: typesOf(v).some((pt) => pt.key === editing.type) ? editing.type : "" })}>
                   <SelectTrigger className="mt-1 h-10 rounded-xl" data-testid="product-field-game_id"><SelectValue placeholder="Choisir un jeu" /></SelectTrigger>
                   <SelectContent>{games.map((g) => <SelectItem key={g.id} value={g.id}>{g.name} {g.active ? "" : "· Inactif"}</SelectItem>)}</SelectContent>
                 </Select>
               </label>
-              <label className="text-sm font-semibold text-slate-700">Type
+              <label className="text-sm font-semibold text-foreground">Type
                 <Select value={editing.type || ""} onValueChange={(v) => setEditing({ ...editing, type: v })}><SelectTrigger className="mt-1 h-10 rounded-xl" data-testid="product-field-type"><SelectValue placeholder={typesOf(editing.game_id).length ? "Choisir un type" : "Aucun type configuré"} /></SelectTrigger><SelectContent>{typesOf(editing.game_id).map((pt) => <SelectItem key={pt.key} value={pt.key} data-testid={`product-type-option-${pt.key}`}>{pt.label}</SelectItem>)}</SelectContent></Select>
-                {typesOf(editing.game_id).length === 0 && <span className="mt-1 block text-xs font-normal text-amber-700" data-testid="product-type-missing">Configurez les types de produit de ce jeu dans Admin → Jeux.</span>}
+                {typesOf(editing.game_id).length === 0 && <span className="mt-1 block text-xs font-normal text-foreground" data-testid="product-type-missing">Configurez les types de produit de ce jeu dans Admin → Jeux.</span>}
               </label>
               {editing.type === "evo" && (editing.game_id || "pubg-mobile") === "pubg-mobile" && (
-                <label className="text-sm font-semibold text-slate-700">{t("admin.evoLimit")}
+                <label className="text-sm font-semibold text-foreground">{t("admin.evoLimit")}
                   <Select value={editing.evo_limit || "season"} onValueChange={(v) => setEditing({ ...editing, evo_limit: v })}><SelectTrigger className="mt-1 h-10 rounded-xl" data-testid="product-field-evo_limit"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="season">{t("evo.limit.season")}</SelectItem><SelectItem value="lifetime">{t("evo.limit.lifetime")}</SelectItem><SelectItem value="week">{t("evo.limit.week")}</SelectItem></SelectContent></Select>
                 </label>
               )}
               {field("price", `${t("catalog.price")} (Ar)`, "number")}{field("old_price", "Ancien prix (Ar)", "number")}
               {field("uc_amount", `${games.find((g) => g.id === (editing.game_id || "pubg-mobile"))?.currency_label || ((editing.game_id || "pubg-mobile") === "pubg-mobile" ? "UC" : "Quantité de monnaie")}`, "number")}{field("duration_months", "Mois", "number")}{field("badge", "Badge")}{field("sort_order", "Ordre", "number")}
-              <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Logo URL<Input data-testid="product-field-image_url" type="url" inputMode="url" placeholder="https://example.com/60uc.png" value={editing.image_url ?? ""} onChange={(e) => setEditing({ ...editing, image_url: e.target.value })} className="mt-1 h-10 rounded-xl" /></label>
-              <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Description FR<Textarea value={editing.description_fr} onChange={(e) => setEditing({ ...editing, description_fr: e.target.value })} className="mt-1 rounded-xl" data-testid="product-field-description_fr" /></label>
-              <label className="text-sm font-semibold text-slate-700 sm:col-span-2">Description EN<Textarea value={editing.description_en} onChange={(e) => setEditing({ ...editing, description_en: e.target.value })} className="mt-1 rounded-xl" data-testid="product-field-description_en" /></label>
+              <label className="text-sm font-semibold text-foreground sm:col-span-2">Logo URL<Input data-testid="product-field-image_url" type="url" inputMode="url" placeholder="https://example.com/60uc.png" value={editing.image_url ?? ""} onChange={(e) => setEditing({ ...editing, image_url: e.target.value })} className="mt-1 h-10 rounded-xl" /></label>
+              <label className="text-sm font-semibold text-foreground sm:col-span-2">Description FR<Textarea value={editing.description_fr} onChange={(e) => setEditing({ ...editing, description_fr: e.target.value })} className="mt-1 rounded-xl" data-testid="product-field-description_fr" /></label>
+              <label className="text-sm font-semibold text-foreground sm:col-span-2">Description EN<Textarea value={editing.description_en} onChange={(e) => setEditing({ ...editing, description_en: e.target.value })} className="mt-1 rounded-xl" data-testid="product-field-description_en" /></label>
               <label className="flex items-center gap-2 text-sm font-semibold"><Switch checked={editing.popular} onCheckedChange={(v) => setEditing({ ...editing, popular: v })} data-testid="product-field-popular" />{t("admin.popular")}</label>
-              <p className="text-xs font-semibold text-slate-700 sm:col-span-2">Mapping fournisseur obligatoire pour tout nouveau pack. Un pack reste inactif jusqu'à ce que tu confirmes son offre dans Admin → Fournisseur.</p>
+              <p className="text-xs font-semibold text-foreground sm:col-span-2">Mapping fournisseur obligatoire pour tout nouveau pack. Un pack reste inactif jusqu'à ce que tu confirmes son offre dans Admin → Fournisseur.</p>
               <label className="flex items-center gap-2 text-sm font-semibold"><Switch checked={editing.active} onCheckedChange={(v) => setEditing({ ...editing, active: v })} data-testid="product-field-active" />{t("admin.active")}</label>
-              <p className="text-xs text-slate-500 sm:col-span-2">Pour un nouveau jeu, créez d'abord le produit inactif, configurez son mapping dans Fournisseur, puis activez-le. Un jeu ne devient public qu'avec un catalogue livrable.</p>
+              <p className="text-xs text-muted-foreground sm:col-span-2">Pour un nouveau jeu, créez d'abord le produit inactif, configurez son mapping dans Fournisseur, puis activez-le. Un jeu ne devient public qu'avec un catalogue livrable.</p>
               <Button type="submit" className="rounded-full font-bold sm:col-span-2" data-testid="product-save">{t("admin.save")}</Button>
             </form>
           )}

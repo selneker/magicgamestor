@@ -36,7 +36,7 @@ export default function AdminLoyalty() {
     catch (err) { toast.error(errorMessage(err)); }
   };
 
-  if (!settings) return <p className="text-slate-500">Chargement…</p>;
+  if (!settings) return <p className="text-muted-foreground">Chargement…</p>;
   return (
     <div className="space-y-6" data-testid="admin-loyalty">
       <h1 className="font-display text-2xl font-bold">Fidélité</h1>

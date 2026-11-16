@@ -46,7 +46,7 @@ export default function AdminBinance() {
           <div>
             <p className="eyebrow">Paiements · Binance USDT (dépôts CEX)</p>
             <p className="mt-1 text-xs text-muted-foreground">Détection automatique via l'API Binance (lecture seule). Aucun retrait, aucun trading.</p>
-            <p className={`mt-2 text-xs font-bold ${s.api_configured ? "text-emerald-600" : "text-rose-600"}`} data-testid="binance-api-status">{s.api_configured ? "✓ Clés API configurées côté serveur" : "⚠ BINANCE_API_KEY / BINANCE_API_SECRET absentes côté serveur"}</p>
+            <p className={`mt-2 text-xs font-bold ${s.api_configured ? "text-foreground" : "text-muted-foreground"}`} data-testid="binance-api-status">{s.api_configured ? "✓ Clés API configurées côté serveur" : "⚠ BINANCE_API_KEY / BINANCE_API_SECRET absentes côté serveur"}</p>
           </div>
           <Switch checked={s.enabled} disabled={!superAdmin || busy} onCheckedChange={(v) => save({ enabled: v })} data-testid="binance-enabled-toggle" />
         </div>
@@ -94,7 +94,7 @@ export default function AdminBinance() {
         {unmatched.length === 0 && <p className="mt-2 text-sm text-muted-foreground">Aucun dépôt à revoir.</p>}
         {unmatched.map((u) => (
           <div key={u.id} className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2 text-xs">
-            <div className="min-w-0"><p className="font-bold">{u.amount} USDT · {u.network} · <span className="text-rose-600">{u.reason}</span></p><p className="break-all font-mono text-muted-foreground">{u.tx_hash}</p></div>
+            <div className="min-w-0"><p className="font-bold">{u.amount} USDT · {u.network} · <span className="text-foreground">{u.reason}</span></p><p className="break-all font-mono text-muted-foreground">{u.tx_hash}</p></div>
             <Button size="sm" variant="outline" className="rounded-full" onClick={() => act(() => api.patch(`/crypto/admin/unmatched/${u.id}`), () => "Marqué comme revu.")} data-testid={`binance-unmatched-review-${u.id}`}>Marquer revu</Button>
           </div>
         ))}
@@ -106,7 +106,7 @@ export default function AdminBinance() {
         {payments.map((p) => (
           <div key={p.id} className="mt-2 grid gap-1 border-t border-border pt-2 text-xs sm:grid-cols-[1fr_auto]" data-testid={`binance-payment-${p.id}`}>
             <div className="min-w-0"><p className="font-bold">{p.order_number} · {p.amount_usdt} USDT · {p.network} · taux {p.rate_ar_per_usdt} Ar</p>{p.tx_hash && <p className="break-all font-mono text-muted-foreground">{p.tx_hash}</p>}</div>
-            <span className={`self-start rounded-full border px-2 py-0.5 font-black ${p.status === "CONFIRMED" ? "border-foreground bg-primary text-[#0A0A0A]" : p.status === "FAILED" ? "border-rose-300 text-rose-600" : "border-[color:var(--rule-strong)]"}`}>{p.status}</span>
+            <span className={`self-start rounded-full border px-2 py-0.5 font-black ${p.status === "CONFIRMED" ? "border-foreground bg-primary text-[#0A0A0A]" : p.status === "FAILED" ? "border-destructive text-destructive" : "border-[color:var(--rule-strong)]"}`}>{p.status}</span>
           </div>
         ))}
       </section>
