@@ -56,7 +56,7 @@ export function errorMessage(e, fallback = "Une erreur est survenue") {
   return d.msg || String(d);
 }
 
-export const formatAr = (n) => `${Number(n || 0).toLocaleString("fr-FR").replace(/\u202f/g, " ")} Ar`;
+export const formatAr = (n, locale = "fr-FR") => `${Number(n || 0).toLocaleString(locale).replace(/\u202f/g, " ")} Ar`;
 
 export function sessionId() {
   let id = localStorage.getItem("mgs_session");

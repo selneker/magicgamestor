@@ -141,7 +141,7 @@ export function ProductCard({ product, index = 0, badge }) {
           {showDiscountLine ? (
             <div className="flex items-center gap-2 pb-1.5">
               <span data-testid={`card-discount-${product.slug}`} className="shrink-0 rounded-full border border-ink bg-neo px-2 py-0.5 font-body text-[11px] font-bold leading-4 text-ink">-{discount}%</span>
-              <span className="min-w-0 font-body text-xs font-semibold line-through text-[color:var(--card-ink-muted)]">{formatAr(oldPrice)}</span>
+              <span className="min-w-0 font-body text-xs font-semibold line-through text-[color:var(--card-ink-muted)]">{formatAr(oldPrice, lang)}</span>
             </div>
           ) : null}
 
@@ -165,7 +165,7 @@ export function ProductCard({ product, index = 0, badge }) {
             <>
               {/* Le prix ne doit JAMAIS être coupé : whitespace-nowrap, pas de truncate.
                   mgs-card-price : 14px en container query sous 170px de carte (index.css). */}
-              <div className="flex min-w-0 flex-1 items-center gap-1"><span className="mgs-card-price min-w-0 whitespace-nowrap font-display font-extrabold leading-none tracking-normal text-base sm:text-2xl">{formatAr(product.price)}</span></div>
+              <div className="flex min-w-0 flex-1 items-center gap-1"><span className="mgs-card-price min-w-0 whitespace-nowrap font-display font-extrabold leading-none tracking-normal text-base sm:text-2xl">{formatAr(product.price, lang)}</span></div>
               <button type="button" aria-label={`Ajouter au panier : ${product.name || product.slug}`} onClick={handleAdd} className={`relative before:absolute before:-inset-0.5 before:content-[''] grid aspect-square h-10 w-10 shrink-0 place-items-center !rounded-full bg-[color:var(--card-cta-bg)] text-[color:var(--card-cta-fg)] transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
                 <Icon name={actionIconName} />
               </button>

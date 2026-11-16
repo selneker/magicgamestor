@@ -90,7 +90,7 @@ export function GameCard({ game, className = "", testId }) {
         <RatingStars rating={game.rating} reviewCount={game.review_count} />
         {minPrice != null && (
           <span className="shrink-0 text-[11px] font-semibold tabular-nums text-muted-foreground">
-            {lang === "en" ? "from" : "dès"} {formatAr(minPrice)}
+            {lang === "en" ? "from" : "dès"} {formatAr(minPrice, lang)}
           </span>
         )}
       </span>

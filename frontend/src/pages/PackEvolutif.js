@@ -82,8 +82,8 @@ export default function PackEvolutif({ embedded = false, products = null }) {
             <p className="mt-2 text-sm text-muted-foreground">{lang === "en" && p.description_en ? p.description_en : p.description_fr}</p>
             <div className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5">
               <div>
-                {p.old_price && <p className="text-xs text-muted-foreground line-through">{formatAr(p.old_price)}</p>}
-                <p className="num text-2xl text-foreground" data-testid={`evo-price-${p.slug}`}>{formatAr(p.price)}</p>
+                {p.old_price && <p className="text-xs text-muted-foreground line-through">{formatAr(p.old_price, lang)}</p>}
+                <p className="num text-2xl text-foreground" data-testid={`evo-price-${p.slug}`}>{formatAr(p.price, lang)}</p>
               </div>
               {p.purchasable === false ? (
                 <Button disabled variant="outline" data-testid={`evo-soon-${p.slug}`} className="rounded-full px-6 font-bold opacity-70">{t("evo.soon")}</Button>
@@ -107,7 +107,7 @@ export default function PackEvolutif({ embedded = false, products = null }) {
             <div className="space-y-4">
               <div className="flex items-center justify-between border border-foreground bg-muted/40 px-3 py-2 text-sm">
                 <span className="text-muted-foreground">{t(`evo.limit.${selected.evo_limit || "season"}`)}</span>
-                <span className="num text-lg">{formatAr(selected.price)}</span>
+                <span className="num text-lg">{formatAr(selected.price, lang)}</span>
               </div>
               <form onSubmit={check} className="space-y-3">
                 <label className="text-sm font-semibold" htmlFor="evo-pubg-id">{t("evo.pubgLabel")}</label>
@@ -129,7 +129,7 @@ export default function PackEvolutif({ embedded = false, products = null }) {
                 </p>
               )}
               <Button onClick={proceed} disabled={!result?.eligible} data-testid="evo-continue-button" className="h-12 w-full rounded-full font-bold">
-                {t("evo.continue")} — {formatAr(selected.price)}
+                {t("evo.continue")} — {formatAr(selected.price, lang)}
               </Button>
             </div>
           )}

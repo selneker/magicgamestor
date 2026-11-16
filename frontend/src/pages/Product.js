@@ -107,8 +107,8 @@ export default function Product() {
           <p className="eyebrow" data-testid="product-game-type">{game?.name} · {typeLabel(game, product.type, lang)}</p>
           <h1 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-5xl" data-testid="product-name">{productName(product, lang)}</h1>
           <div className="mt-6 flex flex-wrap items-end gap-3">
-            <span data-testid="product-price" className="num text-4xl sm:text-5xl">{formatAr(product.price)}</span>
-            {product.old_price && <span className="pb-1 text-muted-foreground line-through">{formatAr(product.old_price)}</span>}
+            <span data-testid="product-price" className="num text-4xl sm:text-5xl">{formatAr(product.price, lang)}</span>
+            {product.old_price && <span className="pb-1 text-muted-foreground line-through">{formatAr(product.old_price, lang)}</span>}
             {discount > 0 && <span className="mb-1 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-[#0A0A0A]">{t("product.save")} {discount}%</span>}
           </div>
           {localized(product, "description", lang) && <p className="mt-5 text-sm leading-relaxed text-muted-foreground" data-testid="product-description">{localized(product, "description", lang)}</p>}
@@ -138,7 +138,7 @@ export default function Product() {
 
       <div className="fixed inset-x-0 bottom-20 z-30 px-4 sm:hidden">
         <div className="glass mx-auto flex max-w-md items-center gap-3 rounded-full border p-2">
-          <span className="pl-3 font-display text-lg font-bold">{formatAr(product.price)}</span>
+          <span className="pl-3 font-display text-lg font-bold">{formatAr(product.price, lang)}</span>
           <Button disabled={!available} className="ml-auto h-11 rounded-full px-6 font-bold" onClick={buyNow} data-testid="buy-now-mobile">{t("product.buy")}</Button>
         </div>
       </div>

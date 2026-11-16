@@ -97,7 +97,7 @@ export function CartDrawer() {
         transition={{ duration: prefersReduced ? 0 : 0.2, ease: "easeOut" }}
         className="fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.5rem)] z-[45] flex items-center gap-3 rounded-[20px] border border-[color:var(--rule-strong)] bg-card p-2 text-[color:hsl(var(--card-foreground))] shadow-[0_18px_44px_hsl(0_0%_0%_/_.22)] backdrop-blur-md md:hidden"
         data-testid="mobile-cart-bar">
-        <button type="button" className="min-h-11 min-w-0 flex-1 rounded-[14px] px-2 text-left" onClick={() => setOpen(true)}><span className="block text-xs font-medium">{count} {count === 1 ? t("cart.item") : t("cart.items")}</span><span className="num block text-lg font-bold">{formatAr(total)}</span></button>
+        <button type="button" className="min-h-11 min-w-0 flex-1 rounded-[14px] px-2 text-left" onClick={() => setOpen(true)}><span className="block text-xs font-medium">{count} {count === 1 ? t("cart.item") : t("cart.items")}</span><span className="num block text-lg font-bold">{formatAr(total, lang)}</span></button>
         <button type="button" className="min-h-11 shrink-0 rounded-full bg-primary px-4 text-sm font-bold text-[#0A0A0A]" onClick={() => { setOpen(false); navigate("/commande"); }}>{t("cart.checkout")}</button>
       </motion.div>
       )}
@@ -121,7 +121,7 @@ export function CartDrawer() {
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-foreground bg-primary font-display text-xs font-black text-[#0A0A0A]">{(games.find((g) => g.id === (i.game_id || "pubg-mobile"))?.product_types || []).find((pt) => pt.key === i.type)?.label?.slice(0, 3) || i.type.slice(0, 3).toUpperCase()}</div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-slate-900">{lang === "en" && i.name_en ? i.name_en : i.name}</p>
-                    <p className="text-sm text-slate-500">{formatAr(i.price)}</p>
+                    <p className="text-sm text-slate-500">{formatAr(i.price, lang)}</p>
                   </div>
                   <div className="flex items-center gap-1 rounded-full border border-slate-200 p-0.5">
                     <button aria-label={`${t("cart.qty")} -`} data-testid={`cart-dec-${i.slug}`} onClick={() => setQty(i.id, i.qty - 1)} className="inline-flex h-10 w-10 items-center justify-center rounded-full hover:bg-slate-100"><Minus className="h-3.5 w-3.5" /></button>
@@ -133,7 +133,7 @@ export function CartDrawer() {
               ))}
             </ul>
             <div className="border-t pt-4">
-              <div className="flex items-center justify-between text-lg"><span className="eyebrow">{t("cart.total")}</span><span data-testid="cart-total" className="num text-2xl">{formatAr(total)}</span></div>
+              <div className="flex items-center justify-between text-lg"><span className="eyebrow">{t("cart.total")}</span><span data-testid="cart-total" className="num text-2xl">{formatAr(total, lang)}</span></div>
               <p className="mt-2 text-xs text-muted-foreground">{t("cart.paymentFeeHint")}</p>
               <Button data-testid="cart-checkout-button" className="mt-4 h-12 w-full rounded-full text-base font-bold" onClick={() => { setOpen(false); navigate("/commande"); }}>{t("cart.checkout")}</Button>
             </div>

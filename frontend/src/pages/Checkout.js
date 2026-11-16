@@ -47,7 +47,7 @@ const validationField = (details) => {
 };
 
 export default function Checkout() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { items, total, clear, gameId: cartGameId } = useCart();
   const { user } = useAuth();
   const gameSel = useGames();
@@ -286,12 +286,12 @@ export default function Checkout() {
         {/* Montant en grand. */}
         <div className="border-b border-[color:var(--rule)] pb-3 pt-1" data-testid="checkout-amount-block">
           <p className="text-xs text-muted-foreground">{t("checkout.youPay")}</p>
-          <p className="my-0.5 font-display text-[32px] font-extrabold leading-tight tracking-[-0.01em]" data-testid="checkout-amount">{formatAr(total)} <span className="text-[15px] font-bold text-muted-foreground">Ar</span></p>
+          <p className="my-0.5 font-display text-[32px] font-extrabold leading-tight tracking-[-0.01em]" data-testid="checkout-amount">{formatAr(total, lang)} <span className="text-[15px] font-bold text-muted-foreground">Ar</span></p>
           <div className="flex items-center justify-between text-[13px] text-muted-foreground">
             <span>{t("checkout.youReceive")}</span>
             <b className="text-foreground" data-testid="checkout-receive">{receiveText}</b>
           </div>
-          {fee > 0 && <p className="mt-1 text-xs text-muted-foreground" data-testid="checkout-fee-line">{t("checkout.paymentFee")} : {formatAr(fee)} Ar</p>}
+          {fee > 0 && <p className="mt-1 text-xs text-muted-foreground" data-testid="checkout-fee-line">{t("checkout.paymentFee")} : {formatAr(fee, lang)} Ar</p>}
         </div>
 
         {/* ID joueur : ID et pseudo sur DEUX lignes séparées, coche + pseudo,

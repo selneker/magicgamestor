@@ -48,7 +48,7 @@ function SeasonsPanel({ t }) {
 }
 
 export default function AdminProducts() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [products, setProducts] = useState([]);
   const [games, setGames] = useState([]);
   const [gameId, setGameId] = useState("pubg-mobile");
@@ -123,8 +123,8 @@ export default function AdminProducts() {
               <p className="break-words font-display text-sm font-bold leading-snug sm:text-base">{p.name}</p>
               <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                 <span className="rounded-full border border-[color:var(--rule-strong)] px-2 py-0.5 font-semibold uppercase tracking-[0.08em]">{typeName(p)}</span>
-                <span className="font-semibold text-foreground">{formatAr(p.price)}</span>
-                {p.old_price ? <span className="line-through">{formatAr(p.old_price)}</span> : null}
+                <span className="font-semibold text-foreground">{formatAr(p.price, lang)}</span>
+                {p.old_price ? <span className="line-through">{formatAr(p.old_price, lang)}</span> : null}
                 {p.popular ? <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-[#0A0A0A]">★</span> : null}
                 <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase ${p.active ? "bg-foreground text-background" : "border border-[color:var(--rule-strong)]"}`}>{p.active ? t("admin.active") : t("admin.inactive")}</span>
               </p>

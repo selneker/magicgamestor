@@ -40,7 +40,7 @@ const Slot = () => (
 );
 
 export function PendingOrderBanner() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { user } = useAuth();
   const { games } = useGames();
   const { pathname } = useLocation();
@@ -93,7 +93,7 @@ export function PendingOrderBanner() {
   const game = games.find((g) => g.id === order.game_id);
   // PL-UX-3 — le montant ne JAMAIS passe à la ligne : espaces insécables
   // (chiffres + « Ar ») + `whitespace-nowrap` sur la ligne.
-  const amount = formatAr(order.total).replace(/[\s\u202f\u00a0]+(?=Ar$)/, "\u00A0");
+  const amount = formatAr(order.total, lang).replace(/[\s\u202f\u00a0]+(?=Ar$)/, "\u00A0");
 
   return (
     <div className="px-4 pt-3 sm:px-6" data-testid="pending-order-banner">

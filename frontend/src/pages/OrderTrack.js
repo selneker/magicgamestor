@@ -64,14 +64,14 @@ export function OrderCard({ order }) {
       <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600" data-testid="order-next-step">{t(`order.next.${order.status}`)}</p>
       {order.late_payment && <p className="mt-2 rounded-xl border border-strong px-3 py-2 text-xs" data-testid="order-late-payment">{t("order.latePayment")}</p>}
       <ul className="mt-4 divide-y text-sm">
-        {order.items.map((i, idx) => <li key={idx} className="flex justify-between py-2"><span>{i.quantity} × {lang === "en" && i.name_en ? i.name_en : i.name}</span><span className="font-semibold">{formatAr(i.line_total)}</span></li>)}
-        {(order.payment_fee ?? order.verification_fee) > 0 && <li className="flex justify-between py-2 text-slate-500" data-testid="order-verification-fee"><span>{t("checkout.paymentFee")}</span><span className="font-semibold">{formatAr(order.payment_fee ?? order.verification_fee)}</span></li>}
+        {order.items.map((i, idx) => <li key={idx} className="flex justify-between py-2"><span>{i.quantity} × {lang === "en" && i.name_en ? i.name_en : i.name}</span><span className="font-semibold">{formatAr(i.line_total, lang)}</span></li>)}
+        {(order.payment_fee ?? order.verification_fee) > 0 && <li className="flex justify-between py-2 text-slate-500" data-testid="order-verification-fee"><span>{t("checkout.paymentFee")}</span><span className="font-semibold">{formatAr(order.payment_fee ?? order.verification_fee, lang)}</span></li>}
       </ul>
       <div className="mt-3 flex flex-wrap justify-between gap-2 border-t pt-3 text-sm text-slate-500">
         <span><OrderIdentity order={order} /> · {order.pseudo}</span>
         <span>{paymentLabel(order.payment_method, t)}</span>
         <span>{new Date(order.created_at).toLocaleString(lang === "en" ? "en-GB" : "fr-FR")}</span>
-        <span className="num text-xl text-foreground">{formatAr(order.total)}</span>
+        <span className="num text-xl text-foreground">{formatAr(order.total, lang)}</span>
       </div>
     </article>
   );
@@ -139,7 +139,7 @@ const RESUME_DONE = ["paid", "delivered", "cancelled", "failed", "expired"];
 // `manual_operator` null (très ancienne commande) : aucun numéro n'est
 // affiché — message + « Recommencer ».
 export function OrderResume({ orderId }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [config, setConfig] = useState(null);
@@ -270,7 +270,7 @@ export function OrderResume({ orderId }) {
   const opName = op === "orange" ? t("checkout.methodOrange") : t("checkout.methodMvola");
   const opTitle = op === "orange" ? t("checkout.payTitleOrange") : t("checkout.payTitleMvola");
   const merchant = op ? config?.providers?.[op] : null;
-  const payTotal = formatAr((order.subtotal ?? order.total) + (order.payment_fee ?? 0));
+  const payTotal = formatAr((order.subtotal ?? order.total) + (order.payment_fee ?? 0), lang);
 
   return (
     <div className="mx-auto flex min-h-[100svh] w-full max-w-[480px] flex-col lg:min-h-0" data-testid="order-resume">

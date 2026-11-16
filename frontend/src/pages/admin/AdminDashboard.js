@@ -5,12 +5,12 @@ import { paymentLabel } from "@/lib/paymentLabels";
 import { useLang } from "@/context/LanguageContext";
 
 export default function AdminDashboard() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [stats, setStats] = useState(null);
   useEffect(() => { api.get("/admin/stats").then((r) => setStats(r.data)).catch(() => {}); }, []);
   if (!stats) return <p className="text-muted-foreground">{t("common.loading")}</p>;
   const cards = [
-    [t("admin.revenue"), formatAr(stats.revenue), "stat-revenue"],
+    [t("admin.revenue"), formatAr(stats.revenue, lang), "stat-revenue"],
     [t("admin.total"), stats.total_orders, "stat-total"],
     [t("admin.pending"), stats.status_count.paid + stats.status_count.awaiting_verification, "stat-pending"],
     [t("admin.delivered"), stats.status_count.delivered, "stat-delivered"],
@@ -38,7 +38,7 @@ export default function AdminDashboard() {
           <h2 className="font-display text-lg font-bold text-foreground">{t("admin.last14")}</h2>
           <div className="mt-4 h-56">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.daily}><XAxis dataKey="_id" tick={{ fontSize: 10 }} tickFormatter={(d) => d.slice(5)} /><Tooltip formatter={(v) => formatAr(v)} /><Bar dataKey="revenue" fill="var(--pubg)" stroke="currentColor" className="text-foreground" /></BarChart>
+              <BarChart data={stats.daily}><XAxis dataKey="_id" tick={{ fontSize: 10 }} tickFormatter={(d) => d.slice(5)} /><Tooltip formatter={(v) => formatAr(v, lang)} /><Bar dataKey="revenue" fill="var(--pubg)" stroke="currentColor" className="text-foreground" /></BarChart>
             </ResponsiveContainer>
           </div>
         </div>

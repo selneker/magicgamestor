@@ -65,7 +65,7 @@ const FINAL_STATUSES = ["paid", "delivered", "cancelled", "failed", "expired"];
 /* ------------------------------------------------- écran 3 : feuille de preuve */
 
 export function ProofSheet({ open, onOpenChange, order, summary, onSubmitted, onUpdated }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [files, setFiles] = useState([]); // { file, name, url }
   const [checked, setChecked] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -177,7 +177,7 @@ export function ProofSheet({ open, onOpenChange, order, summary, onSubmitted, on
       {/* Ligne récap UNIQUE (« 1 × 60 UC · ID … » + montant). */}
       <p className="flex items-center justify-between gap-3 border-t border-[color:var(--rule)] pt-2.5 text-xs text-muted-foreground" data-testid="proof-recap">
         <span className="min-w-0 truncate">{recap}{summary?.pubgId ? <> · ID <b className="text-foreground">{summary.pubgId}</b></> : null}</span>
-        <b className="shrink-0 text-foreground">{formatAr(amount)}</b>
+        <b className="shrink-0 text-foreground">{formatAr(amount, lang)}</b>
       </p>
 
       {/* Case obligatoire : « J'ai déjà effectué le paiement. » (texte maquette). */}
@@ -194,7 +194,7 @@ export function ProofSheet({ open, onOpenChange, order, summary, onSubmitted, on
 /* --------------------------------------------- écran 4 : attente + Relancer */
 
 export function ProofWaiting({ order, onUpdated }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   // Relance : cooldown issu de remaining_seconds (réponse 200) ou du 429
@@ -296,7 +296,7 @@ export function ProofWaiting({ order, onUpdated }) {
                 <DetailRow label={t("checkout.detailsPlayerId")} value={order.pubg_id} testId="details-player-id" />
                 <DetailRow label={t("checkout.detailsPseudo")} value={order.pseudo} testId="details-pseudo" />
                 <DetailRow label={t("checkout.detailsPaidWith")} value={paidWith} testId="details-paid-with" />
-                <DetailRow label={t("checkout.detailsAmount")} value={formatAr(order.total)} testId="details-amount" />
+                <DetailRow label={t("checkout.detailsAmount")} value={formatAr(order.total, lang)} testId="details-amount" />
                 <DetailRow label={t("checkout.detailsOrder")} value={`#${order.order_number}`} testId="details-number" />
               </dl>
             </CollapsibleContent>

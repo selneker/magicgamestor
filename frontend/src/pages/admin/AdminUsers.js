@@ -20,7 +20,7 @@ const ALL_PERMISSIONS = [
 
 export default function AdminUsers() {
   const { user: me } = useAuth();
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const isSuper = me?.role === "super_admin";
   const [data, setData] = useState({ items: [], total: 0, page: 1, page_size: 20 });
   const [filters, setFilters] = useState({ search: "", role: "", status: "", email_verified: "" });
@@ -226,7 +226,7 @@ export default function AdminUsers() {
                 <p className="eyebrow">{t("admin.userMgmt.detailOrders")}</p>
                 <p><b data-testid="detail-orders-count">{detail.orders_count}</b> {t("admin.userMgmt.detailOrdersCount", { count: detail.orders_count })}</p>
                 <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
-                  {(detail.recent_orders || []).map((o) => <li key={o.order_number}>{o.order_number} · {o.status} · {formatAr(o.total || 0)}</li>)}
+                  {(detail.recent_orders || []).map((o) => <li key={o.order_number}>{o.order_number} · {o.status} · {formatAr(o.total || 0, lang)}</li>)}
                 </ul>
               </div>
               <div className="border border-foreground bg-card p-3">

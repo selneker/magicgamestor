@@ -61,7 +61,7 @@ const StatusBadge = ({ p, t }) => {
 };
 
 export default function AdminFazercards() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { isSuperAdmin, can } = useAuth();
   const [settings, setSettings] = useState(null);
   const [alerts, setAlerts] = useState({ alerts: [], unacknowledged: 0 });
@@ -324,7 +324,7 @@ export default function AdminFazercards() {
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-foreground">{a.offer_name} <span className="font-mono text-xs text-muted-foreground">({a.category_id})</span></p>
                 <p className="text-xs text-muted-foreground">{t("admin.fzr.oldCost")} : ${a.old_price_usd} → {t("admin.fzr.newCost")} : <span className={a.direction === "up" ? "font-bold text-foreground" : "font-bold text-foreground"}>${a.new_price_usd}</span>
-                  {a.mgs_product && <> · {t("admin.fzr.mgsPrice")} : {formatAr(a.mgs_product.price)} ({a.mgs_product.name})</>}</p>
+                  {a.mgs_product && <> · {t("admin.fzr.mgsPrice")} : {formatAr(a.mgs_product.price, lang)} ({a.mgs_product.name})</>}</p>
                 <p className="text-[11px] text-muted-foreground">{new Date(a.detected_at).toLocaleString("fr-FR")}</p>
               </div>
               {!a.acknowledged && <Button size="sm" variant="outline" className="rounded-full text-xs" onClick={() => ack(a.id)} data-testid={`fzr-ack-${a.id}`}><Check className="mr-1 h-3 w-3" />{t("admin.fzr.ack")}</Button>}
@@ -400,7 +400,7 @@ export default function AdminFazercards() {
                     <div key={p.id} className="rounded-xl border border-border bg-background/40 px-3 py-2 text-sm" data-testid={`fzr-map-${p.slug}`}>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <span className="min-w-0 max-w-full break-words font-semibold text-foreground">{p.name}</span>
-                        <span className="text-xs text-muted-foreground">{formatAr(p.price)}</span>
+                        <span className="text-xs text-muted-foreground">{formatAr(p.price, lang)}</span>
                         <StatusBadge p={p} t={t} />
                         {!p.active && <span className="rounded-full bg-card px-2 py-0.5 text-[11px] text-foreground">{t("admin.fzr.inactive")}</span>}
                         {p.supplier_cost_usd != null && <span className="text-xs font-semibold text-foreground" data-testid={`fzr-cost-${p.slug}`}>${p.supplier_cost_usd}</span>}
@@ -505,7 +505,7 @@ export default function AdminFazercards() {
                     <div className="space-y-1 rounded-xl bg-slate-50 p-3 text-xs">
                       <p className="flex justify-between"><span className="text-slate-500">Offer ID</span><span className="font-mono font-semibold" data-testid="fzr-offer-id">{selectedOffer.offer_id}</span></p>
                       <p className="flex justify-between"><span className="text-slate-500">{t("admin.fzr.cost")}</span><span className="font-semibold" data-testid="fzr-offer-cost">${selectedOffer.price_usd}</span></p>
-                      <p className="flex justify-between"><span className="text-muted-foreground">{t("admin.fzr.mgsSell")}</span><span className="font-semibold">{formatAr(editing.price)}</span></p>
+                      <p className="flex justify-between"><span className="text-muted-foreground">{t("admin.fzr.mgsSell")}</span><span className="font-semibold">{formatAr(editing.price, lang)}</span></p>
                     </div>
                   )}
                 </>

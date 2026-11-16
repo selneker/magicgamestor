@@ -237,7 +237,7 @@ function HistoryCard({ order }) {
           {badge}
         </div>
         <div className="mt-2.5 flex items-baseline justify-between gap-2">
-          <span className="num text-[15.5px] font-semibold">{formatAr(order.total)}</span>
+          <span className="num text-[15.5px] font-semibold">{formatAr(order.total, lang)}</span>
           <span className="text-[12.5px] text-muted-foreground">{methodLabel(order, t)}</span>
         </div>
         <div className="mt-2.5 flex items-center gap-1 border-t border-[color:var(--rule)] pt-2">
@@ -258,7 +258,7 @@ function HistoryCard({ order }) {
         </div>
         <p className="text-right text-[12.5px] text-muted-foreground">{methodLabel(order, t)}</p>
         <div className="text-right">
-          <p className="num text-[15.5px] font-semibold">{formatAr(order.total)}</p>
+          <p className="num text-[15.5px] font-semibold">{formatAr(order.total, lang)}</p>
           <div className="mt-1.5 flex justify-end">{badge}</div>
         </div>
       </div>
@@ -365,8 +365,8 @@ function OrderReceipt({ order }) {
         {row(t("order.receipt.product"), (order.items || []).map((i) => `${i.quantity} × ${lang === "en" && i.name_en ? i.name_en : i.name}`).join(" + "), "receipt-product")}
         {row(t("order.receipt.playerId"), identityLine(order, games), "receipt-player")}
         {row(t("order.receipt.method"), methodLabel(order, t), "receipt-method")}
-        {(order.payment_fee ?? 0) > 0 && row(t("order.receipt.fee"), formatAr(order.payment_fee), "receipt-fee")}
-        {row(t("order.receipt.amount"), formatAr(order.total), "receipt-total")}
+        {(order.payment_fee ?? 0) > 0 && row(t("order.receipt.fee"), formatAr(order.payment_fee, lang), "receipt-fee")}
+        {row(t("order.receipt.amount"), formatAr(order.total, lang), "receipt-total")}
       </div>
       <p className="mt-4 text-[11px]" style={{ color: "var(--receipt-muted)" }}>{t("order.receipt.footer")}</p>
     </div>
@@ -546,7 +546,7 @@ export function OrderDetail() {
             2bis), « Annulée » porte le badge sans rouge de la RONDE 2 (✕ +
             blanc 62 %, aucune bordure — tâche 6), nulle part ailleurs. */}
         <div className="pt-4 text-center">
-          <p className="num text-[30px] font-semibold leading-tight" data-testid="order-detail-amount">{formatAr(order.total)}</p>
+          <p className="num text-[30px] font-semibold leading-tight" data-testid="order-detail-amount">{formatAr(order.total, lang)}</p>
           {cancelled ? (
             <p
               className={`mt-2 inline-flex items-center gap-1.5 text-[13px] font-semibold ${CANCEL_TEXT}`}

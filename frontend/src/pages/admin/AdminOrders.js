@@ -92,7 +92,7 @@ export function AdminMethodOperatorNote({ method }) {
 // persistant, repliée par défaut) et survit au rechargement périodique de
 // la liste grâce à l'identité React stable (clé = id de commande).
 function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCount, isSuperAdmin, onStatus, onRemove, onSimulate, onChanged }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [open, setOpen] = useState(false);
   const itemsText = o.items.map((i) => `${i.quantity}× ${i.name}${i.season_name ? ` · ${i.season_name}` : ""}${i.week_key ? ` · sem. ${i.week_key}` : ""}`).join(", ");
   return (
@@ -144,7 +144,7 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
           uniquement là. */}
       <div className="mt-2 flex items-baseline justify-between gap-3 sm:contents">
         <p className="min-w-0 truncate text-sm text-muted-foreground sm:hidden">{itemsText}</p>
-        <p className="num shrink-0 text-[17px] font-extrabold text-foreground sm:col-start-3 sm:row-start-1 sm:text-right" data-testid={`admin-order-total-${o.order_number}`}>{formatAr(o.total)}</p>
+        <p className="num shrink-0 text-[17px] font-extrabold text-foreground sm:col-start-3 sm:row-start-1 sm:text-right" data-testid={`admin-order-total-${o.order_number}`}>{formatAr(o.total, lang)}</p>
       </div>
 
       {/* Corps replié du mobile ; sur bureau, dissolution en cellules : pile
