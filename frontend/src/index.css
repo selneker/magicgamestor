@@ -46,7 +46,7 @@
         --destructive-foreground: 0 0% 100%;
         --border: 0 0% 4%;
         --input: 0 0% 4%;
-        --ring: 170 100% 42%;
+        --ring: 170 100% 30%;
         --radius: 10px;
         --rule: hsl(0 0% 7% / .15);
         --rule-strong: hsl(0 0% 7% / .38);
@@ -188,7 +188,7 @@
         --destructive-foreground: 0 0% 4%;
         --border: 45 35% 93%;
         --input: 45 35% 93%;
-        --ring: 170 100% 50%;
+        --ring: 170 100% 30%;
         --rule: hsl(45 35% 93% / .15);
         --rule-strong: hsl(45 35% 93% / .4);
         --shadow-brut: 3px 3px 0 hsl(0 0% 0% / .35);
@@ -540,18 +540,18 @@ html.dark body[data-page="home"] {
     :root {
         --primary: 152 65% 60%;   /* #55db9c — vert du footer */
         --accent: 152 65% 60%;
-        --ring: 152 65% 38%;
+        --ring: 152 65% 36%;
     }
     .dark {
         --primary: 152 65% 60%;
         --accent: 152 65% 60%;
-        --ring: 152 65% 60%;
+        --ring: 152 65% 36%;
     }
     /* L'accueil épingle ses tokens LIGHT sur html.dark body[data-page=home]
        (glue PL-005-FE-03) : ré-aligner --accent/--ring sur le vert. */
     html.dark body[data-page="home"] {
         --accent: 152 65% 60%;
-        --ring: 152 65% 60%;
+        --ring: 152 65% 36%;
     }
 }
 
