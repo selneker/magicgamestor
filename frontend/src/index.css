@@ -425,3 +425,76 @@
    `.num` (non-layered, 700) gagne sur `font-semibold` de Tailwind : il est
    neutralisé à l'intérieur du conteneur de ces pages. */
 .order-history-weight .num { font-weight: 600; }
+
+/* ── PL-005-FE-03 (refonte Slush) — glue design system ──────────────────── */
+
+/* L'accueil peint ses panneaux avec les tokens SLUSH (fixes, indépendants du
+   thème : crème #F4F1E8 / encre #111111) — mais les composants APP à
+   l'intérieur (ProductCard, Skeleton…) lisent les tokens shadcn, qui basculent
+   en sombre et deviennent crème-sur-crème sur les panneaux fixes. On épingle
+   donc les tokens de l'app sur leurs valeurs LIGHT quand l'accueil est
+   affiché (body[data-page="home"], posé par SlushChrome) : l'accueil garde
+   les couleurs exactes de la maquette dans LES DEUX thèmes. */
+html.dark body[data-page="home"] {
+    /* Le <style> inline anti-flash de index.html pose html.dark body sur
+       #2B2B2B / crème — sa spécificité (0,1,2) bat les règles Slush du body.
+       Sur l'accueil (panneaux de la maquette), on rend au CSS Slush la main :
+       fond encre + texte encre hérité (les panneaux sont crème et portent
+       eux-mêmes leurs textes encre). */
+    background-color: var(--color--dark);
+    color: var(--color--dark);
+    --background: var(--cream);
+    --foreground: 0 0% 7%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 7%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 7%;
+    --secondary: 0 0% 7%;
+    --secondary-foreground: 45 35% 93%;
+    --muted: 48 14% 90%;
+    --muted-foreground: 60 3% 32%;
+    --accent: 170 100% 50%;
+    --accent-foreground: 0 0% 4%;
+    --destructive: 6 78% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 4%;
+    --input: 0 0% 4%;
+    --ring: 170 100% 42%;
+    --rule: hsl(0 0% 7% / .15);
+    --rule-strong: hsl(0 0% 7% / .38);
+    --shadow-brut: 3px 3px 0 hsl(0 0% 4% / .18);
+    --panel: 45 35% 93%;
+    --panel-ink: 0 0% 7%;
+    --panel-muted: 60 3% 32%;
+    /* Carte produit (tokens MGS-FE-CARDS) : valeurs claires de la maquette. */
+    --card-surface: hsl(var(--cream));
+    --card-ink: #111111;
+    --card-ink-muted: hsl(0 0% 7% / .7);
+    --card-border: hsl(0 0% 7% / .35);
+    --card-pill-bg: #FFFFFF;
+    --card-cta-bg: #111111;
+    --card-cta-fg: #D4FF00;
+    --card-badge-bg: #D4FF00;
+    --card-shadow: #111111;
+    --card-focus: #111111;
+}
+
+/* .page-top (mg-components.css:723, 6.5em) est fait pour la nav pilule FIXE
+   de la maquette : sur bureau seulement. < 992 px la barre d'en-tête reste
+   sticky DANS le flux — une réserve de 6,5em y serait de l'espace mort, et
+   les pages gèrent déjà leur propre padding mobile. */
+@media screen and (max-width: 991px) {
+    main.page-top { padding-top: 0; }
+}
+
+/* Les faces internes du bouton maquette (`.button-main-inner`, design-system
+   .css:2043) portent `pointer-events: none` : `elementsFromPoint` ne les
+   renvoie pas, donc `yarn audit:contrast` ne voit pas la face peinte
+   (`__bg`, encre ou crème) sous le texte et remonte aux ancêtres — panneau
+   crème de l'accueil ou body sombre #2B2B2B — d'où des faux positifs
+   crème-sur-crème (CTA hero, pilules de nav desktop). Rendre la couche
+   hit-testable ne change NI le rendu NI l'interaction (clic et survol
+   remontent de toute façon à l'ancre) : l'audit mesure alors le fond
+   réellement peint. Aucune exclusion d'audit ajoutée pour cela. */
+.button-main .button-main-inner { pointer-events: auto; }
+

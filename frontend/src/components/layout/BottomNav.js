@@ -1,10 +1,19 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
 import { MessageCircle, Receipt, Sparkles, Store } from "lucide-react";
 import { useLang } from "@/context/LanguageContext";
 import { GameButton } from "@/components/layout/GameButton";
 import { GameSelector } from "@/components/layout/GameSelector";
 import { hidesBottomChrome } from "@/lib/bottomChrome";
+
+/* ── PL-005-FE-03 (refonte Slush) — barre du bas = celle de la maquette ────
+   01-accueil.html:1263 + mg-components.css:345 : pilule sombre fixe
+   (.bottom-nav, inset .75em + safe-area, masquée ≥ 992 px par la CSS),
+   items .bottom-nav__item (icône + libellé, opacité 65 %) et état actif
+   .is--active (voile néon 18 % + texte néon, sur l'encre fixe de la barre).
+   Le bouton de changement de jeu vit DANS la barre, comme l'item
+   « bottom-nav__item--game » de la maquette : GameButton et GameSelector
+   sont conservés tels quels (testids et comportements inchangés), seul le
+   conteneur du bouton passe du flot fixe v1 au flux de la barre. */
 
 export function BottomNav() {
   const { pathname } = useLocation();
@@ -47,60 +56,28 @@ export function BottomNav() {
 
   return (
     <>
-      {/* Main navigation layer — stays behind the game-selector backdrop.
-          PL-NAV-1-COMPACT — pastille compacte CENTRÉE dans l'espace libre à
-          gauche du bouton manette (plus de flex-1 pleine largeur ni de
-          flexGrow étirant les onglets) ; pr-[4.5rem] garantit un écart de 8 px
-          avec le bouton (12 + 52 + 8), jamais de chevauchement à 320 px. */}
-      <div
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex items-center justify-center px-3 pr-[4.5rem] pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden"
-        data-testid="bottom-nav-wrapper"
-      >
-        <nav
-          className="liquid-nav nav-outer pointer-events-auto flex min-w-0 max-w-full items-center gap-0.5 px-1"
-          data-testid="bottom-nav"
-          aria-label={t("nav.shop")}
-        >
-          {items.map(({ to, icon: Icon, label, id, match }) => {
-            const active = match(pathname);
-            return (
-              <NavLink
-                key={id}
-                to={to}
-                data-testid={id}
-                aria-current={active ? "page" : undefined}
-                className={`nav-item-pill relative flex min-w-0 items-center justify-center overflow-hidden px-1.5 transition-[color] duration-[420ms] ease-out active:scale-[0.96] ${
-                  active ? "text-[color:var(--brand-ink)]" : "text-[color:hsl(var(--cream)/.65)]"
-                }`}
-              >
-                {active && (
-                  <motion.span
-                    layoutId="bottom-nav-active-pill"
-                    className="nav-item-pill absolute inset-0 bg-primary shadow-[0_2px_10px_hsl(170_100%_50%_/_.28)]"
-                    transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
-                    aria-hidden="true"
-                  />
-                )}
-                <span className="relative z-10 flex items-center">
-                  <Icon className="h-6 w-6 shrink-0" strokeWidth={active ? 2.25 : 2} />
-                  <motion.span
-                    initial={false}
-                    animate={{ width: active ? "auto" : 0, opacity: active ? 1 : 0 }}
-                    transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
-                    className="overflow-hidden whitespace-nowrap text-[12px] font-semibold leading-none tracking-[-0.01em]"
-                  >
-                    <span className="block pl-1.5">{label}</span>
-                  </motion.span>
-                </span>
-              </NavLink>
-            );
-          })}
-        </nav>
-      </div>
+      {/* Navigation principale — la pilule fixe de la maquette (le CSS
+          .bottom-nav de mg-components.css porte la position, le fond encre
+          fixe et le masquage ≥ 992 px). */}
+      <nav className="bottom-nav" data-testid="bottom-nav" aria-label={t("nav.mainNav")}>
+        {items.map(({ to, icon: Icon, label, id, match }) => {
+          const active = match(pathname);
+          return (
+            <NavLink
+              key={id}
+              to={to}
+              data-testid={id}
+              aria-current={active ? "page" : undefined}
+              className={`bottom-nav__item${active ? " is--active" : ""}`}
+            >
+              <Icon className="ic-use" strokeWidth={active ? 2.25 : 2} aria-hidden="true" />
+              <span>{label}</span>
+            </NavLink>
+          );
+        })}
+        <GameButton />
+      </nav>
       <GameSelector />
-      {/* Game button lives in its own stacking layer so it stays sharp above
-          the backdrop while the main nav remains blurred behind it. */}
-      <GameButton />
     </>
   );
 }

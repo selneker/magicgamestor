@@ -737,7 +737,11 @@ const run = async () => {
           return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockApi(p, page)) });
         });
         try {
-          await pg.goto(base + page.path, { waitUntil: "domcontentloaded", timeout: 30000 });
+          // PL-005-FE-03 (refonte Slush) : ?capture pose les états FINAUX sans
+          // tweens (lib/slush.js applyCaptureState) — l'audit mesure le rendu
+          // stabilisé, jamais une image en cours d'animation.
+          const sep = page.path.includes("?") ? "&" : "?";
+          await pg.goto(base + page.path + sep + "capture", { waitUntil: "domcontentloaded", timeout: 30000 });
           await pg.waitForSelector("body", { timeout: 15000 });
         } catch { /* page indisponible : signale plus bas */ }
         await pg.waitForTimeout(2000);
