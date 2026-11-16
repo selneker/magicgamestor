@@ -303,9 +303,12 @@
 .rounded-full[class*="h-1"], .rounded-full[class*="w-1"], .rounded-full[class*="h-2"], .rounded-full[class*="w-2"], .rounded-full[class*="h-3"], span.rounded-full { border-radius: 9999px !important; }
 .nav-pill, .nav-pill.rounded-full { border-radius: 9999px !important; }
 /* Mobile bottom navigation — PL-005-FE-03 (§4) : plus grande et plus lisible
-   que la maquette : cible tactile 48 px par entrée, pilule externe 60 px. */
-.nav-outer { height: 60px; border-radius: 30px !important; }
-.nav-item-pill, .nav-item-pill.rounded-full { height: 48px; border-radius: 24px !important; }
+   que la maquette : cible tactile 52 px par entrée, pilule externe 64 px
+   (retour utilisateur : « augmente un peu leur taille » — était 60/48). */
+.nav-outer { height: 64px; border-radius: 32px !important; }
+.nav-item-pill, .nav-item-pill.rounded-full { height: 52px; border-radius: 26px !important; }
+.nav-item-pill svg { width: 26px !important; height: 26px !important; }
+.nav-item-pill span span { font-size: 13px; }
 .game-backdrop {
     background: rgba(0, 0, 0, .28);
     -webkit-backdrop-filter: blur(14px) saturate(130%); backdrop-filter: blur(14px) saturate(130%);
@@ -513,13 +516,6 @@ body[data-page="home"] .page-hero { padding-top: 2.5em; }
    réserve de 60 px pour les marges du container). */
 .h-d { font-size: min(12.5em, 13.2vw); }
 .h-l { font-size: min(10em, 10.8vw); }
-
-/* 3. Barre du bas plus GRANDE (retour utilisateur) : mêmes couleurs et
-   mêmes états que mg-components.css:358-380 — items et icônes simplement
-   plus grands ; la cible tactile reste ≥ 44 px. */
-.bottom-nav__item { font-size: .8em; padding: .65em 0; }
-.bottom-nav__item .ic-use { width: 2em; height: 2em; }
-.bottom-nav__item--game .ic-use { width: 2.4em; height: 2.4em; }
 
 /* Les faces internes du bouton maquette (`.button-main-inner`, design-system
    .css:2043) portent `pointer-events: none` : `elementsFromPoint` ne les

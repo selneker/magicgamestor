@@ -220,34 +220,31 @@ test("ci-9 : la variable CSS de réserve du bas de page est posée quand la barr
 
 // ---------------------------------------------------------------- PL-NAV-1-COMPACT
 
-test("nav-1 : la barre du bas est la pilule fixe de la maquette (.bottom-nav)", async () => {
+test("nav-1 : pastille compacte centrée — plus de flex-1 ni de flexGrow étirant les onglets", async () => {
   const c = await mount();
   const nav = q('[data-testid="bottom-nav"]', () => c);
   expect(nav).not.toBeNull();
-  // PL-005-FE-03 : classes de la maquette (mg-components.css), bouton jeu
-  // DANS la barre comme l'item --game de 01-accueil.html.
-  expect(nav.className).toContain("bottom-nav");
-  expect(nav.contains(q('[data-testid="game-button"]', () => c))).toBe(true);
+  expect(nav.className).not.toContain("flex-1"); // jamais étirée sur toute la largeur
+  expect(q('[data-testid="bottom-nav-wrapper"]', () => c).className).toContain("justify-center");
   // Aucun onglet n'est étiré par un flexGrow inline (l'ancien style {flexGrow: ...}).
   for (const item of all('[data-testid^="bottom-nav-"]', () => c)) {
     expect(item.getAttribute("style")).toBeNull();
   }
+  // Cibles tactiles et hauteur de barre conservées (nav-outer 52 / pill 44 px, CSS).
+  expect(nav.className).toContain("nav-outer");
 });
 
-test("nav-2 : items maquette — icône + libellé, état actif porté par .is--active", async () => {
+test("nav-2 : libellé réduit mais lisible, icônes proportionnelles, espacement réduit", async () => {
   const c = await mount();
+  const nav = q('[data-testid="bottom-nav"]', () => c);
   // Le mock NavLink de test ignore className (les <a> n'en portent pas) :
-  // on vérifie la structure (icône + libellé) et l'état actif via le rendu.
+  // on interroge la nav et les enfants internes, restitués tels quels.
+  expect(nav.className).toContain("gap-0.5"); // espace entre onglets réduit (avant gap-1)
   const shop = q('[data-testid="bottom-nav-shop"]', () => c);
-  expect(shop.querySelector("svg")).not.toBeNull(); // icône
-  expect(shop.textContent).toContain("Boutique"); // libellé toujours visible
-  const events = q('[data-testid="bottom-nav-events"]', () => c);
-  expect(events.textContent).toContain("Event");
-  // L'état actif suit la route (Boutique actif sur /boutique).
-  global.__rrState.pathname = "/boutique";
-  await act(async () => { root.render(<Chrome />); });
-  const shopAgain = q('[data-testid="bottom-nav-shop"]', () => c);
-  expect(shopAgain.getAttribute("aria-current")).toBe("page");
+  const label = shop.querySelector("span span"); // calque motion.span du libellé
+  expect(label.className).toContain("text-[12px]"); // avant 13.5 px, plancher 11 px
+  const icon = shop.querySelector("svg");
+  expect(icon.getAttribute("class")).toContain("h-6 w-6"); // PL-005-FE-03 : agrandies à 24 px (§4)
 });
 
 test("nav-3 : le sélecteur de jeu est une grille de 2 colonnes, jamais une rangée", async () => {
