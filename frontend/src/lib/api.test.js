@@ -15,6 +15,58 @@ function err401(config) {
   return error;
 }
 
+describe("api interceptor — garde-fou global /api (T1.7)", () => {
+  let calls, handler;
+
+  beforeEach(() => {
+    calls = [];
+    api.defaults.adapter = (config) => {
+      calls.push({ url: config.url });
+      return handler(config);
+    };
+  });
+
+  test("une réponse avec content-type non-JSON est rejetée", async () => {
+    handler = (config) =>
+      Promise.resolve({
+        data: "<html>erreur</html>",
+        status: 200,
+        statusText: "OK",
+        headers: { "content-type": "text/html" },
+        config,
+      });
+    await expect(api.get("/products")).rejects.toMatchObject({
+      message: expect.stringContaining("non-JSON"),
+    });
+  });
+
+  test("une réponse avec content-type JSON passe", async () => {
+    handler = (config) =>
+      Promise.resolve({
+        data: [{ id: "p1" }],
+        status: 200,
+        statusText: "OK",
+        headers: { "content-type": "application/json" },
+        config,
+      });
+    const { data } = await api.get("/products");
+    expect(data).toEqual([{ id: "p1" }]);
+  });
+
+  test("une réponse sans content-type passe (compat tests existants)", async () => {
+    handler = (config) =>
+      Promise.resolve({
+        data: { ok: true },
+        status: 200,
+        statusText: "OK",
+        headers: {},
+        config,
+      });
+    const { data } = await api.get("/products");
+    expect(data).toEqual({ ok: true });
+  });
+});
+
 describe("api interceptor — restauration de session", () => {
   let calls, handler;
 

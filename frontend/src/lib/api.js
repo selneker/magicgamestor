@@ -14,7 +14,18 @@ const REFRESH_TIMEOUT_MS = 15000;
 
 let refreshing = null;
 api.interceptors.response.use(
-  (r) => r,
+  (r) => {
+    // T1.7 — garde-fou global sur /api : les réponses doivent être du JSON.
+    // Une réponse HTML (page d'erreur du proxy, maintenance, etc.) ferait
+    // planter les appelants qui appellent .filter() sur le payload.
+    const ct = r.headers?.["content-type"] || "";
+    if (ct && !ct.includes("application/json")) {
+      const url = (r.config?.baseURL || "") + (r.config?.url || "");
+      console.error(`[api guard] ${url}: content-type non-JSON (${ct})`);
+      return Promise.reject(new Error(`Réponse non-JSON depuis ${url}`));
+    }
+    return r;
+  },
   async (error) => {
     const { config, response } = error;
     if (response?.status === 401 && config && !config._retry && !NO_SILENT_REFRESH.test(config.url || "")) {
