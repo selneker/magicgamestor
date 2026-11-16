@@ -33,6 +33,10 @@ export default function Layout() {
   // PL-UX-4 — l'admin n'affiche AUCUN pied de page (ni le footer du site ni
   // son bandeau) : les pages publiques, elles, gardent le leur.
   const withFooter = showsSiteFooter(pathname);
+  // Nav pilule fixe (hors flux) : les pages non-accueil ont besoin de la
+  // réserve .page-top (mg-components.css:723) sur bureau ; sur mobile la
+  // barre reste sticky dans le flux (glue CSS : page-top ≥ 992 px seulement).
+  const needsTopSpace = pathname !== "/" && !focused;
   return (
     <GameProvider>
       <SeoManager />
@@ -46,8 +50,9 @@ export default function Layout() {
         {/* Accueil = maquette 01-accueil.html : <main class="main-w"> SANS
             container — les panneaux gèrent eux-mêmes leurs marges (0,5em)
             et vont jusqu'aux bords. Les autres pages gardent le container
-            de la maquette (78em ≈ max-w-7xl). */}
-        <main className={`main-w mx-auto w-full md:pb-0 ${pathname === "/" ? "" : "max-w-7xl px-4 sm:px-6"} ${focused ? "pb-0" : chromeHidden ? "pb-6" : "pb-[calc(7rem+var(--bottom-chrome-reserve,0px))]"}`}><Outlet /></main>
+            de la maquette (78em ≈ max-w-7xl) + la réserve .page-top pour
+            la nav pilule FIXE (≥ 992 px ; glue CSS : 0 < 992 px). */}
+        <main className={`main-w mx-auto w-full ${pathname === "/" ? "md:pb-0" : "max-w-7xl px-4 sm:px-6 md:pb-0"} ${needsTopSpace ? "page-top" : ""} ${focused ? "pb-0" : chromeHidden ? "pb-6" : "pb-[calc(7rem+var(--bottom-chrome-reserve,0px))]"}`}><Outlet /></main>
         {withFooter && <Footer />}
         {!focused && <BottomNav />}
         <AdminBottomNav />

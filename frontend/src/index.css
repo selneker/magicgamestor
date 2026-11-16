@@ -497,14 +497,13 @@ html.dark body[data-page="home"] {
         margin-inline: 0;
         margin-bottom: 0;
     }
-    /* Le header v1 est sticky DANS le flux (plus de nav pilule fixe) :
-       le padding-top 7.5em prévu pour la dégager était de l'espace mort. */
+    /* < 992 px la nav pilule est masquée : la barre mobile est sticky DANS
+       le flux — pas de réserve, le hero garde juste sa respiration. */
     body[data-page="home"] .page-hero { padding-top: 1.5em; }
     body[data-page="home"] .cta-banner-section { padding-block: 4em; }
 }
-/* Desktop : l'air du hero de la maquette (7.5em) servait à dégager la nav
-   FIXE — avec le header v1 dans le flux, on garde juste la respiration. */
-body[data-page="home"] .page-hero { padding-top: 2.5em; }
+/* Desktop : le hero garde le 7.5em de mg-components.css qui dégage la
+   nav pilule FIXE (≥ 992 px) — aucune surcharge ici. */
 
 /* 2. Titres géants jamais rognés : `.h-d`/`.h-l` sont en em fixes (12.5em /
    10em, puis 8em ≤767, 6.5/6.2em ≤479) — à 390 px un mot de 9 à 11 lettres
@@ -516,6 +515,13 @@ body[data-page="home"] .page-hero { padding-top: 2.5em; }
    réserve de 60 px pour les marges du container). */
 .h-d { font-size: min(12.5em, 13.2vw); }
 .h-l { font-size: min(10em, 10.8vw); }
+
+/* .page-top (mg-components.css:723, 6.5em) est fait pour la nav pilule FIXE
+   de la maquette (≥ 992 px). < 992 px la barre d'en-tête reste sticky DANS
+   le flux — une réserve de 6,5em y serait de l'espace mort. */
+@media screen and (max-width: 991px) {
+    main.page-top { padding-top: 0; }
+}
 
 /* Les faces internes du bouton maquette (`.button-main-inner`, design-system
    .css:2043) portent `pointer-events: none` : `elementsFromPoint` ne les
