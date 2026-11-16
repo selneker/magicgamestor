@@ -310,60 +310,12 @@
 
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-/* ── Brutalist surface mapping ───────────────────────────────────────────
-   Existing pages use slate/white utilities. Remapping them here converts
-   the whole app (customer + admin, light + dark) without rewriting markup. */
-.rounded-2xl, .rounded-3xl, .rounded-\[2rem\], .rounded-\[1\.5rem\], .rounded-\[1\.75rem\], .rounded-\[1\.25rem\] { border-radius: 14px !important; }
-.rounded-xl, .rounded-lg { border-radius: 12px !important; }
-.rounded-md { border-radius: 8px !important; }
-.rounded-sm { border-radius: 6px !important; }
-.rounded-none { border-radius: 8px !important; }
-.rounded-full { border-radius: 10px !important; }
-.rounded-full[class*="h-1"], .rounded-full[class*="w-1"], .rounded-full[class*="h-2"], .rounded-full[class*="w-2"], .rounded-full[class*="h-3"], span.rounded-full { border-radius: 9999px !important; }
+/* Nav pill & bar custom classes — preserved outside the removed Tailwind remap (T5.4) */
 .nav-pill, .nav-pill.rounded-full { border-radius: 9999px !important; }
-/* Mobile bottom navigation — PL-005-FE-03 (§4) : plus grande et plus lisible
-   que la maquette : cible tactile 52 px par entrée, pilule externe 64 px
-   (retour utilisateur : « augmente un peu leur taille » — était 60/48). */
 .nav-outer { height: 64px; border-radius: 32px !important; }
 .nav-item-pill, .nav-item-pill.rounded-full { height: 52px; border-radius: 26px !important; }
 .nav-item-pill svg { width: 26px !important; height: 26px !important; }
 .nav-item-pill span span { font-size: 13px; }
-.game-backdrop {
-    background: rgba(0, 0, 0, .28);
-    -webkit-backdrop-filter: blur(14px) saturate(130%); backdrop-filter: blur(14px) saturate(130%);
-}
-/* Ordinary borders stay understated (~15% opacity); strong states opt in explicitly. */
-.border-foreground, .border-slate-900, .border-black { border-color: var(--rule) !important; }
-.divide-foreground > * + * { border-color: var(--rule) !important; }
-.border-strong { border-color: var(--rule-strong) !important; }
-.bg-white, .bg-white\/90, .bg-white\/85 { background-color: hsl(var(--card)); }
-.bg-slate-50, .bg-slate-100 { background-color: hsl(var(--muted)); }
-.bg-slate-200 { background-color: hsl(var(--muted)); }
-.bg-slate-900, .bg-slate-950 { background-color: hsl(var(--foreground)); color: hsl(var(--background)); }
-.text-slate-900, .text-slate-800, .text-slate-700 { color: hsl(var(--foreground)); }
-.text-slate-600, .text-slate-500, .text-slate-400, .text-slate-300 { color: hsl(var(--muted-foreground)); }
-.border-slate-100, .border-slate-200, .border-slate-300, .border-slate-200\/70, .border-slate-900 { border-color: var(--rule); }
-.ring-slate-200 { --tw-ring-color: var(--rule); }
-.hover\:bg-slate-50:hover, .hover\:bg-slate-100:hover, .hover\:bg-slate-200:hover { background-color: hsl(var(--primary)); color: #0A0A0A; }
-.hover\:bg-slate-900:hover { background-color: hsl(var(--foreground)); color: hsl(var(--background)); }
-.hover\:text-slate-900:hover { color: hsl(var(--foreground)); }
-.hover\:border-slate-300:hover { border-color: hsl(var(--foreground)); }
-.text-primary { color: hsl(var(--foreground)); }
-.dark .text-primary { color: hsl(var(--primary)); }
-.bg-amber-50, .bg-orange-50, .bg-emerald-50, .bg-sky-50, .bg-blue-50, .bg-violet-50, .bg-rose-50 { background-color: hsl(var(--muted)); }
-.text-amber-600, .text-amber-700, .text-orange-600, .text-emerald-600, .text-emerald-700, .text-sky-700, .text-blue-600, .text-violet-600 { color: hsl(var(--foreground)); }
-.dark .text-amber-600, .dark .text-amber-700, .dark .text-orange-600, .dark .text-emerald-600, .dark .text-emerald-700, .dark .text-sky-700, .dark .text-blue-600, .dark .text-violet-600 { color: hsl(var(--foreground)); }
-.bg-emerald-600, .bg-emerald-500, .bg-orange-500 { background-color: hsl(var(--foreground)); color: hsl(var(--background)); }
-.hover\:bg-emerald-700:hover { background-color: hsl(var(--primary)); color: #0A0A0A; }
-[data-testid="product-visual"] { background-image: none !important; background-color: hsl(var(--muted)); }
-.text-slate-900\/10 { color: hsl(var(--foreground) / .08); }
-.dark .text-slate-900\/10 { color: hsl(var(--foreground) / .12); }
-/* Les cartes produit n'ont plus besoin d'un bloc CSS propre : leurs surfaces,
-   leurs avant-plans, leur ombre et leur anneau de focus viennent des jetons
-   --card-* (voir :root et .dark). Plus aucune regle
-   `.dark article[data-testid^="product-card-"]` ne surcharge un jeton. */
-.recharts-default-tooltip { background-color: hsl(var(--popover)) !important; border-color: hsl(var(--foreground)) !important; border-radius: 0 !important; color: hsl(var(--popover-foreground)); }
-.recharts-cartesian-axis-tick text { fill: hsl(var(--muted-foreground)); }
 
 [data-debug-wrapper="true"] { display: contents !important; }
 
