@@ -10,30 +10,10 @@ import { Logo } from "@/components/Logo";
 import { formatPointsCount } from "@/lib/pointsFormat";
 import { initMenu } from "@/lib/slush";
 
-// Repli de l'en-tête au défilement (PL-BRAND-1, mobile uniquement) : en
-// descendant l'en-tête se replie (transform seul — aucun saut de mise en
-// page), en remontant il réapparaît. Désactivé avec prefers-reduced-motion
-// et sur bureau (>= 768 px). (matchMedia gardé : jsdom ne le fournit pas.)
-export function useHeaderCollapse() {
-  const [collapsed, setCollapsed] = useState(false);
-  useEffect(() => {
-    const reduced = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let lastY = window.scrollY;
-    const onScroll = () => {
-      const y = window.scrollY;
-      if (Math.abs(y - lastY) < 4) return;
-      if (window.innerWidth >= 768 || reduced) {
-        setCollapsed(false);
-      } else {
-        setCollapsed(y > lastY && y > 56);
-      }
-      lastY = y;
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-  return collapsed;
-}
+// PL-005-FE-08 : le repli au scroll de l'ancienne barre mobile est retiré —
+// la pilule mobile est FIXE et ne se masque plus (le panier épinglé doit
+// rester visible en permanence, cf. point 5 de la mission). La fonction
+// useHeaderCollapse n'a plus d'usage.
 
 // Loyalty points chip for the desktop header. Reference-matched hierarchy:
 // a prominent numeric value (bold, 15px) with a secondary "pts" label and a
@@ -108,9 +88,21 @@ function MobilePointsPill() {
   );
 }
 
-function CartButton() {
+function CartButton({ circle = false }) {
   const { t } = useLang();
   const { count, setOpen } = useCart();
+  if (circle) {
+    // PL-005-FE-08 point 5 — panier ÉPINGLÉ dans la pilule mobile : bouton
+    // rond maquette (.nav-btn-circle, 44 px), badge interne (le cercle a
+    // overflow:clip). L'ensemble de la pilule est fixe : le panier reste
+    // visible à l'écran en permanence.
+    return (
+      <button type="button" onClick={() => setOpen(true)} data-testid="cart-button-mobile" aria-label={t("nav.cart")} className="nav-btn-circle relative">
+        <ShoppingBag className="h-5 w-5" strokeWidth={1.75} />
+        {count > 0 && <span data-testid="cart-count" className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-black text-[color:var(--brand-ink)]">{count}</span>}
+      </button>
+    );
+  }
   return (
     <Button variant="ghost" size="icon" onClick={() => setOpen(true)} data-testid="cart-button" aria-label={t("nav.cart")} className="relative rounded-none">
       <ShoppingBag className="h-5 w-5" strokeWidth={1.75} />
@@ -213,7 +205,7 @@ function DesktopNavButton({ to, label, accent, active, testId }) {
   );
 }
 
-function DesktopMenu({ isAdmin, burgerRef }) {
+function DesktopMenu({ isAdmin, burgerRef, toggleable = false, withLinks = false }) {
   const { t } = useLang();
   const { user } = useAuth();
   const { setOpen } = useCart();
@@ -239,17 +231,18 @@ function DesktopMenu({ isAdmin, burgerRef }) {
     <div className="relative shrink-0" ref={wrapRef}>
       <button
         type="button"
-        id="menuButton"
+        id={toggleable ? undefined : "menuButton"}
         ref={btnRef}
         data-testid="desktop-menu-button"
         aria-expanded={open}
         aria-haspopup="true"
         aria-label={open ? t("nav.closeMenu") : t("nav.openMenu")}
         onClick={() => {
-          // Desktop = survol (initMenu) ; le toggle n'a de sens qu'en mobile.
-          // matchMedia absent (jsdom) : on considère le bureau.
+          // Desktop = survol (initMenu) ; le toggle n'a de sens que pour
+          // l'instance mobile de la pilule (toggleable). matchMedia absent
+          // (jsdom) : on considère le bureau.
           const desktop = typeof window.matchMedia !== "function" || window.matchMedia("(min-width: 992px)").matches;
-          if (desktop) setOpenMenu((v) => !v);
+          if (toggleable || desktop) setOpenMenu((v) => !v);
         }}
         className="nav-btn-circle nav-btn-menu pointer-events-auto"
       >
@@ -260,6 +253,14 @@ function DesktopMenu({ isAdmin, burgerRef }) {
       </button>
       {open && (
         <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-[14px] border bg-card p-1.5 shadow-[0_1em_2.5em_hsl(0_0%_0%/.25)]" data-testid="desktop-menu" role="menu">
+          {withLinks && [
+            { to: "/boutique", label: t("nav.shop") },
+            { to: "/evenements", label: t("nav.eventsFull") },
+            { to: "/suivi", label: t("nav.orders") },
+            { to: "/chat", label: t("nav.messages") },
+          ].map(({ to, label }) => (
+            <Link key={to} to={to} role="menuitem" className={item} onClick={() => setOpenMenu(false)}>{label}</Link>
+          ))}
           {isAdmin && <Link to="/admin" role="menuitem" data-testid="desktop-menu-admin" className={item}>{t("nav.admin")}</Link>}
           {user ? (
             <>
@@ -282,7 +283,6 @@ export function Header() {
   const { t } = useLang();
   const { isAdmin, offline, loading, refresh } = useAuth();
   const { pathname } = useLocation();
-  const collapsed = useHeaderCollapse();
   const burgerRef = useRef(null);
 
   // Menu de la maquette : hover du burger → les pilules réapparaissent
@@ -330,37 +330,42 @@ export function Header() {
           </div>
         )}
       </div>
-      {/* ── Barre mobile conservée (< 992 px) : compte / logo / points / panier.
-             Écart documenté : la maquette mobile n'a que logo + burger, mais
-             ni le compte ni le panier n'ont d'autre point d'entrée sur mobile
-             (la bottom-nav ne porte ni l'un ni l'autre). ── */}
-      <header
-        className="glass sticky top-0 z-40 border-b will-change-transform motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out max-[991px]:block hidden"
-        style={{ transform: collapsed ? "translateY(-100%)" : "translateY(0)" }}
-        data-collapsed={collapsed ? "true" : "false"}
-        data-testid="header-mobile-bar"
-      >
-        <div className="grid h-14 grid-cols-[1fr_auto_1fr] items-center gap-1 px-3">
-          <div className="justify-self-start">
-            <AccountAction avatar />
-          </div>
-          <Link to="/" aria-label="Magic Game Store" className="flex h-11 w-11 items-center justify-center justify-self-center text-foreground">
-            <Logo className="h-8 w-8" />
-          </Link>
-          <div className="flex items-center justify-self-end gap-0.5">
-            <MobilePointsPill />
-            <CartButton />
-          </div>
+      {/* ── PL-005-FE-08 point 5 — pilule Slush mobile (< 992 px) ──────────
+           Même structure maquette que la nav desktop (.nav-w fixe +
+           .nav-inner + .nav-btn-circle), adaptée : les pilules de pages
+           sont masquées (la barre du bas les porte) et le panneau du burger
+           les liste (withLinks). Actions compte (points / avatar) et
+           PANIER ÉPINGLÉ dedans : l'ensemble est fixe à l'écran et ne se
+           replie plus au scroll. Écart documenté : la maquette mobile n'a
+           que logo + burger, mais ni le compte ni le panier n'ont d'autre
+           point d'entrée sur mobile (la bottom-nav ne porte ni l'un ni
+           l'autre). L'ancien « panier flottant » d'avant redesign est
+           introuvable dans l'historique (git log -S sur toutes les
+           branches) — choix retenu : fixe en haut à droite, dans la
+           pilule. ── */}
+      <div className="nav-w nav-w--mobile min-[992px]:hidden" data-testid="header-mobile">
+        <div className="nav-container container">
+          <nav className="nav-inner" aria-label={t("nav.mainNav")}>
+            <Link to="/" className="nav-btn-circle is--nav-logo" aria-label="Magic Game Store" data-testid="header-logo-mobile">
+              <Logo className="nav-button-logo" />
+            </Link>
+            <div className="nav-inner-right">
+              <MobilePointsPill />
+              <AccountAction avatar />
+              <CartButton circle />
+              <DesktopMenu isAdmin={isAdmin} toggleable withLinks />
+            </div>
+          </nav>
         </div>
         {offline && !loading && (
-          <div role="status" className="border-t border-amber-200 bg-amber-50 px-3 py-1.5 text-center text-[11px] font-medium leading-snug text-amber-950" data-testid="auth-offline-banner-mobile">
+          <div role="status" className="pointer-events-auto mx-3 mt-2 rounded-full border bg-card px-4 py-1.5 text-center text-[11px] font-medium leading-snug text-foreground" data-testid="auth-offline-banner-mobile">
             {t("auth.wakeFailed")}{" "}
-            <button type="button" onClick={refresh} className="font-semibold underline underline-offset-2">
+            <button type="button" onClick={refresh} className="font-semibold underline underline-offset-2" data-testid="auth-offline-retry-mobile">
               {t("auth.retry")}
             </button>
           </div>
         )}
-      </header>
+      </div>
     </>
   );
 }

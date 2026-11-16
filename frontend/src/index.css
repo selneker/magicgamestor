@@ -497,9 +497,10 @@ html.dark body[data-page="home"] {
         margin-inline: 0;
         margin-bottom: 0;
     }
-    /* < 992 px la nav pilule est masquée : la barre mobile est sticky DANS
-       le flux — pas de réserve, le hero garde juste sa respiration. */
-    body[data-page="home"] .page-hero { padding-top: 1.5em; }
+    /* PL-005-FE-08 point 5 : la barre mobile est remplacée par une pilule
+       Slush FIXE (< 992 px) — le héros lui réserve la place (pilule 2,75em
+       + inset .75em + ombre ≈ 4,4em). */
+    body[data-page="home"] .page-hero { padding-top: 5em; }
     body[data-page="home"] .cta-banner-section { padding-block: 4em; }
 }
 /* Desktop : le hero garde le 7.5em de mg-components.css qui dégage la
@@ -517,10 +518,15 @@ html.dark body[data-page="home"] {
 .h-l { font-size: min(10em, 10.8vw); }
 
 /* .page-top (mg-components.css:723, 6.5em) est fait pour la nav pilule FIXE
-   de la maquette (≥ 992 px). < 992 px la barre d'en-tête reste sticky DANS
-   le flux — une réserve de 6,5em y serait de l'espace mort. */
+   de la maquette (≥ 992 px). < 992 px la pilule est maintenant FIXE elle
+   aussi (PL-005-FE-08 point 5) : même réserve adaptée (pilule 2,75em +
+   inset .75em ≈ 4,4em, marge de sécurité). */
 @media screen and (max-width: 991px) {
-    main.page-top { padding-top: 0; }
+    main.page-top { padding-top: 4.75em; }
+    /* La bannière « Commande en cours » est dans le flux sous la pilule
+       fixe : elle réserve la même place. */
+    [data-testid="pending-order-banner"],
+    [data-testid="pending-order-banner-loading"] { padding-top: 4.75em; }
 }
 
 /* Les faces internes du bouton maquette (`.button-main-inner`, design-system
@@ -533,4 +539,123 @@ html.dark body[data-page="home"] {
    remontent de toute façon à l'ancre) : l'audit mesure alors le fond
    réellement peint. Aucune exclusion d'audit ajoutée pour cela. */
 .button-main .button-main-inner { pointer-events: auto; }
+
+/* ── PL-005-FE-08 — corrections mobile du propriétaire ──────────────────────
+   TOUT est scopé par media query : le bureau (> 768 px / > 991 px) ne lit
+   aucune de ces règles. Les tokens DE BASE ne bougent pas — le test
+   design-system-base.test.js les verrouille à 170 100% 50%. */
+
+/* Point 1 — accent : le néon cyan (#00FFD5 — `--primary: 170 100% 50%`)
+   cède la place au VERT DU FOOTER sur mobile. Valeur lue, pas devinée :
+   --color--green-700: #55db9c (design-system.css:1427), posé sur
+   .footer-row-col.is--last (:2514) et les accents maquette (:6234, :6243).
+   Un seul jeton : --primary (+ ses suivants --accent/--ring) — la pilule
+   active de la barre du bas, l'avatar, les badges panier, le bouton
+   Connexion, la manette flottante, l'interrupteur « En ligne » de l'admin,
+   ::selection et focus-visible basculent d'un coup (ils lisent tous le
+   jeton). Contraste : le texte posé sur le vert reste
+   var(--brand-ink) #111111 ≈ 10,9:1 ; en sombre #55db9c sur encre ≈ 10,9:1 ;
+   en clair text-primary est déjà remappé sur la couleur de texte par le
+   bloc remap. --ring mobile : vert assombri (~2,9:1 sur crème, cf. 1.4.11). */
+@media screen and (max-width: 768px) {
+    :root {
+        --primary: 152 65% 60%;   /* #55db9c — vert du footer */
+        --accent: 152 65% 60%;
+        --ring: 152 65% 38%;
+    }
+    .dark {
+        --primary: 152 65% 60%;
+        --accent: 152 65% 60%;
+        --ring: 152 65% 60%;
+    }
+    /* L'accueil épingle ses tokens LIGHT sur html.dark body[data-page=home]
+       (glue PL-005-FE-03) : ré-aligner --accent/--ring sur le vert. */
+    html.dark body[data-page="home"] {
+        --accent: 152 65% 60%;
+        --ring: 152 65% 60%;
+    }
+}
+
+/* Points 2, 3, 4 — cartes jeux, titre footer, héros (≤ 767 px). */
+@media screen and (max-width: 767px) {
+    /* Point 2 — cartes de jeux (« Disponibles ») : le style maquette ne
+       bouge pas (thèmes, forme, .h-c) ; seule la GÉOMÉTRIE change.
+       Avant : bloc inline → logo collé au titre (gap 0), positions de
+       départ différentes d'une carte à l'autre, titre rogné par
+       overflow:hidden, carte étirée par minHeight:16em inline. */
+    .packs-grid .two-col-grid__visual {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;   /* position de départ identique partout */
+        align-items: flex-start;
+        aspect-ratio: auto;
+        gap: .8em;                     /* espace régulier logo → titre */
+        padding: 1.25em;
+        min-height: 0 !important;      /* bat le minHeight:16em inline */
+    }
+    /* Logo réduit (6em → 4,5em) : même position x sur toutes les cartes. */
+    .packs-grid .two-col-grid__visual .ic-use {
+        width: 4.5em;
+        height: 4.5em;
+    }
+    /* Le titre passe à la ligne, jamais rogné (« Mobile Legends »). */
+    .packs-grid .two-col-grid__visual .h-c {
+        overflow-wrap: anywhere;
+        white-space: normal;
+    }
+
+    /* Point 3 — titre footer : `.h-d`/`.h-l` ont déjà leur plafond vw
+       (glue PL-005-FE-03), `.h-m` n'en a pas — à 70px sa ligne la plus
+       longue fait 397px > 390px et overflow:hidden la rogna. 15vw garde
+       la ligne la plus large ≤ 320px ; gras/italique/capitales inchangés. */
+    .footer .h-m { font-size: min(4.375em, 15vw); }
+
+    /* Point 4 — héros : le surligné « SANS DÉTOUR. » passe du néon
+       (#D4FF00, design-system.css:7397) au vert du footer ; le texte
+       encre dessus reste ≈ 10,9:1. */
+    .hero-lime { background: var(--color--green-700); }
+
+    /* Point 4 — interligne : .76 de la maquette écrase les lignes du
+       .h-d (« SANS » touche « VOS JEUX. », l'accent de « DÉTOUR » touche
+       la ligne du dessus). .95 ne superpose plus rien. Le bloc surligné
+       (inline-block) ne déborde plus sous la dernière ligne : la
+       compensation de design-system.css:7400 n'a plus d'objet. */
+    .page-hero .h-d { line-height: .95; margin-bottom: 0; }
+
+    /* Point 4 — la flèche de « CHOISIR UN JEU » ne passe plus à la ligne :
+       le label du pilule tient sur une ligne (les pilules s'élargissent,
+       elles sont en flex-wrap). */
+    .button-main-inner__text > span { white-space: nowrap; }
+}
+
+/* Point 5 — pilule Slush mobile (< 992 px) : mêmes classes maquette que
+   la nav desktop (.nav-w fixe, .nav-inner, .nav-btn-circle), rendues par
+   Header.js avec la classe modulatrice .nav-w--mobile. Les pilules de
+   pages sont masquées (la barre du bas les porte) et le panneau du burger
+   les liste ; le panier est ÉPINGLÉ (bouton rond dans la pilule, l'ensemble
+   fixe et sans repli au scroll — l'ancien panier flottant est introuvable
+   dans l'historique, choix documenté dans le rapport). */
+@media screen and (max-width: 991px) {
+    .nav-w--mobile { inset: .75em 0 auto; }
+    .nav-w--mobile .nav-container.container { padding: 0 .75em; }
+    .nav-w--mobile .nav-inner { align-items: center; }
+    /* design-system.css ≤991 met pointer-events:none, max-width:15em et
+       align-items:flex-start sur .nav-inner-right (champ des pilules
+       desktop) : les actions mobile ont besoin des clics et de la largeur. */
+    .nav-w--mobile .nav-inner-right {
+        pointer-events: auto;
+        max-width: none;
+        padding-top: 0;
+        padding-bottom: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+        align-items: center;
+        gap: .25rem;
+    }
+    .nav-w--mobile .nav-inner-list { display: none; }
+    .nav-w--mobile .nav-btn-circle {
+        width: 2.75em;   /* 44 px — cible tactile minimale */
+        height: 2.75em;
+    }
+}
 
