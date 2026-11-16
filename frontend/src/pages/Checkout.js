@@ -13,7 +13,7 @@ import { CaptchaWidget, isCaptchaError, useCaptcha } from "@/components/common/C
 import { CheckoutSheet } from "@/components/store/checkout/CheckoutSheet";
 import { IdentityFieldsVerify } from "@/components/store/checkout/IdentityFieldsVerify";
 import { PAYMENT_LOGOS, NetworkPicker, paymentFee } from "@/components/store/PaymentFlow";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/common/Button";
 
 // PL-CHK-4 — écran 1 « Commande » (maquette Binance, 3 étapes réelles, aucun
 // stepper). L'écran tient dans 360×640 sans défilement, bouton principal fixé
@@ -382,21 +382,21 @@ export default function Checkout() {
   );
 }
 
-// Ligne de méthode (maquette : logo, nom + sous-titre, pastille de choix) ;
-// la ligne choisie porte le contour `--brand-lime`. Pastille neutre aux jetons
-// si le logo manque (aucune couleur de marque inventée).
+// Ligne de méthode (maquette : pm-row) ; la ligne sélectionnée prend le
+// contour --color--dark (ink) et un fond très atténué. Pastille neutre aux
+// jetons si le logo manque (aucune couleur de marque inventée).
 function MethodLine({ testId, logo, name, sub, selected, onSelect }) {
   return (
     <button type="button" data-testid={testId} aria-pressed={selected} onClick={onSelect}
-      className={`flex min-h-[46px] w-full items-center gap-3 rounded-[14px] border bg-card px-3.5 py-2 text-left transition-colors motion-reduce:transition-none ${selected ? "border-[color:var(--brand-lime)]" : "border-[color:var(--rule)]"}`}>
+      className={`flex min-h-[54px] w-full items-center gap-3 rounded-[19px] border border-[color:var(--rule-strong)] bg-transparent px-3.5 py-2.5 text-left transition-colors motion-reduce:transition-none ${selected ? "border-[color:var(--color--dark)] bg-black/5" : ""}`}>
       {logo
-        ? <img src={logo} alt="" aria-hidden="true" className="h-[26px] w-[26px] shrink-0 rounded-[8px] object-contain" />
-        : <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[8px] bg-muted text-xs font-black text-muted-foreground" aria-hidden="true">{name.slice(0, 1)}</span>}
+        ? <img src={logo} alt="" aria-hidden="true" className="h-[1.7em] w-[2.6em] shrink-0 rounded-[7px] object-contain" />
+        : <span className="flex h-[1.7em] w-[2.6em] shrink-0 items-center justify-center rounded-[7px] bg-muted text-xs font-black text-muted-foreground" aria-hidden="true">{name.slice(0, 1)}</span>}
       <span className="min-w-0 flex-1">
         <span className="block text-[14px] font-bold leading-tight">{name}</span>
         <span className="mt-0.5 block text-[11px] text-muted-foreground">{sub}</span>
       </span>
-      <span className={`h-[18px] w-[18px] shrink-0 rounded-full border-2 ${selected ? "border-[color:var(--brand-lime)] bg-[radial-gradient(var(--brand-lime)_45%,transparent_50%)]" : "border-[color:var(--rule-strong)]"}`} aria-hidden="true" />
+      <span className={`h-[1.2em] w-[1.2em] shrink-0 rounded-full border-2 ${selected ? "border-[color:var(--color--dark)] bg-[radial-gradient(var(--color--dark)_45%,transparent_50%)]" : "border-[color:var(--rule-strong)]"}`} aria-hidden="true" />
     </button>
   );
 }
