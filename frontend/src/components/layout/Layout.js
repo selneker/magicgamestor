@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { SlushChrome } from "@/components/layout/SlushChrome";
@@ -7,6 +8,7 @@ import { AdminBottomNav } from "@/components/layout/AdminBottomNav";
 import { Footer } from "@/components/layout/Footer";
 import { CartDrawer } from "@/components/store/CartDrawer";
 import { GameProvider } from "@/context/GameContext";
+import { useLang } from "@/context/LanguageContext";
 import SeoManager from "@/components/layout/SeoManager";
 import { hidesBottomChrome, isFocusedRoute, showsSiteFooter } from "@/lib/bottomChrome";
 import { PageTransition } from "@/components/animate-ui/components/page-transition";
@@ -25,6 +27,7 @@ export default function Layout() {
   // le contenu à distance du pied de page SANS défilement fantôme, requis pour
   // que le bouton épinglé du checkout touche le bas de l'écran à 360×640.
   const { pathname } = useLocation();
+  const { t } = useLang();
   const chromeHidden = hidesBottomChrome(pathname);
   // PL-CHK-4 — mode focalisé (source unique : isFocusedRoute, lib/bottomChrome.js) :
   // ni header, ni footer, ni nav basse, ni barre panier, ni sélecteur rapide,
@@ -38,11 +41,28 @@ export default function Layout() {
   // réserve .page-top (mg-components.css:723) sur bureau ; sur mobile la
   // barre reste sticky dans le flux (glue CSS : page-top ≥ 992 px seulement).
   const needsTopSpace = pathname !== "/" && !focused;
+
+  // T3.5 : déplace le focus sur le contenu principal à chaque changement de route.
+  useEffect(() => {
+    const main = document.getElementById("main");
+    if (main) {
+      main.focus();
+    }
+  }, [pathname]);
+
   return (
     <GameProvider>
       <SeoManager />
       <SlushChrome />
       <div className="page-w min-h-screen overflow-x-hidden">
+        {/* Lien d'évitement : cible au clavier pour atteindre directement le contenu principal. */}
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-[60] focus:px-4 focus:py-2 focus:bg-foreground focus:text-background focus:rounded-[10px]"
+          data-testid="skip-link"
+        >
+          {t("common.skipLink")}
+        </a>
         {!focused && <Header />}
         {!focused && <PendingOrderBanner />}
         {/* PL-CHK-4 — mode focalisé : pb-0 (l'écran gère lui-même son padding
@@ -53,7 +73,7 @@ export default function Layout() {
             et vont jusqu'aux bords. Les autres pages gardent le container
             de la maquette (78em ≈ max-w-7xl) + la réserve .page-top pour
             la nav pilule FIXE (≥ 992 px ; glue CSS : 0 < 992 px). */}
-        <main className={`main-w mx-auto w-full ${pathname === "/" ? "md:pb-0" : "max-w-7xl px-4 sm:px-6 md:pb-0"} ${needsTopSpace ? "page-top" : ""} ${focused ? "pb-0" : chromeHidden ? "pb-6" : "pb-[calc(7rem+var(--bottom-chrome-reserve,0px))]"}`}>
+        <main id="main" tabIndex={-1} className={`main-w mx-auto w-full ${pathname === "/" ? "md:pb-0" : "max-w-7xl px-4 sm:px-6 md:pb-0"} ${needsTopSpace ? "page-top" : ""} ${focused ? "pb-0" : chromeHidden ? "pb-6" : "pb-[calc(7rem+var(--bottom-chrome-reserve,0px))]"}`}>
           <PageTransition pageKey={pathname} effect="chop"><Outlet /></PageTransition>
         </main>
         {withFooter && <Footer />}
