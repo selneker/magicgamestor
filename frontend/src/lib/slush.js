@@ -21,6 +21,13 @@
 
 export const TILE_COLORS = ["#4da2ff", "#ffd731", "#e9ccff", "#55db9c", "#fb4903", "#5c4ade"];
 
+// Durée maximale d'une transition avant le nettoyage forcé (sécurité si
+// l'onComplete GSAP ne se déclenche jamais). D=1.25 + C=0.8 + chevauchements
+// ≈ 3,3 s ; 5 000 ms couvre les ralentissements CPU sur mobile et les onglets
+// masqués. Au-delà, `busy` est débloqué et la navigation forcée pour que le
+// site ne reste jamais bloqué.
+export const TRANSITION_SAFETY_MS = 5000;
+
 export const isCaptureMode = () =>
   typeof window !== "undefined" && /[?&]capture/.test(window.location.search);
 
@@ -428,6 +435,11 @@ export function runTransitionOut(done) {
   // propriétés et la page arrive dans un état moitié intro moitié outro).
   gsap.killTweensOf(main);
   gsap.killTweensOf(tiles);
+  // Un clic durant l'intro l'a interrompue : killTweens fige les transforms
+  // à leurs valeurs intermédiaires. On les réinitialise avant de poser l'état
+  // de sortie (position: absolute, top: -scrollY) pour éviter que .main-w
+  // reste tourné/décalé dans le volet de sortie.
+  gsap.set(main, { clearProps: "transform" });
 
   gsap.set(wrapper, {
     width: "100%", height: "100vh", overflow: "hidden",
@@ -441,9 +453,32 @@ export function runTransitionOut(done) {
   document.body.setAttribute("data-scrolling-started", "false");
 
   const D = 1.25, C = 0.8;
+  let completed = false;
+  let safetyTimer = null;
+  const safeDone = () => {
+    if (completed) return;
+    completed = true;
+    if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
+    done();
+  };
+  // Sécurité : si l'onComplete GSAP ne se déclenche jamais (erreur, onglet
+  // masqué, composant démonté…), on force la navigation après
+  // TRANSITION_SAFETY_MS pour ne pas laisser `busy` bloqué indéfiniment.
+  safetyTimer = setTimeout(() => {
+    safetyTimer = null;
+    if (completed) return;
+    completed = true;
+    gsap.killTweensOf(main);
+    gsap.killTweensOf(tiles);
+    gsap.set([pageW, main], { clearProps: "all" });
+    gsap.set(tiles, { display: "none" });
+    unwrapMain();
+    done();
+  }, TRANSITION_SAFETY_MS);
+
   gsap.timeline({
     defaults: { ease: "slush-bounce" },
-    onComplete: done,
+    onComplete: safeDone,
   })
     .set([pageW, main], { height: "100vh", overflow: "hidden", perspective: 1000 })
     .set(tiles[0], { display: "block", z: "-50vw", rotateY: 45, xPercent: -200 })
@@ -476,13 +511,34 @@ export function runReducedTransitionOut(done) {
   pageW.insertBefore(wrapper, main);
   wrapper.appendChild(main);
   window.scrollTo(0, 0);
-  gsap.timeline({ defaults: { ease: "slush" }, onComplete: done })
+
+  let completed = false;
+  let safetyTimer = null;
+  const safeDone = () => {
+    if (completed) return;
+    completed = true;
+    if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
+    done();
+  };
+  // Sécurité : même en reduced-motion, si l'onComplete ne se déclenche pas,
+  // on force le déballage et la navigation après TRANSITION_SAFETY_MS.
+  safetyTimer = setTimeout(() => {
+    safetyTimer = null;
+    if (completed) return;
+    completed = true;
+    gsap.killTweensOf(wrapper);
+    gsap.set([pageW, main], { clearProps: "all" });
+    unwrapMain();
+    done();
+  }, TRANSITION_SAFETY_MS);
+
+  gsap.timeline({ defaults: { ease: "slush" }, onComplete: safeDone })
     .to(wrapper, { autoAlpha: 0, duration: 0.4 });
 }
 
 /* Moitié 2 — arrivée de la nouvelle page en 3D (JS:653-679). Le wrapper
    éventuel de l'outro est défait AVANT toute pose d'état. */
-export function runTransitionIn() {
+export function runTransitionIn(onIntroEnd) {
   const gsap = gsapReady();
   if (!gsap) return;
   unwrapMain();
@@ -491,14 +547,34 @@ export function runTransitionIn() {
   const heroFade = main && main.querySelector("[data-hero-fade]");
   const D = 1.25, C = 0.8, U = 45;
 
+  let completed = false;
+  let safetyTimer = null;
+  const safeComplete = () => {
+    if (completed) return;
+    completed = true;
+    if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
+    if (lenis) lenis.start();
+    window.ScrollTrigger.refresh();
+    gsap.set([main && main.parentElement, main], { clearProps: true });
+    gsap.set(tiles, { display: "none" });
+    if (onIntroEnd) onIntroEnd();
+  };
+  // Sécurité : si l'onComplete GSAP ne se déclenche jamais, on force le
+  // nettoyage et on libère `busy` via onIntroEnd après TRANSITION_SAFETY_MS.
+  safetyTimer = setTimeout(() => {
+    safetyTimer = null;
+    if (completed) return;
+    completed = true;
+    gsap.killTweensOf(main);
+    gsap.killTweensOf(tiles);
+    gsap.set([main && main.parentElement, main], { clearProps: true });
+    gsap.set(tiles, { display: "none" });
+    if (onIntroEnd) onIntroEnd();
+  }, TRANSITION_SAFETY_MS);
+
   const tl = gsap.timeline({
     defaults: { ease: "slush-bounce" },
-    onComplete: () => {
-      if (lenis) lenis.start();
-      window.ScrollTrigger.refresh();
-      gsap.set([main && main.parentElement, main], { clearProps: true });
-      gsap.set(tiles, { display: "none" });
-    },
+    onComplete: safeComplete,
   })
     .set([main && main.parentElement, main], { height: "100vh", overflow: "hidden", perspective: 1000 })
     .set(tiles[0], { display: "block", z: "-50vw", rotateY: 45, xPercent: -200 })
