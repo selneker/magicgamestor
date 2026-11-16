@@ -422,6 +422,12 @@ export function runTransitionOut(done) {
   wrapper.className = "mgs-transition-wrapper";
   const tiles = paintTiles();
   const scrollY = window.scrollY; // capturé AVANT le scrollTo(0,0)
+  // Un clic peut partir pendant que l'INTRO de la page courante anime
+  // encore .main-w / les volets : on tue ces tweens avant de poser les
+  // états de l'outro (sinon les deux timelines se battent sur les mêmes
+  // propriétés et la page arrive dans un état moitié intro moitié outro).
+  gsap.killTweensOf(main);
+  gsap.killTweensOf(tiles);
 
   gsap.set(wrapper, {
     width: "100%", height: "100vh", overflow: "hidden",

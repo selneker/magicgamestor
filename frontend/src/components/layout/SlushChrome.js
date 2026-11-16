@@ -84,6 +84,7 @@ export function SlushChrome() {
   // Changement de route : data-page + intro de la page suivante si une
   // outro vient de se terminer. useLayoutEffect : restaure .main-w AVANT
   // le paint (le wrapper de l'outro ne doit jamais apparaître à l'écran).
+  const lastKey = useRef(null);
   useLayoutEffect(() => {
     document.body.setAttribute("data-page", location.pathname === "/" ? "home" : "site");
     if (isCaptureMode()) {
@@ -92,16 +93,35 @@ export function SlushChrome() {
       busy.current = false;
       return;
     }
+    // Toute navigation (lien intercepté, bouton du bas, retour navigateur)
+    // doit retrouver .main-w dans le flux : on défait le remballage de
+    // l'outro et on nettoie ses états GSAP AVANT le paint — runTransitionIn
+    // repose ensuite les siens. Idempotent : sans wrapper, unwrapMain et
+    // clearProps ne font rien. (Avant ce garde, une navigation déclenchée
+    // sans outro — bouton, retour navigateur, clic vers la page courante —
+    // laissait la page remballée à jamais dans le wrapper : écran figé.)
+    const gsap = gsapReady();
+    unwrapMain();
+    if (gsap) {
+      const main = document.querySelector(".main-w");
+      if (main) gsap.set(main, { clearProps: "all" });
+      if (main && main.parentElement) gsap.set(main.parentElement, { clearProps: "all" });
+    }
+    if (lastKey.current === location.key) {
+      // même entrée d'historique rejouée : rien à animer, débloque les clics.
+      pending.current = false;
+      busy.current = false;
+      return;
+    }
+    lastKey.current = location.key;
     if (pending.current) {
       pending.current = false;
       busy.current = false; // la navigation a eu lieu : de nouveaux clics sont permis
       if (!isFocusedRoute(location.pathname) && !prefersReduced() && gsapReady()) {
-        runTransitionIn(); // défait lui-même le wrapper de l'outro
-      } else {
-        unwrapMain();
+        runTransitionIn(); // intro 3D de la page suivante
       }
     }
-  }, [location.pathname]);
+  }, [location]);
 
   // Reveals / marquee / parallaxe de la page courante (cartes 3D, titres
   // slant, headings SplitText, marquee lié au scroll, parallaxe) : relancés
@@ -134,6 +154,14 @@ export function SlushChrome() {
       let url;
       try { url = new URL(a.href, window.location.href); } catch { return; }
       if (url.origin !== window.location.origin) return;
+      // Lien vers la page COURANTE (logo → accueil…) : PAS de volet 3D —
+      // l'outro ne serait jamais suivie d'une intro (aucun changement de
+      // route) et la page resterait à jamais remballée, clics bloqués.
+      if (url.pathname === window.location.pathname && url.search === window.location.search && !url.hash) {
+        e.preventDefault();
+        window.scrollTo(0, 0);
+        return;
+      }
       if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) return;
       if (busy.current) return;
       e.preventDefault();
