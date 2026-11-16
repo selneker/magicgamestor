@@ -12,7 +12,7 @@ module.exports = {
       fontFamily: {
         sans: ['var(--font-body)'],
         serif: ['var(--font-body)'],
-        mono: ['var(--font-body)'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
         display: ['"Bricolage Grotesque"', 'var(--font-display)', 'system-ui', 'sans-serif'],
         body: ['Onest', 'var(--font-body)', 'system-ui', 'sans-serif']
       },

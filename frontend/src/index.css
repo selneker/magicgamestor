@@ -13,6 +13,15 @@
     :root {
         --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
         --font-body: 'Onest', system-ui, sans-serif;
+        /* Type scale — jetons centralisés pour la cohérence typographique.
+           Tailles identiques dans les deux thèmes (la taille ne dépend pas du thème). */
+        --text-xs: 0.75rem;
+        --text-sm: 0.875rem;
+        --text-base: 1rem;
+        --text-lg: 1.125rem;
+        --text-xl: 1.25rem;
+        --text-2xl: 1.5rem;
+        --text-3xl: 1.875rem;
         /* Neo Brutalism — light */
         /* Creme fixe : la valeur du theme clair, figee dans les deux themes.
            Utilisee par les surfaces d'encre (panneaux, barre panier, selecteur
@@ -211,6 +220,14 @@
             valeurs de la maquette RONDE 2 (thème sombre). */
         --badge-cancel-text: rgba(255,255,255,.62);
         --badge-cancel-border: rgba(255,255,255,.3);
+        /* Type scale — mêmes tailles que le thème clair */
+        --text-xs: 0.75rem;
+        --text-sm: 0.875rem;
+        --text-base: 1rem;
+        --text-lg: 1.125rem;
+        --text-xl: 1.25rem;
+        --text-2xl: 1.5rem;
+        --text-3xl: 1.875rem;
     }
     * { border-color: var(--rule); }
     html { scroll-behavior: smooth; overflow-x: hidden; }
