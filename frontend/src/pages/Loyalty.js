@@ -140,8 +140,8 @@ export default function Loyalty() {
   const [transfers, setTransfers] = useState([]);
   const load = useCallback(() => {
     api.get("/loyalty/me").then((r) => setData(r.data)).catch(() => setData({ balance: { total: 0, earned: 0, promo: 0 }, ledger: [], config: {} }));
-    api.get("/loyalty/rewards").then((r) => setRewards(r.data)).catch(() => {});
-    api.get("/loyalty/transfers").then((r) => setTransfers(r.data)).catch(() => {});
+    api.get("/loyalty/rewards").then((r) => setRewards(r.data)).catch((e) => toast.error(errorMessage(e)));
+    api.get("/loyalty/transfers").then((r) => setTransfers(r.data)).catch((e) => toast.error(errorMessage(e)));
   }, []);
   useEffect(load, [load]);
   const redeem = async (reward, pubg) => {

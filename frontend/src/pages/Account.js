@@ -111,6 +111,7 @@ export default function Account() {
   const { user, setUser, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const [points, setPoints] = useState(null);
+  const [pointsLoading, setPointsLoading] = useState(true);
   const [form, setForm] = useState({ name: user.name || "", phone: user.phone || "", ids: (user.saved_pubg_ids || []).join(", ") });
   const [busy, setBusy] = useState(false);
   const [openSection, setOpenSection] = useState(null); // 'profile' | 'pubg' | 'password' | 'delete' | null
@@ -121,7 +122,7 @@ export default function Account() {
   const local = user.auth_provider === "password";
 
   useEffect(() => {
-    api.get("/loyalty/me").then((r) => setPoints(r.data?.balance?.total ?? 0)).catch(() => setPoints(null));
+    api.get("/loyalty/me").then((r) => { setPoints(r.data?.balance?.total ?? 0); setPointsLoading(false); }).catch(() => { setPoints(null); setPointsLoading(false); });
   }, []);
 
   const saveProfile = async (e) => {
@@ -204,7 +205,7 @@ export default function Account() {
         </ExpandableBlock>
 
         <Row icon={ReceiptText} label={t("profile.myOrders")} helper={t("order.history")} to="/suivi" testid="row-my-orders" />
-        <Row icon={Coins} label={t("loyalty.title")} helper={points !== null ? `${points} pts` : undefined} to="/compte/points" testid="row-loyalty" accent />
+        <Row icon={Coins} label={t("loyalty.title")} helper={pointsLoading ? t("common.loading") : points !== null ? `${points} pts` : t("common.error")} to="/compte/points" testid="row-loyalty" accent />
       </Section>
 
       <Section title={t("account.identities.title")} testid="account-game-identities">

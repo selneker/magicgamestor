@@ -86,6 +86,7 @@ export default function Catalog() {
   const { games, selectGame } = useGames();
   const [params, setParams] = useSearchParams();
   const [products, setProducts] = useState(null);
+  const [productsError, setProductsError] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [favoriteIds] = useFavorites();
   const game = params.get("game") || "";
@@ -116,7 +117,7 @@ export default function Catalog() {
     const id = setTimeout(() => {
       setProducts(null);
       api.get("/products", { params: { game, type: type || undefined, q: q || undefined, sort, popular: popular || undefined, favorites: favorites || undefined, min_price: minPrice || undefined, max_price: maxPrice || undefined } })
-        .then((r) => setProducts(r.data)).catch(() => setProducts([]));
+        .then((r) => setProducts(r.data)).catch(() => { setProducts([]); setProductsError(t("common.error")); })
     }, q ? 250 : 0);
     return () => clearTimeout(id);
   }, [game, type, q, sort, popular, favorites, minPrice, maxPrice]);
@@ -252,6 +253,7 @@ export default function Catalog() {
       )}
 
       <p className="mt-8 eyebrow" data-testid="results-count" aria-live="polite">{products ? `${products.length} ${t("catalog.results")}` : t("common.loading")}</p>
+      {productsError && <p className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700" data-testid="catalog-error">{productsError}</p>}
       {type === "evo" ? <PackEvolutif embedded products={products} /> : <>
         {sectioned && products === null ? <div className="mt-3 grid grid-cols-1 items-stretch gap-3 min-[360px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="catalog-grid">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="min-h-44 rounded-[20px]" />)}</div> : sectioned ? <div className="mt-8 space-y-10" data-testid="catalog-sections">
           <ProductSection id="popular" title={t("catalog.popularSection")} products={sections?.featured} popularIds={popularIds} bestUnitId={bestUnitId} />
