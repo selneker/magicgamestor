@@ -224,6 +224,12 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
     : code === "pattern" ? t("checkout.fieldFormat")
     : t("checkout.fieldRequired");
 
+  // Texte d'aide proactif : affiché quand le bouton est inactif (champs
+  // incomplets), pas en cours de chargement, et qu'aucune erreur de saisie
+  // n'est encore affichée (l'utilisateur n'a pas encore tenté de vérifier).
+  const hasErrorWithValue = spec.some((f) => errors[f.key] && (values || {})[f.key]);
+  const showHelp = !busy && !complete && spec.length > 0 && !hasErrorWithValue;
+
   return (
     <div className="mt-2 space-y-3">
       {spec.map((f) => (
@@ -241,6 +247,11 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
           {errors[f.key] && (values || {})[f.key] && <p id={`identity-err-${f.key}`} className="mt-1 text-xs font-semibold text-red-600" data-testid={`identity-field-error-${f.key}`}>{fieldMessage(errors[f.key], f)}</p>}
         </div>
       ))}
+      {showHelp && primary && primary.min_length && (
+        <p className="mt-1 text-xs text-muted-foreground" data-testid="identity-id-range-help">
+          {t("checkout.idRange", { min: primary.min_length, max: primary.max_length || MAX_FIELD_FALLBACK })}
+        </p>
+      )}
       {!(checkout && state.status === "valid") && (
         // PL-UX-3 — ligne unique : les ID déjà utilisés (à gauche, UNE seule
         // ligne, les plus récents d'abord, les plus anciens masqués s'ils ne
