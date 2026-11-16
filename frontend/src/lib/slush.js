@@ -1,16 +1,14 @@
 /* ── PL-005-FE-03 (refonte Slush) — port de maquettes/design-system.js ─────
    Easings CustomEase (slush / slush-bounce), Lenis, direction de scroll →
    nav, menu pilule, curseur data-cursor, marquee lié au scroll, reveals
-   (SplitText 3D), parallaxe, chargement de page et transition en volets.
-   Toutes les durées, courbes et couleurs sont CELLES DE LA MAQUETTE.
+   (SplitText 3D), parallaxe et chargement de page. Toutes les durées,
+   courbes et couleurs sont CELLES DE LA MAQUETTE.
 
    Deux adaptations obligatoires pour une application React (SPA) :
-   - la transition de page ne fait PAS window.location.href : l'outro se
-     termine par un callback (le routeur navigue), l'intro rejoue au
-     changement de route ; le remballage de .main-w est défait avant le
-     paint (unwrapMain) pour ne jamais laisser la page dans le wrapper ;
    - tout est réinitialisable (cleanup) : l'application ne se recharge pas
      entre les pages, chaque montage de page relance ses reveals.
+   (PL-005-FE-07 : les transitions de page en volets ont été supprimées,
+    la navigation est désormais instantanée et gérée par React Router.)
 
    Modes dégradés, comme la maquette :
    - sans GSAP (tests, échec de chargement) : html.no-gsap + la CSS de
@@ -18,15 +16,6 @@
    - prefers-reduced-motion : pas d'intro 3D ni de Lenis ;
    - ?capture dans l'URL : états finaux posés SANS tweens (captures
      d'écran et audit de contraste déterministes). */
-
-export const TILE_COLORS = ["#4da2ff", "#ffd731", "#e9ccff", "#55db9c", "#fb4903", "#5c4ade"];
-
-// Durée maximale d'une transition avant le nettoyage forcé (sécurité si
-// l'onComplete GSAP ne se déclenche jamais). D=1.25 + C=0.8 + chevauchements
-// ≈ 3,3 s ; 5 000 ms couvre les ralentissements CPU sur mobile et les onglets
-// masqués. Au-delà, `busy` est débloqué et la navigation forcée pour que le
-// site ne reste jamais bloqué.
-export const TRANSITION_SAFETY_MS = 5000;
 
 export const isCaptureMode = () =>
   typeof window !== "undefined" && /[?&]capture/.test(window.location.search);
@@ -394,200 +383,10 @@ export function runPageLoad(container, delay) {
   if (heroFade) tl.fromTo(heroFade, { autoAlpha: 0 }, { autoAlpha: 1 }, "<");
 }
 
-/* ------------- Transition de page (volets 3D, JS:583-679) ----------------- */
 
-function paintTiles() {
-  const gsap = gsapReady();
-  const tiles = gsap.utils.shuffle(TILE_COLORS.slice());
-  document.querySelectorAll(".page-transition-el").forEach((el, i) => {
-    if (i < tiles.length) gsap.set(el, { backgroundColor: tiles[i] });
-  });
-  return document.querySelectorAll(".page-transition-el");
-}
 
-/* Défait le remballage posé par l'outro : remet .main-w à sa place dans
-   .page-w et supprime le wrapper — indispensable en SPA, la maquette ne
-   connaissait pas ce problème (navigation = rechargement complet). */
-export function unwrapMain() {
-  const main = document.querySelector(".main-w");
-  if (!main) return;
-  const wrapper = main.closest(".mgs-transition-wrapper");
-  if (wrapper && wrapper.parentNode) {
-    wrapper.parentNode.insertBefore(main, wrapper);
-    wrapper.remove();
-  }
-}
 
-/* Moitié 1 — au clic sur un lien interne : la page s'envole, puis `done`
-   (le routeur navigue). Transcription de runTransitionOut (JS:594-631). */
-export function runTransitionOut(done) {
-  const gsap = gsapReady();
-  const main = document.querySelector(".main-w");
-  if (!gsap || !main) { done(); return; }
-  const pageW = main.parentElement;
-  const wrapper = document.createElement("div");
-  wrapper.className = "mgs-transition-wrapper";
-  const tiles = paintTiles();
-  const scrollY = window.scrollY; // capturé AVANT le scrollTo(0,0)
-  // Un clic peut partir pendant que l'INTRO de la page courante anime
-  // encore .main-w / les volets : on tue ces tweens avant de poser les
-  // états de l'outro (sinon les deux timelines se battent sur les mêmes
-  // propriétés et la page arrive dans un état moitié intro moitié outro).
-  gsap.killTweensOf(main);
-  gsap.killTweensOf(tiles);
-  // Un clic durant l'intro l'a interrompue : killTweens fige les transforms
-  // à leurs valeurs intermédiaires. On les réinitialise avant de poser l'état
-  // de sortie (position: absolute, top: -scrollY) pour éviter que .main-w
-  // reste tourné/décalé dans le volet de sortie.
-  gsap.set(main, { clearProps: "transform" });
 
-  gsap.set(wrapper, {
-    width: "100%", height: "100vh", overflow: "hidden",
-    position: "fixed", left: 0, top: 0, zIndex: 2,
-    clipPath: "inset(0px round 2em)",
-  });
-  pageW.insertBefore(wrapper, main);
-  wrapper.appendChild(main);
-  window.scrollTo(0, 0);
-  document.body.setAttribute("data-scrolling-direction", "down");
-  document.body.setAttribute("data-scrolling-started", "false");
-
-  const D = 1.25, C = 0.8;
-  let completed = false;
-  let safetyTimer = null;
-  const safeDone = () => {
-    if (completed) return;
-    completed = true;
-    if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
-    done();
-  };
-  // Sécurité : si l'onComplete GSAP ne se déclenche jamais (erreur, onglet
-  // masqué, composant démonté…), on force la navigation après
-  // TRANSITION_SAFETY_MS pour ne pas laisser `busy` bloqué indéfiniment.
-  safetyTimer = setTimeout(() => {
-    safetyTimer = null;
-    if (completed) return;
-    completed = true;
-    gsap.killTweensOf(main);
-    gsap.killTweensOf(tiles);
-    gsap.set([pageW, main], { clearProps: "all" });
-    gsap.set(tiles, { display: "none" });
-    unwrapMain();
-    done();
-  }, TRANSITION_SAFETY_MS);
-
-  gsap.timeline({
-    defaults: { ease: "slush-bounce" },
-    onComplete: safeDone,
-  })
-    .set([pageW, main], { height: "100vh", overflow: "hidden", perspective: 1000 })
-    .set(tiles[0], { display: "block", z: "-50vw", rotateY: 45, xPercent: -200 })
-    .set(tiles[1], { display: "block", z: "-50vw", rotateY: -45, xPercent: 200 })
-    .set(tiles[2], { display: "block", z: "-25vw", rotateY: -45, xPercent: 200 })
-    .set(main, { left: "0", right: "0", zIndex: 2, position: "absolute", top: -scrollY + "px" })
-    .to(main, { "--overlay": "0", duration: 0.15, ease: "power1" })
-    .to(wrapper, { z: "-100vw", duration: C }, "<")
-    .to(tiles[0], { xPercent: -100, rotateY: 22.5, z: "-85vw", duration: C }, "<")
-    .to(tiles[1], { xPercent: 100, rotateY: -22.5, z: "-85vw", duration: C }, "<")
-    .to(wrapper, { rotateY: 45, xPercent: -200, z: "-50vw", duration: D }, ">-=0.25")
-    .to(tiles[0], { xPercent: -300, rotateY: 67.5, z: "-25vw", duration: D }, "<")
-    .to(tiles[1], { xPercent: -100, rotateY: 22.5, z: "-85vw", duration: D }, "<")
-    .to(tiles[2], { xPercent: 100, rotateY: -22.5, z: "-85vw", duration: D }, "<");
-}
-
-/* Version reduced-motion de l'outro (JS:633-650). */
-export function runReducedTransitionOut(done) {
-  const gsap = gsapReady();
-  const main = document.querySelector(".main-w");
-  if (!gsap || !main) { done(); return; }
-  const pageW = main.parentElement;
-  const wrapper = document.createElement("div");
-  wrapper.className = "mgs-transition-wrapper";
-  gsap.set(wrapper, {
-    width: "100%", height: "100vh", overflow: "hidden",
-    position: "fixed", left: 0, top: 0, zIndex: 2,
-    clipPath: "inset(0px round 2em)",
-  });
-  pageW.insertBefore(wrapper, main);
-  wrapper.appendChild(main);
-  window.scrollTo(0, 0);
-
-  let completed = false;
-  let safetyTimer = null;
-  const safeDone = () => {
-    if (completed) return;
-    completed = true;
-    if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
-    done();
-  };
-  // Sécurité : même en reduced-motion, si l'onComplete ne se déclenche pas,
-  // on force le déballage et la navigation après TRANSITION_SAFETY_MS.
-  safetyTimer = setTimeout(() => {
-    safetyTimer = null;
-    if (completed) return;
-    completed = true;
-    gsap.killTweensOf(wrapper);
-    gsap.set([pageW, main], { clearProps: "all" });
-    unwrapMain();
-    done();
-  }, TRANSITION_SAFETY_MS);
-
-  gsap.timeline({ defaults: { ease: "slush" }, onComplete: safeDone })
-    .to(wrapper, { autoAlpha: 0, duration: 0.4 });
-}
-
-/* Moitié 2 — arrivée de la nouvelle page en 3D (JS:653-679). Le wrapper
-   éventuel de l'outro est défait AVANT toute pose d'état. */
-export function runTransitionIn(onIntroEnd) {
-  const gsap = gsapReady();
-  if (!gsap) return;
-  unwrapMain();
-  const main = document.querySelector(".main-w");
-  const tiles = paintTiles();
-  const heroFade = main && main.querySelector("[data-hero-fade]");
-  const D = 1.25, C = 0.8, U = 45;
-
-  let completed = false;
-  let safetyTimer = null;
-  const safeComplete = () => {
-    if (completed) return;
-    completed = true;
-    if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
-    if (lenis) lenis.start();
-    window.ScrollTrigger.refresh();
-    gsap.set([main && main.parentElement, main], { clearProps: true });
-    gsap.set(tiles, { display: "none" });
-    if (onIntroEnd) onIntroEnd();
-  };
-  // Sécurité : si l'onComplete GSAP ne se déclenche jamais, on force le
-  // nettoyage et on libère `busy` via onIntroEnd après TRANSITION_SAFETY_MS.
-  safetyTimer = setTimeout(() => {
-    safetyTimer = null;
-    if (completed) return;
-    completed = true;
-    gsap.killTweensOf(main);
-    gsap.killTweensOf(tiles);
-    gsap.set([main && main.parentElement, main], { clearProps: true });
-    gsap.set(tiles, { display: "none" });
-    if (onIntroEnd) onIntroEnd();
-  }, TRANSITION_SAFETY_MS);
-
-  const tl = gsap.timeline({
-    defaults: { ease: "slush-bounce" },
-    onComplete: safeComplete,
-  })
-    .set([main && main.parentElement, main], { height: "100vh", overflow: "hidden", perspective: 1000 })
-    .set(tiles[0], { display: "block", z: "-50vw", rotateY: 45, xPercent: -200 })
-    .set(tiles[1], { display: "block", z: "-50vw", rotateY: -45, xPercent: 200 })
-    .set(tiles[2], { display: "block", z: "-25vw", rotateY: -45, xPercent: 200 })
-    .set(main, { rotateY: -45, xPercent: 200, z: "-50vw", "--overlay": "0", borderRadius: "2em" })
-    .set(heroFade, { autoAlpha: 0 })
-    .to(main, { rotateY: 0, xPercent: 0, z: "-100vw", duration: D })
-    .to(main, { "--overlay": "0", z: "0vw", borderRadius: "0em", ease: "slush", duration: C }, ">-=0.5")
-    .to(tiles[1], { xPercent: -200, rotateY: U, z: "-25vw", duration: 1.875 }, "<+=0.2")
-    .to(tiles[2], { xPercent: 200, rotateY: -45, z: "-25vw", duration: 1.875, onStart: () => { runPageLoad(main, 0.15); } }, "<")
-    .set(tiles, { display: "none" });
-}
 
 /* Arrivée de la nav pilule au chargement (JS:757). */
 export function navArrive() {
@@ -607,7 +406,6 @@ export function applyCaptureState() {
     else nav.style.transform = "translate(0,0)";
   }
   if (gsap) {
-    document.querySelectorAll(".page-transition-el").forEach((el) => gsap.set(el, { display: "none" }));
     const main = document.querySelector(".main-w");
     if (main) gsap.set(main, { clearProps: true });
     gsap.set('[data-load-stagger], [data-hero-fade], [data-card-reveal="card"]', { clearProps: true });
