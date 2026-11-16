@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Home, LogOut, MoreHorizontal, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 import { useLang } from "@/context/LanguageContext";
+import { Dialog, DialogOverlay } from "@/components/ui/dialog";
 import { adminBarItems, adminMoreItems, adminBadge, useFzrAlerts } from "@/lib/adminNav";
 
 // Mobile-only admin bottom nav (<1024px). Desktop reads the same ADMIN_NAV
@@ -20,45 +21,6 @@ export function AdminBottomNav() {
   const [moreOpen, setMoreOpen] = useState(false);
   const moreButtonRef = useRef(null);
   const sheetRef = useRef(null);
-  const prevMoreOpen = useRef(moreOpen);
-
-  // Gestion du focus dans le panneau « Plus » (T3.3) : focus initial à
-  // l'ouverture, restauration sur le bouton déclencheur à la fermeture,
-  // fermeture à Échap et piège à tabulation (Tab) à l'intérieur du panneau.
-  useEffect(() => {
-    const wasOpen = prevMoreOpen.current;
-    prevMoreOpen.current = moreOpen;
-
-    if (moreOpen) {
-      sheetRef.current?.focus({ preventScroll: true });
-    } else if (wasOpen) {
-      moreButtonRef.current?.focus({ preventScroll: true });
-    }
-
-    const onKey = (e) => {
-      if (e.key === "Escape") { setMoreOpen(false); return; }
-      if (e.key === "Tab") {
-        const sheet = sheetRef.current;
-        const focusable = sheet.querySelectorAll("button, [href], input, select, textarea");
-        if (!focusable.length) return;
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey) {
-          if (document.activeElement === first || document.activeElement === sheet) {
-            e.preventDefault();
-            last.focus();
-          }
-        } else {
-          if (document.activeElement === last || document.activeElement === sheet) {
-            e.preventDefault();
-            first.focus();
-          }
-        }
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [moreOpen, setMoreOpen]);
 
   if (!pathname.startsWith("/admin")) return null;
   // Conversation admin ouverte (MGS-FE-ADMIN-20261105-02) : l'écran
@@ -126,76 +88,55 @@ export function AdminBottomNav() {
         </nav>
       </div>
 
-      <AnimatePresence>
-        {moreOpen && (
-          <>
-            <motion.div
-              key="admin-more-backdrop"
-              data-testid="admin-more-backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.22 }}
-              onClick={() => setMoreOpen(false)}
-              className="fixed inset-0 z-[60] bg-foreground/35 backdrop-blur-xl lg:hidden"
-            />
-            <motion.div
-              key="admin-more-sheet"
-              ref={sheetRef}
-              tabIndex={-1}
-              role="dialog"
-              aria-modal="true"
-              aria-label={t("admin.more")}
-              data-testid="admin-more-sheet"
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", stiffness: 320, damping: 32 }}
-              className="fixed inset-x-0 bottom-0 z-[61] border bg-card text-card-foreground pb-[max(1rem,env(safe-area-inset-bottom))] lg:hidden"
-              style={{ borderRadius: "16px 16px 0 0" }}
-            >
-              <header className="flex items-center justify-between gap-3 border-b bg-foreground px-4 py-3 text-background">
-                <p className="font-display text-sm font-semibold uppercase tracking-tight">{t("admin.more")}</p>
-                <button type="button" onClick={() => setMoreOpen(false)} aria-label={t("common.close")} data-testid="admin-more-close" className="flex h-11 w-11 items-center justify-center rounded-[8px] transition-colors hover:text-primary"><X className="h-5 w-5" strokeWidth={2} /></button>
-              </header>
-              <ul className="divide-y p-2">
-                {secondary.map((e) => {
-                  const Icon = e.icon;
-                  const badge = adminBadge(e, counts);
-                  return (
-                    <li key={e.key}>
-                      <Link to={e.path} onClick={() => setMoreOpen(false)} data-testid={`admin-bnav-${e.key}`} className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-muted">
-                        <span className="flex h-9 w-9 items-center justify-center border border-[color:var(--rule-strong)] bg-background"><Icon className="h-4 w-4" strokeWidth={1.75} /></span>
-                        <span className="flex-1 text-sm font-semibold">{t(e.labelKey)}</span>
-                        {badge > 0 && (
-                          <span className="rounded-full bg-foreground px-1.5 text-center text-[10px] font-black leading-[18px] text-background">{badge}</span>
-                        )}
-                      </Link>
-                    </li>
-                  );
-                })}
-                <li>
-                  <Link to="/" onClick={() => setMoreOpen(false)} data-testid="admin-bnav-go-shop" className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-muted">
-                    <span className="flex h-9 w-9 items-center justify-center border border-[color:var(--rule-strong)] bg-background"><Home className="h-4 w-4" strokeWidth={1.75} /></span>
-                    <span className="flex-1 text-sm font-semibold">{t("nav.shop")}</span>
+      <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
+        <DialogOverlay className="fixed inset-0 z-[60] bg-foreground/35 backdrop-blur-xl lg:hidden" onClick={() => setMoreOpen(false)} />
+        <DialogPrimitive.Content
+          ref={sheetRef}
+          aria-label={t("admin.more")}
+          data-testid="admin-more-sheet"
+          className="fixed inset-x-0 bottom-0 z-[61] border bg-card text-card-foreground pb-[max(1rem,env(safe-area-inset-bottom))] lg:hidden"
+          style={{ borderRadius: "16px 16px 0 0" }}
+        >
+          <header className="flex items-center justify-between gap-3 border-b bg-foreground px-4 py-3 text-background">
+            <p className="font-display text-sm font-semibold uppercase tracking-tight">{t("admin.more")}</p>
+            <button type="button" onClick={() => setMoreOpen(false)} aria-label={t("common.close")} data-testid="admin-more-close" className="flex h-11 w-11 items-center justify-center rounded-[8px] transition-colors hover:text-primary"><X className="h-5 w-5" strokeWidth={2} /></button>
+          </header>
+          <ul className="divide-y p-2">
+            {secondary.map((e) => {
+              const Icon = e.icon;
+              const badge = adminBadge(e, counts);
+              return (
+                <li key={e.key}>
+                  <Link to={e.path} onClick={() => setMoreOpen(false)} data-testid={`admin-bnav-${e.key}`} className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-muted">
+                    <span className="flex h-9 w-9 items-center justify-center border border-[color:var(--rule-strong)] bg-background"><Icon className="h-4 w-4" strokeWidth={1.75} /></span>
+                    <span className="flex-1 text-sm font-semibold">{t(e.labelKey)}</span>
+                    {badge > 0 && (
+                      <span className="rounded-full bg-foreground px-1.5 text-center text-[10px] font-black leading-[18px] text-background">{badge}</span>
+                    )}
                   </Link>
                 </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={async () => { setMoreOpen(false); await logout(); }}
-                    data-testid="admin-bnav-logout"
-                    className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-muted"
-                  >
-                    <span className="flex h-9 w-9 items-center justify-center border border-[color:var(--rule-strong)] bg-background text-destructive"><LogOut className="h-4 w-4" strokeWidth={1.75} /></span>
-                    <span className="flex-1 text-sm font-semibold text-destructive">{t("nav.logout")}</span>
-                  </button>
-                </li>
-              </ul>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+              );
+            })}
+            <li>
+              <Link to="/" onClick={() => setMoreOpen(false)} data-testid="admin-bnav-go-shop" className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-muted">
+                <span className="flex h-9 w-9 items-center justify-center border border-[color:var(--rule-strong)] bg-background"><Home className="h-4 w-4" strokeWidth={1.75} /></span>
+                <span className="flex-1 text-sm font-semibold">{t("nav.shop")}</span>
+              </Link>
+            </li>
+            <li>
+              <button
+                type="button"
+                onClick={async () => { setMoreOpen(false); await logout(); }}
+                data-testid="admin-bnav-logout"
+                className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-muted"
+              >
+                <span className="flex h-9 w-9 items-center justify-center border border-[color:var(--rule-strong)] bg-background text-destructive"><LogOut className="h-4 w-4" strokeWidth={1.75} /></span>
+                <span className="flex-1 text-sm font-semibold text-destructive">{t("nav.logout")}</span>
+              </button>
+            </li>
+          </ul>
+        </DialogPrimitive.Content>
+      </Dialog>
     </>
   );
 }
