@@ -38,6 +38,14 @@ export const translations = {
       why2t: "Mobile Money & USDT", why2d: "Payez avec MVola, Orange Money ou Binance USDT.",
       why3t: "Suivi en temps réel", why3d: "Chaque commande est suivie jusqu'à la livraison sur votre compte.",
       why4t: "Support humain", why4d: "Notre équipe vous répond directement sur le chat.",
+      // Avis : emplacements NEUTRES repris de la maquette PL-DS-003 (elle
+      //-même portait la mention « avis d'exemple »). À remplacer par de
+      // vrais avis clients quand ils existent.
+      reviewsTitle: "Ce que disent les joueurs", reviewsNote: "Avis d'exemple — emplacements neutres en attente de vrais avis.", reviewsStars: "5 étoiles sur 5",
+      review1: "Commande passée le matin, UC reçues dans l'heure. Suivi clair à chaque étape.", review1who: "Joueur PUBG Mobile · Antananarivo",
+      review2: "Paiement MVola simple, mon ID a été vérifié avant de payer. Rien à redire.", review2who: "Joueur PUBG Mobile · Toamasina",
+      review3: "Le pack évolutif m'a fait gagner du temps, le prix reste correct.", review3who: "Joueur PUBG Mobile · Fianarantsoa",
+      soonCard: "Bientôt", soonSub: "Emplacement neutre — de nouveaux jeux arrivent.",
       faqEyebrow: "Aide", faqTitle: "Questions fréquentes",
       faq1q: "Comment acheter ?", faq1a: "Choisissez un jeu, vérifiez votre compte joueur puis payez par Mobile Money ou USDT. La commande est suivie jusqu'à la livraison.",
       faq2q: "Quels moyens de paiement sont acceptés ?", faq2a: "MVola, Orange Money et Binance USDT (TRC20, BEP20, Aptos, TON).",
@@ -265,6 +273,13 @@ cart: { otherGame: "Votre panier contient des offres d'un autre jeu. Finalisez o
       why2t: "Mobile Money & USDT", why2d: "Pay with MVola, Orange Money or Binance USDT.",
       why3t: "Real-time tracking", why3d: "Every order is tracked until it is delivered to your account.",
       why4t: "Human support", why4d: "Our team answers you directly on the chat.",
+      // Reviews: NEUTRAL sample slots from mock-up PL-DS-003 (it carried the
+      // "example reviews" note itself). Replace with real reviews later.
+      reviewsTitle: "What players say", reviewsNote: "Sample reviews — neutral placeholders awaiting real ones.", reviewsStars: "5 stars out of 5",
+      review1: "Ordered in the morning, UC delivered within the hour. Clear tracking at every step.", review1who: "PUBG Mobile player · Antananarivo",
+      review2: "Simple MVola payment, my ID was verified before paying. Nothing to complain about.", review2who: "PUBG Mobile player · Toamasina",
+      review3: "The evolving pack saved me time and the price stays fair.", review3who: "PUBG Mobile player · Fianarantsoa",
+      soonCard: "Soon", soonSub: "Neutral placeholder — new games are on the way.",
       faqEyebrow: "Help", faqTitle: "Frequently asked questions",
       faq1q: "How do I buy?", faq1a: "Pick a game, verify your player account, then pay with Mobile Money or USDT. The order is tracked until delivery.",
       faq2q: "Which payment methods are accepted?", faq2a: "MVola, Orange Money and Binance USDT (TRC20, BEP20, Aptos, TON).",

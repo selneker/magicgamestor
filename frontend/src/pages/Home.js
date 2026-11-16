@@ -1,18 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowRight, ArrowUp, ArrowUpRight, Gamepad2, KeyRound, MessageCircle, Rocket, ShieldCheck, Tag, Timer, Wallet } from "lucide-react";
+import { Gamepad2, KeyRound, MessageCircle, Rocket, ShieldCheck, Tag, Timer, Wallet } from "lucide-react";
 import { api } from "@/lib/api";
 import { useGames } from "@/context/GameContext";
 import { useLang, localized } from "@/context/LanguageContext";
 import { GameCard } from "@/components/game/GameCard";
 import { ProductCard } from "@/components/store/ProductCard";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { usePageMeta } from "@/lib/catalog";
-
-const rise = (i = 0) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay: 0.06 * i, duration: 0.45, ease: "easeOut" } });
 
 // Une charge utile qui n'est pas un tableau (page HTML renvoyee par un proxy,
 // objet d'erreur, ...) ne doit pas faire planter le rendu : on la remplace par
@@ -34,195 +29,247 @@ export function GameLogo({ game, className = "h-14 w-14" }) {
   );
 }
 
-/* ── PL-005-FE-03 — Accueil « à panneaux » (maquette 01-accueil) ──────────
-   Le fond de la page est l'ENCRE (fixe, les deux thèmes) et chaque section
-   est un panneau arrondi posé dessus — l'encre se voit dans les interstices,
-   comme la maquette. Contenu 100 % réel (règle 6) : la section avis de la
-   maquette (faux avis) n'est PAS portée ; les offres populaires et les
-   abonnements du site restent (vrais prix = source). */
+/* ── PL-005-FE-03 refonte Slush — accueil de la maquette 01-accueil.html ──
+   Markup et classes EXACTS de la maquette : hero (page-hero / h-d /
+   hero-lime / data-anim-hero), bandeau marquee CTA (cta-banner-section,
+   marquee-advanced ANIMÉ via lib/slush.js), étapes (steps-grid /
+   step-card), preuves (trust-grid), avis (reviews-grid — les exemples
+   NEUTRES de la maquette, affichés avec leur mention « avis d'exemple »),
+   cartes de jeux (packs-grid / two-col-grid__visual), FAQ (faq-list avec
+   accordéon data-toggle porté en état React).
+   Toutes les sections portent .section : le fond de page encre et les
+   panneaux crème arrondis viennent de design-system.css (body[data-page=
+   "home"], posé par SlushChrome).
+   Contenu 100 % réel (règle 6) : les sections commerce du site (offres
+   populaires, abonnements, événement, support) restent, habillées par les
+   mêmes classes maquette. Les icônes animées de la maquette (sprites
+   .ic-anim-*) n'existent pas dans le site : lucide à la place (statique). */
 
-// Panneau de section : surface crème (clair) / #1F1F1F (sombre), texte
-// theme-apparié via --panel-ink.
-const panel = "rounded-[28px] bg-[color:hsl(var(--panel))] text-[color:hsl(var(--panel-ink))]";
-const panelMuted = "text-[color:hsl(var(--panel-muted))]";
-// Titre display de section (maquette .h-l : capitales, display black) —
-// échelle fluide réduite par rapport à la maquette pour tenir 320-390 px
-// sans déborder (la maquette clippe son titre à 390 px).
-function SectionHead({ eyebrow, title, sub, action }) {
+// Face avant des boutons maquette (thème light : crème bordée d'encre).
+function ButtonMain({ to, label, accent = "light", theme = "light", className = "", cursor, testId, children }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[color:var(--rule)] pb-4">
-      <div className="min-w-0">
-        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-        <h2 className="mt-1 font-display text-[clamp(1.75rem,4.5vw,3.25rem)] font-black uppercase leading-[0.95] tracking-[-0.02em]">{title}</h2>
-        {sub && <p className={`mt-2 max-w-xl text-sm ${panelMuted}`}>{sub}</p>}
-      </div>
-      {action}
-    </div>
+    <Link
+      to={to}
+      className={`button-main ${className}`.trim()}
+      data-button-theme={theme}
+      data-button-accent={accent}
+      data-cursor={cursor}
+      data-testid={testId}
+    >
+      <span className="button-main-inner full-h">
+        <span className="button-main-inner__back" data-text={label}></span>
+        <span className="button-main-inner__front">
+          <span className="button-main-inner__bg"></span>
+          <span className="button-main-inner__text"><span>{children || label}</span></span>
+        </span>
+      </span>
+    </Link>
   );
-}
-
-// Surlignage néon du titre (maquette .hero-lime) : fond néon, texte encre
-// FIXE — jamais l'inverse (néon en texte sur crème ≈ 1,1:1).
-function HeroLime({ children }) {
-  return <span className="inline-block rounded-[6px] bg-[color:var(--brand-neon)] px-[0.18em] text-[color:var(--brand-ink)]">{children}</span>;
 }
 
 function Hero({ shopUrl }) {
   const { t } = useLang();
   return (
-    <section className={`${panel} px-6 pb-10 pt-10 sm:px-10 sm:pt-14 lg:px-14 lg:pb-14`} data-testid="hero">
-      <motion.div {...rise(0)}>
-        <p className="eyebrow">{t("store.heroEyebrow")}</p>
-        {/* Maquette .h-d : capitales, display black, interlignage serré.
-            Échelle fluide (16vw ≈ 62 px à 390 px, 9.5rem max à 1440 px) —
-            la maquette (6.5em/12.5em fixes) clippe son titre hors écran. */}
-        <h1 className="mt-3 max-w-6xl font-display text-[clamp(2.6rem,16vw,9.5rem)] font-black uppercase leading-[0.95] tracking-[-0.02em]" data-testid="hero-title">
-          <span className="block">{t("store.heroA")}</span>
-          <span className="mt-2 inline-block"><HeroLime>{t("store.heroB")}</HeroLime></span>
+    <section className="page-hero" data-testid="hero">
+      <div className="container" data-hero-content>
+        <p className="eyebrow" data-hero-fade>{t("store.heroEyebrow")}</p>
+        <h1 className="h-d" data-anim-hero style={{ marginTop: ".35em" }} data-testid="hero-title">
+          {t("store.heroA")} <span className="hero-lime">{t("store.heroB")}</span>
         </h1>
-        <p className={`mt-6 max-w-lg text-lg leading-relaxed sm:text-xl ${panelMuted}`}>{t("store.heroSub")}</p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Button asChild size="lg" className="h-12 border-2 border-[color:var(--brand-ink)] bg-[color:var(--brand-violet)] px-7 text-sm font-semibold text-[color:hsl(var(--cream))] hover-slide" data-testid="hero-cta-shop">
-            <Link to={shopUrl}>{t("store.ctaShop")}<ArrowRight className="ml-1 h-4 w-4" /></Link>
-          </Button>
-          <Button asChild size="lg" className="h-12 border-2 border-[color:var(--brand-ink)] bg-[color:var(--brand-blue)] px-7 text-sm font-semibold text-[color:var(--brand-ink)] hover-slide" data-testid="hero-cta-track">
-            <Link to="/suivi">{t("store.ctaTrack")}</Link>
-          </Button>
+        <p className="h-s" data-load-stagger style={{ maxWidth: "30em", marginTop: "1.2em" }}>
+          {t("store.heroSub")}
+        </p>
+        <div className="hero-cta-row" data-load-stagger>
+          <ButtonMain to={shopUrl} label={t("store.ctaShop")} theme="dark" accent="violet"
+            cursor={t("store.ctaShop")} testId="hero-cta-shop">
+            {t("store.ctaShop")}
+            <svg className="button-main-inner__arrow" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5873 10L0 8.4127L6.30385 2.13152L0.793651 2.1542V0H10V9.20635H7.8458L7.86848 3.67347L1.5873 10Z" fill="currentColor" /></svg>
+          </ButtonMain>
+          <ButtonMain to="/suivi" label={t("store.ctaTrack")} theme="light" accent="blue" testId="hero-cta-track" />
         </div>
-      </motion.div>
+      </div>
     </section>
   );
 }
 
-// Bandeau d'appel à l'action (maquette .cta-banner-section) : panneau encre,
-// boutons géants. La maquette anime ce ruban (marquee) : le lot n'autorise
-// pas le marquee animé (règle 4) → rangée STATIQUE, même mise en forme.
+// Bandeau marquee CTA de la maquette : boutons géants « Recharger » en
+// boucle, direction liée au scroll (lib/slush.js initMarquee). La maquette
+// a oublié les data-marquee-*-target sur ses enfants (son JS ne les
+// trouvait jamais) : le port React les ajoute pour que l'animation joue.
+const MARQUEE_ACCENTS = ["white", "orange", "blue", "violet", "green"];
+
 function CtaBanner() {
   const { t } = useLang();
-  const giant = "inline-flex items-center justify-center whitespace-nowrap rounded-[28px] px-6 py-4 font-display font-bold leading-none sm:px-8";
-  const size = "text-[13.5vw] sm:text-7xl lg:text-8xl";
+  const notes = t("footer.tickerMessages") || [];
+  const label = t("store.bannerCta");
   return (
-    <section className="overflow-hidden rounded-[28px] bg-ink px-4 py-14 text-[color:hsl(var(--cream))] sm:px-8 lg:py-24" data-testid="home-cta-banner">
-      <div className="flex flex-wrap items-center justify-center gap-4">
-        <Link to="/boutique" data-testid="cta-banner-primary" className={`${giant} ${size} border-2 border-[color:hsl(var(--cream)/.45)] text-[color:hsl(var(--cream))] transition-colors hover:bg-[color:hsl(var(--cream)/.12)] motion-safe:duration-200`}>
-          {t("store.bannerCta")}
-        </Link>
-        <Link to="/boutique" className={`${giant} ${size} border-2 border-[color:var(--brand-ink)] bg-[color:var(--brand-orange)] text-[color:var(--brand-ink)] transition-transform hover:-translate-y-1 motion-safe:duration-200`}>
-          {t("store.bannerCta")}
-        </Link>
-        <Link to="/boutique" className={`${giant} ${size} border-2 border-[color:var(--brand-ink)] bg-[color:var(--brand-blue)] text-[color:var(--brand-ink)] transition-transform hover:-translate-y-1 motion-safe:duration-200`}>
-          {t("store.bannerCta")}
-        </Link>
-        <Link to="/boutique" className={`${giant} ${size} border-2 border-[color:var(--brand-violet)] bg-[color:var(--brand-violet)] text-[color:hsl(var(--cream))] transition-transform hover:-translate-y-1 motion-safe:duration-200`}>
-          {t("store.bannerCta")}
-        </Link>
-        <Link to="/boutique" className={`${giant} ${size} border-2 border-[color:var(--brand-ink)] bg-[color:var(--brand-green)] text-[color:var(--brand-ink)] transition-transform hover:-translate-y-1 motion-safe:duration-200`}>
-          {t("store.bannerCta")}
-        </Link>
+    <section className="cta-banner-section" data-testid="home-cta-banner">
+      <div className="cta-banner-inner">
+        <div className="marquee-advanced" data-marquee-direction="left" data-marquee-speed="15" data-marquee-scroll-speed="10" data-marquee-duplicate="2" data-marquee-scroll-direction-target>
+          <div className="marquee-advanced__scroll" data-marquee-scroll-target>
+            {[0, 1, 2].map((dup) => (
+              <div className="marquee-advanced__collection" data-marquee-collection-target key={dup} aria-hidden={dup > 0 ? "true" : undefined}>
+                {MARQUEE_ACCENTS.map((accent) => (
+                  <Link to="/boutique" key={`${dup}-${accent}`} className="download-cta-el button-main" data-button-theme="dark" data-button-accent={accent} data-cursor={label} data-testid={dup === 0 && accent === "white" ? "cta-banner-primary" : undefined}>
+                    <span className="button-main-inner full-h">
+                      <span className="button-main-inner__back is--download" data-text={label}></span>
+                      <span className="button-main-inner__front">
+                        <span className="button-main-inner__bg" data-box-theme={accent}></span>
+                        <span className="button-main-inner__text"><span className="marquee-cta-h">{label}</span></span>
+                      </span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
+      <p className="container ticker-note">{notes[0] || ""}</p>
     </section>
   );
 }
 
-// « Comment ça marche » (maquette .steps-grid) : cartes aux accents de la
-// maquette (jaune / bleu / vert), texte encre FIXE, numéros display.
+// « Comment ça marche » (maquette .steps-grid, accents jaune/bleu/vert).
+const STEPS_ICONS = [Tag, KeyRound, Rocket];
+const STEPS_THEMES = ["yellow", "blue", "green"];
+
 function Steps() {
   const { t } = useLang();
-  const accents = [
-    "bg-[color:var(--brand-yellow)] text-[color:var(--brand-ink)]",
-    "bg-[color:var(--brand-blue)] text-[color:var(--brand-ink)]",
-    "bg-[color:var(--brand-green)] text-[color:var(--brand-ink)]",
-  ];
-  const icons = [Tag, KeyRound, Rocket];
   const steps = [[t("store.step1"), t("store.step1d")], [t("store.step2"), t("store.step2d")], [t("store.step3"), t("store.step3d")]];
   return (
-    <section className={`${panel} px-6 py-10 sm:px-10 lg:px-14`} data-testid="home-steps">
-      <SectionHead title={t("store.stepsTitle")}
-        action={<Link to="/boutique" className="inline-flex min-h-11 items-center text-sm font-semibold underline-offset-4 hover:underline">{t("store.seeShop")}</Link>} />
-      <ol className="mt-6 grid gap-3 md:grid-cols-3">
-        {steps.map(([title, desc], i) => {
-          const Icon = icons[i];
-          return (
-            <li key={title} className={`card-lift flex flex-col gap-4 rounded-[22px] p-6 sm:p-8 ${accents[i]}`} data-testid={`home-step-${i}`}>
-              <div className="flex items-start justify-between">
-                <span className="num text-5xl font-extrabold leading-none opacity-40" aria-hidden="true">{i + 1}</span>
-                <Icon className="h-9 w-9" strokeWidth={1.75} aria-hidden="true" />
-              </div>
-              <div>
-                <h3 className="font-display text-xl font-bold">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-[color:var(--brand-ink)]">{desc}</p>
-              </div>
-            </li>
-          );
-        })}
-      </ol>
-    </section>
-  );
-}
-
-function GamesBento({ games }) {
-  const { t } = useLang();
-  // PL-UI-GAMES-1 — grille de cartes sur tous les écrans : 2 col mobile,
-  // 3 tablette, 4 bureau ; 6 jeux max sur l'accueil puis « Voir tous les
-  // jeux » vers /jeux. Le composant porte les data-testid historiques
-  // `home-game-*` (conservés pour les tests).
-  return (
-    <section className={`${panel} px-6 py-10 sm:px-10 lg:px-14`} data-testid="home-game-selection">
-      <SectionHead title={t("store.gamesTitle")} sub={t("store.gamesSub")} />
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {games.slice(0, 6).map((g) => (
-          <GameCard key={g.id} game={g} testId={`home-game-${g.slug || g.id}`} />
-        ))}
-      </div>
-      {games.length > 6 && (
-        <div className="mt-5 flex justify-center">
-          <Link
-            to="/jeux"
-            data-testid="games-see-all"
-            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[color:var(--rule-strong)] px-5 text-sm font-semibold hover:bg-[color:hsl(var(--muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-neon)]"
-          >
-            {t("games.seeAll")}
-            <ArrowUpRight className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
-          </Link>
+    <section className="section" data-testid="home-steps">
+      <div className="container">
+        <div className="section-head">
+          <h2 className="h-l" data-anim-slant>{t("store.stepsTitle")}</h2>
+          <Link className="link p-m" to="/boutique">{t("store.seeShop")}</Link>
         </div>
-      )}
-      {games.length === 0 && <p className={`text-sm ${panelMuted}`} data-testid="home-games-empty">{t("games.empty")}</p>}
+        <div className="steps-grid">
+          {steps.map(([title, desc], i) => {
+            const Icon = STEPS_ICONS[i];
+            return (
+              <div className="step-card" data-card-reveal="card" data-box-theme={STEPS_THEMES[i]} key={title} data-testid={`home-step-${i}`}>
+                <span className="step-card__num" aria-hidden="true">{i + 1}</span>
+                <Icon className="ic-use" strokeWidth={1.5} aria-hidden="true" />
+                <h3 className="h-c">{title}</h3>
+                <p className="p-m">{desc}</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </section>
   );
 }
 
-// « Pourquoi Magic Game Store ? » (maquette .trust-grid) : cartes bordées.
+// « Pourquoi Magic Game Store ? » (maquette .trust-grid).
+const WHY_ICONS = [ShieldCheck, Wallet, Timer, MessageCircle];
+
 function WhyChoose() {
   const { t } = useLang();
   const items = [
-    [ShieldCheck, t("store.why1t"), t("store.why1d")],
-    [Wallet, t("store.why2t"), t("store.why2d")],
-    [Timer, t("store.why3t"), t("store.why3d")],
-    [MessageCircle, t("store.why4t"), t("store.why4d")],
+    [t("store.why1t"), t("store.why1d")],
+    [t("store.why2t"), t("store.why2d")],
+    [t("store.why3t"), t("store.why3d")],
+    [t("store.why4t"), t("store.why4d")],
   ];
   return (
-    <section className={`${panel} px-6 py-10 sm:px-10 lg:px-14`} data-testid="home-why">
-      <SectionHead title={t("store.whyTitle")} sub={t("store.whySub")} />
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {items.map(([Icon, title, desc], i) => (
-          <motion.div key={title} {...rise(i)} className="card-lift flex flex-col gap-4 rounded-[22px] border bg-card p-6" data-testid={`home-why-${i}`}>
-            <Icon className="h-9 w-9 text-foreground" strokeWidth={1.75} aria-hidden="true" />
-            <div>
-              <h3 className="font-display text-lg font-bold leading-tight">{title}</h3>
-              <p className={`mt-2 text-sm leading-relaxed ${panelMuted}`}>{desc}</p>
-            </div>
-          </motion.div>
-        ))}
+    <section className="section" data-testid="home-why">
+      <div className="container">
+        <div className="section-head"><h2 className="h-l" data-anim-slant>{t("store.whyTitle")}</h2></div>
+        <div className="trust-grid">
+          {items.map(([title, desc], i) => {
+            const Icon = WHY_ICONS[i];
+            return (
+              <div className="trust-card" data-card-reveal="card" key={title} data-testid={`home-why-${i}`}>
+                <Icon className="ic-use" strokeWidth={1.5} aria-hidden="true" />
+                <strong>{title}</strong>
+                <span>{desc}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
 }
 
-// FAQ (maquette .faq-list) : une CARTE bordée par question (et non un seul
-// bloc), « + » pivote en « × » dans une pastille néon. La logique reste
-// l'accordéon Radix existant (aucun changement de logique).
+// Avis clients (maquette .reviews-grid) : les 3 exemples NEUTRES de la
+// maquette, affichés avec la mention « avis d'exemple » qu'elle porte
+// elle-même — à remplacer par de vrais avis quand ils existent.
+function Reviews() {
+  const { t } = useLang();
+  const reviews = [
+    [t("store.review1"), t("store.review1who")],
+    [t("store.review2"), t("store.review2who")],
+    [t("store.review3"), t("store.review3who")],
+  ];
+  return (
+    <section className="section" data-testid="home-reviews">
+      <div className="container">
+        <div className="section-head">
+          <h2 className="h-l" data-anim-slant>{t("store.reviewsTitle")}</h2>
+          <span className="p-m">{t("store.reviewsNote")}</span>
+        </div>
+        <div className="reviews-grid">
+          {reviews.map(([quote, who], i) => (
+            <div className="review-card" data-card-reveal="card" key={who} data-testid={`home-review-${i}`}>
+              <span className="stars" aria-label={t("store.reviewsStars")}>★★★★★</span>
+              <p className="p-m">{quote}</p>
+              <span className="who">{who}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// Cartes de jeux (maquette .packs-grid, 2 colonnes, .two-col-grid__visual).
+const GAME_THEMES = ["violet", "glacier", "purple", "blue"];
+
+function GamesCards({ games }) {
+  const { t, lang } = useLang();
+  return (
+    <section className="section" data-testid="home-game-selection">
+      <div className="container">
+        <div className="section-head">
+          <h2 className="h-l" data-anim-slant>{t("store.gamesTitle")}</h2>
+          <Link className="link p-m" to="/jeux" data-testid="games-see-all">{t("common.seeAll")}</Link>
+        </div>
+        <div className="packs-grid" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>
+          {games.slice(0, 3).map((g, i) => (
+            <Link to={`/boutique?game=${g.id}`} className="two-col-grid__visual" data-card-reveal="card" data-box-theme={GAME_THEMES[i % GAME_THEMES.length]} style={{ minHeight: "16em" }} key={g.id} data-testid={`home-game-${g.slug || g.id}`}>
+              <svg className="mg-shape" viewBox="0 0 200 200" aria-hidden="true"><rect x="20" y="20" width="160" height="160" rx="46" transform="rotate(8 100 100)" fill="currentColor" /><path d="M115 55l-40 62h29l-11 38 46-64h-30l18-36z" fill="hsl(0 0% 0% / .18)" /></svg>
+              <GameLogo game={g} className="ic-use h-[6em] w-[6em] rounded-[1em]" />
+              <span style={{ position: "relative", zIndex: 1 }}>
+                <strong className="h-c" style={{ display: "block" }}>{g.name}</strong>
+                <span className="p-m">{localized(g, "description", lang) || t("games.seeAll")}</span>
+              </span>
+            </Link>
+          ))}
+          {games.length < 2 && (
+            <div className="two-col-grid__visual" data-card-reveal="card" data-box-theme="glacier" style={{ minHeight: "16em" }} data-testid="home-game-soon">
+              <svg className="mg-shape" viewBox="0 0 200 200" aria-hidden="true"><rect x="20" y="20" width="160" height="160" rx="46" transform="rotate(8 100 100)" fill="currentColor" /><path d="M115 55l-40 62h29l-11 38 46-64h-30l18-36z" fill="hsl(0 0% 0% / .12)" /></svg>
+              <Gamepad2 className="ic-use opacity-45" strokeWidth={1.25} aria-hidden="true" />
+              <span style={{ position: "relative", zIndex: 1 }}>
+                <strong className="h-c" style={{ display: "block" }}>{t("store.soonCard")}</strong>
+                <span className="p-m">{t("store.soonSub")}</span>
+              </span>
+            </div>
+          )}
+        </div>
+        {games.length === 0 && <p className="p-m" data-testid="home-games-empty">{t("games.empty")}</p>}
+      </div>
+    </section>
+  );
+}
+
+// FAQ (maquette .faq-list, accordéon data-toggle porté en état React :
+// .faq-a.is--open + aria-expanded, le « + » pivote via la CSS maquette).
 function Faq() {
   const { t } = useLang();
+  const [open, setOpen] = useState(null);
   const qa = [
     [t("store.faq1q"), t("store.faq1a")],
     [t("store.faq2q"), t("store.faq2a")],
@@ -230,21 +277,30 @@ function Faq() {
     [t("store.faq4q"), t("store.faq4a")],
   ];
   return (
-    <section className={`${panel} px-6 py-10 sm:px-10 lg:px-14`} data-testid="home-faq">
-      <SectionHead title={t("store.faqTitle")}
-        action={<Link to="/chat" className="inline-flex min-h-11 items-center text-sm font-semibold underline-offset-4 hover:underline">{t("store.supportCta")}</Link>} />
-      <Accordion type="single" collapsible className="mt-6 grid gap-3">
-        {qa.map(([q, a], i) => (
-          <AccordionItem key={i} value={`faq-${i}`} className="rounded-[22px] border bg-card px-5" data-testid={`home-faq-item-${i}`}>
-            <AccordionTrigger
-              className="relative py-5 pr-16 text-left font-display text-base font-bold hover:no-underline [&>svg]:h-5 [&>svg]:w-5 [&>svg]:text-[color:var(--brand-ink)] before:absolute before:right-12 before:top-1/2 before:h-9 before:w-9 before:-translate-y-1/2 before:rounded-full before:border before:border-[color:var(--rule-strong)] before:bg-primary before:content-['']"
-            >
-              {q}
-            </AccordionTrigger>
-            <AccordionContent className={`pb-5 text-sm leading-relaxed ${panelMuted}`}>{a}</AccordionContent>
-          </AccordionItem>
-        ))}
-      </Accordion>
+    <section className="section" id="faq" data-testid="home-faq">
+      <div className="container">
+        <div className="section-head">
+          <h2 className="h-l" data-anim-slant>{t("store.faqTitle")}</h2>
+          <Link className="link p-m" to="/chat">{t("store.supportCta")}</Link>
+        </div>
+        <div className="faq-list" data-card-reveal="wrap">
+          {qa.map(([q, a], i) => (
+            <div className="faq-item" data-card-reveal="card" key={i} data-testid={`home-faq-item-${i}`}>
+              <button
+                type="button"
+                className="faq-q"
+                aria-expanded={open === i ? "true" : "false"}
+                aria-controls={`faq-a${i + 1}`}
+                onClick={() => setOpen(open === i ? null : i)}
+              >
+                <span>{q}</span>
+                <span className="faq-plus" aria-hidden="true">+</span>
+              </button>
+              <div className={`faq-a${open === i ? " is--open" : ""}`} id={`faq-a${i + 1}`}><p>{a}</p></div>
+            </div>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }
@@ -264,15 +320,15 @@ export function BackToTop() {
       onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })}
       className={`fixed right-4 z-40 flex items-center gap-2 rounded-full border border-[color:var(--rule-strong)] bg-foreground px-4 py-3 text-xs font-semibold text-background shadow-[4px_4px_0_hsl(var(--primary)/.5)] transition-all duration-300 bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] md:bottom-6 ${show ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-6 opacity-0"}`}
     >
-      <ArrowUp className="h-4 w-4" aria-hidden="true" /><span className="hidden sm:inline">{t("common.backToTop")}</span>
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+      <span className="hidden sm:inline">{t("common.backToTop")}</span>
     </button>
   );
 }
 
-
 export default function Home() {
   const { t, lang } = useLang();
-  const { games, selectGame } = useGames();
+  const { games } = useGames();
   const [products, setProducts] = useState(null);
   const [subs, setSubs] = useState(null);
   const [events, setEvents] = useState([]);
@@ -313,8 +369,6 @@ export default function Home() {
   const shopUrl = games.length === 1 ? `/boutique?game=${games[0].id}` : "/boutique";
   const subsUrl = `${shopUrl}${shopUrl.includes("?") ? "&" : "?"}type=prime,prime_plus`;
   const popularIds = new Set((products || []).map((product) => product.id));
-  // `subs === null` = chargement en cours : on garde `undefined` pour que la
-  // section affiche ses skeletons et non le message "aucune offre".
   const visibleSubs = subs === null
     ? undefined
     : Array.isArray(subs)
@@ -322,68 +376,85 @@ export default function Home() {
       : [];
 
   return (
-    // Fond encre pleine largeur (maquette « à panneaux ») : le pseudo-fond
-    // absolu déborde de la colonne de contenu sur toute la largeur de
-    // l'écran ; `isolate` le garde DERRIÈRE les panneaux (z-index négatif
-    // confiné) et au-dessus du fond du site.
-    <div className="relative isolate pb-16" data-testid="home-page">
-      <div aria-hidden="true" className="absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 bg-ink" />
-      <div className="grid gap-3">
-        <Hero shopUrl={shopUrl} />
-        <CtaBanner />
-        <GamesBento games={games} />
+    <div data-testid="home-page">
+      <Hero shopUrl={shopUrl} />
+      <CtaBanner />
 
-        <section className={`${panel} px-6 py-10 sm:px-10 lg:px-14`}>
-          <SectionHead eyebrow={t("catalog.popular")} title={t("store.offersTitle")} sub={t("store.offersSub")}
-            action={<Link to={shopUrl} data-testid="see-all-link" className={`inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${panelMuted} transition-colors hover:text-[color:hsl(var(--panel-ink))]`}>{t("common.seeAll")}<ArrowRight className="h-3.5 w-3.5" /></Link>} />
-          <div className="mt-6 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="popular-grid">
+      <Steps />
+
+      <WhyChoose />
+
+      <Reviews />
+
+      <section className="section" data-testid="popular-section">
+        <div className="container">
+          <div className="section-head">
+            <h2 className="h-l" data-anim-slant>{t("store.offersTitle")}</h2>
+            <Link to={shopUrl} data-testid="see-all-link" className="link p-m">{t("common.seeAll")}</Link>
+          </div>
+          <div className="grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="popular-grid">
             {products === null && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-60 rounded-[14px]" />)}
             {products?.map((p, i) => <ProductCard key={p.id} product={p} index={i} displayPopular />)}
           </div>
-          {products?.length === 0 && <p className={`mt-6 text-sm ${panelMuted}`} data-testid="popular-empty">{t("store.noOffers")}</p>}
-        </section>
+          {products?.length === 0 && <p className="p-m" data-testid="popular-empty">{t("store.noOffers")}</p>}
+        </div>
+      </section>
 
-        <section className={`${panel} px-6 py-10 sm:px-10 lg:px-14`} data-testid="subs-section">
-          <SectionHead eyebrow={t("catalog.prime")} title={t("common.subsTitle")} sub={t("common.subsSub")}
-            action={<Link to={subsUrl} data-testid="subs-more-link" className={`inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${panelMuted} transition-colors hover:text-[color:hsl(var(--panel-ink))]`}>{t("common.seeAll")}<ArrowRight className="h-3.5 w-3.5" /></Link>} />
-          <div className="mt-6 grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="subs-grid">
+      <section className="section" data-testid="subs-section">
+        <div className="container">
+          <div className="section-head">
+            <h2 className="h-l" data-anim-slant>{t("common.subsTitle")}</h2>
+            <Link to={subsUrl} data-testid="subs-more-link" className="link p-m">{t("common.seeAll")}</Link>
+          </div>
+          <div className="grid grid-cols-1 items-stretch gap-3 min-[480px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" data-testid="subs-grid">
             {subs === null && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-60 rounded-[14px]" />)}
             {visibleSubs?.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
           </div>
-          {visibleSubs?.length === 0 && <p className={`mt-6 text-sm ${panelMuted}`} data-testid="subs-empty">{t("store.noOffers")}</p>}
-        </section>
+          {visibleSubs?.length === 0 && <p className="p-m" data-testid="subs-empty">{t("store.noOffers")}</p>}
+        </div>
+      </section>
 
-        <Steps />
-
-        <WhyChoose />
-
-        {events.map((ev) => (
-          <section key={ev.id} className="overflow-hidden rounded-[28px] bg-card lg:grid lg:grid-cols-2" data-testid="home-event">
-            <img src={ev.image_url} alt={localized(ev, "title", lang)} className="h-56 w-full border-b object-cover lg:h-full lg:border-b-0 lg:border-r" loading="lazy" />
-            <div className="p-6 sm:p-10">
-              <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-ink)]">{t("common.promo")}</span>
-              <h2 className="mt-4 font-display text-2xl font-semibold leading-tight tracking-tight sm:text-4xl">{localized(ev, "title", lang)}</h2>
-              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{localized(ev, "description", lang)}</p>
-              <div className="mt-6 flex items-end gap-3"><span className="num text-3xl sm:text-4xl">{ev.price_label}</span>{ev.old_price_label && <span className="pb-1 text-sm text-muted-foreground line-through">{ev.old_price_label}</span>}</div>
-              <Button asChild className="mt-8 h-12 px-7" data-testid="home-event-cta"><Link to={ev.product_slug ? `/produit/${ev.product_slug}` : "/evenements"}>{t("events.buy")}</Link></Button>
+      {events.map((ev) => (
+        <section className="section" key={ev.id} data-testid="home-event">
+          <div className="container">
+            <div className="overflow-hidden rounded-[28px] border bg-card lg:grid lg:grid-cols-2">
+              <img src={ev.image_url} alt={localized(ev, "title", lang)} className="h-56 w-full border-b object-cover lg:h-full lg:border-b-0 lg:border-r" loading="lazy" />
+              <div className="p-6 sm:p-10">
+                <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-ink)]">{t("common.promo")}</span>
+                <h2 className="mt-4 font-display text-2xl font-semibold leading-tight tracking-tight sm:text-4xl">{localized(ev, "title", lang)}</h2>
+                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{localized(ev, "description", lang)}</p>
+                <div className="mt-6 flex items-end gap-3"><span className="num text-3xl sm:text-4xl">{ev.price_label}</span>{ev.old_price_label && <span className="pb-1 text-sm text-muted-foreground line-through">{ev.old_price_label}</span>}</div>
+                <div className="mt-6">
+                  <ButtonMain to={ev.product_slug ? `/produit/${ev.product_slug}` : "/evenements"} label={t("events.buy")} theme="dark" accent="violet" testId="home-event-cta" />
+                </div>
+              </div>
             </div>
-          </section>
-        ))}
-
-        <section className="grid gap-3 md:grid-cols-[1.4fr_1fr]" data-testid="home-support">
-          <div className={`${panel} p-6 sm:p-10`}>
-            <ShieldCheck className="h-7 w-7" />
-            <h2 className="mt-6 font-display text-2xl font-bold sm:text-3xl">{t("store.deliveryNote")}</h2>
-            <p className={`mt-3 max-w-md text-sm ${panelMuted}`}>{t("store.step2d")}</p>
-          </div>
-          <div className="flex flex-col justify-between gap-6 rounded-[28px] bg-ink p-6 text-[color:hsl(var(--cream))] sm:p-10">
-            <div><p className="eyebrow-invert">{t("store.supportTitle")}</p><p className="mt-3 text-sm text-[color:hsl(var(--cream)/.75)]">{t("store.supportSub")}</p></div>
-            <Button asChild className="h-12 w-fit border-2 border-[color:var(--brand-ink)] bg-[color:var(--brand-neon)] px-6 font-semibold text-[color:var(--brand-ink)]" data-testid="home-support-cta"><Link to="/chat"><MessageCircle className="mr-2 h-4 w-4" />{t("store.supportCta")}</Link></Button>
           </div>
         </section>
+      ))}
 
-        <Faq />
-      </div>
+      <section className="section" data-testid="home-support">
+        <div className="container">
+          <div className="grid gap-3 md:grid-cols-[1.4fr_1fr]">
+            <div className="trust-card" data-card-reveal="card">
+              <ShieldCheck className="ic-use" strokeWidth={1.5} aria-hidden="true" />
+              <strong className="h-c" style={{ display: "block" }}>{t("store.deliveryNote")}</strong>
+              <span>{t("store.step2d")}</span>
+            </div>
+            <div className="flex flex-col justify-between gap-6 rounded-[1.4em] bg-[color:var(--color--dark)] p-6 text-[color:var(--color--light)] sm:p-10" data-card-reveal="card">
+              <div><p className="eyebrow" style={{ color: "inherit" }}>{t("store.supportTitle")}</p><p className="mt-3 text-sm opacity-75">{t("store.supportSub")}</p></div>
+              <div>
+                <ButtonMain to="/chat" label={t("store.supportCta")} theme="light" accent="neon" testId="home-support-cta" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <GamesCards games={games} />
+
+      <Faq />
+
       <BackToTop />
     </div>
   );

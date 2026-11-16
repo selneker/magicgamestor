@@ -31,8 +31,8 @@ export function GameButton() {
 
   return (
     <div
-      className={`pointer-events-none fixed bottom-0 right-3 flex items-center pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden ${
-        open ? "z-[70]" : "z-40"
+      className={`pointer-events-none flex shrink-0 items-center ${
+        open ? "z-[70]" : ""
       }`}
     >
       <motion.button
