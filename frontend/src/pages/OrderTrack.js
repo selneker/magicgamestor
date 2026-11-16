@@ -306,7 +306,7 @@ export function OrderResume({ orderId }) {
               <span className="absolute bottom-4 left-[11px] top-3.5 w-px bg-[color:var(--rule-strong)]" aria-hidden="true" />
               <div className="relative mb-4">
                 <Diamond n={1} />
-                <h3 className="text-[16px] font-bold leading-[27px]">{t("checkout.transferVia", { name: opName })}</h3>
+                <h2 className="text-[16px] font-bold leading-[27px]">{t("checkout.transferVia", { name: opName })}</h2>
                 {merchant ? (
                   <div className="mt-1">
                     <KV label={t("checkout.youPay")} value={payTotal} copyValue={String((order.subtotal ?? order.total) + (order.payment_fee ?? 0))} testId="pay-amount" />
