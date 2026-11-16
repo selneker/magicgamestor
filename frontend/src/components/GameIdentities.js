@@ -69,7 +69,7 @@ export function GameIdentities() {
         <div className="no-scrollbar flex gap-2 overflow-x-auto border-b px-4 py-3" role="tablist" data-testid="identity-game-tabs">
           {games.map((g) => (
             <button key={g.id} type="button" role="tab" aria-selected={g.id === gameId} onClick={() => setGameId(g.id)} data-testid={`identity-game-${g.id}`}
-              className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${g.id === gameId ? "bg-primary text-[#0A0A0A]" : "text-muted-foreground hover:bg-muted"}`}>{g.name}</button>
+              className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${g.id === gameId ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}>{g.name}</button>
           ))}
         </div>
       )}
@@ -88,7 +88,7 @@ export function GameIdentities() {
         <IdentityForm spec={spec} form={form} setForm={setForm} onSubmit={submit} onCancel={() => setForm(null)} busy={busy} />
       ) : spec.length > 0 && (
         <button type="button" onClick={() => setForm({ id: null, label: "", fields: {} })} className="flex w-full items-center gap-3.5 px-4 py-3.5 text-left text-[13px] font-semibold transition-colors hover:bg-muted" data-testid="identity-add">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-[#0A0A0A]"><Plus className="h-[18px] w-[18px]" /></span>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"><Plus className="h-[18px] w-[18px]" /></span>
           {t("account.identities.add")}
         </button>
       )}

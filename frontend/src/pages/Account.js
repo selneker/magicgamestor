@@ -55,7 +55,7 @@ function VerifyBanner({ user }) {
 function Row({ icon: Icon, label, helper, trailing, onClick, to, testid, danger, accent }) {
   const Comp = to ? Link : "button";
   const props = to ? { to } : { type: "button", onClick };
-  const iconBg = danger ? "bg-destructive text-destructive-foreground" : accent ? "bg-primary text-[#0A0A0A]" : "bg-foreground text-background";
+  const iconBg = danger ? "bg-destructive text-destructive-foreground" : accent ? "bg-primary text-primary-foreground" : "bg-foreground text-background";
   return (
     <Comp
       {...props}
@@ -168,7 +168,7 @@ export default function Account() {
           {user.picture ? (
             <img src={user.picture} alt="" className="h-24 w-24 rounded-full border border-[color:var(--rule-strong)] object-cover" />
           ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-full border border-[color:var(--rule-strong)] bg-primary font-display text-3xl font-black text-[#0A0A0A]">
+            <div className="flex h-24 w-24 items-center justify-center rounded-full border border-[color:var(--rule-strong)] bg-primary font-display text-3xl font-black text-primary-foreground">
               {(user.name || user.email)[0].toUpperCase()}
             </div>
           )}

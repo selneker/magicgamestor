@@ -53,7 +53,7 @@ export function GameCard({ game, className = "", testId }) {
       {/* Vignette 1:1 : ratio réservé (aspect-square) donc aucun saut de
           mise en page, largeur/hauteur déclarées sur l'img. Decorative :
           le nom est lisible juste dessous → alt="". */}
-      <span className="block w-full aspect-square overflow-hidden rounded-[20px] border border-[color:var(--rule)] bg-primary text-[#0A0A0A]">
+      <span className="block w-full aspect-square overflow-hidden rounded-[20px] border border-[color:var(--rule)] bg-primary text-primary-foreground">
         {game.icon_url && !broken ? (
           <img
             src={game.icon_url}

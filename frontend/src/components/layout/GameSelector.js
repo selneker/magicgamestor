@@ -112,11 +112,11 @@ export function GameSelector() {
                     onClick={() => { selectGame(g.id); navigate(`/boutique?game=${g.id}`); }}
                     className={`flex min-h-[44px] w-full flex-col items-center justify-center gap-1 rounded-[16px] p-2 transition-colors ${
                       isActive
-                        ? "bg-primary text-[#0A0A0A] ring-2 ring-[color:var(--brand-lime)] ring-offset-2 ring-offset-[color:hsl(var(--card))]"
+                        ? "bg-primary text-primary-foreground ring-2 ring-[color:var(--brand-lime)] ring-offset-2 ring-offset-[color:hsl(var(--card))]"
                         : "border border-[color:var(--rule-strong)] text-[color:hsl(var(--foreground))]"
                     }`}
                   >
-                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full ${isActive ? "" : "border border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]"}`}>
+                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full ${isActive ? "" : "border border-[color:var(--rule-strong)] bg-primary text-primary-foreground"}`}>
                       {g.icon_url && !broken[g.id] ? (
                         <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy"
                           onError={() => setBroken((b) => ({ ...b, [g.id]: true }))} />

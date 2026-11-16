@@ -22,7 +22,7 @@ function Readiness({ readiness, compact = false }) {
   if (!readiness) return null;
   if (compact) {
     const missing = readiness.checks.filter((c) => !c.ok).length;
-    return <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${readiness.ready ? "bg-primary text-[#0A0A0A]" : "border text-muted-foreground"}`}>{readiness.ready ? "Prêt à la vente" : `${missing} étape(s) manquante(s)`}</span>;
+    return <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${readiness.ready ? "bg-primary text-primary-foreground" : "border text-muted-foreground"}`}>{readiness.ready ? "Prêt à la vente" : `${missing} étape(s) manquante(s)`}</span>;
   }
   return (
     <ul className="space-y-1.5 rounded-2xl border p-3 sm:col-span-2" data-testid="game-readiness">
@@ -122,7 +122,7 @@ export default function AdminGames() {
         {games.map((g) => (
           <div key={g.id} data-testid={`admin-game-${g.slug || g.id}`}
             className={`flex min-w-0 items-center gap-3 rounded-2xl border bg-white p-3 sm:p-4 ${g.active ? "border-slate-100" : "border-dashed border-slate-300 opacity-60"}`}>
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-[#0A0A0A]">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground">
               {g.icon_url ? <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy" />
                 : <Gamepad2 className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
             </span>

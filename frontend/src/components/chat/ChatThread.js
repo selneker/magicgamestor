@@ -103,12 +103,12 @@ export const ChatThread = ({ conversationId, admin, onChanged, onBack }) => {
       {more && <Button variant="outline" size="sm" onClick={() => { stickToBottom.current = false; load(messages[0]?.id); }} data-testid="chat-older-messages">{t("chat.older")}</Button>}
       {loading && <p data-testid="chat-thread-loading" className="text-sm text-muted-foreground">{t("common.loading")}</p>}
       {!loading && messages.length === 0 && <p data-testid="chat-no-messages" className="text-sm text-muted-foreground">{t("chat.firstMessage")}</p>}
-      {messages.map((m) => { const own = m.sender_role === role; return <article key={m.id} data-testid={`chat-message-${m.id}`} className={`max-w-[85%] rounded-[12px] border px-3 py-2 ${own ? "ml-auto border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]" : "mr-auto bg-muted text-foreground"}`}>
+      {messages.map((m) => { const own = m.sender_role === role; return <article key={m.id} data-testid={`chat-message-${m.id}`} className={`max-w-[85%] rounded-[12px] border px-3 py-2 ${own ? "ml-auto border-[color:var(--rule-strong)] bg-primary text-primary-foreground" : "mr-auto bg-muted text-foreground"}`}>
         {/* Libellé et date : couleur pleine (pas d'opacité) pour rester >= 4.5:1
             sur la bulle — encre atténuée sur lime, token admin sur bg-muted. */}
-        <p className={`mb-1 text-[10px] font-medium uppercase tracking-[0.12em] ${own ? "text-[#0A0A0A]/80" : "text-[color:var(--admin-ink-muted)]"}`}>{own ? t("chat.you") : m.sender_role === "admin" ? t("chat.adminRole") : conversation?.user_name}</p>
+        <p className={`mb-1 text-[10px] font-medium uppercase tracking-[0.12em] ${own ? "text-primary-foreground/80" : "text-[color:var(--admin-ink-muted)]"}`}>{own ? t("chat.you") : m.sender_role === "admin" ? t("chat.adminRole") : conversation?.user_name}</p>
         <p className="whitespace-pre-wrap break-words text-sm font-normal leading-relaxed [overflow-wrap:anywhere]">{m.text}</p>
-        <p className={`mt-1 text-[11px] font-normal ${own ? "text-[#0A0A0A]/80" : "text-[color:var(--admin-ink-muted)]"}`}><time>{new Date(m.created_at).toLocaleString("fr-FR")}</time>{own && <span data-testid={`chat-message-status-${m.id}`}> · {m.read ? t("chat.read") : t("chat.sent")}</span>}</p>
+        <p className={`mt-1 text-[11px] font-normal ${own ? "text-primary-foreground/80" : "text-[color:var(--admin-ink-muted)]"}`}><time>{new Date(m.created_at).toLocaleString("fr-FR")}</time>{own && <span data-testid={`chat-message-status-${m.id}`}> · {m.read ? t("chat.read") : t("chat.sent")}</span>}</p>
       </article>; })}
     </div>
     {error && <div className="px-4 pb-3" role="alert" data-testid="chat-thread-error"><p className="text-sm text-rose-600">{error}</p><Button variant="ghost" size="sm" data-testid="chat-thread-retry" onClick={() => load()}>{t("chat.retry")}</Button></div>}
@@ -116,7 +116,7 @@ export const ChatThread = ({ conversationId, admin, onChanged, onBack }) => {
       <label htmlFor={`message-${conversationId}`} className="sr-only">{t("chat.yourMessage")}</label>
       <Textarea ref={composer} id={`message-${conversationId}`} data-testid="chat-message-input" maxLength={2000} rows={admin ? 1 : undefined} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={t("chat.placeholder")} className={`${admin ? "min-h-11 max-h-[132px] placeholder:text-[color:var(--admin-ink-muted)]" : "min-h-16"} resize-none rounded-[10px] font-normal`} />
       <div className="mt-2 flex items-center justify-between gap-2"><span className="text-[11px] font-normal text-muted-foreground" data-testid="chat-message-length">{draft.length}/2000</span>
-        {admin ? <button type="submit" disabled={busy || !draft.trim()} aria-label={busy ? t("chat.sending") : t("chat.send")} data-testid="chat-send" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] bg-primary text-[#0A0A0A] transition disabled:opacity-40">
+        {admin ? <button type="submit" disabled={busy || !draft.trim()} aria-label={busy ? t("chat.sending") : t("chat.send")} data-testid="chat-send" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] bg-primary text-primary-foreground transition disabled:opacity-40">
           <Send className="h-5 w-5" strokeWidth={2} />
         </button> : <Button type="submit" disabled={busy || !draft.trim()} className="text-[11px] font-semibold uppercase tracking-[0.08em]" data-testid="chat-send"><Send className="mr-2 h-4 w-4" />{busy ? t("chat.sending") : t("chat.send")}</Button>}
       </div>

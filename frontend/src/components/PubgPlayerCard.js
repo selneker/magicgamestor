@@ -190,7 +190,7 @@ export function PubgPlayerCard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1 font-display text-sm font-bold uppercase tracking-tight">
               <span>{t("account.pubgCard.wordMagic")}</span>
-              <span className="rounded-[4px] bg-[#C5FE02] px-1 text-[#0A0A0A]">{t("account.pubgCard.wordGame")}</span>
+              <span className="rounded-[4px] bg-[#C5FE02] px-1 text-primary-foreground">{t("account.pubgCard.wordGame")}</span>
               <span>{t("account.pubgCard.wordStore")}</span>
             </div>
             <span className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${mutedTxt}`}>{t("account.pubgCard.subtitle")}</span>
@@ -216,7 +216,7 @@ export function PubgPlayerCard() {
             <StatCell dark={isDark} label={t("account.pubgCard.collectionLabel")} value={stats.collection} />
           </div>
 
-          <div className="mt-5 -mx-6 -mb-6 bg-[#C5FE02] px-6 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] text-[#0A0A0A]">
+          <div className="mt-5 -mx-6 -mb-6 bg-[#C5FE02] px-6 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] text-primary-foreground">
             {t("account.pubgCard.brand")} · {t("account.pubgCard.domain")}
           </div>
         </div>

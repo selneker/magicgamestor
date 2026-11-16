@@ -96,7 +96,7 @@ export default function Product() {
         <div className="grain relative flex min-h-[320px] flex-col justify-between overflow-hidden rounded-[18px] border bg-card p-6 sm:p-10" data-testid="product-visual">
           <div className="flex items-start justify-between gap-3">
             {game && <GameLogo game={game} className="h-14 w-14" />}
-            {product.popular && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#0A0A0A]">{t("common.popular")}</span>}
+            {product.popular && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-foreground">{t("common.popular")}</span>}
           </div>
           {product.image_url && imgOk
             ? <img src={product.image_url} alt={productName(product, lang)} loading="lazy" onError={() => setImgOk(false)} className="mx-auto max-h-[300px] w-full object-contain py-6" data-testid="product-image" />
@@ -109,7 +109,7 @@ export default function Product() {
           <div className="mt-6 flex flex-wrap items-end gap-3">
             <span data-testid="product-price" className="num text-4xl sm:text-5xl">{formatAr(product.price, lang)}</span>
             {product.old_price && <span className="pb-1 text-muted-foreground line-through">{formatAr(product.old_price, lang)}</span>}
-            {discount > 0 && <span className="mb-1 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-[#0A0A0A]">{t("product.save")} {discount}%</span>}
+            {discount > 0 && <span className="mb-1 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">{t("product.save")} {discount}%</span>}
           </div>
           {localized(product, "description", lang) && <p className="mt-5 text-sm leading-relaxed text-muted-foreground" data-testid="product-description">{localized(product, "description", lang)}</p>}
           <div className="mt-5 flex flex-wrap gap-2">
@@ -123,7 +123,7 @@ export default function Product() {
           </div>
           <ol className="mt-10 grid gap-3 border-t pt-6 sm:grid-cols-3">
             {[t("store.step1"), t("store.step2"), t("store.step3")].map((s, i) => (
-              <li key={s} className="flex items-center gap-2 text-sm"><span className="num flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs text-[#0A0A0A]">{i + 1}</span>{s}</li>
+              <li key={s} className="flex items-center gap-2 text-sm"><span className="num flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">{i + 1}</span>{s}</li>
             ))}
           </ol>
         </div>

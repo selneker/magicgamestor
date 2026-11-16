@@ -14,7 +14,7 @@ import PackEvolutif from "@/pages/PackEvolutif";
 import { usePageMeta, currencyOf } from "@/lib/catalog";
 import { useFavorites } from "@/lib/favorites";
 
-const tab = (active) => `shrink-0 rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors ${active ? "border-[color:var(--rule-strong)] bg-primary text-[#0A0A0A]" : "bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`;
+const tab = (active) => `shrink-0 rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors ${active ? "border-[color:var(--rule-strong)] bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`;
 
 function ProductSection({ id, title, products, popularIds, bestUnitId }) {
   if (!products?.length) return null;
@@ -71,7 +71,7 @@ function GameBanner({ game, games, onSwitch }) {
       {games.length > 1 && (
         <div className="no-scrollbar flex gap-2 overflow-x-auto rounded-[16px] border bg-card p-3 md:flex-col md:justify-center" data-testid="catalog-game-switch">
           {games.filter((g) => g.id !== game.id).map((g) => (
-            <button key={g.id} type="button" onClick={() => onSwitch(g)} data-testid={`catalog-switch-${g.id}`} className="flex shrink-0 items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-xs font-semibold transition-colors hover:bg-primary hover:text-[#0A0A0A]">
+            <button key={g.id} type="button" onClick={() => onSwitch(g)} data-testid={`catalog-switch-${g.id}`} className="flex shrink-0 items-center gap-2 rounded-full border py-1 pl-1 pr-3 text-xs font-semibold transition-colors hover:bg-primary hover:text-primary-foreground">
               <GameLogo game={g} className="h-7 w-7 rounded-full" />{g.name}
             </button>
           ))}

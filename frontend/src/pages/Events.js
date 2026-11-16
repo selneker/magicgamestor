@@ -39,7 +39,7 @@ export default function Events() {
           <article key={ev.id} id={ev.slug} data-testid={`event-card-${ev.slug}`} className="card-lift flex flex-col overflow-hidden border border-foreground bg-card">
             <div className="relative h-52 border-b border-foreground">
               {ev.image_url && <img src={ev.image_url} alt={localized(ev, "title", lang)} className="h-full w-full object-cover" loading="lazy" />}
-              {ev.badge && <span className="absolute right-0 top-0 bg-primary px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-[#0A0A0A]">{ev.badge}</span>}
+              {ev.badge && <span className="absolute right-0 top-0 bg-primary px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-primary-foreground">{ev.badge}</span>}
             </div>
             <div className="flex flex-1 flex-col p-6">
               <h2 className="font-display text-2xl font-black uppercase leading-[0.95] tracking-tight">{localized(ev, "title", lang)}</h2>

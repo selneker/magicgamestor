@@ -36,7 +36,7 @@ function SeasonsPanel({ t }) {
       </form>
       <div className="mt-3 flex flex-wrap gap-2">
         {seasons.map((s) => (
-          <span key={s.id} data-testid={`season-${s.id}`} className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${s.active ? "border-foreground bg-primary text-[#0A0A0A]" : "border-slate-200 text-slate-600"}`}>
+          <span key={s.id} data-testid={`season-${s.id}`} className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${s.active ? "border-foreground bg-primary text-primary-foreground" : "border-slate-200 text-slate-600"}`}>
             {s.name}{s.active ? ` · ${t("admin.activeSeason")}` : (
               <button type="button" onClick={() => activate(s)} className="underline" data-testid={`season-activate-${s.id}`}>{t("admin.activateSeason")}</button>
             )}
@@ -94,7 +94,7 @@ export default function AdminProducts() {
             const active = g.id === gameId;
             return (
               <button key={g.id} type="button" role="tab" aria-selected={active} data-testid={`admin-game-tab-${g.id}`} onClick={() => setGameId(g.id)}
-                className={`inline-flex shrink-0 items-center gap-2 border px-4 py-2 text-[11px] font-black uppercase tracking-[0.1em] transition-colors ${active ? "border-foreground bg-primary text-[#0A0A0A]" : "border-foreground bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`}>
+                className={`inline-flex shrink-0 items-center gap-2 border px-4 py-2 text-[11px] font-black uppercase tracking-[0.1em] transition-colors ${active ? "border-foreground bg-primary text-primary-foreground" : "border-foreground bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`}>
                 {g.name}{g.active ? "" : ` · ${t("admin.inactive")}`}
               </button>
             );
@@ -125,7 +125,7 @@ export default function AdminProducts() {
                 <span className="rounded-full border border-[color:var(--rule-strong)] px-2 py-0.5 font-semibold uppercase tracking-[0.08em]">{typeName(p)}</span>
                 <span className="font-semibold text-foreground">{formatAr(p.price, lang)}</span>
                 {p.old_price ? <span className="line-through">{formatAr(p.old_price, lang)}</span> : null}
-                {p.popular ? <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-[#0A0A0A]">★</span> : null}
+                {p.popular ? <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">★</span> : null}
                 <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase ${p.active ? "bg-foreground text-background" : "border border-[color:var(--rule-strong)]"}`}>{p.active ? t("admin.active") : t("admin.inactive")}</span>
               </p>
             </div>

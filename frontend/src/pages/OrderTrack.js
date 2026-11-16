@@ -26,7 +26,7 @@ const STYLE = {
   awaiting_verification: ["border-foreground bg-transparent text-foreground", Clock],
   proof_submitted: ["border-foreground bg-transparent text-foreground", Clock],
   late_payment: ["border-foreground bg-transparent text-foreground", Clock],
-  paid: ["border-[#0A0A0A] bg-primary text-[#0A0A0A]", CheckCircle2],
+  paid: ["border-primary-foreground bg-primary text-primary-foreground", CheckCircle2],
   delivered: ["border-foreground bg-foreground text-background", PackageCheck],
   cancelled: ["border-foreground/40 bg-transparent text-muted-foreground line-through", XCircle],
   failed: ["border-destructive bg-destructive text-destructive-foreground", XCircle],

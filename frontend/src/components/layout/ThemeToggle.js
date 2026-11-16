@@ -10,7 +10,7 @@ export const ThemeToggle = () => {
   const dark = resolvedTheme === "dark";
   const label = lang === "en" ? (dark ? "Light mode" : "Dark mode") : (dark ? "Mode clair" : "Mode sombre");
   useEffect(() => {
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#111111" : "#F4F1E8");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#2B2B2B" : "#F4F3EE");
   }, [dark]);
   return <Button type="button" variant="ghost" size="icon" data-testid="theme-toggle" aria-label={label} title={label} aria-pressed={dark} className="shrink-0 rounded-none" onClick={() => setTheme(dark ? "light" : "dark")}>
     <Sun className="hidden h-5 w-5 dark:block" strokeWidth={1.75} /><Moon className="h-5 w-5 dark:hidden" strokeWidth={1.75} />

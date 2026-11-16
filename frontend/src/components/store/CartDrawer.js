@@ -98,7 +98,7 @@ export function CartDrawer() {
         className="fixed inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.5rem)] z-[45] flex items-center gap-3 rounded-[20px] border border-[color:var(--rule-strong)] bg-card p-2 text-[color:hsl(var(--card-foreground))] shadow-[0_18px_44px_hsl(0_0%_0%_/_.22)] backdrop-blur-md md:hidden"
         data-testid="mobile-cart-bar">
         <button type="button" className="min-h-11 min-w-0 flex-1 rounded-[14px] px-2 text-left" onClick={() => setOpen(true)}><span className="block text-xs font-medium">{count} {count === 1 ? t("cart.item") : t("cart.items")}</span><span className="num block text-lg font-bold">{formatAr(total, lang)}</span></button>
-        <button type="button" className="min-h-11 shrink-0 rounded-full bg-primary px-4 text-sm font-bold text-[#0A0A0A]" onClick={() => { setOpen(false); navigate("/commande"); }}>{t("cart.checkout")}</button>
+        <button type="button" className="min-h-11 shrink-0 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground" onClick={() => { setOpen(false); navigate("/commande"); }}>{t("cart.checkout")}</button>
       </motion.div>
       )}
       <Sheet open={open} onOpenChange={setOpen}>
@@ -118,7 +118,7 @@ export function CartDrawer() {
             <ul className="flex-1 space-y-3 overflow-y-auto py-4">
               {items.map((i) => (
                 <li key={i.id} data-testid={`cart-item-${i.slug}`} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-foreground bg-primary font-display text-xs font-black text-[#0A0A0A]">{(games.find((g) => g.id === (i.game_id || "pubg-mobile"))?.product_types || []).find((pt) => pt.key === i.type)?.label?.slice(0, 3) || i.type.slice(0, 3).toUpperCase()}</div>
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-foreground bg-primary font-display text-xs font-black text-primary-foreground">{(games.find((g) => g.id === (i.game_id || "pubg-mobile"))?.product_types || []).find((pt) => pt.key === i.type)?.label?.slice(0, 3) || i.type.slice(0, 3).toUpperCase()}</div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-slate-900">{lang === "en" && i.name_en ? i.name_en : i.name}</p>
                     <p className="text-sm text-slate-500">{formatAr(i.price, lang)}</p>

@@ -306,7 +306,7 @@ export default function Checkout() {
                 <button type="button" onClick={() => setEditingId(true)} className="shrink-0 text-xs font-bold text-primary" data-testid="checkout-change-id">{t("checkout.change")}</button>
               </div>
               <p className="mt-1.5 flex items-center gap-2 text-[13px] font-bold text-primary" data-testid="checkout-player-ok">
-                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-primary text-[#0A0A0A]" aria-hidden="true"><Check className="h-3 w-3" strokeWidth={3} /></span>
+                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden="true"><Check className="h-3 w-3" strokeWidth={3} /></span>
                 <span className="min-w-0 truncate" data-testid="checkout-player-pseudo">{verified.name || "—"}</span>
               </p>
             </div>
