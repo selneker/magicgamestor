@@ -9,15 +9,16 @@ import { CartDrawer } from "@/components/store/CartDrawer";
 import { GameProvider } from "@/context/GameContext";
 import SeoManager from "@/components/layout/SeoManager";
 import { hidesBottomChrome, isFocusedRoute, showsSiteFooter } from "@/lib/bottomChrome";
+import { PageTransition } from "@/components/animate-ui/components/page-transition";
 
 /* ── PL-005-FE-03 (refonte Slush) — structure de page de la maquette ──────
    01-accueil.html:977-1229 : .page-w englobe .nav-w (nav pilule), puis
    <main class="main-w"> (le conteneur de la page, sans remballage en volets),
    puis le footer.
    SlushChrome porte curseur, Lenis et body[data-page] ; il doit vivre
-   SOUS le Router (useNavigate/useLocation). Les transitions de page en
-   volets ont été supprimées (PL-005-FE-07) : la navigation est instantanée
-   et le contenu passe par <Outlet/> sans re-montage animé. */
+   SOUS le Router (useNavigate/useLocation). La navigation entre les pages est
+   animée par un effet "chop" via PageTransition (PL-005-FE-07) : le contenu
+   passe par <Outlet/> enveloppé d'un wrapper qui se découpe à chaque route. */
 export default function Layout() {
   // PL-CHK-1 : sur les routes où le chrome bas n'est pas rendu (dont /commande),
   // la réserve de 7 rem sous <main> est de l'espace mort — la réduction garde
@@ -52,7 +53,9 @@ export default function Layout() {
             et vont jusqu'aux bords. Les autres pages gardent le container
             de la maquette (78em ≈ max-w-7xl) + la réserve .page-top pour
             la nav pilule FIXE (≥ 992 px ; glue CSS : 0 < 992 px). */}
-        <main className={`main-w mx-auto w-full ${pathname === "/" ? "md:pb-0" : "max-w-7xl px-4 sm:px-6 md:pb-0"} ${needsTopSpace ? "page-top" : ""} ${focused ? "pb-0" : chromeHidden ? "pb-6" : "pb-[calc(7rem+var(--bottom-chrome-reserve,0px))]"}`}><Outlet /></main>
+        <main className={`main-w mx-auto w-full ${pathname === "/" ? "md:pb-0" : "max-w-7xl px-4 sm:px-6 md:pb-0"} ${needsTopSpace ? "page-top" : ""} ${focused ? "pb-0" : chromeHidden ? "pb-6" : "pb-[calc(7rem+var(--bottom-chrome-reserve,0px))]"}`}>
+          <PageTransition pageKey={pathname} effect="chop"><Outlet /></PageTransition>
+        </main>
         {withFooter && <Footer />}
         {!focused && <BottomNav />}
         <AdminBottomNav />
