@@ -306,6 +306,14 @@
         *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
     }
 
+    /* Borders — remplace le remap non-couche supprime en T5.4.
+       Les utilitaires border-* passent par le jeton --rule (regle fine visible)
+       sauf sur les elements d'action qui optent pour une bordure encre 2 px. */
+    .border-foreground, .border-slate-900, .border-black { border-color: var(--rule); }
+    .divide-foreground > * + * { border-color: var(--rule); }
+    .border-strong { border-color: var(--rule-strong); }
+    .ring-slate-200 { --tw-ring-color: var(--rule); }
+
 }
 
 @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
