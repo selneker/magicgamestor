@@ -479,6 +479,41 @@ html.dark body[data-page="home"] {
     --card-focus: #111111;
 }
 
+/* ── Correctifs retour utilisateur (marges + titres) ─────────────────────── */
+
+/* 1. Accueil MOBILE (≤991 px) : AUCUNE marge, AUCUN fond encre visible.
+   La maquette pose chaque panneau crème (marge .5em, rayon 2.5em) sur un
+   body ENCRE — l'encre se voit dans l'interstice. Sur téléphone, c'est
+   du contenu perdu sur les côtés : les panneaux passent pleine largeur,
+   sans rayon, empilés bord à bord, et le body redevient crème. */
+@media screen and (max-width: 991px) {
+    body[data-page="home"] { background-color: var(--color--light); }
+    body[data-page="home"] .page-hero,
+    body[data-page="home"] .section {
+        border-radius: 0;
+        margin-inline: 0;
+        margin-bottom: 0;
+    }
+    /* Le header v1 est sticky DANS le flux (plus de nav pilule fixe) :
+       le padding-top 7.5em prévu pour la dégager était de l'espace mort. */
+    body[data-page="home"] .page-hero { padding-top: 1.5em; }
+    body[data-page="home"] .cta-banner-section { padding-block: 4em; }
+}
+/* Desktop : l'air du hero de la maquette (7.5em) servait à dégager la nav
+   FIXE — avec le header v1 dans le flux, on garde juste la respiration. */
+body[data-page="home"] .page-hero { padding-top: 2.5em; }
+
+/* 2. Titres géants jamais rognés : `.h-d`/`.h-l` sont en em fixes (12.5em /
+   10em, puis 8em ≤767, 6.5/6.2em ≤479) — à 390 px un mot de 9 à 11 lettres
+   (« RECHARGEZ », « DISPONIBLES ») dépassait la largeur de l'écran et un
+   mot ne se coupe pas. Taille fluide bornée par la maquette : les em de la
+   maquette au-delà de ~1000 px, un plafond en vw en dessous calibré pour
+   que le MOT LE PLUS LONG des titres actuels tienne toujours
+   (avance majuscule ≈ 0.7em/char, .h-d 9 lettres, .h-l 11 lettres,
+   réserve de 60 px pour les marges du container). */
+.h-d { font-size: min(12.5em, 13.2vw); }
+.h-l { font-size: min(10em, 10.8vw); }
+
 /* Les faces internes du bouton maquette (`.button-main-inner`, design-system
    .css:2043) portent `pointer-events: none` : `elementsFromPoint` ne les
    renvoie pas, donc `yarn audit:contrast` ne voit pas la face peinte

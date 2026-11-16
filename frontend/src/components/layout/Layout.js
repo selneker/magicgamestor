@@ -43,7 +43,11 @@ export default function Layout() {
         {/* PL-CHK-4 — mode focalisé : pb-0 (l'écran gère lui-même son padding
             bas et doit tenir dans 100svh — tout padding du Layout crée un
             défilement fantôme de 24 px à 360×640). */}
-        <main className={`main-w mx-auto w-full max-w-7xl px-4 sm:px-6 md:pb-0 ${focused ? "pb-0" : chromeHidden ? "pb-6" : "pb-[calc(7rem+var(--bottom-chrome-reserve,0px))]"}`}><Outlet /></main>
+        {/* Accueil = maquette 01-accueil.html : <main class="main-w"> SANS
+            container — les panneaux gèrent eux-mêmes leurs marges (0,5em)
+            et vont jusqu'aux bords. Les autres pages gardent le container
+            de la maquette (78em ≈ max-w-7xl). */}
+        <main className={`main-w mx-auto w-full md:pb-0 ${pathname === "/" ? "" : "max-w-7xl px-4 sm:px-6"} ${focused ? "pb-0" : chromeHidden ? "pb-6" : "pb-[calc(7rem+var(--bottom-chrome-reserve,0px))]"}`}><Outlet /></main>
         {withFooter && <Footer />}
         {!focused && <BottomNav />}
         <AdminBottomNav />
