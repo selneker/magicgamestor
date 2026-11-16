@@ -514,6 +514,13 @@ body[data-page="home"] .page-hero { padding-top: 2.5em; }
 .h-d { font-size: min(12.5em, 13.2vw); }
 .h-l { font-size: min(10em, 10.8vw); }
 
+/* 3. Barre du bas plus GRANDE (retour utilisateur) : mêmes couleurs et
+   mêmes états que mg-components.css:358-380 — items et icônes simplement
+   plus grands ; la cible tactile reste ≥ 44 px. */
+.bottom-nav__item { font-size: .8em; padding: .65em 0; }
+.bottom-nav__item .ic-use { width: 2em; height: 2em; }
+.bottom-nav__item--game .ic-use { width: 2.4em; height: 2.4em; }
+
 /* Les faces internes du bouton maquette (`.button-main-inner`, design-system
    .css:2043) portent `pointer-events: none` : `elementsFromPoint` ne les
    renvoie pas, donc `yarn audit:contrast` ne voit pas la face peinte
