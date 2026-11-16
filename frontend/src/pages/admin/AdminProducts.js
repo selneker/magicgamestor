@@ -130,8 +130,8 @@ export default function AdminProducts() {
               </p>
             </div>
             <div className="flex shrink-0 items-center">
-              <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full" onClick={() => setEditing({ ...EMPTY, ...p, game_id: p.game_id || "pubg-mobile", requires_mapping: p.requires_mapping ?? false })} data-testid={`admin-edit-product-${p.slug}`}><Pencil className="h-4 w-4" /></Button>
-              <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-slate-400 hover:text-rose-600" onClick={() => remove(p)} data-testid={`admin-delete-product-${p.slug}`}><Trash2 className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full" aria-label={t("admin.edit")} onClick={() => setEditing({ ...EMPTY, ...p, game_id: p.game_id || "pubg-mobile", requires_mapping: p.requires_mapping ?? false })} data-testid={`admin-edit-product-${p.slug}`}><Pencil className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-slate-400 hover:text-rose-600" aria-label={t("admin.delete")} onClick={() => remove(p)} data-testid={`admin-delete-product-${p.slug}`}><Trash2 className="h-4 w-4" /></Button>
             </div>
           </div>
         ))}

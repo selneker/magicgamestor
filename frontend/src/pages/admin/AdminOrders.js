@@ -197,7 +197,7 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
             <><Button className="h-11 rounded-[8px] text-xs sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "completed")} data-testid={`admin-simulate-paid-${o.order_number}`}>{t("admin.forcePaid")}</Button>
             <Button className="h-11 rounded-[8px] text-xs sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "failed")} data-testid={`admin-simulate-failed-${o.order_number}`}>{t("admin.forceFailed")}</Button></>
           )}
-          {isSuperAdmin && <Button size="icon" variant="ghost" className="h-11 w-11 shrink-0 rounded-[8px] text-slate-400 hover:text-rose-600 sm:h-[34px] sm:w-[34px]" onClick={() => onRemove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
+          {isSuperAdmin && <Button size="icon" variant="ghost" className="h-11 w-11 shrink-0 rounded-[8px] text-slate-400 hover:text-rose-600 sm:h-[34px] sm:w-[34px]" aria-label={t("admin.delete")} onClick={() => onRemove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
         </div>
         <FzrFulfillment order={o} mappedIds={mappedIds} mapStatus={mapStatus} mapComponents={mapComponents} readyCount={readyCount} onChanged={onChanged} />
       </div>
@@ -283,7 +283,7 @@ export default function AdminOrders() {
           <SelectTrigger className="h-10 w-44 rounded-full" data-testid="admin-filter-method"><SelectValue /></SelectTrigger>
           <SelectContent>{METHOD_FILTERS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label(t)}</SelectItem>)}</SelectContent>
         </Select>
-        <Button variant="outline" size="icon" className="rounded-full" onClick={load} data-testid="admin-orders-refresh"><RefreshCw className="h-4 w-4" /></Button>
+        <Button variant="outline" size="icon" className="rounded-full" aria-label={t("admin.refresh")} onClick={load} data-testid="admin-orders-refresh"><RefreshCw className="h-4 w-4" /></Button>
       </div>
       {/* PL-UX-3 — le filtre opérateur est appliqué côté client (le backend ne
           filtre que par `payment_method`) : la limite est dite, jamais cachée. */}

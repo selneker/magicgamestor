@@ -3,6 +3,7 @@ import { Ban, Check, Loader2, Search, ShieldCheck, Trash2, UserCog } from "lucid
 import { toast } from "sonner";
 import { api, errorMessage, formatAr } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { useLang } from "@/context/LanguageContext";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -25,6 +26,7 @@ const Badge = ({ children, tone = "muted", testid }) => (
 
 export default function AdminUsers() {
   const { user: me } = useAuth();
+  const { t } = useLang();
   const isSuper = me?.role === "super_admin";
   const [data, setData] = useState({ items: [], total: 0, page: 1, page_size: 20 });
   const [filters, setFilters] = useState({ search: "", role: "", status: "", email_verified: "" });
@@ -158,7 +160,7 @@ export default function AdminUsers() {
                   <Button size="sm" variant="outline" className="rounded-full" disabled={busy} onClick={() => revoke(u)} data-testid={`user-revoke-${u.user_id}`}><UserCog className="mr-1 h-3.5 w-3.5" />Retirer admin</Button>
                 )}
                 {u.role !== "super_admin" && (
-                  <Button size="icon" variant="ghost" className="rounded-full text-muted-foreground hover:text-rose-600" disabled={busy} onClick={() => remove(u)} data-testid={`user-delete-${u.user_id}`}><Trash2 className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" className="rounded-full text-muted-foreground hover:text-rose-600" disabled={busy} aria-label={t("admin.delete")} onClick={() => remove(u)} data-testid={`user-delete-${u.user_id}`}><Trash2 className="h-4 w-4" /></Button>
                 )}
               </div>
             </div>

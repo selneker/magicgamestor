@@ -133,7 +133,7 @@ export default function AdminGames() {
             </div>
             <div className="flex shrink-0 items-center gap-1">
               <Switch checked={!!g.active} onCheckedChange={() => toggleActive(g)} data-testid={`game-toggle-${g.slug || g.id}`} />
-              <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full"
+              <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full" aria-label={t("admin.edit")}
                 onClick={() => setEditing({ ...EMPTY, ...g, _existing: true })} data-testid={`admin-edit-game-${g.slug || g.id}`}>
                 <Pencil className="h-4 w-4" />
               </Button>

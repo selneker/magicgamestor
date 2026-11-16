@@ -520,7 +520,7 @@ export default function AdminFazercards() {
                         <SelectTrigger className="h-9 flex-1" data-testid={`fzr-comp-offer-${i}`}><SelectValue placeholder={t("admin.fzr.pickOffer")} /></SelectTrigger>
                         <SelectContent>{catOffers.filter((o) => ucAmountOf(o, game) !== null).map((o) => <SelectItem key={o.offer_id} value={o.offer_id}>{o.name} · ${o.price_usd}</SelectItem>)}</SelectContent>
                       </Select>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-600" onClick={() => setForm((f) => ({ ...f, components: f.components.filter((_, j) => j !== i) }))} disabled={form.components.length <= 1} data-testid={`fzr-comp-remove-${i}`}>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-600" aria-label={t("admin.delete")} onClick={() => setForm((f) => ({ ...f, components: f.components.filter((_, j) => j !== i) }))} disabled={form.components.length <= 1} data-testid={`fzr-comp-remove-${i}`}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
