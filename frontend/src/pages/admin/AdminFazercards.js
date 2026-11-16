@@ -271,7 +271,7 @@ export default function AdminFazercards() {
           </div>
           <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
             <Select value={game || "pubg-mobile"} onValueChange={(v) => setGame(v)}>
-              <SelectTrigger className="h-9 w-full rounded-full sm:w-56" data-testid="fzr-category-game-select"><SelectValue placeholder="Choisir un jeu" /></SelectTrigger>
+              <SelectTrigger className="h-9 w-full rounded-full sm:w-56" data-testid="fzr-category-game-select"><SelectValue placeholder={t("admin.fzr.pickGame")} /></SelectTrigger>
               <SelectContent>{games.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}{g.active ? "" : " · Inactif"}</SelectItem>)}</SelectContent>
             </Select>
             <Button size="sm" variant="outline" className="rounded-full" onClick={() => loadProviderCategories(true)} disabled={busy === "provider-categories"} data-testid="fzr-provider-categories-refresh">

@@ -198,15 +198,15 @@ export default function AdminGames() {
                   )}
                   {(editing.identity_fields || []).map((f, i) => (
                     <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-12" data-testid={`game-identity-row-${i}`}>
-                      <Input aria-label="Clé" placeholder="player_id" value={f.key || ""} onChange={(e) => updField(i, { key: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-3" data-testid={`game-identity-key-${i}`} />
-                      <Input aria-label="Libellé" placeholder="ID joueur" value={f.label || ""} onChange={(e) => updField(i, { label: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-3" data-testid={`game-identity-label-${i}`} />
-                      <Input aria-label="Motif" placeholder="^[0-9]{6,12}$" value={f.pattern || ""} onChange={(e) => updField(i, { pattern: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-3" data-testid={`game-identity-pattern-${i}`} />
-                      <Input aria-label="Longueur min" type="number" placeholder="min" value={f.min_length ?? ""} onChange={(e) => updField(i, { min_length: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-1" data-testid={`game-identity-min-${i}`} />
-                      <Input aria-label="Longueur max" type="number" placeholder="max" value={f.max_length ?? ""} onChange={(e) => updField(i, { max_length: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-1" data-testid={`game-identity-max-${i}`} />
+                      <Input aria-label={t("admin.fzr.gameKey")} placeholder={t("admin.fzr.gameKeyPlaceholder")} value={f.key || ""} onChange={(e) => updField(i, { key: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-3" data-testid={`game-identity-key-${i}`} />
+                      <Input aria-label={t("admin.fzr.gameLabel")} placeholder={t("admin.fzr.gameIdJoueur")} value={f.label || ""} onChange={(e) => updField(i, { label: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-3" data-testid={`game-identity-label-${i}`} />
+                      <Input aria-label={t("admin.fzr.gamePattern")} placeholder={t("admin.fzr.gamePatternPlaceholder")} value={f.pattern || ""} onChange={(e) => updField(i, { pattern: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-3" data-testid={`game-identity-pattern-${i}`} />
+                      <Input aria-label={t("admin.fzr.gameLengthMin")} type="number" placeholder={t("admin.fzr.gameMin")} value={f.min_length ?? ""} onChange={(e) => updField(i, { min_length: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-1" data-testid={`game-identity-min-${i}`} />
+                      <Input aria-label={t("admin.fzr.gameLengthMax")} type="number" placeholder={t("admin.fzr.gameMax")} value={f.max_length ?? ""} onChange={(e) => updField(i, { max_length: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-1" data-testid={`game-identity-max-${i}`} />
                       <label className="col-span-1 flex items-center gap-1 text-xs font-semibold sm:col-span-1">
-                        <input type="radio" name="identity-primary" checked={!!f.primary} onChange={() => makePrimary(i)} data-testid={`game-identity-primary-${i}`} />principale
+                        <input type="radio" name="identity-primary" checked={!!f.primary} onChange={() => makePrimary(i)} data-testid={`game-identity-primary-${i}`} />{t("admin.fzr.gamePrimary")}
                       </label>
-                      <Button type="button" size="icon" variant="ghost" className="col-span-1 h-9 w-9 rounded-full" onClick={() => delField(i)} data-testid={`game-identity-del-${i}`} aria-label="Supprimer">
+                      <Button type="button" size="icon" variant="ghost" className="col-span-1 h-9 w-9 rounded-full" onClick={() => delField(i)} data-testid={`game-identity-del-${i}`} aria-label={t("admin.delete")}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -234,7 +234,7 @@ export default function AdminGames() {
                       <Input aria-label="Clé" placeholder="cp" value={pt.key || ""} onChange={(e) => setTypes((l) => l.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)))} className="h-9 rounded-lg" data-testid={`game-type-key-${i}`} />
                       <Input aria-label="Libellé" placeholder="CP" value={pt.label || ""} onChange={(e) => setTypes((l) => l.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} className="h-9 rounded-lg" data-testid={`game-type-label-${i}`} />
                       <Input aria-label="Label EN" placeholder="CP" value={pt.label_en || ""} onChange={(e) => setTypes((l) => l.map((x, j) => (j === i ? { ...x, label_en: e.target.value } : x)))} className="h-9 rounded-lg" data-testid={`game-type-label-en-${i}`} />
-                      <Button type="button" size="icon" variant="ghost" className="h-9 w-9 rounded-full" onClick={() => setTypes((l) => l.filter((_, j) => j !== i))} data-testid={`game-type-del-${i}`} aria-label="Supprimer"><Trash2 className="h-4 w-4" /></Button>
+                      <Button type="button" size="icon" variant="ghost" className="h-9 w-9 rounded-full" onClick={() => setTypes((l) => l.filter((_, j) => j !== i))} data-testid={`game-type-del-${i}`} aria-label={t("admin.delete")}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   ))}
                 </div>

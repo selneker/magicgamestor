@@ -189,9 +189,9 @@ export function PubgPlayerCard() {
         <div className="relative">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1 font-display text-sm font-bold uppercase tracking-tight">
-              <span>Magic</span>
-              <span className="rounded-[4px] bg-[#C5FE02] px-1 text-[#0A0A0A]">Game</span>
-              <span>Store</span>
+              <span>{t("account.pubgCard.wordMagic")}</span>
+              <span className="rounded-[4px] bg-[#C5FE02] px-1 text-[#0A0A0A]">{t("account.pubgCard.wordGame")}</span>
+              <span>{t("account.pubgCard.wordStore")}</span>
             </div>
             <span className={`text-[10px] font-semibold uppercase tracking-[0.18em] ${mutedTxt}`}>{t("account.pubgCard.subtitle")}</span>
           </div>
@@ -217,7 +217,7 @@ export function PubgPlayerCard() {
           </div>
 
           <div className="mt-5 -mx-6 -mb-6 bg-[#C5FE02] px-6 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] text-[#0A0A0A]">
-            {t("account.pubgCard.brand")} · MAGICGAME.STORE
+            {t("account.pubgCard.brand")} · {t("account.pubgCard.domain")}
           </div>
         </div>
       </div>
@@ -244,7 +244,7 @@ export function PubgPlayerCard() {
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-white/70" htmlFor="pc-clan">{t("account.pubgCard.clan")}</label>
-              <Input id="pc-clan" data-testid="pubg-card-input-clan" value={form.clan} onChange={(e) => setForm({ ...form, clan: e.target.value })} placeholder="MGS" className="mt-1 h-11 rounded-xl" maxLength={30} />
+              <Input id="pc-clan" data-testid="pubg-card-input-clan" value={form.clan} onChange={(e) => setForm({ ...form, clan: e.target.value })} placeholder={t("admin.fzr.clanPlaceholder")} className="mt-1 h-11 rounded-xl" maxLength={30} />
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-white/70" htmlFor="pc-col">{t("account.pubgCard.collection")}</label>

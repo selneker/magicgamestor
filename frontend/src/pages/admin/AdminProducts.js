@@ -152,7 +152,7 @@ export default function AdminProducts() {
               {field("name", "Nom (FR)")}{field("name_en", "Name (EN)")}{field("slug", "Slug")}
               <label className="text-sm font-semibold text-foreground">Jeu associé
                 <Select value={editing.game_id || "pubg-mobile"} onValueChange={(v) => setEditing({ ...editing, game_id: v, type: typesOf(v).some((pt) => pt.key === editing.type) ? editing.type : "" })}>
-                  <SelectTrigger className="mt-1 h-10 rounded-xl" data-testid="product-field-game_id"><SelectValue placeholder="Choisir un jeu" /></SelectTrigger>
+                  <SelectTrigger className="mt-1 h-10 rounded-xl" data-testid="product-field-game_id"><SelectValue placeholder={t("admin.fzr.pickGame")} /></SelectTrigger>
                   <SelectContent>{games.map((g) => <SelectItem key={g.id} value={g.id}>{g.name} {g.active ? "" : "· Inactif"}</SelectItem>)}</SelectContent>
                 </Select>
               </label>

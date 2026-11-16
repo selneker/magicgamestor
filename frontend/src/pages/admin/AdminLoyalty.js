@@ -4,11 +4,13 @@ import { api, errorMessage } from "@/lib/api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { useLang } from "@/context/LanguageContext";
 
 const EMPTY = { name: "", type: "uc", cost_points: 500, value: 60, description: "", active: true, stock: "" };
 const SETTING_FIELDS = [["points_per_1000_ar", "Points par 1 000 Ar payés"], ["min_order_total", "Total minimum (Ar) pour gagner"], ["transfer_min", "Transfert minimum (pts)"], ["transfer_daily_limit", "Limite transfert / jour"], ["transfer_monthly_limit", "Limite transfert / mois"]];
 
 export default function AdminLoyalty() {
+  const { t } = useLang();
   const [settings, setSettings] = useState(null);
   const [rewards, setRewards] = useState([]);
   const [redemptions, setRedemptions] = useState([]);
@@ -56,12 +58,12 @@ export default function AdminLoyalty() {
       <section className="panel p-5">
         <h2 className="font-display text-lg font-bold">Récompenses</h2>
         <form onSubmit={createReward} className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
-          <Input required placeholder="Nom" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="h-10 rounded-xl lg:col-span-2" data-testid="reward-name-input" aria-label="Nom" />
+          <Input required placeholder={t("admin.fzr.rewardName")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="h-10 rounded-xl lg:col-span-2" data-testid="reward-name-input" aria-label={t("admin.fzr.rewardName")} />
           <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="h-10 rounded-xl border bg-background px-2 text-sm" data-testid="reward-type-select" aria-label="Type">{["uc", "discount", "bonus", "event"].map((x) => <option key={x} value={x}>{x}</option>)}</select>
           <Input type="number" required min={1} placeholder="Coût (pts)" value={form.cost_points} onChange={(e) => setForm({ ...form, cost_points: e.target.value })} className="h-10 rounded-xl" data-testid="reward-cost-input" aria-label="Coût" />
           <Input type="number" required min={0} placeholder="Valeur (UC/Ar)" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} className="h-10 rounded-xl" data-testid="reward-value-input" aria-label="Valeur" />
           <Input type="number" min={0} placeholder="Stock (vide = ∞)" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="h-10 rounded-xl" data-testid="reward-stock-input" aria-label="Stock" />
-          <Input placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="h-10 rounded-xl lg:col-span-5" aria-label="Description" />
+          <Input placeholder={t("admin.fzr.rewardDescription")} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="h-10 rounded-xl lg:col-span-5" aria-label={t("admin.fzr.rewardDescription")} />
           <Button type="submit" className="h-10 rounded-full font-semibold" data-testid="reward-create-submit">Créer</Button>
         </form>
         <ul className="mt-4 divide-y text-sm">

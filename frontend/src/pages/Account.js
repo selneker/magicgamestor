@@ -256,7 +256,7 @@ export default function Account() {
             )}
             <div>
               <label htmlFor="del-conf" className="text-sm font-medium">{t("account.deleteType")}</label>
-              <Input id="del-conf" value={del.confirmation} onChange={(e) => setDel({ ...del, confirmation: e.target.value })} required placeholder="SUPPRIMER" className="mt-1 h-11 font-mono" data-testid="delete-confirmation-input" />
+              <Input id="del-conf" value={del.confirmation} onChange={(e) => setDel({ ...del, confirmation: e.target.value })} required placeholder={t("account.deleteConfirmPlaceholder")} className="mt-1 h-11 font-mono" data-testid="delete-confirmation-input" />
             </div>
             <div className="flex gap-2">
               <Button type="button" variant="outline" onClick={() => { setOpenSection(null); setDel({ password: "", confirmation: "" }); }} className="flex-1 rounded-full" data-testid="delete-account-cancel">{t("common.back")}</Button>
