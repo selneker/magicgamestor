@@ -18,9 +18,12 @@ module.exports = {
       },
       boxShadow: {},
       borderRadius: {
-        lg: 'var(--radius)',
+        lg: '12px',
         md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)'
+        sm: 'calc(var(--radius) - 4px)',
+        xl: '12px',
+        '2xl': '14px',
+        '3xl': '14px'
       },
       colors: {
         ink: '#111111',
