@@ -116,9 +116,12 @@ export function SlushChrome() {
     lastKey.current = location.key;
     if (pending.current) {
       pending.current = false;
-      busy.current = false; // la navigation a eu lieu : de nouveaux clics sont permis
+      // busy.current reste true jusqu'à la fin de l'intro : les clics sont
+      // bloqués pendant l'animation 3D, pas ré-autorisés avant son onComplete.
       if (!isFocusedRoute(location.pathname) && !prefersReduced() && gsapReady()) {
-        runTransitionIn(); // intro 3D de la page suivante
+        runTransitionIn(() => { busy.current = false; }); // intro 3D de la page suivante
+      } else {
+        busy.current = false; // pas d'intro : débloque immédiatement
       }
     }
   }, [location]);

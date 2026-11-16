@@ -428,6 +428,11 @@ export function runTransitionOut(done) {
   // propriétés et la page arrive dans un état moitié intro moitié outro).
   gsap.killTweensOf(main);
   gsap.killTweensOf(tiles);
+  // Un clic durant l'intro l'a interrompue : killTweens fige les transforms
+  // à leurs valeurs intermédiaires. On les réinitialise avant de poser l'état
+  // de sortie (position: absolute, top: -scrollY) pour éviter que .main-w
+  // reste tourné/décalé dans le volet de sortie.
+  gsap.set(main, { clearProps: "transform" });
 
   gsap.set(wrapper, {
     width: "100%", height: "100vh", overflow: "hidden",
@@ -482,7 +487,7 @@ export function runReducedTransitionOut(done) {
 
 /* Moitié 2 — arrivée de la nouvelle page en 3D (JS:653-679). Le wrapper
    éventuel de l'outro est défait AVANT toute pose d'état. */
-export function runTransitionIn() {
+export function runTransitionIn(onIntroEnd) {
   const gsap = gsapReady();
   if (!gsap) return;
   unwrapMain();
@@ -498,6 +503,7 @@ export function runTransitionIn() {
       window.ScrollTrigger.refresh();
       gsap.set([main && main.parentElement, main], { clearProps: true });
       gsap.set(tiles, { display: "none" });
+      if (onIntroEnd) onIntroEnd();
     },
   })
     .set([main && main.parentElement, main], { height: "100vh", overflow: "hidden", perspective: 1000 })
