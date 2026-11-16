@@ -31,6 +31,10 @@ let booted = false; // une seule intro de chargement par rechargement complet
 
 export function SlushChrome() {
   const location = useLocation();
+  // PL-005-FE-08c : le premier montage de la route est couvert par le boot
+  // (runPageLoad y est lancé) — les suivants peuvent avoir besoin d'un
+  // rejou d'intro (voir l'effet de route).
+  const firstRoute = useRef(true);
 
   // Boot global : classes, easings, Lenis, curseur, direction, capture.
   useEffect(() => {
@@ -81,6 +85,20 @@ export function SlushChrome() {
       initGlobalParallax(document),
     ];
     window.ScrollTrigger && window.ScrollTrigger.refresh();
+    // PL-005-FE-08c (G1, propriétaire) — retour SPA sur une page à héros
+    // (logo, lien) : le héros est un NOUVEAU nœud DOM, la règle
+    // `html.has-js [data-hero-content] { opacity: 0 }`
+    // (design-system.css:6664) s'y réapplique, et `runPageLoad` — la seule
+    // chose qui repasse l'opacité à 1 — ne tournait qu'au boot (drapeau
+    // `booted`). Résultat observé (sonde) : opacité calculée 0, fond blanc
+    // seul. On rejoue l'intro quand la vue montée en porte un ; les gardes
+    // reduced-motion/capture sont dans runPageLoad. Le drapeau ci-dessous
+    // évite de la rejouer AU PREMIER montage (le boot l'a déjà lancée).
+    if (!firstRoute.current) {
+      const main = document.querySelector(".main-w");
+      if (main?.querySelector("[data-hero-content]")) runPageLoad(main, 0.15);
+    }
+    firstRoute.current = false;
     return () => cleanups.forEach((fn) => fn && fn());
   }, [location.pathname]);
 
