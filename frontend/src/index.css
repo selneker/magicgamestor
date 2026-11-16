@@ -626,6 +626,74 @@ html.dark body[data-page="home"] {
        le label du pilule tient sur une ligne (les pilules s'élargissent,
        elles sont en flex-wrap). */
     .button-main-inner__text > span { white-space: nowrap; }
+
+    /* ── PL-005-FE-08b — cibles tactiles ≥ 44 px (scan layout) ────────── */
+    /* Bottom-nav : les entrées font 36-38px de large (le libellé commande). */
+    .nav-item-pill { min-width: 44px; }
+    /* « Vérifier l'ID » — variante compacte (Checkout.js l'appelle sans la
+       prop `checkout` : px-3 py-1.5 text-xs = 28px ; la variante complète de
+       Loyalty est déjà h-12). */
+    [data-testid="identity-verify-btn"] { min-height: 44px; }
+    /* Steppers de quantité du tiroir panier : h-10/w-10 = 40px. */
+    [data-testid^="cart-dec-"], [data-testid^="cart-inc-"] { width: 44px; height: 44px; }
+    /* Lien « Changer » de l'ID vérifié : texte nu 49×16, dans une ligne
+       h-[46px] — 44px tiennent dedans. */
+    [data-testid="checkout-change-id"] {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 0 .75em;
+    }
+    /* Liens texte du footer (Boutique / FAQ / confidentialité…) : 16-25px. */
+    .footer .link-list a.link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding: .35em .75em;   /* padding-inline : la FAQ fait 25px de large */
+    }
+    /* Liens « Voir tout / Voir la boutique » des en-têtes de section accueil. */
+    .section-head a.link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        padding-inline: 1em;   /* liens étroits (28-41px de large) */
+    }
+    /* CTA du héros accueil : 39px de haut à 320px (pill `.button-main`).
+       .button-main-inner.full-h est min-height:100% → la pilule s'étire. */
+    .page-hero .button-main { min-height: 44px; }
+    /* CTAs des cartes événements / support de l'accueil : 37px. Ils sont dans
+       un <div> bloc (pas une rangée flex comme le héros) → l'<a> .button-main
+       reste inline et min-height est ignoré : inline-flex d'abord. */
+    [data-testid="home-event-cta"], [data-testid="home-support-cta"] {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+    }
+    /* Bouton « retour en haut » : px-4 py-3 = 40px. */
+    [data-testid="back-to-top"] { min-height: 44px; min-width: 44px; }
+    /* Bouton « demander de l'aide » d'une commande (suivi) : 32px. */
+    button[data-testid^="order-help-"] { min-height: 44px; }
+    /* Onglets de type du catalogue : px-4 py-2 text-[11px] = 33px.
+       filter-popular partage la même rangée et la même fabrique tab(). */
+    button[data-testid^="type-tab-"], [data-testid="filter-popular"] { min-height: 44px; }
+    /* Sélecteur de jeu du catalogue : 36px. */
+    button[data-testid^="catalog-switch-"] { min-height: 44px; }
+    /* Filtres + tri du catalogue : h-10 = 40px ; le bouton filtre est
+       icône-seule sur mobile (40px de large). */
+    [data-testid="toggle-filters"], [data-testid="sort-select"] { min-height: 44px; min-width: 44px; }
+    /* Recherche du catalogue : h-10 = 40px. */
+    input[data-testid="catalog-search"] { min-height: 44px; }
+    /* Retour catalogue (fiche produit) : texte nu 107×20. */
+    [data-testid="back-to-catalog"] { min-height: 44px; }
+    /* Onglets de jeu + actions de la vérification d'identité (compte/checkout) :
+       onglets 24px, édition/suppression h-9 = 36px. */
+    button[data-testid^="identity-game-"],
+    button[data-testid^="identity-edit-"],
+    button[data-testid^="identity-delete-"] { min-height: 44px; min-width: 44px; }
+    /* Renvoi de l'email de vérification (compte) : 32px. */
+    [data-testid="resend-verification-button"] { min-height: 44px; }
+    /* Barre flottante « Commander » (checkout) : h-10 = 40px. */
+    [data-testid="command-button-trigger"] { min-height: 44px; }
 }
 
 /* Point 5 — pilule Slush mobile (< 992 px) : mêmes classes maquette que
@@ -654,8 +722,11 @@ html.dark body[data-page="home"] {
     }
     .nav-w--mobile .nav-inner-list { display: none; }
     .nav-w--mobile .nav-btn-circle {
-        width: 2.75em;   /* 44 px — cible tactile minimale */
-        height: 2.75em;
+        /* PL-005-FE-08b — en `rem`, pas `em` : en em la taille suit la
+           font-size de l'élément (~13px sur mobile) et les cercles tombent
+           à 36px, sous le plancher de 44px (scan layout, 478-588 cibles). */
+        width: 2.75rem;   /* 44 px — cible tactile minimale */
+        height: 2.75rem;
     }
 }
 
