@@ -33,10 +33,6 @@ export default function Layout() {
   // PL-UX-4 — l'admin n'affiche AUCUN pied de page (ni le footer du site ni
   // son bandeau) : les pages publiques, elles, gardent le leur.
   const withFooter = showsSiteFooter(pathname);
-  // Nav pilule fixe (hors flux) : les pages non-accueil ont besoin de la
-  // réserve .page-top (mg-components.css:723) sur bureau ; sur mobile la
-  // barre reste sticky dans le flux (glue CSS : page-top ≥ 992 px seulement).
-  const needsTopSpace = pathname !== "/" && !focused;
   return (
     <GameProvider>
       <SeoManager />
@@ -47,7 +43,7 @@ export default function Layout() {
         {/* PL-CHK-4 — mode focalisé : pb-0 (l'écran gère lui-même son padding
             bas et doit tenir dans 100svh — tout padding du Layout crée un
             défilement fantôme de 24 px à 360×640). */}
-        <main className={`main-w mx-auto w-full max-w-7xl px-4 sm:px-6 md:pb-0 ${needsTopSpace ? "page-top" : ""} ${focused ? "pb-0" : chromeHidden ? "pb-6" : "pb-[calc(7rem+var(--bottom-chrome-reserve,0px))]"}`}><Outlet /></main>
+        <main className={`main-w mx-auto w-full max-w-7xl px-4 sm:px-6 md:pb-0 ${focused ? "pb-0" : chromeHidden ? "pb-6" : "pb-[calc(7rem+var(--bottom-chrome-reserve,0px))]"}`}><Outlet /></main>
         {withFooter && <Footer />}
         {!focused && <BottomNav />}
         <AdminBottomNav />

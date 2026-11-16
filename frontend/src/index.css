@@ -479,14 +479,6 @@ html.dark body[data-page="home"] {
     --card-focus: #111111;
 }
 
-/* .page-top (mg-components.css:723, 6.5em) est fait pour la nav pilule FIXE
-   de la maquette : sur bureau seulement. < 992 px la barre d'en-tête reste
-   sticky DANS le flux — une réserve de 6,5em y serait de l'espace mort, et
-   les pages gèrent déjà leur propre padding mobile. */
-@media screen and (max-width: 991px) {
-    main.page-top { padding-top: 0; }
-}
-
 /* Les faces internes du bouton maquette (`.button-main-inner`, design-system
    .css:2043) portent `pointer-events: none` : `elementsFromPoint` ne les
    renvoie pas, donc `yarn audit:contrast` ne voit pas la face peinte

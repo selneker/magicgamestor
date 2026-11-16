@@ -8,7 +8,6 @@ import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { formatPointsCount } from "@/lib/pointsFormat";
-import { initMenu } from "@/lib/slush";
 
 // Repli de l'en-tête au défilement (PL-BRAND-1, mobile uniquement) : en
 // descendant l'en-tête se replie (transform seul — aucun saut de mise en
@@ -166,16 +165,13 @@ function AccountAction({ avatar = false }) {
   );
 }
 
-/* ── PL-005-FE-03 refonte Slush — nav pilule FLOTTANTE de la maquette ──────
-   Markup et classes EXACTS de 01-accueil.html (981-1003) : .nav-w fixe,
-   #navContainer, .nav-inner, logo rond .nav-btn-circle, pilules
-   .button-main (thème light + accent par position ; .is--current prend
-   l'accent *-700 de sa position via design-system.css 6625-6628), burger
-   .nav-btn-menu. Les animations (descente au chargement, masquage au
-   scroll, hover du burger, slide mobile) vivent dans lib/slush.js.
-   Les actions compte (points / panier / admin / connexion) n'ont pas
-   d'équivalent dans la maquette : elles restent dans le panneau du burger
-   (desktop) et dans la barre mobile conservée (< 992 px). */
+/* ── PL-005-FE-03 — Navigation desktop « pilule » (maquette PL-DS-003) ────
+   Pilule encre : logo rond à gauche, boutons colorés (Boutique / Événements /
+   Commandes / Support), bouton menu. Mêmes entrées et mêmes routes que la nav
+   desktop précédente (l'entrée Admin vit dans le menu, comme les actions
+   compte / panier / points — la maquette n'a que 4 boutons). Reconstruction
+   maison : AUCUN CSS tiers copié, PAS de transition 3D (navigation = routeur).
+   L'état actif reprend les accents de la maquette (violet/bleu/vert/jaune). */
 
 // Mêmes correspondances que la barre du bas (lib/bottomChrome) : la nav
 // desktop et la nav mobile considèrent les mêmes pages comme actives.
@@ -186,41 +182,42 @@ const NAV_MATCHES = [
   { to: "/chat", match: (p) => p.startsWith("/chat") || p.startsWith("/support") },
 ];
 
-// Pilule de nav (maquette .button-main, thème « light ») : face avant crème
-// bordée d'encre, texte encre ; la face ARRIÈRE (hover 3D) porte l'accent.
-// .is--current peint la face avant avec l'accent *-700 de la position
-// (design-system.css 6625-6628) — le texte reste encre.
+// Accents de la maquette, PAR POSITION (design-system.css 6623-6628 :
+// .is--current prend l'accent *-700 de sa position — violet-700 lavande
+// #e9ccff pour Boutique, bleu/vert/jaune pour les suivants). Texte FIXE encre
+// (jamais thème-relatif) : sur ces accents clairs, l'encre passe dans les
+// deux thèmes.
+const NAV_ACCENTS = {
+  violet: "bg-[color:var(--brand-violet-soft)] text-[color:var(--brand-ink)]",
+  blue: "bg-[color:var(--brand-blue)] text-[color:var(--brand-ink)]",
+  green: "bg-[color:var(--brand-green)] text-[color:var(--brand-ink)]",
+  yellow: "bg-[color:var(--brand-yellow)] text-[color:var(--brand-ink)]",
+};
+
+// Bouton de nav (maquette .button-main theme « light ») : pilule CRÈME FIXE
+// bordée d'ENCRE, texte encre — posée sur la barre glass (écart documenté :
+// les pages ne réservent pas l'espace .page-top de la maquette, la nav vit
+// dans la barre sticky existante). Pas de retournement 3D : le survol montre
+// directement l'accent de la face arrière (règle « pas de transition 3D »).
 function DesktopNavButton({ to, label, accent, active, testId }) {
   return (
-    <li className="nav-inner-li">
-      <Link
-        to={to}
-        data-testid={testId}
-        aria-current={active ? "page" : undefined}
-        className={`button-main${active ? " is--current" : ""}`}
-        data-button-theme="light"
-        data-button-accent={accent}
-      >
-        <span className="button-main-inner full-h">
-          <span className="button-main-inner__back" data-text={label}></span>
-          <span className="button-main-inner__front">
-            <span className="button-main-inner__bg"></span>
-            <span className="button-main-inner__text"><span>{label}</span></span>
-          </span>
-        </span>
-      </Link>
-    </li>
+    <Link
+      to={to}
+      data-testid={testId}
+      aria-current={active ? "page" : undefined}
+      className={`flex h-10 items-center whitespace-nowrap rounded-full border-2 border-[color:var(--brand-ink)] bg-[color:var(--brand-cream)] px-3.5 text-[12px] font-bold uppercase tracking-[0.08em] text-[color:var(--brand-ink)] transition-transform motion-safe:duration-200 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 lg:px-4 ${active ? NAV_ACCENTS[accent] : ""}`}
+    >
+      {label}
+    </Link>
   );
 }
 
-function DesktopMenu({ isAdmin, burgerRef }) {
+function DesktopMenu({ isAdmin }) {
   const { t } = useLang();
   const { user } = useAuth();
   const { setOpen } = useCart();
   const [open, setOpenMenu] = useState(false);
   const wrapRef = useRef(null);
-  const localRef = useRef(null);
-  const btnRef = burgerRef || localRef;
 
   useEffect(() => {
     if (!open) return;
@@ -239,23 +236,16 @@ function DesktopMenu({ isAdmin, burgerRef }) {
     <div className="relative shrink-0" ref={wrapRef}>
       <button
         type="button"
-        id="menuButton"
-        ref={btnRef}
         data-testid="desktop-menu-button"
         aria-expanded={open}
         aria-haspopup="true"
         aria-label={open ? t("nav.closeMenu") : t("nav.openMenu")}
-        onClick={() => {
-          // Desktop = survol (initMenu) ; le toggle n'a de sens qu'en mobile.
-          // matchMedia absent (jsdom) : on considère le bureau.
-          const desktop = typeof window.matchMedia !== "function" || window.matchMedia("(min-width: 992px)").matches;
-          if (desktop) setOpenMenu((v) => !v);
-        }}
-        className="nav-btn-circle nav-btn-menu pointer-events-auto"
+        onClick={() => setOpenMenu((v) => !v)}
+        className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[color:var(--brand-ink)] bg-[color:var(--brand-cream)] text-[color:var(--brand-ink)] transition-transform motion-safe:duration-300 hover:rotate-90 motion-reduce:hover:rotate-0"
       >
-        <span className="nav-btn-menu__lines">
-          <span className="nav-btn-menu__line is--h"></span>
-          <span className="nav-btn-menu__line is--v"></span>
+        <span className="relative flex h-3.5 w-3.5 items-center justify-center">
+          <span className="absolute h-[2px] w-3.5 bg-current" />
+          <span className="absolute h-3.5 w-[2px] bg-current" />
         </span>
       </button>
       {open && (
@@ -283,84 +273,67 @@ export function Header() {
   const { isAdmin, offline, loading, refresh } = useAuth();
   const { pathname } = useLocation();
   const collapsed = useHeaderCollapse();
-  const burgerRef = useRef(null);
 
-  // Menu de la maquette : hover du burger → les pilules réapparaissent
-  // (desktop), scroll vers le bas → elles s'envolent, burger mobile →
-  // slide des pilules. Portage dans lib/slush.js (initMenu).
-  useEffect(() => {
-    if (!burgerRef.current) return undefined;
-    return initMenu(burgerRef.current);
-  }, []);
+  // Pastille logo ronde (maquette .nav-btn-circle : crème fixe + bordure
+  // encre 0.125em) : notre logo principal, jamais celui de la maquette.
+  // Couleurs FIXES de marque (l'encre se voit dans les deux thèmes).
+  const logoCircle = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 border-[color:var(--brand-ink)] bg-[color:var(--brand-cream)] text-[color:var(--brand-ink)] transition-transform motion-safe:duration-300 hover:rotate-[360deg]";
+  // Boutons de nav individuels (maquette : pilules crème bordées d'encre),
+  // simplement alignés — PAS de conteneur encre.
 
   return (
-    <>
-      {/* ── Nav pilule flottante de la maquette (≥ 992 px, comme Slush) ── */}
-      <div className="nav-w hidden min-[992px]:block" data-testid="header-desktop">
-        <div id="navContainer" className="nav-container container">
-          <nav className="nav-inner" aria-label={t("nav.mainNav")} data-testid="desktop-nav">
-            <Link to="/" className="nav-btn-circle is--nav-logo" aria-label="Magic Game Store" data-testid="header-logo">
-              <Logo className="nav-button-logo" />
-            </Link>
-            <div className="nav-inner-right">
-              <ul className="nav-inner-list" role="list">
-                {[
-                  { to: "/boutique", label: t("nav.shop"), accent: "violet", id: "desktop-nav-shop" },
-                  { to: "/evenements", label: t("nav.eventsFull"), accent: "blue", id: "desktop-nav-events" },
-                  { to: "/suivi", label: t("nav.orders"), accent: "green", id: "desktop-nav-orders" },
-                  { to: "/chat", label: t("nav.messages"), accent: "yellow", id: "desktop-nav-support" },
-                ].map(({ to, label, accent, id }, i) => (
-                  <DesktopNavButton key={to} to={to} label={label} accent={accent} active={NAV_MATCHES[i].match(pathname)} testId={id} />
-                ))}
-              </ul>
-              <DesktopMenu isAdmin={isAdmin} burgerRef={burgerRef} />
-              <div className="ml-1 flex shrink-0 items-center gap-1">
-                <LoyaltyChip />
-                <span className="[&_button]:pointer-events-auto"><CartButton /></span>
-              </div>
-            </div>
-          </nav>
+    <header
+      className="glass sticky top-0 z-40 border-b will-change-transform motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out"
+      style={{ transform: collapsed ? "translateY(-100%)" : "translateY(0)" }}
+      data-collapsed={collapsed ? "true" : "false"}
+    >
+      {/* Mobile (< 768 px) : 3 zones en grille 1fr auto 1fr — le logo reste
+          exactement centré quelle que soit la largeur de la pastille de points.
+          Pas de rangée d'onglets : la navigation reste la barre du bas. */}
+      <div className="grid h-14 grid-cols-[1fr_auto_1fr] items-center gap-1 px-3 md:hidden" data-testid="header-mobile-bar">
+        <div className="justify-self-start">
+          <AccountAction avatar />
         </div>
-        {offline && !loading && (
-          <div role="status" className="pointer-events-auto mx-auto mt-2 w-fit rounded-full border bg-card px-4 py-1.5 text-center text-[11px] font-medium leading-snug text-foreground" data-testid="auth-offline-banner">
-            {t("auth.wakeFailed")}{" "}
-            <button type="button" onClick={refresh} className="font-semibold underline underline-offset-2" data-testid="auth-offline-retry">
-              {t("auth.retry")}
-            </button>
-          </div>
-        )}
+        <Link to="/" data-testid="header-logo" aria-label="Magic Game Store" className="flex h-11 w-11 items-center justify-center justify-self-center text-foreground">
+          <Logo className="h-8 w-8" />
+        </Link>
+        <div className="flex items-center justify-self-end gap-0.5">
+          <MobilePointsPill />
+          <CartButton />
+        </div>
       </div>
-      {/* ── Barre mobile conservée (< 992 px) : compte / logo / points / panier.
-             Écart documenté : la maquette mobile n'a que logo + burger, mais
-             ni le compte ni le panier n'ont d'autre point d'entrée sur mobile
-             (la bottom-nav ne porte ni l'un ni l'autre). ── */}
-      <header
-        className="glass sticky top-0 z-40 border-b will-change-transform motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-out max-[991px]:block hidden"
-        style={{ transform: collapsed ? "translateY(-100%)" : "translateY(0)" }}
-        data-collapsed={collapsed ? "true" : "false"}
-        data-testid="header-mobile-bar"
-      >
-        <div className="grid h-14 grid-cols-[1fr_auto_1fr] items-center gap-1 px-3">
-          <div className="justify-self-start">
-            <AccountAction avatar />
-          </div>
-          <Link to="/" aria-label="Magic Game Store" className="flex h-11 w-11 items-center justify-center justify-self-center text-foreground">
-            <Logo className="h-8 w-8" />
-          </Link>
-          <div className="flex items-center justify-self-end gap-0.5">
-            <MobilePointsPill />
-            <CartButton />
-          </div>
+      {/* Bureau (>= 768 px) — nav de la maquette dans la barre glass : logo
+          rond à gauche, pilules crème bordées d'encre, menu croix à droite ;
+          les actions (points / panier / compte) restent visibles après. */}
+      <div className="mx-auto hidden h-16 max-w-7xl flex-nowrap items-center gap-3 px-3 sm:px-6 md:flex" data-testid="header-desktop">
+        <Link to="/" data-testid="header-logo" aria-label="Magic Game Store" className={`${logoCircle} shrink-0`}>
+          <Logo className="h-5 w-5" />
+        </Link>
+        <nav aria-label={t("nav.mainNav")} className="flex min-w-0 items-center gap-1.5" data-testid="desktop-nav">
+          {[
+            { to: "/boutique", label: t("nav.shop"), accent: "violet", id: "desktop-nav-shop" },
+            { to: "/evenements", label: t("nav.eventsFull"), accent: "blue", id: "desktop-nav-events" },
+            { to: "/suivi", label: t("nav.orders"), accent: "green", id: "desktop-nav-orders" },
+            { to: "/chat", label: t("nav.messages"), accent: "yellow", id: "desktop-nav-support" },
+          ].map(({ to, label, accent, id }, i) => (
+            <DesktopNavButton key={to} to={to} label={label} accent={accent} active={NAV_MATCHES[i].match(pathname)} testId={id} />
+          ))}
+        </nav>
+        <div className="ml-auto flex shrink-0 flex-nowrap items-center gap-1 sm:gap-1.5">
+          <LoyaltyChip />
+          <CartButton />
+          <DesktopMenu isAdmin={isAdmin} />
+          <AccountAction />
         </div>
-        {offline && !loading && (
-          <div role="status" className="border-t border-amber-200 bg-amber-50 px-3 py-1.5 text-center text-[11px] font-medium leading-snug text-amber-950" data-testid="auth-offline-banner-mobile">
-            {t("auth.wakeFailed")}{" "}
-            <button type="button" onClick={refresh} className="font-semibold underline underline-offset-2">
-              {t("auth.retry")}
-            </button>
-          </div>
-        )}
-      </header>
-    </>
+      </div>
+      {offline && !loading && (
+        <div role="status" className="border-t border-amber-200 bg-amber-50 px-3 py-1.5 text-center text-[11px] font-medium leading-snug text-amber-950" data-testid="auth-offline-banner">
+          {t("auth.wakeFailed")}{" "}
+          <button type="button" onClick={refresh} className="font-semibold underline underline-offset-2" data-testid="auth-offline-retry">
+            {t("auth.retry")}
+          </button>
+        </div>
+      )}
+    </header>
   );
 }
