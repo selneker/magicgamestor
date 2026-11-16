@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Home, LogOut, MoreHorizontal, X } from "lucide-react";
@@ -18,6 +18,47 @@ export function AdminBottomNav() {
   const { t } = useLang();
   const fzrAlerts = useFzrAlerts();
   const [moreOpen, setMoreOpen] = useState(false);
+  const moreButtonRef = useRef(null);
+  const sheetRef = useRef(null);
+  const prevMoreOpen = useRef(moreOpen);
+
+  // Gestion du focus dans le panneau « Plus » (T3.3) : focus initial à
+  // l'ouverture, restauration sur le bouton déclencheur à la fermeture,
+  // fermeture à Échap et piège à tabulation (Tab) à l'intérieur du panneau.
+  useEffect(() => {
+    const wasOpen = prevMoreOpen.current;
+    prevMoreOpen.current = moreOpen;
+
+    if (moreOpen) {
+      sheetRef.current?.focus({ preventScroll: true });
+    } else if (wasOpen) {
+      moreButtonRef.current?.focus({ preventScroll: true });
+    }
+
+    const onKey = (e) => {
+      if (e.key === "Escape") { setMoreOpen(false); return; }
+      if (e.key === "Tab") {
+        const sheet = sheetRef.current;
+        const focusable = sheet.querySelectorAll("button, [href], input, select, textarea");
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first || document.activeElement === sheet) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last || document.activeElement === sheet) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [moreOpen, setMoreOpen]);
 
   if (!pathname.startsWith("/admin")) return null;
   // Conversation admin ouverte (MGS-FE-ADMIN-20261105-02) : l'écran
@@ -69,6 +110,7 @@ export function AdminBottomNav() {
           })}
           <button
             type="button"
+            ref={moreButtonRef}
             onClick={() => setMoreOpen(true)}
             data-testid="admin-bnav-more"
             aria-expanded={moreOpen}
@@ -99,6 +141,8 @@ export function AdminBottomNav() {
             />
             <motion.div
               key="admin-more-sheet"
+              ref={sheetRef}
+              tabIndex={-1}
               role="dialog"
               aria-modal="true"
               aria-label={t("admin.more")}
