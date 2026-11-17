@@ -143,12 +143,12 @@ export default function Catalog() {
     return filteredProducts;
   }, [products, sort, favorites, favoriteIds]);
 
+  const popularIds = useMemo(() => new Set((visibleProducts || []).filter((p) => p.popular === true).slice(0, 3).map((p) => p.id)), [visibleProducts]);
+
   // Compute badge for each product based on priority and limits
   const productsWithBadge = useMemo(() => {
     if (!visibleProducts) return null;
 
-    // Step 1: popular badge (max 3 per page)
-    let popularSeen = 0;
     // Step 2: compute best price/UC among UC products
     const ucProducts = visibleProducts.filter(p => p.uc_amount);
     let bestPriceUC = null;
@@ -158,10 +158,9 @@ export default function Catalog() {
     // Step 3: assign badges in priority order
     return visibleProducts.map((p, idx) => {
       let badge = null;
-      // Popular badge (max 3)
-      if (p.popular && popularSeen < 3) {
+      // Popular badge (max 3) — popularIds est la source unique de verite
+      if (p.popular && popularIds.has(p.id)) {
         badge = "popular";
-        popularSeen++;
       } else {
         // Best price/UC badge (only for UC products)
         if (p.uc_amount && bestPriceUC !== null) {
@@ -182,9 +181,7 @@ export default function Catalog() {
       }
       return { product: p, badge };
     });
-  }, [visibleProducts]);
-
-  const popularIds = useMemo(() => new Set((visibleProducts || []).filter((p) => p.popular === true).slice(0, 3).map((p) => p.id)), [visibleProducts]);
+  }, [visibleProducts, popularIds]);
   const bestUnitId = useMemo(() => {
     const candidates = (visibleProducts || []).filter((p) => Number(p.uc_amount) > 0);
     return candidates.sort((a, b) => (a.price / a.uc_amount) - (b.price / b.uc_amount))[0]?.id;
@@ -192,7 +189,7 @@ export default function Catalog() {
   const sectioned = !type && !q && !popular && !minPrice && !maxPrice;
   const sections = useMemo(() => {
     if (!sectioned || !visibleProducts) return null;
-    const featured = visibleProducts.filter((p) => p.popular === true).slice(0, 3);
+    const featured = visibleProducts.filter((p) => popularIds.has(p.id));
     const featuredIds = new Set(featured.map((p) => p.id));
     const remaining = visibleProducts.filter((p) => !featuredIds.has(p.id));
     return {
@@ -203,7 +200,7 @@ export default function Catalog() {
       prime: remaining.filter((p) => ["prime", "prime_plus"].includes(p.type)),
       evo: remaining.filter((p) => p.type === "evo"),
     };
-  }, [sectioned, visibleProducts]);
+  }, [sectioned, visibleProducts, popularIds]);
 
   if (!game || (games.length > 0 && !currentGame)) {
     return <GamePicker games={games} onPick={(g) => { selectGame(g.id); setParams({ game: g.id }, { replace: true }); }} />;
