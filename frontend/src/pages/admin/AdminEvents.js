@@ -48,10 +48,10 @@ export default function AdminEvents() {
           <DialogHeader><DialogTitle className="font-display">{editing?.id ? t("admin.edit") : t("admin.newEvent")}</DialogTitle></DialogHeader>
           {editing && (
             <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
-              {field("title_fr", "Titre (FR)")}{field("title_en", "Title (EN)")}{field("slug", "Slug")}{field("badge", "Badge")}
-              {field("image_url", "Image URL")}{field("product_slug", "Produit lié (slug)")}{field("price_label", "Prix affiché")}{field("old_price_label", "Ancien prix affiché")}
-              <label className="text-sm font-semibold text-foreground sm:col-span-2">Description FR<Textarea value={editing.description_fr || ""} onChange={(e) => setEditing({ ...editing, description_fr: e.target.value })} className="mt-1 rounded-xl" data-testid="event-field-description_fr" /></label>
-              <label className="text-sm font-semibold text-foreground sm:col-span-2">Description EN<Textarea value={editing.description_en || ""} onChange={(e) => setEditing({ ...editing, description_en: e.target.value })} className="mt-1 rounded-xl" data-testid="event-field-description_en" /></label>
+              {field("title_fr", t("admin.fieldTitleFr"))}{field("title_en", t("admin.fieldTitleEn"))}{field("slug", t("admin.fieldSlug"))}{field("badge", t("admin.fieldBadge"))}
+              {field("image_url", t("admin.fieldImageUrl"))}{field("product_slug", t("admin.fieldProductSlug"))}{field("price_label", t("admin.fieldPriceLabel"))}{field("old_price_label", t("admin.fieldOldPriceLabel"))}
+              <label className="text-sm font-semibold text-foreground sm:col-span-2">{t("admin.fieldDescriptionFr")}<Textarea value={editing.description_fr || ""} onChange={(e) => setEditing({ ...editing, description_fr: e.target.value })} className="mt-1 rounded-xl" data-testid="event-field-description_fr" /></label>
+              <label className="text-sm font-semibold text-foreground sm:col-span-2">{t("admin.fieldDescriptionEn")}<Textarea value={editing.description_en || ""} onChange={(e) => setEditing({ ...editing, description_en: e.target.value })} className="mt-1 rounded-xl" data-testid="event-field-description_en" /></label>
               <label className="flex items-center gap-2 text-sm font-semibold"><Switch checked={!!editing.active} onCheckedChange={(v) => setEditing({ ...editing, active: v })} data-testid="event-field-active" />{t("admin.active")}</label>
               <Button type="submit" className="rounded-full font-bold sm:col-span-2" data-testid="event-save">{t("admin.save")}</Button>
             </form>
