@@ -102,6 +102,21 @@ describe("api interceptor — restauration de session", () => {
     expect(calls.map((c) => c.url)).toEqual(["/auth/me", "/auth/refresh"]);
   });
 
+  // Fix « preuves noires » : le garde T1.7 rejetait toute réponse non-JSON,
+  // y compris les images de preuves (image/jpeg) renvoyées par
+  // /admin/orders/{id}/proofs/{index} et l'export admin — la visionneuse
+  // plein écran noir était en réalité son état d'erreur.
+  test("le garde JSON laisse passer une réponse blob (image de preuve)", async () => {
+    handler = (config) => Promise.resolve({ ...ok(config, new Blob(["jpeg"])), headers: { "content-type": "image/jpeg" } });
+    const { data } = await api.get("/admin/orders/o1/proofs/0", { responseType: "blob" });
+    expect(data).toBeInstanceOf(Blob);
+  });
+
+  test("le garde JSON rejette toujours le HTML sur une réponse classique", async () => {
+    handler = (config) => Promise.resolve({ ...ok(config, "<html></html>"), headers: { "content-type": "text/html" } });
+    await expect(api.get("/products")).rejects.toThrow(/non-JSON/);
+  });
+
   test("le refresh silencieux est borné par un timeout", async () => {
     handler = (config) => {
       if (config.url === "/auth/refresh") return Promise.resolve(ok(config, { access_token: "fresh" }));

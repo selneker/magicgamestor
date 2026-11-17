@@ -18,8 +18,12 @@ api.interceptors.response.use(
     // T1.7 — garde-fou global sur /api : les réponses doivent être du JSON.
     // Une réponse HTML (page d'erreur du proxy, maintenance, etc.) ferait
     // planter les appelants qui appellent .filter() sur le payload.
+    // Exception (fix « preuves noires ») : les requêtes blob — images de
+    // preuves (image/jpeg) et export admin — sont légitimement non-JSON et
+    // passaient sous le garde depuis T1.7, rejetées à tort. Le garde ne
+    // s'applique donc qu'aux requêtes qui attendent du texte/JSON.
     const ct = r.headers?.["content-type"] || "";
-    if (ct && !ct.includes("application/json")) {
+    if (r.config?.responseType !== "blob" && ct && !ct.includes("application/json")) {
       const url = (r.config?.baseURL || "") + (r.config?.url || "");
       console.error(`[api guard] ${url}: content-type non-JSON (${ct})`);
       return Promise.reject(new Error(`Réponse non-JSON depuis ${url}`));
