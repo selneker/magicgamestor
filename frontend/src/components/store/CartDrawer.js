@@ -125,7 +125,7 @@ export function CartDrawer() {
                   </div>
                   <div className="flex items-center gap-1 rounded-full border border-slate-200 p-0.5">
                     <button aria-label={`${t("cart.qty")} -`} data-testid={`cart-dec-${i.slug}`} onClick={() => setQty(i.id, i.qty - 1)} className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-slate-100"><Minus className="h-3.5 w-3.5" /></button>
-                    <span className="w-5 text-center text-sm font-bold">{i.qty}</span>
+                    <span className="w-5 text-center text-sm font-bold dark:text-ink">{i.qty}</span>
                     <button aria-label={`${t("cart.qty")} +`} data-testid={`cart-inc-${i.slug}`} onClick={() => setQty(i.id, Math.min(20, i.qty + 1))} className="inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-slate-100"><Plus className="h-3.5 w-3.5" /></button>
                   </div>
                   <button data-testid={`cart-remove-${i.slug}`} onClick={() => remove(i.id)} className="inline-flex h-11 w-11 shrink-0 items-center justify-center text-slate-400 hover:text-red-500" aria-label={t("cart.remove")}><Trash2 className="h-4 w-4" /></button>
