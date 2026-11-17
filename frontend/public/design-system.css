@@ -1514,7 +1514,14 @@ ul {
 .main-w {
   padding-top:calc(var(--page-padding)/2);
   position:relative;
-  overflow:clip}
+  /* Fix G5 (17/11) : overflow:clip (deux axes) clippait le défilement
+     vertical — tout contenu plus haut que le viewport (liste admin,
+     catalogue long) était coupé SANS scroll possible. Clip sur X seulement
+     (l'intention : bloquer le débordement horizontal des décorations) ;
+     Y reste visible → le document défile normalement. La paire
+     clip+visible est valide (CSS Overflow) : aucun scrollport créé. */
+  overflow-x:clip;
+  overflow-y:visible}
 .section {
   z-index:1;
   position:relative}
