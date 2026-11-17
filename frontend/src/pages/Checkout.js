@@ -303,9 +303,9 @@ export default function Checkout() {
             <div data-testid="checkout-player-verified">
               <div className="flex h-[46px] items-center justify-between rounded-[14px] border border-[color:var(--rule)] bg-card px-3.5">
                 <span className="num truncate text-[15px] font-bold" data-testid="checkout-player-id">{shownId}</span>
-                <button type="button" onClick={() => setEditingId(true)} className="shrink-0 text-xs font-bold text-primary" data-testid="checkout-change-id">{t("checkout.change")}</button>
+                <button type="button" onClick={() => setEditingId(true)} className="shrink-0 text-xs font-bold text-foreground" data-testid="checkout-change-id">{t("checkout.change")}</button>
               </div>
-              <p className="mt-1.5 flex items-center gap-2 text-[13px] font-bold text-primary" data-testid="checkout-player-ok">
+              <p className="mt-1.5 flex items-center gap-2 text-[13px] font-bold text-foreground" data-testid="checkout-player-ok">
                 <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden="true"><Check className="h-3 w-3" strokeWidth={3} /></span>
                 <span className="min-w-0 truncate" data-testid="checkout-player-pseudo">{verified.name || "—"}</span>
               </p>

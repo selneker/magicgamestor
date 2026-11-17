@@ -11,7 +11,7 @@ export function ProtectedRoute({ children, admin = false }) {
   if (loading || (user === null && !location.state?.user)) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-6 text-center" data-testid="auth-loading">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <Loader2 className="h-6 w-6 animate-spin text-foreground" />
         {slow && <p className="max-w-xs text-sm text-muted-foreground" data-testid="auth-waking">{t("auth.waking")}</p>}
       </div>
     );

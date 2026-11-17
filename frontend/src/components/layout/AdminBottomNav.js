@@ -99,7 +99,7 @@ export function AdminBottomNav() {
         >
           <header className="flex items-center justify-between gap-3 border-b bg-foreground px-4 py-3 text-background">
             <p className="font-display text-sm font-semibold uppercase tracking-tight">{t("admin.more")}</p>
-            <button type="button" onClick={() => setMoreOpen(false)} aria-label={t("common.close")} data-testid="admin-more-close" className="flex h-11 w-11 items-center justify-center rounded-[8px] transition-colors hover:text-primary"><X className="h-5 w-5" strokeWidth={2} /></button>
+            <button type="button" onClick={() => setMoreOpen(false)} aria-label={t("common.close")} data-testid="admin-more-close" className="flex h-11 w-11 items-center justify-center rounded-[8px] transition-colors hover:text-foreground"><X className="h-5 w-5" strokeWidth={2} /></button>
           </header>
           <ul className="divide-y p-2">
             {secondary.map((e) => {

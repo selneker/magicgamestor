@@ -116,7 +116,7 @@ export default function AuthPage({ mode = "login" }) {
         </form>
         <p className="mt-4 text-center text-sm text-slate-500">
           {mode === "login" ? t("auth.noAccount") : t("auth.hasAccount")}{" "}
-          <Link to={mode === "login" ? "/inscription" : "/connexion"} state={location.state} className="font-semibold text-primary" data-testid="switch-auth-mode">{mode === "login" ? t("auth.register") : t("auth.login")}</Link>
+          <Link to={mode === "login" ? "/inscription" : "/connexion"} state={location.state} className="font-semibold text-foreground" data-testid="switch-auth-mode">{mode === "login" ? t("auth.register") : t("auth.login")}</Link>
         </p>
       </div>
     </div>

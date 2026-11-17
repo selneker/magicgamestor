@@ -57,7 +57,7 @@ export function ForgotPassword() {
           <Button type="submit" disabled={busy || (captcha.enabled && !captcha.ready)} className="h-11 w-full rounded-full font-semibold" data-testid="forgot-submit">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.forgotCta")}</Button>
         </form>
       )}
-      <p className="mt-4 text-center text-sm text-slate-500"><Link to="/connexion" className="font-semibold text-primary" data-testid="back-to-login">{t("auth.login")}</Link></p>
+      <p className="mt-4 text-center text-sm text-slate-500"><Link to="/connexion" className="font-semibold text-foreground" data-testid="back-to-login">{t("auth.login")}</Link></p>
     </Shell>
   );
 }
