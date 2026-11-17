@@ -21,9 +21,18 @@ api.interceptors.response.use(
     // Exception (fix « preuves noires ») : les requêtes blob — images de
     // preuves (image/jpeg) et export admin — sont légitimement non-JSON et
     // passaient sous le garde depuis T1.7, rejetées à tort. Le garde ne
-    // s'applique donc qu'aux requêtes qui attendent du texte/JSON.
+    // s'applique donc qu'aux requêtes qui attendent du texte/JSON. Une page
+    // d'erreur HTML répondue sous un blob reste toutefois rejetée : aucun
+    // export ni image légitime n'est du HTML — on garde le filet de
+    // diagnostic du garde T1.7 (revue du 17/11).
     const ct = r.headers?.["content-type"] || "";
-    if (r.config?.responseType !== "blob" && ct && !ct.includes("application/json")) {
+    if (r.config?.responseType === "blob") {
+      if (ct.includes("text/html")) {
+        const url = (r.config?.baseURL || "") + (r.config?.url || "");
+        console.error(`[api guard] ${url}: page d'erreur HTML sous un blob`);
+        return Promise.reject(new Error(`Réponse non-JSON depuis ${url}`));
+      }
+    } else if (ct && !ct.includes("application/json")) {
       const url = (r.config?.baseURL || "") + (r.config?.url || "");
       console.error(`[api guard] ${url}: content-type non-JSON (${ct})`);
       return Promise.reject(new Error(`Réponse non-JSON depuis ${url}`));

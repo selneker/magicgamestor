@@ -117,6 +117,11 @@ describe("api interceptor — restauration de session", () => {
     await expect(api.get("/products")).rejects.toThrow(/non-JSON/);
   });
 
+  test("une page d'erreur HTML sous un blob est rejetée (filet de diagnostic)", async () => {
+    handler = (config) => Promise.resolve({ ...ok(config, new Blob(["<html></html>"])), headers: { "content-type": "text/html" } });
+    await expect(api.get("/admin/orders/o1/proofs/0", { responseType: "blob" })).rejects.toThrow(/non-JSON/);
+  });
+
   test("le refresh silencieux est borné par un timeout", async () => {
     handler = (config) => {
       if (config.url === "/auth/refresh") return Promise.resolve(ok(config, { access_token: "fresh" }));
