@@ -189,8 +189,11 @@ const PRODUCTS = [
 ];
 
 const EVENTS = [
-  { id: "e1", title: "Tournoi solo - 5000 Ar", slug: "t", description: "Inscription ouverte",
-    image_url: null, likes: 24, event_date: "2026-11-20T18:00:00Z", active: true },
+  // AdminEvents lit title_fr / shares / product_slug ; la page publique
+  // lit localized(ev, "title"/"description") → title_fr/description_fr.
+  // Le titre était mesuré VIDE pendant l'audit (mock avec `title` seul).
+  { id: "e1", title_fr: "Tournoi solo - 5000 Ar", slug: "t", description_fr: "Inscription ouverte", description: "Inscription ouverte",
+    image_url: null, likes: 24, shares: 3, product_slug: "pubg-mobile", event_date: "2026-11-20T18:00:00Z", active: true },
 ];
 
 const PAYMENT_CONFIG = {
@@ -211,6 +214,14 @@ const ORDER = {
   // PL-CHK-2 — contrat preuve : le délai et la liste existent toujours.
   payment_deadline_at: new Date(Date.now() + 20 * 60_000).toISOString(), payment_proofs: [],
   items: [{ product_id: "p1", name: "660 UC", quantity: 1, price: 2500, line_total: 2500 }],
+};
+
+// Variante admin de la commande (champs que AdminOrders affiche : email,
+// pseudo, dates, opérateur manuel). Le reste est identique.
+const ADMIN_ORDER = {
+  ...ORDER,
+  email: "client@exemple.test", pseudo: "TestPlayer", created_at: "2026-11-16T09:00:00Z",
+  manual_operator: null, manual_reference: null,
 };
 
 // PL-CHK-4 — écran 2 (/orders/:id) : le paiement manuel N'A PAS de téléphone
@@ -272,12 +283,22 @@ const CHAT_THREAD = {
   has_more: false,
 };
 
-const mockApi = (pathname, page = {}) => {
+const mockApi = (pathnameRaw, page = {}) => {
+  // Normalisation : route.fulfill donne le pathname COMPLET (/api/admin/...)
+  // alors que le front appelle des chemins relatifs (/admin/...). Sans
+  // strip du préfixe /api, la branche admin ci-dessous (startsWith) était
+  // inatteignable et 7 pages sur 11 rendaient leur écran d'erreur pendant
+  // l'audit (revue 17/11).
+  const pathname = pathnameRaw.replace(/^\/api/, "");
   // Pages admin : formes minimales mais typées (objets là où les pages
   // accèdent à des champs, tableaux ailleurs), pour que chaque page rende
   // réellement son interface.
   if (pathname.startsWith("/admin") || pathname.startsWith("/crypto/admin") || pathname.startsWith("/loyalty/admin") || pathname.startsWith("/payments/admin")) {
     if (pathname.includes("/admin/stats")) return ADMIN_STATS;
+    // Liste des commandes : AdminOrders fait orders.map(...) — un tableau
+    // (l'ancien catch-all se terminait sur endsWith("/orders") → objet
+    // ORDER → throw, page jamais mesurée).
+    if (pathname.includes("/admin/orders")) return [ADMIN_ORDER];
     if (pathname.includes("/admin/users")) return { items: [], total: 0, page: 1, page_size: 20 };
     if (pathname.includes("/admin/fazercards/price-alerts")) return { alerts: [], unacknowledged: 0 };
     if (pathname.includes("/admin/fazercards/settings")) return { fzr_auto: false };
@@ -407,6 +428,11 @@ const PAGES = [
   { name: "admin-messages-conversation", path: "/admin/messages?c=c1", loggedIn: true, admin: true },
   { name: "admin-fidelite", path: "/admin/fidelite", loggedIn: true, admin: true },
   { name: "admin-utilisateurs", path: "/admin/utilisateurs", loggedIn: true, admin: true },
+  // Pages d'auth : jamais auditées avant (fe00ed6 y a introduit des liens
+  // invisibles en sombre sur cartes blanches — revue 17/11).
+  { name: "connexion", path: "/connexion" },
+  { name: "inscription", path: "/inscription" },
+  { name: "mot-de-passe-oublie", path: "/mot-de-passe-oublie" },
 ];
 
 const VIEWPORTS = [
