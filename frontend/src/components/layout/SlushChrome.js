@@ -90,8 +90,10 @@ export function SlushChrome() {
       else window.scrollTo(0, 0);
     };
     resetScroll();
-    requestAnimationFrame(resetScroll);
-    if (!gsapReady() || isCaptureMode()) return undefined;
+    // Annulé au cleanup (revue du 17/11) : un rAF en attente ne doit pas
+    // tirer après un changement de route suivant.
+    const rafId = requestAnimationFrame(resetScroll);
+    if (!gsapReady() || isCaptureMode()) return () => cancelAnimationFrame(rafId);
     const cleanups = [
       initCardReveals(document),
       initSlantedText(document),
