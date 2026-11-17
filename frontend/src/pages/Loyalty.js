@@ -6,6 +6,7 @@ import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { useGames } from "@/context/GameContext";
 import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/common/ErrorState";
 import { IdentityFieldsVerify } from "@/components/store/checkout/IdentityFieldsVerify";
 
 // Jeu FIGÉ pour la fidélité (décision Selneker, option b — PL-003-FE-4) : le
@@ -136,10 +137,16 @@ function Transfers({ config, transfers, reload }) {
 export default function Loyalty() {
   const { t } = useLang();
   const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [rewards, setRewards] = useState([]);
   const [transfers, setTransfers] = useState([]);
   const load = useCallback(() => {
-    api.get("/loyalty/me").then((r) => setData(r.data)).catch(() => setData({ balance: { total: 0, earned: 0, promo: 0 }, ledger: [], config: {} }));
+    setLoading(true);
+    setError(false);
+    api.get("/loyalty/me")
+      .then((r) => { setData(r.data); setLoading(false); })
+      .catch(() => { setLoading(false); setError(true); });
     api.get("/loyalty/rewards").then((r) => setRewards(r.data)).catch((e) => toast.error(errorMessage(e)));
     api.get("/loyalty/transfers").then((r) => setTransfers(r.data)).catch((e) => toast.error(errorMessage(e)));
   }, []);
@@ -147,7 +154,25 @@ export default function Loyalty() {
   const redeem = async (reward, pubg) => {
     try { await api.post("/loyalty/redeem", { reward_id: reward.id, pubg_id: pubg || undefined }); toast.success(t("loyalty.redeemed")); load(); } catch (err) { toast.error(errorMessage(err)); }
   };
-  if (!data) return <p className="py-12 text-slate-500">{t("common.loading")}</p>;
+  if (loading) return (
+    <div className="pb-24 pt-6" data-testid="loyalty-page">
+      <p className="eyebrow">{t("account.title")}</p>
+      <h1 className="font-display text-3xl font-bold sm:text-4xl">{t("loyalty.title")}</h1>
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="panel p-5">
+            <div className="h-4 w-1/3 rounded bg-muted animate-pulse" />
+            <p className="num mt-1 h-10 w-full rounded bg-muted animate-pulse" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+  if (error) return (
+    <div className="pb-24 pt-6" data-testid="loyalty-page">
+      <ErrorState title={t("common.error")} description={t("loyalty.error")} retryLabel={t("common.retry")} onRetry={load} className="mt-10" />
+    </div>
+  );
   return (
     <div className="pb-24 pt-6" data-testid="loyalty-page">
       <p className="eyebrow">{t("account.title")}</p>

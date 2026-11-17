@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Gamepad2, KeyRound, MessageCircle, Rocket, ShieldCheck, Tag, Timer, Wallet } from "lucide-react";
 import { api } from "@/lib/api";
@@ -7,6 +7,7 @@ import { useLang, localized } from "@/context/LanguageContext";
 import { GameCard } from "@/components/game/GameCard";
 import { ProductCard } from "@/components/store/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/common/ErrorState";
 import { usePageMeta } from "@/lib/catalog";
 
 // Une charge utile qui n'est pas un tableau (page HTML renvoyee par un proxy,
@@ -336,6 +337,7 @@ export default function Home() {
   const [products, setProducts] = useState(null);
   const [subs, setSubs] = useState(null);
   const [events, setEvents] = useState([]);
+  const [productError, setProductError] = useState(false);
   // FAQ de la page d'accueil → données structurées FAQPage : Google peut
   // afficher ces questions directement dans les résultats de recherche.
   const faqJsonLd = useMemo(() => ({
@@ -348,7 +350,8 @@ export default function Home() {
     })),
   }), [t]);
   usePageMeta(t("seo.homeTitle"), t("seo.homeDescription"), { jsonLd: faqJsonLd });
-  useEffect(() => {
+  const load = useCallback(() => {
+    setProductError(false);
     Promise.all([
       api.get("/products", { params: { popular: true } }),
       api.get("/products", { params: { type: "prime,prime_plus" } }),
@@ -367,9 +370,10 @@ export default function Home() {
       ];
       setProducts([...new Map(selected.map((product) => [product.id, product])).values()].slice(0, 4));
       setSubs(prime.slice(0, 8));
-    }).catch(() => { setProducts([]); setSubs([]); });
+    }).catch(() => { setProductError(true); setProducts([]); setSubs([]); });
     api.get("/events").then((r) => setEvents(asList("/events", r.data).slice(0, 1))).catch(() => {});
   }, []);
+  useEffect(load, [load]);
   const shopUrl = games.length === 1 ? `/boutique?game=${games[0].id}` : "/boutique";
   const subsUrl = `${shopUrl}${shopUrl.includes("?") ? "&" : "?"}type=prime,prime_plus`;
   const popularIds = new Set((products || []).map((product) => product.id));
@@ -400,7 +404,8 @@ export default function Home() {
             {products === null && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-60 rounded-[14px]" />)}
             {products?.map((p, i) => <ProductCard key={p.id} product={p} index={i} displayPopular />)}
           </div>
-          {products?.length === 0 && <p className="p-m" data-testid="popular-empty">{t("store.noOffers")}</p>}
+          {!productError && products?.length === 0 && <p className="p-m" data-testid="popular-empty">{t("store.noOffers")}</p>}
+          {productError && <ErrorState title={t("common.error")} description={t("store.offersError")} retryLabel={t("common.retry")} onRetry={load} className="mt-6" data-testid="popular-error" />}
         </div>
       </section>
 
@@ -414,7 +419,7 @@ export default function Home() {
             {subs === null && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-60 rounded-[14px]" />)}
             {visibleSubs?.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
           </div>
-          {visibleSubs?.length === 0 && <p className="p-m" data-testid="subs-empty">{t("store.noOffers")}</p>}
+          {!productError && visibleSubs?.length === 0 && <p className="p-m" data-testid="subs-empty">{t("store.noOffers")}</p>}
         </div>
       </section>
 
