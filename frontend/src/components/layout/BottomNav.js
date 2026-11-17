@@ -1,10 +1,19 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { MessageCircle, Receipt, Sparkles, Store } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { useLang } from "@/context/LanguageContext";
 import { GameButton } from "@/components/layout/GameButton";
 import { GameSelector } from "@/components/layout/GameSelector";
 import { hidesBottomChrome } from "@/lib/bottomChrome";
+
+// Correspondances lucide -> bibliotheque maquettes/icons (sprite ic-XX).
+// Aucune icone n'est ajoutee sur les cartes produit (contrainte PL-005-FE-09).
+const ICON_BY_TAB = {
+  shop: "coffre",        // boutique = coffre aux jeux
+  events: "medaille",    // evenements = medaille
+  orders: "ticket-cadenas", // commandes = ticket
+  support: "chat",       // support = bulle chat
+};
 
 export function BottomNav() {
   const { pathname } = useLocation();
@@ -15,28 +24,28 @@ export function BottomNav() {
   const items = [
     {
       to: "/boutique",
-      icon: Store,
+      name: ICON_BY_TAB.shop,
       label: t("nav.shop"),
       id: "bottom-nav-shop",
       match: (p) => p === "/" || p.startsWith("/boutique") || p.startsWith("/produit") || p.startsWith("/pack-evolutif"),
     },
     {
       to: "/evenements",
-      icon: Sparkles,
+      name: ICON_BY_TAB.events,
       label: t("nav.events"),
       id: "bottom-nav-events",
       match: (p) => p.startsWith("/evenements"),
     },
     {
       to: "/suivi",
-      icon: Receipt,
+      name: ICON_BY_TAB.orders,
       label: t("nav.orders"),
       id: "bottom-nav-orders",
       match: (p) => p.startsWith("/suivi") || p.startsWith("/commande") || p.startsWith("/compte"),
     },
     {
       to: "/chat",
-      icon: MessageCircle,
+      name: ICON_BY_TAB.support,
       label: t("nav.support"),
       id: "bottom-nav-support",
       match: (p) => p.startsWith("/chat") || p.startsWith("/support"),
@@ -61,7 +70,7 @@ export function BottomNav() {
           data-testid="bottom-nav"
           aria-label={t("nav.shop")}
         >
-          {items.map(({ to, icon: Icon, label, id, match }) => {
+          {items.map(({ to, name, label, id, match }) => {
             const active = match(pathname);
             return (
               <NavLink
@@ -82,7 +91,7 @@ export function BottomNav() {
                   />
                 )}
                 <span className="relative z-10 flex items-center">
-                  <Icon className="h-6 w-6 shrink-0" strokeWidth={active ? 2.25 : 2} />
+                  <Icon name={name} className="h-6 w-6 shrink-0" />
                   <motion.span
                     initial={false}
                     animate={{ width: active ? "auto" : 0, opacity: active ? 1 : 0 }}

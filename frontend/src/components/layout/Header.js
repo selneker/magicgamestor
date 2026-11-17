@@ -1,11 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-import { Loader2, RefreshCw, ShoppingBag, Sparkles, UserRound } from "lucide-react";
+import { Loader2, RefreshCw, UserRound } from "lucide-react";
 import { api } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { Logo } from "@/components/Logo";
 import { formatPointsCount } from "@/lib/pointsFormat";
 import { initMenu } from "@/lib/slush";
@@ -41,7 +42,7 @@ function LoyaltyChip() {
       className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--rule-strong)] bg-foreground px-2.5 text-background transition-transform hover:-translate-y-0.5 active:scale-[0.96] md:h-10 md:px-3"
     >
       <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[color:var(--brand-ink)] md:h-5 md:w-5">
-        <Sparkles className="h-3 w-3" strokeWidth={2.5} />
+        <Icon name="jeton-vert" className="h-3 w-3" />
       </span>
       <span className="num leading-none text-background text-[15px] font-bold md:text-[16px]" data-testid="header-loyalty-value">{total}</span>
       <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-background/70 leading-none">pts</span>
@@ -78,7 +79,7 @@ function MobilePointsPill() {
     >
       <span className="inline-flex h-7 items-center gap-1 whitespace-nowrap rounded-full border border-[color:var(--rule-strong)] bg-foreground px-2 text-background">
         <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-primary">
-          <Sparkles className="h-3 w-3" strokeWidth={2.5} />
+          <Icon name="jeton-vert" className="h-3 w-3" />
         </span>
         <span className="num text-[13px] font-bold leading-none text-background" data-testid="header-loyalty-pill-value">
           {formatPointsCount(total, lang)}
@@ -98,14 +99,14 @@ function CartButton({ circle = false }) {
     // visible à l'écran en permanence.
     return (
       <button type="button" onClick={() => setOpen(true)} data-testid="cart-button-mobile" aria-label={t("nav.cart")} className="nav-btn-circle relative">
-        <ShoppingBag className="h-5 w-5" strokeWidth={1.75} />
+        <Icon name="portefeuille" className="h-5 w-5" />
         {count > 0 && <span data-testid="cart-count" className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-black text-[color:var(--brand-ink)]">{count}</span>}
       </button>
     );
   }
   return (
     <Button variant="ghost" size="icon" onClick={() => setOpen(true)} data-testid="cart-button" aria-label={t("nav.cart")} className="relative rounded-none">
-      <ShoppingBag className="h-5 w-5" strokeWidth={1.75} />
+      <Icon name="portefeuille" className="h-5 w-5" />
       {count > 0 && <span data-testid="cart-count" className="absolute right-0 top-0.5 flex h-4 min-w-4 items-center justify-center bg-primary px-1 text-[10px] font-black text-[color:var(--brand-ink)]">{count}</span>}
     </Button>
   );
@@ -265,13 +266,13 @@ function DesktopMenu({ isAdmin, burgerRef, toggleable = false, withLinks = false
           {user ? (
             <>
               <Link to="/compte" role="menuitem" className={item}><UserRound className="h-4 w-4" strokeWidth={1.75} />{t("nav.account")}</Link>
-              <Link to="/compte/points" role="menuitem" className={item}><Sparkles className="h-4 w-4" strokeWidth={1.75} />{t("nav.points")}</Link>
+              <Link to="/compte/points" role="menuitem" className={item}><Icon name="jeton-vert" className="h-4 w-4" />{t("nav.points")}</Link>
             </>
           ) : (
             <Link to="/connexion" role="menuitem" className={item}><UserRound className="h-4 w-4" strokeWidth={1.75} />{t("nav.login")}</Link>
           )}
           <button type="button" role="menuitem" onClick={() => { setOpenMenu(false); setOpen(true); }} className={`${item} w-full text-left`}>
-            <ShoppingBag className="h-4 w-4" strokeWidth={1.75} />{t("nav.cart")}
+            <Icon name="portefeuille" className="h-4 w-4" />{t("nav.cart")}
           </button>
         </div>
       )}
