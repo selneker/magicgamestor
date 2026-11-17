@@ -226,7 +226,7 @@ export function ProofViewer({ order, startIndex = 0, onClose }) {
       aria-label={t("admin.proofViewerTitle")}
       tabIndex={-1}
       data-testid="proof-viewer"
-      className="fixed inset-0 z-[80] flex flex-col bg-ink text-[color:hsl(var(--cream))] outline-none"
+      className="fixed inset-0 z-[110] flex flex-col bg-ink text-[color:hsl(var(--cream))] outline-none"
     >
       <header className="flex flex-none items-center gap-2 px-2 py-2">
         <p className="text-sm font-semibold" data-testid="proof-viewer-counter">{index + 1} / {count}</p>
