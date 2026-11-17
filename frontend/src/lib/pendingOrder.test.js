@@ -17,7 +17,7 @@ beforeEach(() => {
 afterEach(() => { global.localStorage = rawStore; });
 
 test("écrit puis relit {id, createdAt} — et rien d'autre", () => {
-  const now = new Date("2026-11-10T12:00:00Z").toISOString();
+  const now = new Date(Date.now() - 3600_000).toISOString(); // il y a 1 h, bien sous les 24 h de péremption
   writePendingOrderId("ord_1", now);
   const raw = JSON.parse(global.localStorage.getItem(KEY));
   expect(Object.keys(raw).sort()).toEqual(["createdAt", "id"]); // aucun autre champ (téléphone, nom…)
