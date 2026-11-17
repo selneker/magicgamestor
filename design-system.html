@@ -1,0 +1,1535 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Design System — Magic Game Store (template Slush)</title>
+  <meta name="description" name="description" content="Restitution statique du design system du template Slush (sans transitions de page Barba) + bibliothèque d’icønes maquettes/icons." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;700&family=Onest:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ========================================================================
+       DESIGN SYSTEM — template Slush (template_to_use.html)
+       Restitution statique, sans transitions de page Barba (exclues sur consigne)
+       ======================================================================== */
+
+    /* --- Tokens de taille (Osmo, fluides) --- */
+    :root {
+      --size-unit: 16;
+      --size-container-ideal: 1440;
+      --size-container-min: 992px;
+      --size-container-max: 2250px;
+      --size-container: clamp(var(--size-container-min), 100vw, var(--size-container-max));
+      --size-font: calc(var(--size-container) / (var(--size-container-ideal) / var(--size-unit)));
+
+      /* Palette — valeurs concrètes cohérentes avec l’esprit Slush + MGS
+         (le template externe définit ces tokens dans une feuille Webflow non fournie) */
+      --color--light: #F4F3EE;      /* crème MGS */
+      --color--dark: #111111;       /* encre MGS */
+      --color--blue-700: #2563EB;
+      --color--yellow-700: #D97706;
+      --color--violet-700: #7C3AED;
+      --color--green-700: #15803D;
+      --color--orange-800: #C2410C;
+      --color--purple-800: #6B21A8;
+      --color--glacier: #DCEEFF;
+
+      /* Typographie */
+      --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+      --font-body: 'Onest', system-ui, sans-serif;
+
+      /* Divers (réutilisables) */
+      --radius: 10px;
+      --rule: hsl(0 0% 7% / 0.15);
+      --shadow-brut: 3px 3px 0 hsl(0 0% 4% / 0.18);
+    }
+
+    /* --- Reset & base --- */
+    *,
+    *:after,
+    *:before {
+      box-sizing: border-box;
+    }
+    html {
+      scroll-behavior: initial;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    body ::-webkit-scrollbar {
+      display: none;
+    }
+    body {
+      margin: 0;
+      font-size: var(--size-font);
+      font-family: var(--font-body);
+      color: var(--color--dark);
+      background: var(--color--light);
+      -webkit-font-smoothing: antialiased;
+    }
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+    button {
+      background: transparent;
+      padding: 0;
+      border: none;
+      font: inherit;
+      cursor: pointer;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      vertical-align: middle;
+    }
+    .sr-only:not(:focus):not(:active) {
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      height: 1px;
+      overflow: hidden;
+      position: absolute;
+      white-space: nowrap;
+      width: 1px;
+    }
+
+    /* --- Utilitaires de mise en page --- */
+    .container {
+      max-width: var(--size-container);
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+    .content-wrap-m {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .flex-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+    }
+    .gap--reg {
+      gap: 1rem;
+    }
+    .u--rel { position: relative; }
+    .u--text--italic { font-style: italic; }
+    .u--text--caps { text-transform: uppercase; letter-spacing: 0.05em; }
+    .u--weight--bold { font-weight: 700; }
+    .u--bg--blue { background: var(--color--blue-700); }
+    .u--bg--violet { background: var(--color--violet-700); }
+    .u--bg--yellow { background: var(--color--yellow-700); }
+    .u--bg--orange { background: var(--color--orange-800); }
+    .u--bg--green { background: var(--color--green-700); }
+    .u--bg--black { background: var(--color--dark); color: var(--color--light); }
+    .show--clip { overflow: hidden; }
+    .mob-vert { flex-direction: column; }
+
+    /* --- Typographie (classes du template) --- */
+    .h-d {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      line-height: 1.1;
+      margin: 0 0 0.5rem;
+    }
+    .h-l {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: clamp(1.5rem, 4vw, 2.5rem);
+      line-height: 1.2;
+      margin: 0 0 0.5rem;
+    }
+    .h-sm {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: clamp(1rem, 3vw, 1.5rem);
+      line-height: 1.3;
+      margin: 0 0 0.5rem;
+    }
+    .h-s {
+      font-family: var(--font-body);
+      font-size: 1rem;
+      line-height: 1.6;
+      margin: 0 0 1rem;
+    }
+    .p-m {
+      font-family: var(--font-body);
+      font-size: 1rem;
+      line-height: 1.6;
+      margin: 0 0 1rem;
+    }
+    .p-l {
+      font-family: var(--font-body);
+      font-size: 0.9375rem;
+      color: inherit;
+    }
+
+    /* --- Section générique --- */
+    .section {
+      position: relative;
+    }
+    .content-container {
+      width: 100%;
+    }
+    .padding-vertical-180 {
+      padding-top: 10rem;
+      padding-bottom: 10rem;
+    }
+    .title-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    /* ========================================================================
+       BOUTON .button-main  (structure 5 niveaux de spans, effet 3D au survol)
+       ======================================================================== */
+    .button-main {
+      display: inline-flex;
+      align-items: center;
+      position: relative;
+      height: 3.25rem;
+      font-family: var(--font-display);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      transition: 0.5s var(--elastic-ease-out);
+    }
+    .button-main:active {
+      transform: scale(0.955);
+    }
+    .button-main-inner {
+      display: inline-flex;
+      flex-direction: column;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+    }
+    .button-main-inner.full-h {
+      height: 100%;
+    }
+    .button-main-inner__back {
+      display: block;
+      font-weight: 800;
+      text-transform: uppercase;
+      line-height: 0.8;
+      transition: translate var(--duration-medium) var(--elastic-ease-out),
+                  rotate var(--duration-default) var(--elastic-ease-out),
+                  opacity 0.15s ease-out;
+      opacity: 0;
+      translate: 0 2em -6em;
+      rotate: 1 0 0 -90deg;
+    }
+    .button-main-inner__back::before {
+      content: attr(data-text);
+      font-weight: bold;
+      text-transform: uppercase;
+      display: block;
+    }
+    .button-main-inner__back.is--download::before {
+      font-family: 'Lateral', Impact, sans-serif;
+      font-size: 17.5em;
+      margin-bottom: -0.1em;
+      padding-top: 0.08em;
+      transform: translate(0, -85%);
+    }
+    .button-main-inner__front {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      width: 100%;
+      transition: translate var(--duration-medium) var(--elastic-ease-out),
+                  rotate var(--duration-default) var(--elastic-ease-out),
+                  opacity var(--duration-fade) ease-out;
+    }
+    .button-main-inner__bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      transition: background-color 0.2s var(--color-ease);
+    }
+    .button-main-inner__text {
+      position: relative;
+      z-index: 2;
+      transition: translate var(--duration-default) var(--elastic-ease-out);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .button-main-inner__text.has--logo,
+    .button-main-inner__text.has--icon {
+      gap: 0.35rem;
+    }
+    .button-main-inner__arrow,
+    .button-main-inner__logo {
+      width: 1rem;
+      height: 1rem;
+      display: block;
+    }
+
+    /* Thèmes de bouton */
+    [data-button-theme="light"] .button-main-inner__bg {
+      background: var(--color--light);
+      border: 0.125em solid var(--color--dark);
+    }
+    [data-button-theme="light"] .button-main-inner__text {
+      color: var(--color--dark);
+    }
+    [data-button-theme="dark"] .button-main-inner__bg {
+      background: var(--color--dark);
+    }
+    [data-button-theme="dark"] .button-main-inner__text {
+      color: var(--color--light);
+    }
+
+    /* Accents (face arrière 3D) */
+    [data-button-accent="white"] .button-main-inner__back { background: var(--color--light); }
+    [data-button-accent="blue"] .button-main-inner__back { background: var(--color--blue-700); }
+    [data-button-accent="yellow"] .button-main-inner__back { background: var(--color--yellow-700); }
+    [data-button-accent="violet"] .button-main-inner__back { background: var(--color--violet-700); }
+    [data-button-accent="green"] .button-main-inner__back { background: var(--color--green-700); }
+    [data-button-accent="orange"] .button-main-inner__back { background: var(--color--orange-800); }
+    [data-button-accent="dark"] .button-main-inner__back {
+      background: var(--color--dark);
+      color: var(--color--light);
+    }
+    [data-button-accent="dark"] .button-main-inner__text { color: var(--color--light); }
+
+    /* Variante text-only (pas de fond visible) */
+    .button-main.text-only .button-main-inner__bg {
+      background: transparent !important;
+      border: none !important;
+    }
+
+    /* Hover 3D */
+    @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+      .button-main:is(:hover, :focus-visible) .button-main-inner__front {
+        translate: 0 -2em -6em;
+        rotate: 1 0 0 85deg;
+        opacity: 0;
+      }
+      .button-main:is(:hover, :focus-visible) .button-main-inner__text {
+        translate: 0 -0.75em 0;
+        transition-delay: 0s;
+      }
+      .button-main:is(:hover, :focus-visible) .button-main-inner__back {
+        rotate: 1 0 0 0deg;
+        translate: 0 0 0;
+        opacity: 1;
+      }
+      .button-main:is(:hover, :focus-visible) .button-main-inner__back::before {
+        translate: 0 0em 0;
+        transition-delay: calc(1 * 0.012s);
+      }
+      .button-main:hover .button-main-inner__back::before {
+        translate: 0 0em 0 !important;
+      }
+    }
+    @media (hover: hover) and (prefers-reduced-motion) {
+      .button-main:is(:hover, :focus-visible) .button-main-inner__bg {
+        background: var(--color--dark) !important;
+      }
+      .button-main:is(:hover, :focus-visible) .button-main-inner__text {
+        color: var(--color--light) !important;
+      }
+      .button-main[data-button-theme="dark"]:is(:hover, :focus-visible) .button-main-inner__bg {
+        background: var(--color--light) !important;
+        border: 0.125em solid var(--color--dark) !important;
+      }
+      .button-main[data-button-theme="dark"]:is(:hover, :focus-visible) .button-main-inner__text {
+        color: var(--color--dark) !important;
+      }
+    }
+
+    /* Tokens d’animation du template */
+    :root {
+      --cubic-default: cubic-bezier(0.65, 0.05, 0, 1);
+      --duration-default: 0.75s;
+      --duration-medium: 0.85s;
+      --duration-fade: 0.15s;
+      --color-ease: cubic-bezier(0.216, 0.62, 0.356, 1);
+      --elastic-ease-out: linear(
+        0, 0.5737 7.6%, 0.8382 11.87%, 0.9463 14.19%, 1.0292 16.54%,
+        1.0886 18.97%, 1.1258 21.53%, 1.137 22.97%, 1.1424 24.48%,
+        1.1423 26.1%, 1.1366 27.86%, 1.1165 31.01%, 1.0507 38.62%,
+        1.0219 42.57%, 0.9995 46.99%, 0.9872 51.63%, 0.9842 58.77%,
+        1.0011 81.26%, 1
+      );
+    }
+
+    /* --- Lien .link (sous-ligne animé) --- */
+    .link {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+    @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+      .link::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 0.125em;
+        background: currentColor;
+        transform: scale(0, 1);
+        transform-origin: left center;
+        transition: transform 0.4s var(--cubic-default);
+      }
+      .link:hover::after {
+        transform: scale(1, 1);
+        transform-origin: right center;
+      }
+    }
+
+    /* --- Navigation .nav-w --- */
+    .nav-w {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      transition: top 0.6s var(--elastic-ease-out);
+    }
+    body[data-scrolling-started="true"] .nav-w {
+      top: 1.5rem;
+    }
+    .nav-container {
+      width: 100%;
+    }
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 0;
+    }
+    .nav-btn-circle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 9999px;
+      border: 0.125em solid var(--color--dark);
+      transition: 0.5s var(--elastic-ease-out);
+    }
+    .nav-btn-circle.is--nav-logo {
+      width: auto;
+      height: auto;
+      padding: 0.5rem;
+      border: none;
+    }
+    .nav-button-logo {
+      width: 1.5rem;
+      height: 1.5rem;
+      display: block;
+    }
+    .nav-inner-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .nav-inner-list {
+      display: flex;
+      gap: 0.75rem;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .nav-inner-li {
+      display: flex;
+    }
+    #menuButton .nav-btn-menu__lines {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+    #menuButton .nav-btn-menu__line {
+      width: 100%;
+      height: 0.15rem;
+      background: var(--color--dark);
+      border-radius: 0.1rem;
+    }
+    #menuButton .nav-btn-menu__line.is--v {
+      width: 0.15rem;
+      height: 100%;
+    }
+
+    /* --- Grille deux colonnes (hero) --- */
+    .two-col-grid {
+      display: grid;
+      gap: 3rem;
+      align-items: center;
+    }
+    @media (min-width: 768px) {
+      .two-col-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    .two-col-grid__item {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .two-col-grid__text h2 {
+      margin: 0 0 0.75rem;
+    }
+    .two-col-grid__visual {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .two-col-grid__visual-logo {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      fill: currentColor;
+      opacity: 0.15;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .two-col-grid__visual img {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    [data-box-theme="violet"] { background: var(--color--violet-700); color: #fff; }
+    [data-box-theme="green"] { background: var(--color--green-700); color: #fff; }
+    [data-box-theme="yellow"] { background: var(--color--yellow-700); color: #fff; }
+    [data-box-theme="orange"] { background: var(--color--orange-800); color: #fff; }
+    [data-box-theme="blue"] { background: var(--color--blue-700); color: #fff; }
+
+    /* --- Marquee CTA défilant --- */
+    .cta-banner-section {
+      overflow: hidden;
+    }
+    .cta-banner-inner {
+      position: relative;
+    }
+    .marquee-advanced {
+      display: flex;
+      gap: 1rem;
+      overflow: hidden;
+      padding: 1rem 0;
+    }
+    .marquee-advanced__scroll {
+      display: flex;
+      gap: 1rem;
+      will-change: transform;
+    }
+    .marquee-advanced[data-marquee-direction="right"] .marquee-advanced__scroll {
+      animation: marquee-right 25s linear infinite;
+    }
+    .marquee-advanced[data-marquee-direction="left"] .marquee-advanced__scroll {
+      animation: marquee-left 25s linear infinite;
+    }
+    @keyframes marquee-right {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+    @keyframes marquee-left {
+      from { transform: translateX(-50%); }
+      to { transform: translateX(0); }
+    }
+    .download-cta-el {
+      flex-shrink: 0;
+    }
+    .marquee-cta-h {
+      font-variation-settings: "slnt" 100;
+    }
+    .marquee-cta-dot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 3rem;
+      height: 3rem;
+      flex-shrink: 0;
+    }
+    .marquee-dot-logo {
+      width: 100%;
+      height: 100%;
+      fill: currentColor;
+    }
+
+    /* --- Slider sécurité --- */
+    .img-slider {
+      position: relative;
+      margin-top: 3rem;
+    }
+    .img-slider__list {
+      display: flex;
+      gap: 1rem;
+      overflow: hidden;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+    }
+    .img-slider__list::-webkit-scrollbar { display: none; }
+    .img-slide {
+      flex: 0 0 100%;
+      scroll-snap-align: start;
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      aspect-ratio: 16 / 9;
+      background: #e5e5e5;
+    }
+    .img-slide.is--current { display: block; }
+    .slide-logo-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      fill: currentColor;
+      opacity: 0.15;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .img-slide__content {
+      position: absolute;
+      inset: 1rem;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      color: var(--color--dark);
+    }
+    .img-slide__paragraph p {
+      margin: 0;
+    }
+    .img-slide__lottie {
+      width: 3rem;
+      height: 3rem;
+      align-self: flex-end;
+      margin-top: auto;
+    }
+    .slider-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 1rem;
+      z-index: 3;
+      pointer-events: none;
+    }
+    .slider-overlay-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      pointer-events: auto;
+    }
+    .slider-overlay-row.is--nav {
+      gap: 1rem;
+    }
+    .slider-overlay-row.is--bullets .img-slider__overlay-progress {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .slider-progress__bar {
+      width: 2rem;
+      height: 0.25rem;
+      background: hsl(0 0% 7% / 0.3);
+      border-radius: 9999px;
+    }
+    .slider-progress__bar.is--current {
+      background: var(--color--dark);
+    }
+    .u--rotate-180 {
+      transform: rotate(180deg);
+    }
+
+    /* --- Section partenaires (logo-section) --- */
+    .logo-section {
+      padding: 4rem 0;
+      overflow: hidden;
+    }
+    .logo-section-content {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .logo-section-column {
+      position: relative;
+    }
+    .logo-section__wrapper {
+      overflow: hidden;
+      mask-image: linear-gradient(to right, black 90%, transparent 100%);
+    }
+    .logo-section__scroll {
+      display: flex;
+      gap: 2rem;
+      will-change: transform;
+      animation: marquee-vertical 30s linear infinite;
+    }
+    @keyframes marquee-vertical {
+      from { transform: translateY(0); }
+      to { transform: translateY(-50%); }
+    }
+    .logo-section__collection {
+      display: flex;
+      gap: 2rem;
+    }
+    .logo-section__item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 1rem;
+      border-radius: var(--radius);
+    }
+    .logo-section__item-img {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 0.5rem;
+      overflow: hidden;
+      background: #fff;
+    }
+    .logo-section__item-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .logo-section__item h4 {
+      margin: 0;
+      font-size: 0.875rem;
+      font-weight: 700;
+    }
+    .logo-section__overlay {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 4rem;
+      background: linear-gradient(to right, transparent, var(--color--light));
+      pointer-events: none;
+    }
+
+    /* --- Pied de page --- */
+    .footer {
+      padding: 4rem 0 2rem;
+      border-top: 0.125em solid var(--rule);
+      margin-top: 4rem;
+    }
+    .footer-row-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+    .footer-row {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .footer-row-col {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1.5rem;
+      border-radius: var(--radius);
+      color: var(--color--dark);
+    }
+    .footer-row-col.is--large {
+      padding: 2rem;
+    }
+    [data-box-theme="violet"] { background: var(--color--violet-700); color: #fff; }
+    [data-box-theme="yellow"] { background: var(--color--yellow-700); color: #fff; }
+    .footer-block-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.15;
+      pointer-events: none;
+    }
+    .footer-block-content {
+      position: relative;
+      z-index: 1;
+    }
+    .footer-block__h {
+      margin: 0 0 0.5rem;
+    }
+    .footer-newsletter-para {
+      margin: 0 0 1rem;
+    }
+    .footer-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .form-field__wrap {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .form-field {
+      flex: 1;
+      padding: 0.6rem 0.8rem;
+      border: 0.125em solid var(--color--dark);
+      border-radius: var(--radius);
+      font-family: inherit;
+      font-size: inherit;
+      background: transparent;
+    }
+    .footer-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.875rem;
+    }
+    .footer-checkbox__el {
+      width: 1rem;
+      height: 1rem;
+    }
+    .form-block_submit {
+      display: none;
+    }
+    .footer-social-grid {
+      display: flex;
+      gap: 1rem;
+    }
+    .footer-social-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.5rem;
+      border: 0.125em solid var(--color--dark);
+      transition: 0.5s var(--elastic-ease-out);
+    }
+    .footer-social-link svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      fill: currentColor;
+    }
+    .link-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .footer-cr {
+      margin-top: 2rem;
+    }
+
+    /* --- Galerie d’icønes --- */
+    .icons-section {
+      padding: 4rem 0;
+    }
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 1.5rem;
+    }
+    .icon-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem;
+      border: 0.125em solid var(--rule);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+    .icon-card img {
+      width: 3rem;
+      height: 3rem;
+      object-fit: contain;
+      display: block;
+    }
+    .icon-name {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.3;
+    }
+    .icon-id {
+      font-size: 0.6875rem;
+      font-family: var(--font-body);
+      color: hsl(0 0% 7% / 0.6);
+      text-align: center;
+      font-family: monospace;
+    }
+
+    /* --- Responsive (breakpoints du template) --- */
+    @media (max-width: 991px) {
+      .padding-vertical-180 { padding-top: 6rem; padding-bottom: 6rem; }
+      .nav-inner { flex-direction: column; align-items: stretch; }
+      .nav-inner-right { width: 100%; justify-content: space-between; }
+      .nav-inner-list { flex-wrap: wrap; justify-content: center; }
+    }
+    @media (max-width: 767px) {
+      .two-col-grid__visual { aspect-ratio: 4 / 3; }
+    }
+    @media (max-width: 479px) {
+      .padding-vertical-180 { padding-top: 4rem; padding-bottom: 4rem; }
+      .h-d { font-size: 2rem; }
+      .nav-inner { padding: 0.75rem 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== NAVIGATION ==================== -->
+  <nav class="nav-w" data-scrolling-started="false">
+    <div class="nav-container container">
+      <div class="nav-inner">
+        <a href="/" class="nav-btn-circle is--nav-logo w-inline-block">
+          <svg class="nav-button-logo" xmlns="http://www.w3.org/2000/svg" width="21" height="22" viewBox="0 0 21 22" fill="none">
+            <path d="M2.20389 17.3658C2.99124 20.3042 5.9321 22.9642 12.0166 21.3339C17.8222 19.7783 21.4606 15.0024 20.5172 11.4814C20.1914 10.2655 19.21 9.44245 17.6971 9.57634L4.1685 10.7035C3.31651 10.7689 2.92585 10.6293 2.70047 10.0924C2.48188 9.58079 2.60644 9.03156 3.63549 8.51148L13.931 3.22789C14.7201 2.8264 15.2457 2.65842 15.726 2.82837C16.027 2.93776 16.2252 3.37334 16.0432 3.91082L15.3757 5.88156C14.5564 8.3002 16.3101 8.86199 17.2988 8.59707C18.7946 8.19628 19.1465 6.77164 18.6646 4.97313C17.4429 0.413541 12.6054 -0.299349 8.21953 0.875847C3.75759 2.07142 -0.110259 5.68703 1.07076 10.0946C1.34904 11.1332 2.30504 11.963 3.41235 11.9378L5.10282 11.9337C5.45046 11.9257 5.32529 11.9543 5.99599 11.8987C6.66668 11.8431 8.45787 11.6227 8.45787 11.6227L17.2472 10.6281L17.4736 10.5952C17.9877 10.5075 18.3761 10.641 18.7046 11.2069C19.1961 12.0535 18.4462 12.692 17.5485 13.4563C17.5245 13.4768 17.5004 13.4973 17.4762 13.518L9.75005 20.1765C8.42577 21.3187 7.49552 20.8892 7.16973 19.6733L6.01586 15.367C5.73079 14.3031 4.69194 13.4683 3.47505 13.7944C1.95393 14.202 1.83058 15.9726 2.20389 17.3658Z" fill="currentColor"></path>
+          </svg>
+        </a>
+        <div class="nav-inner-right">
+          <ul role="list" class="nav-inner-list">
+            <li class="nav-inner-li">
+              <a data-button-theme="light" data-button-accent="yellow" href="#" class="button-main w-inline-block">
+                <span class="button-main-inner full-h">
+                  <span data-text="get started" class="button-main-inner__back"></span>
+                  <span class="button-main-inner__front">
+                    <span class="button-main-inner__bg"></span>
+                    <span class="button-main-inner__text"><span>get started</span></span>
+                  </span>
+                </span>
+              </a>
+            </li>
+            <li class="nav-inner-li">
+              <a data-button-theme="light" data-button-accent="" href="#" class="button-main w-inline-block">
+                <span class="button-main-inner full-h">
+                  <span data-text="card" class="button-main-inner__back"></span>
+                  <span class="button-main-inner__front">
+                    <span class="button-main-inner__bg"></span>
+                    <span class="button-main-inner__text"><span>card</span></span>
+                  </span>
+                </span>
+              </a>
+            </li>
+            <li class="nav-inner-li">
+              <a data-button-theme="light" data-button-accent="orange" href="#" aria-current="page" class="button-main w-inline-block w--current">
+                <span class="button-main-inner full-h">
+                  <span data-text="defi" class="button-main-inner__back"></span>
+                  <span class="button-main-inner__front">
+                    <span class="button-main-inner__bg"></span>
+                    <span class="button-main-inner__text"><span>defi</span></span>
+                  </span>
+                </span>
+              </a>
+            </li>
+            <li class="nav-inner-li">
+              <a data-button-theme="light" data-button-accent="green" href="#" class="button-main w-inline-block">
+                <span class="button-main-inner full-h">
+                  <span data-text="security" class="button-main-inner__back"></span>
+                  <span class="button-main-inner__front">
+                    <span class="button-main-inner__bg"></span>
+                    <span class="button-main-inner__text"><span>security</span></span>
+                  </span>
+                </span>
+              </a>
+            </li>
+            <li class="nav-inner-li">
+              <a data-button-theme="light" data-button-accent="violet" href="#" class="button-main w-inline-block">
+                <span class="button-main-inner full-h">
+                  <span data-text="guides" class="button-main-inner__back"></span>
+                  <span class="button-main-inner__front">
+                    <span class="button-main-inner__bg"></span>
+                    <span class="button-main-inner__text"><span>guides</span></span>
+                  </span>
+                </span>
+              </a>
+            </li>
+            <li class="nav-inner-li">
+              <a data-button-theme="light" data-button-accent="" href="#" class="button-main w-inline-block">
+                <span class="button-main-inner full-h">
+                  <span data-text="download" class="button-main-inner__back"></span>
+                  <span class="button-main-inner__front">
+                    <span class="button-main-inner__bg"></span>
+                    <span class="button-main-inner__text"><span>download</span></span>
+                  </span>
+                </span>
+              </a>
+            </li>
+          </ul>
+          <button id="menuButton" class="nav-btn-circle">
+            <div class="nav-btn-menu__lines">
+              <div class="nav-btn-menu__line is--h"></div>
+              <div class="nav-btn-menu__line is--v"></div>
+            </div>
+          </button>
+          <a data-button-theme="dark" data-button-accent="" href="#" target="_blank" class="button-main w-inline-block">
+            <span class="button-main-inner full-h">
+              <span data-text="Launch App" class="button-main-inner__back"></span>
+              <span class="button-main-inner__front">
+                <span class="button-main-inner__bg"></span>
+                <span class="button-main-inner__text"><span>Launch App</span></span>
+              </span>
+            </span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main-w">
+
+    <!-- ==================== HERO ==================== -->
+    <section class="section">
+      <div class="container">
+        <div class="content-container padding-vertical-180">
+          <div class="hero-section">
+            <div class="content-wrap-m">
+              <div class="title-row">
+                <h1 class="h-d u--rel">Don’t Just HODL. Grow.</h1>
+                <div class="flex-row gap--reg">
+                  <span style="width:6rem;height:6rem;background:#e5e5e5;border-radius:var(--radius);"></span>
+                  <span style="width:6rem;height:6rem;background:#e5e5e5;border-radius:var(--radius);"></span>
+                </div>
+              </div>
+              <div class="button-row flex-row gap--reg">
+                <a data-button-accent="dark" data-load-stagger="" href="#" target="_blank" class="button-main download-button text-only w-inline-block">
+                  <span class="button-main-inner full-h">
+                    <span data-text="Launch web app" class="button-main-inner__back"></span>
+                    <span class="button-main-inner__front">
+                      <span class="button-main-inner__bg is--white"></span>
+                      <span class="button-main-inner__text"><span>Launch web app</span></span>
+                    </span>
+                  </span>
+                </a>
+                <a data-button-accent="yellow" data-download-cta="button" data-load-stagger="" href="#" target="_blank" class="download-button button-main w-inline-block">
+                  <span class="button-main-inner full-h">
+                    <span data-text="download now" class="button-main-inner__back"></span>
+                    <span class="button-main-inner__front">
+                      <span class="button-main-inner__bg is--white"></span>
+                      <span class="button-main-inner__text has--logo">
+                        <span>Download for chrome</span>
+                        <img src="maquettes/icons/ic-08.svg" alt="avion" class="button-main-inner__logo" />
+                      </span>
+                    </span>
+                  </span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== TWO-COL GRID ==================== -->
+    <section class="section">
+      <div class="container">
+        <div class="content-wrap-m">
+          <div class="two-col-grid">
+            <div class="two-col-grid__item">
+              <div class="two-col-grid__text">
+                <h2 class="h-l"><em>START HERE: STRATEGIES</em></h2>
+                <p class="h-s">Discover ways to access integrated yield strategies across Sui DeFi protocols with a single tap, without ever leaving Slush.<br /><br />Tap once, start earning.</p>
+                <div class="flex-row gap--reg">
+                  <a data-button-theme="dark" data-button-accent="" href="#" target="_blank" class="button-main w-inline-block">
+                    <span class="button-main-inner full-h">
+                      <span data-text="LEARN HOW" class="button-main-inner__back"></span>
+                      <span class="button-main-inner__front">
+                        <span class="button-main-inner__bg"></span>
+                        <span class="button-main-inner__text"><span>LEARN HOW</span></span>
+                      </span>
+                    </span>
+                  </a>
+                </div>
+              </div>
+              <div data-box-theme="violet" class="two-col-grid__visual">
+                <svg class="two-col-grid__visual-logo" xmlns="http://www.w3.org/2000/svg" width="1031" height="1112" viewBox="0 0 1031 1112" fill="none">
+                  <path d="M0 341.613C0 178.539 115.495 0 453.527 0C776.067 0 1031 196.814 1031 392.223C1031 459.702 991.563 515.934 911.28 529.992L194.369 659.327C149.298 667.762 130.988 680.415 126.762 711.343C122.537 740.865 136.622 767.575 197.186 780.228L804.236 910.968C850.716 920.809 880.294 922.215 902.829 906.751C916.914 896.91 921.139 871.606 904.238 846.301L842.265 753.517C766.208 639.646 849.307 586.225 904.238 586.225C987.337 586.225 1025.37 655.11 1025.37 754.923C1025.37 1007.97 784.518 1112 540.852 1112C292.962 1112 42.2541 978.448 42.2541 733.836C42.2541 676.197 80.2828 619.965 138.03 605.907L225.713 582.667C243.845 578.259 236.96 578.516 272.497 572.087C308.034 565.659 403.942 552.22 403.942 552.22L873.35 481.777L885.546 480.339C913.409 477.744 931.69 465.441 940.858 431.585C954.575 380.926 906.836 358.27 849.689 331.148C848.159 330.423 846.624 329.694 845.082 328.961L352.117 91.3781C267.609 50.6094 225.355 85.7548 225.355 153.234L225.355 392.223C225.355 451.267 183.101 508.905 115.495 508.905C30.9863 508.905 0 418.933 0 341.613Z" fill="currentColor"></path>
+                </svg>
+                <img src="maquettes/icons/ic-29.svg" alt="jeton-vert" class="cover" />
+              </div>
+            </div>
+            <div class="two-col-grid__item">
+              <div data-box-theme="green" class="two-col-grid__visual">
+                <svg class="two-col-grid__visual-logo" xmlns="http://www.w3.org/2000/svg" width="1031" height="1112" viewBox="0 0 1031 1112" fill="none">
+                  <path d="M0 341.613C0 178.539 115.495 0 453.527 0C776.067 0 1031 196.814 1031 392.223C1031 459.702 991.563 515.934 911.28 529.992L194.369 659.327C149.298 667.762 130.988 680.415 126.762 711.343C122.537 740.865 136.622 767.575 197.186 780.228L804.236 910.968C850.716 920.809 880.294 922.215 902.829 906.751C916.914 896.91 921.139 871.606 904.238 846.301L842.265 753.517C766.208 639.646 849.307 586.225 904.238 586.225C987.337 586.225 1025.37 655.11 1025.37 754.923C1025.37 1007.97 784.518 1112 540.852 1112C292.962 1112 42.2541 978.448 42.2541 733.836C42.2541 676.197 80.2828 619.965 138.03 605.907L225.713 582.667C243.845 578.259 236.96 578.516 272.497 572.087C308.034 565.659 403.942 552.22 403.942 552.22L873.35 481.777L885.546 480.339C913.409 477.744 931.69 465.441 940.858 431.585C954.575 380.926 906.836 358.27 849.689 331.148C848.159 330.423 846.624 329.694 845.082 328.961L352.117 91.3781C267.609 50.6094 225.355 85.7548 225.355 153.234L225.355 392.223C225.355 451.267 183.101 508.905 115.495 508.905C30.9863 508.905 0 418.933 0 341.613Z" fill="currentColor"></path>
+                </svg>
+                <img src="maquettes/icons/ic-36.svg" alt="coffre" class="cover" />
+              </div>
+              <div class="two-col-grid__text">
+                <h2 class="h-l">Track <span class="u--text--italic">your Portfolio</span></h2>
+                <p class="h-s">See all your DeFi assets, lending positions, and staking rewards in one place.<br /><br />Monitor APYs in real-time and make data-driven decisions.</p>
+              </div>
+            </div>
+            <div class="two-col-grid__item">
+              <div class="two-col-grid__text">
+                <h2 class="h-l">Discover <span class="u--text--italic">New Opportunities</span></h2>
+                <p class="h-s">Find the best staking, lending, and vault strategies tailored for you.<br /><br />Compare APYs across protocols and execute with 1-click simplicity.</p>
+              </div>
+              <div data-box-theme="yellow" class="two-col-grid__visual bord">
+                <svg class="two-col-grid__visual-logo" xmlns="http://www.w3.org/2000/svg" width="1031" height="1112" viewBox="0 0 1031 1112" fill="none">
+                  <path d="M0 341.613C0 178.539 115.495 0 453.527 0C776.067 0 1031 196.814 1031 392.223C1031 459.702 991.563 515.934 911.28 529.992L194.369 659.327C149.298 667.762 130.988 680.415 126.762 711.343C122.537 740.865 136.622 767.575 197.186 780.228L804.236 910.968C850.716 920.809 880.294 922.215 902.829 906.751C916.914 896.91 921.139 871.606 904.238 846.301L842.265 753.517C766.208 639.646 849.307 586.225 904.238 586.225C987.337 586.225 1025.37 655.11 1025.37 754.923C1025.37 1007.97 784.518 1112 540.852 1112C292.962 1112 42.2541 978.448 42.2541 733.836C42.2541 676.197 80.2828 619.965 138.03 605.907L225.713 582.667C243.845 578.259 236.96 578.516 272.497 572.087C308.034 565.659 403.942 552.22 403.942 552.22L873.35 481.777L885.546 480.339C913.409 477.744 931.69 465.441 940.858 431.585C954.575 380.926 906.836 358.27 849.689 331.148C848.159 330.423 846.624 329.694 845.082 328.961L352.117 91.3781C267.609 50.6094 225.355 85.7548 225.355 153.234L225.355 392.223C225.355 451.267 183.101 508.905 115.495 508.905C30.9863 508.905 0 418.933 0 341.613Z" fill="currentColor"></path>
+                </svg>
+                <img src="maquettes/icons/ic-27.svg" alt="fusee" class="cover" />
+              </div>
+            </div>
+            <div class="two-col-grid__item">
+              <div class="two-col-grid__text">
+                <h2 class="h-l">Liquid Stake &amp; <span class="u--text--italic">Earn Instantly</span></h2>
+                <p class="h-s">Earn rewards and unlock liquidity with 1-click liquid staking.</p>
+              </div>
+              <div data-box-theme="orange" class="two-col-grid__visual">
+                <svg class="two-col-grid__visual-logo" xmlns="http://www.w3.org/2000/svg" width="1031" height="1112" viewBox="0 0 1031 1112" fill="none">
+                  <path d="M0 341.613C0 178.539 115.495 0 453.527 0C776.067 0 1031 196.814 1031 392.223C1031 459.702 991.563 515.934 911.28 529.992L194.369 659.327C149.298 667.762 130.988 680.415 126.762 711.343C122.537 740.865 136.622 767.575 197.186 780.228L804.236 910.968C850.716 920.809 880.294 922.215 902.829 906.751C916.914 896.91 921.139 871.606 904.238 846.301L842.265 753.517C766.208 639.646 849.307 586.225 904.238 586.225C987.337 586.225 1025.37 655.11 1025.37 754.923C1025.37 1007.97 784.518 1112 540.852 1112C292.962 1112 42.2541 978.448 42.2541 733.836C42.2541 676.197 80.2828 619.965 138.03 605.907L225.713 582.667C243.845 578.259 236.96 578.516 272.497 572.087C308.034 565.659 403.942 552.22 403.942 552.22L873.35 481.777L885.546 480.339C913.409 477.744 931.69 465.441 940.858 431.585C954.575 380.926 906.836 358.27 849.689 331.148C848.159 330.423 846.624 329.694 845.082 328.961L352.117 91.3781C267.609 50.6094 225.355 85.7548 225.355 153.234L225.355 392.223C225.355 451.267 183.101 508.905 115.495 508.905C30.9863 508.905 0 418.933 0 341.613Z" fill="currentColor"></path>
+                </svg>
+                <img src="maquettes/icons/ic-21.svg" alt="tirelire" class="cover" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== CTA BANNER MARQUEE ==================== -->
+    <section class="section cta-banner-section">
+      <div class="cta-banner-inner">
+        <div data-marquee-duplicate="2" data-marquee-direction="right" data-marquee-speed="15" data-marquee-scroll-speed="10" class="marquee-advanced">
+          <div data-marquee-scroll-target="" class="marquee-advanced__scroll">
+            <div data-marquee-collection-target="" class="marquee-advanced__collection">
+              <a href="#" class="download-cta-el button-main w-inline-block">
+                <span class="button-main-inner full-h">
+                  <span data-text="Get Slush" class="button-main-inner__back is--download"></span>
+                  <span class="button-main-inner__front">
+                    <span data-box-theme="white" class="button-main-inner__bg is--download"></span>
+                    <span class="button-main-inner__text"><span class="marquee-cta-h">Get Slush</span></span>
+                  </span>
+                </span>
+              </a>
+              <a href="#" class="download-cta-el button-main w-inline-block">
+                <span class="button-main-inner full-h">
+                  <span data-text="Get Slush" class="button-main-inner__back is--download"></span>
+                  <span class="button-main-inner__front">
+                    <span data-box-theme="orange" class="button-main-inner__bg is--download"></span>
+                    <span class="button-main-inner__text"><span class="marquee-cta-h">Get Slush</span></span>
+                  </span>
+                </span>
+              </a>
+              <a href="#" class="download-cta-el button-main w-inline-block">
+                <span class="button-main-inner full-h">
+                  <span data-text="Get Slush" class="button-main-inner__back is--download"></span>
+                  <span class="button-main-inner__front">
+                    <span data-box-theme="blue" class="button-main-inner__bg is--download"></span>
+                    <span class="button-main-inner__text"><span class="marquee-cta-h">Get Slush</span></span>
+                  </span>
+                </span>
+              </a>
+            </div>
+          </div>
+        </div>
+        <div data-marquee-duplicate="2" data-marquee-direction="left" data-marquee-speed="15" data-marquee-scroll-speed="10" class="marquee-advanced">
+          <div data-marquee-scroll-target="" class="marquee-advanced__scroll">
+            <div data-marquee-collection-target="" class="marquee-advanced__collection">
+              <a href="#" class="download-cta-el button-main w-inline-block">
+                <span class="button-main-inner full-h">
+                  <span data-text="Get Slush" class="button-main-inner__back is--download"></span>
+                  <span class="button-main-inner__front">
+                    <span data-box-theme="blue" class="button-main-inner__bg is--download"></span>
+                    <span class="button-main-inner__text"><span class="marquee-cta-h">Get Slush</span></span>
+                  </span>
+                </span>
+              </a>
+              <a href="#" class="download-cta-el button-main w-inline-block">
+                <span class="button-main-inner full-h">
+                  <span data-text="Get Slush" class="button-main-inner__back is--download"></span>
+                  <span class="button-main-inner__front">
+                    <span data-box-theme="yellow" class="button-main-inner__bg is--download"></span>
+                    <span class="button-main-inner__text"><span class="marquee-cta-h">Get Slush</span></span>
+                  </span>
+                </span>
+              </a>
+              <a href="#" class="download-cta-el button-main w-inline-block">
+                <span class="button-main-inner full-h">
+                  <span data-text="Get Slush" class="button-main-inner__back is--download"></span>
+                  <span class="button-main-inner__front">
+                    <span data-box-theme="green" class="button-main-inner__bg is--download"></span>
+                    <span class="button-main-inner__text"><span class="marquee-cta-h">Get Slush</span></span>
+                  </span>
+                </span>
+              </a>
+              <a href="#" class="download-cta-el button-main w-inline-block">
+                <span class="button-main-inner full-h">
+                  <span data-text="Get Slush" class="button-main-inner__back is--download"></span>
+                  <span class="button-main-inner__front">
+                    <span data-box-theme="violet" class="button-main-inner__bg is--download"></span>
+                    <span class="button-main-inner__text"><span class="marquee-cta-h">Get Slush</span></span>
+                  </span>
+                </span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SLIDER SÉCURITÉ ==================== -->
+    <section class="section">
+      <div class="container">
+        <div class="content-container u--bg--black show--clip">
+          <div class="content-wrap-sm">
+            <div class="title-row">
+              <h3 class="h-sm">Safety and privacy are always built-in</h3>
+            </div>
+          </div>
+        </div>
+        <div class="container">
+          <div class="content-container is--hero">
+            <div data-slideshow-orientation="horizontal" data-slideshow="wrap" class="img-slider">
+              <div class="img-slider__list">
+                <div data-box-theme="green" data-slideshow="slide" class="img-slide is--current">
+                  <svg class="slide-logo-bg" xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 1767 1907" fill="none">
+                    <path d="M1766.34 1321.27C1766.34 1600.82 1568.57 1906.89 989.706 1906.89C437.377 1906.89 0.819179 1569.5 0.81915 1234.52C0.81914 1118.84 68.3528 1022.44 205.832 998.342L1433.5 776.628C1510.68 762.169 1542.04 740.479 1549.27 687.461C1556.51 636.853 1532.39 591.064 1428.68 569.374L389.138 345.251C309.545 328.381 258.894 325.972 220.304 352.481C196.185 369.35 188.949 412.729 217.892 456.108L324.016 615.163C454.26 810.368 311.957 901.945 217.892 901.945C75.5887 901.945 10.4669 783.858 10.4669 612.753C10.4668 178.966 422.905 0.630977 840.167 0.63094C1264.66 0.630903 1693.99 229.574 1693.99 648.902C1693.99 747.709 1628.86 844.106 1529.98 868.206L1379.82 908.045C1348.77 915.6 1360.56 915.16 1299.71 926.181C1238.85 937.201 1074.62 960.239 1074.62 960.239L270.785 1081L249.901 1083.46C202.186 1087.91 170.881 1109 155.182 1167.04C131.691 1253.88 213.442 1292.72 311.304 1339.21C313.923 1340.46 316.553 1341.71 319.193 1342.96L1163.36 1750.24C1308.08 1820.13 1380.44 1759.88 1380.44 1644.2L1380.44 1234.52C1380.44 1133.3 1452.79 1034.49 1568.57 1034.49C1713.28 1034.49 1766.34 1188.73 1766.34 1321.27Z" fill="currentColor"></path>
+                  </svg>
+                  <div class="img-slide__content">
+                    <h4 class="h-d u--text--italic">Self-Custody First</h4>
+                    <div class="img-slide__paragraph is--small"><p class="h-s">Your keys, your assets—no middlemen, no compromises.</p></div>
+                    <img src="maquettes/icons/ic-01.svg" alt="cadenas" class="img-slide__lottie" />
+                  </div>
+                </div>
+                <div data-box-theme="yellow" data-slideshow="slide" class="img-slide">
+                  <svg class="slide-logo-bg" xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 1767 1907" fill="none">
+                    <path d="M1766.34 1321.27C1766.34 1600.82 1568.57 1906.89 989.706 1906.89C437.377 1906.89 0.819179 1569.5 0.81915 1234.52C0.81914 1118.84 68.3528 1022.44 205.832 998.342L1433.5 776.628C1510.68 762.169 1542.04 740.479 1549.27 687.461C1556.51 636.853 1532.39 591.064 1428.68 569.374L389.138 345.251C309.545 328.381 258.894 325.972 220.304 352.481C196.185 369.35 188.949 412.729 217.892 456.108L324.016 615.163C454.26 810.368 311.957 901.945 217.892 901.945C75.5887 901.945 10.4669 783.858 10.4669 612.753C10.4668 178.966 422.905 0.630977 840.167 0.63094C1264.66 0.630903 1693.99 229.574 1693.99 648.902C1693.99 747.709 1628.86 844.106 1529.98 868.206L1379.82 908.045C1348.77 915.6 1360.56 915.16 1299.71 926.181C1238.85 937.201 1074.62 960.239 1074.62 960.239L270.785 1081L249.901 1083.46C202.186 1087.91 170.881 1109 155.182 1167.04C131.691 1253.88 213.442 1292.72 311.304 1339.21C313.923 1340.46 316.553 1341.71 319.193 1342.96L1163.36 1750.24C1308.08 1820.13 1380.44 1759.88 1380.44 1644.2L1380.44 1234.52C1380.44 1133.3 1452.79 1034.49 1568.57 1034.49C1713.28 1034.49 1766.34 1188.73 1766.34 1321.27Z" fill="currentColor"></path>
+                  </svg>
+                  <div class="img-slide__content">
+                    <h4 class="h-d u--text--italic">Privacy-<span class="xs--block">Focused</span></h4>
+                    <div class="img-slide__paragraph"><p class="h-s">No intrusive tracking. You control your financial data.</p></div>
+                    <img src="maquettes/icons/ic-41.svg" alt="mdp" class="img-slide__lottie" />
+                  </div>
+                </div>
+                <div data-box-theme="orange" data-slideshow="slide" class="img-slide">
+                  <svg class="slide-logo-bg" xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 1767 1907" fill="none">
+                    <path d="M1766.34 1321.27C1766.34 1600.82 1568.57 1906.89 989.706 1906.89C437.377 1906.89 0.819179 1569.5 0.81915 1234.52C0.81914 1118.84 68.3528 1022.44 205.832 998.342L1433.5 776.628C1510.68 762.169 1542.04 740.479 1549.27 687.461C1556.51 636.853 1532.39 591.064 1428.68 569.374L389.138 345.251C309.545 328.381 258.894 325.972 220.304 352.481C196.185 369.35 188.949 412.729 217.892 456.108L324.016 615.163C454.26 810.368 311.957 901.945 217.892 901.945C75.5887 901.945 10.4669 783.858 10.4669 612.753C10.4668 178.966 422.905 0.630977 840.167 0.63094C1264.66 0.630903 1693.99 229.574 1693.99 648.902C1693.99 747.709 1628.86 844.106 1529.98 868.206L1379.82 908.045C1348.77 915.6 1360.56 915.16 1299.71 926.181C1238.85 937.201 1074.62 960.239 1074.62 960.239L270.785 1081L249.901 1083.46C202.186 1087.91 170.881 1109 155.182 1167.04C131.691 1253.88 213.442 1292.72 311.304 1339.21C313.923 1340.46 316.553 1341.71 319.193 1342.96L1163.36 1750.24C1308.08 1820.13 1380.44 1759.88 1380.44 1644.2L1380.44 1234.52C1380.44 1133.3 1452.79 1034.49 1568.57 1034.49C1713.28 1034.49 1766.34 1188.73 1766.34 1321.27Z" fill="currentColor"></path>
+                  </svg>
+                  <div class="img-slide__content">
+                    <h4 class="h-d u--text--italic">Powered by Sui’s Speed</h4>
+                    <div class="img-slide__paragraph"><p class="h-s">Experience near-instant transactions with ultra-low fees.</p></div>
+                    <img src="maquettes/icons/ic-27.svg" alt="fusee" class="img-slide__lottie is--smaller" />
+                  </div>
+                </div>
+                <div data-box-theme="blue" data-slideshow="slide" class="img-slide">
+                  <svg class="slide-logo-bg" xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 1767 1907" fill="none">
+                    <path d="M1766.34 1321.27C1766.34 1600.82 1568.57 1906.89 989.706 1906.89C437.377 1906.89 0.819179 1569.5 0.81915 1234.52C0.81914 1118.84 68.3528 1022.44 205.832 998.342L1433.5 776.628C1510.68 762.169 1542.04 740.479 1549.27 687.461C1556.51 636.853 1532.39 591.064 1428.68 569.374L389.138 345.251C309.545 328.381 258.894 325.972 220.304 352.481C196.185 369.35 188.949 412.729 217.892 456.108L324.016 615.163C454.26 810.368 311.957 901.945 217.892 901.945C75.5887 901.945 10.4669 783.858 10.4669 612.753C10.4668 178.966 422.905 0.630977 840.167 0.63094C1264.66 0.630903 1693.99 229.574 1693.99 648.902C1693.99 747.709 1628.86 844.106 1529.98 868.206L1379.82 908.045C1348.77 915.6 1360.56 915.16 1299.71 926.181C1238.85 937.201 1074.62 960.239 1074.62 960.239L270.785 1081L249.901 1083.46C202.186 1087.91 170.881 1109 155.182 1167.04C131.691 1253.88 213.442 1292.72 311.304 1339.21C313.923 1340.46 316.553 1341.71 319.193 1342.96L1163.36 1750.24C1308.08 1820.13 1380.44 1759.88 1380.44 1644.2L1380.44 1234.52C1380.44 1133.3 1452.79 1034.49 1568.57 1034.49C1713.28 1034.49 1766.34 1188.73 1766.34 1321.27Z" fill="currentColor"></path>
+                  </svg>
+                  <div class="img-slide__content">
+                    <h4 class="h-d u--text--italic">Audited &amp; Trusted</h4>
+                    <div class="img-slide__paragraph"><p class="h-s">Regular security audits &amp; partnerships with top DeFi protocols.</p></div>
+                    <img src="maquettes/icons/ic-12.svg" alt="engrenage" class="img-slide__lottie" />
+                  </div>
+                </div>
+              </div>
+              <div class="slider-overlay">
+                <div class="slider-overlay-row is--nav">
+                  <div class="u--rotate-180">
+                    <button data-slideshow="button-prev" name="Previous Slide" aria-label="Previous Slide" class="nav-btn-circle">
+                      <div class="nav-chevron-wrap">
+                        <svg class="nav-btn-chevron" xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 10 17" fill="none">
+                          <path d="M1.11328 1.34766L8.2646 8.49897L1.11328 15.6503" stroke="currentColor" stroke-width="0.08em"></path>
+                        </svg>
+                        <svg class="nav-btn-chevron" xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 10 17" fill="none">
+                          <path d="M1.11328 1.34766L8.2646 8.49897L1.11328 15.6503" stroke="currentColor" stroke-width="0.08em"></path>
+                        </svg>
+                      </div>
+                    </button>
+                  </div>
+                  <button data-slideshow="button-next" name="Next slide" aria-label="Next slide" class="nav-btn-circle">
+                    <div class="nav-chevron-wrap">
+                      <svg class="nav-btn-chevron" xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 10 17" fill="none">
+                        <path d="M1.11328 1.34766L8.2646 8.49897L1.11328 15.6503" stroke="currentColor" stroke-width="0.08em"></path>
+                      </svg>
+                      <svg class="nav-btn-chevron" xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 10 17" fill="none">
+                        <path d="M1.11328 1.34766L8.2646 8.49897L1.11328 15.6503" stroke="currentColor" stroke-width="0.08em"></path>
+                      </svg>
+                    </div>
+                  </button>
+                </div>
+                <div class="slider-overlay-row is--bullets">
+                  <div class="img-slider__overlay-progress">
+                    <div data-slideshow="progress-bar" class="slider-progress__bar is--current"></div>
+                    <div data-slideshow="progress-bar" class="slider-progress__bar"></div>
+                    <div data-slideshow="progress-bar" class="slider-progress__bar"></div>
+                    <div data-slideshow="progress-bar" class="slider-progress__bar"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== LOGO SECTION (PARTENAIRES) ==================== -->
+    <section class="section logo-section">
+      <div class="container">
+        <div class="content-container">
+          <div class="logo-section-content">
+            <h3 class="h-sm">Join Sui’s top DeFi and trade, lend, borrow, stake</h3>
+            <a data-button-theme="dark" data-button-accent="" href="#" class="button-main w-inline-block">
+              <span class="button-main-inner full-h">
+                <span data-text="get slush" class="button-main-inner__back"></span>
+                <span class="button-main-inner__front">
+                  <span class="button-main-inner__bg"></span>
+                  <span class="button-main-inner__text"><span>get slush</span></span>
+                </span>
+              </span>
+            </a>
+          </div>
+          <div class="logo-section-column">
+            <div data-marquee-duplicate="2" data-marquee-scroll-vertical="" data-marquee-direction="right" data-marquee-status="normal" data-marquee-speed="15" data-marquee-scroll-speed="10" class="logo-section__wrapper">
+              <div data-marquee-scroll-target="" class="logo-section__scroll">
+                <div data-marquee-collection-target="" class="logo-section__collection">
+                  <div class="logo-section__item u--bg--blue">
+                    <div class="logo-section__item-img"><img src="maquettes/icons/ic-04.svg" alt="cartes" class="cover" /></div>
+                    <h4 class="h-s sm-p-s">Cetus</h4>
+                  </div>
+                  <div class="logo-section__item u--bg--violet">
+                    <div class="logo-section__item-img"><img src="maquettes/icons/ic-35.svg" alt="promo" class="cover" /></div>
+                    <h4 class="h-s sm-p-s">Aftermath Finance</h4>
+                  </div>
+                  <div class="logo-section__item u--bg--yellow">
+                    <div class="logo-section__item-img"><img src="maquettes/icons/ic-36.svg" alt="coffre" class="cover" /></div>
+                    <h4 class="h-s sm-p-s">Bluefin</h4>
+                  </div>
+                  <div class="logo-section__item u--bg--orange">
+                    <div class="logo-section__item-img"><img src="maquettes/icons/ic-27.svg" alt="fusee" class="cover" /></div>
+                    <h4 class="h-s sm-p-s">Bucket Protocol</h4>
+                  </div>
+                  <div class="logo-section__item u--bg--blue">
+                    <div class="logo-section__item-img"><img src="maquettes/icons/ic-12.svg" alt="engrenage" class="cover" /></div>
+                    <h4 class="h-s sm-p-s">DeepBook</h4>
+                  </div>
+                  <div class="logo-section__item u--bg--violet">
+                    <div class="logo-section__item-img"><img src="maquettes/icons/ic-15.svg" alt="chat" class="cover" /></div>
+                    <h4 class="h-s sm-p-s">Haedal</h4>
+                  </div>
+                  <div class="logo-section__item u--bg--green">
+                    <div class="logo-section__item-img"><img src="maquettes/icons/ic-29.svg" alt="jeton-vert" class="cover" /></div>
+                    <h4 class="h-s sm-p-s">Typus Finance</h4>
+                  </div>
+                  <div class="logo-section__item u--bg--yellow">
+                    <div class="logo-section__item-img"><img src="maquettes/icons/ic-21.svg" alt="tirelire" class="cover" /></div>
+                    <h4 class="h-s sm-p-s">Kai Finance</h4>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="logo-section__overlay"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== GALERIE D'ICÔNES ==================== -->
+    <section class="section icons-section">
+      <div class="container">
+        <div class="content-wrap-m">
+          <div class="title-row">
+            <h2 class="h-l">Bibliothèque d’icønes — maquettes/icons</h2>
+            <p class="h-s">48 icønes issues du sprite <code>icons.svg</code>, affichées ici via leurs fichiers individuels <code>ic-XX.svg</code>. Chaque fichier est autonome (viewBox propre).</p>
+          </div>
+          <div class="icon-grid">
+            <div class="icon-card"><img src="maquettes/icons/ic-01.svg" alt="cadenas" /><span class="icon-name">Cadenas</span><span class="icon-id">ic-cadenas / ic-01</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-02.svg" alt="pouce" /><span class="icon-name">Pouce</span><span class="icon-id">ic-pouce / ic-02</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-03.svg" alt="chat-ok" /><span class="icon-name">Chat OK</span><span class="icon-id">ic-chat-ok / ic-03</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-04.svg" alt="cartes" /><span class="icon-name">Cartes</span><span class="icon-id">ic-cartes / ic-04</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-05.svg" alt="pièce" /><span class="icon-name">Pièce</span><span class="icon-id">ic-piece / ic-05</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-06.svg" alt="cœur" /><span class="icon-name">Cœur</span><span class="icon-id">ic-coeur / ic-06</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-07.svg" alt="mail" /><span class="icon-name">Mail</span><span class="icon-id">ic-mail / ic-07</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-08.svg" alt="avion" /><span class="icon-name">Avion</span><span class="icon-id">ic-avion / ic-08</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-09.svg" alt="sos" /><span class="icon-name">SOS</span><span class="icon-id">ic-sos / ic-09</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-10.svg" alt="médaille" /><span class="icon-name">Médaille</span><span class="icon-id">ic-medaille / ic-10</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-11.svg" alt="portefeuille" /><span class="icon-name">Portefeuille</span><span class="icon-id">ic-portefeuille / ic-11</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-12.svg" alt="engrenage" /><span class="icon-name">Engrenage</span><span class="icon-id">ic-engrenage / ic-12</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-13.svg" alt="anneau" /><span class="icon-name">Anneau</span><span class="icon-id">ic-anneau / ic-13</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-14.svg" alt="flèche-plus" /><span class="icon-name">Flèche +</span><span class="icon-id">ic-fleche-plus / ic-14</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-15.svg" alt="chat" /><span class="icon-name">Chat</span><span class="icon-id">ic-chat / ic-15</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-16.svg" alt="note-pièce" /><span class="icon-name">Note Pièce</span><span class="icon-id">ic-note-piece / ic-16</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-17.svg" alt="photo-jaune" /><span class="icon-name">Photo Jaune</span><span class="icon-id">ic-photo-jaune / ic-17</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-18.svg" alt="photo-pièce" /><span class="icon-name">Photo Pièce</span><span class="icon-id">ic-photo-piece / ic-18</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-19.svg" alt="notes" /><span class="icon-name">Notes</span><span class="icon-id">ic-notes / ic-19</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-20.svg" alt="clé" /><span class="icon-name">Clé</span><span class="icon-id">ic-cle / ic-20</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-21.svg" alt="tirelire" /><span class="icon-name">Tirelire</span><span class="icon-id">ic-tirelire / ic-21</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-22.svg" alt="ballon" /><span class="icon-name">Ballon</span><span class="icon-id">ic-ballon / ic-22</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-23.svg" alt="agenda" /><span class="icon-name">Agenda</span><span class="icon-id">ic-agenda / ic-23</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-24.svg" alt="réglages" /><span class="icon-name">Réglages</span><span class="icon-id">ic-reglages / ic-24</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-25.svg" alt="étiquettes" /><span class="icon-name">Étiquettes</span><span class="icon-id">ic-etiquettes / ic-25</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-26.svg" alt="touche" /><span class="icon-name">Touche</span><span class="icon-id">ic-touche / ic-26</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-27.svg" alt="fusée" /><span class="icon-name">Fusée</span><span class="icon-id">ic-fusee / ic-27</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-28.svg" alt="pile-pièces" /><span class="icon-name">Pile Pièces</span><span class="icon-id">ic-pile-pieces / ic-28</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-29.svg" alt="jeton-vert" /><span class="icon-name">Jeton Vert</span><span class="icon-id">ic-jeton-vert / ic-29</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-30.svg" alt="chat-pensée" /><span class="icon-name">Chat Pensée</span><span class="icon-id">ic-chat-pensee / ic-30</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-31.svg" alt="bille" /><span class="icon-name">Bille</span><span class="icon-id">ic-bille / ic-31</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-32.svg" alt="echanger" /><span class="icon-name">Échanger</span><span class="icon-id">ic-echanger / ic-32</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-33.svg" alt="ballons" /><span class="icon-name">Ballons</span><span class="icon-id">ic-ballons / ic-33</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-34.svg" alt="blocs" /><span class="icon-name">Blocs</span><span class="icon-id">ic-blocs / ic-34</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-35.svg" alt="promo" /><span class="icon-name">Promo</span><span class="icon-id">ic-promo / ic-35</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-36.svg" alt="coffre" /><span class="icon-name">Coffre</span><span class="icon-id">ic-coffre / ic-36</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-37.svg" alt="pile-jetons" /><span class="icon-name">Pile Jetons</span><span class="icon-id">ic-pile-jetons / ic-37</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-38.svg" alt="walkie" /><span class="icon-name">Walkie</span><span class="icon-id">ic-walkie / ic-38</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-39.svg" alt="loupe" /><span class="icon-name">Loupe</span><span class="icon-id">ic-loupe / ic-39</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-40.svg" alt="drapeau" /><span class="icon-name">Drapeau</span><span class="icon-id">ic-drapeau / ic-40</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-41.svg" alt="mdp" /><span class="icon-name">Mot de passe</span><span class="icon-id">ic-mdp / ic-41</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-42.svg" alt="chrono" /><span class="icon-name">Chrono</span><span class="icon-id">ic-chrono / ic-42</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-43.svg" alt="bulle-noire" /><span class="icon-name">Bulle Noire</span><span class="icon-id">ic-bulle-noire / ic-43</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-44.svg" alt="chat-violet" /><span class="icon-name">Chat Violet</span><span class="icon-id">ic-chat-violet / ic-44</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-45.svg" alt="photo-moins" /><span class="icon-name">Photo Moins</span><span class="icon-id">ic-photo-moins / ic-45</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-46.svg" alt="presse-papiers" /><span class="icon-name">Presse-papiers</span><span class="icon-id">ic-presse-papiers / ic-46</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-47.svg" alt="manette" /><span class="icon-name">Manette</span><span class="icon-id">ic-manette / ic-47</span></div>
+            <div class="icon-card"><img src="maquettes/icons/ic-48.svg" alt="ticket-cadenas" /><span class="icon-name">Ticket Cadenas</span><span class="icon-id">ic-ticket-cadenas / ic-48</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== PIED DE PAGE ==================== -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-row-wrap">
+          <div data-card-reveal="wrap" class="footer-row">
+            <div data-card-reveal="card" data-box-theme="violet" class="footer-row-col is--large is--yellow">
+              <div class="footer-block-bg">
+                <svg class="footer-block-bg__logo" xmlns="http://www.w3.org/2000/svg" width="1031" height="1112" viewBox="0 0 1031 1112" fill="none">
+                  <path d="M0 341.613C0 178.539 115.495 0 453.527 0C776.067 0 1031 196.814 1031 392.223C1031 459.702 991.563 515.934 911.28 529.992L194.369 659.327C149.298 667.762 130.988 680.415 126.762 711.343C122.537 740.865 136.622 767.575 197.186 780.228L804.236 910.968C850.716 920.809 880.294 922.215 902.829 906.751C916.914 896.91 921.139 871.606 904.238 846.301L842.265 753.517C766.208 639.646 849.307 586.225 904.238 586.225C987.337 586.225 1025.37 655.11 1025.37 754.923C1025.37 1007.97 784.518 1112 540.852 1112C292.962 1112 42.2541 978.448 42.2541 733.836C42.2541 676.197 80.2828 619.965 138.03 605.907L225.713 582.667C243.845 578.259 236.96 578.516 272.497 572.087C308.034 565.659 403.942 552.22 403.942 552.22L873.35 481.777L885.546 480.339C913.409 477.744 931.69 465.441 940.858 431.585C954.575 380.926 906.836 358.27 849.689 331.148C848.159 330.423 846.624 329.694 845.082 328.961L352.117 91.3781C267.609 50.6094 225.355 85.7548 225.355 153.234L225.355 392.223C225.355 451.267 183.101 508.905 115.495 508.905C30.9863 508.905 0 418.933 0 341.613Z" fill="currentColor"></path>
+                </svg>
+              </div>
+              <div class="footer-block-content">
+                <div class="u--rel">
+                  <img src="maquettes/icons/ic-27.svg" alt="fusee" style="width:3rem;height:3rem;object-fit:contain;" class="footer-i-1" />
+                  <div class="footer-block__h">
+                    <h3 class="h-l">Your inbox <span class="u--text--italic">just got better</span></h3>
+                  </div>
+                </div>
+                <div class="footer-newsletter-para">
+                  <p class="h-s">Subscribe to our newsletter for VIP access to news, offers, and insights!</p>
+                </div>
+                <div class="form-block w-form">
+                  <form method="post" name="email-form" class="footer-form" id="newsletter-mc">
+                    <div class="form-field__wrap">
+                      <input class="form-field is--footer" placeholder="Your email address" type="email" id="EMAIL" required="" />
+                      <a href="#" class="button-main xs--full w-inline-block">
+                        <span class="button-main-inner full-h">
+                          <span data-text="subscribe" class="button-main-inner__back"></span>
+                          <span class="button-main-inner__front">
+                            <span class="button-main-inner__bg"></span>
+                            <span class="button-main-inner__text"><span>subscribe</span></span>
+                          </span>
+                        </span>
+                      </a>
+                    </div>
+                    <div class="footer-checkbox">
+                      <input type="checkbox" name="MMERGE67" class="footer-checkbox__el" required="" />
+                      <span class="footer-checkbox__text">I agree to receive communications.</span>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+            <div data-card-reveal="card" data-box-theme="yellow" class="footer-row-col is--large is--yellow">
+              <div class="footer-block-content gap-bigger">
+                <div class="u--rel">
+                  <img src="maquettes/icons/ic-06.svg" alt="coeur" style="width:3rem;height:3rem;object-fit:contain;" class="footer-row-col-img" />
+                  <h3 class="h-l">Always <span class="u--text--italic">Here <br />to Help</span></h3>
+                </div>
+                <p class="h-s">Whether you’re a first-time user or a DeFi pro, our 24/7 support team has you covered.</p>
+                <div class="flex-row gap--small mob-vert">
+                  <a data-button-theme="dark" data-button-accent="white" href="#" target="_blank" class="button-main w-inline-block">
+                    <span class="button-main-inner full-h">
+                      <span data-text="Get support" class="button-main-inner__back"></span>
+                      <span class="button-main-inner__front">
+                        <span class="button-main-inner__bg"></span>
+                        <span class="button-main-inner__text"><span>Get support</span></span>
+                      </span>
+                    </span>
+                  </a>
+                  <a data-button-theme="dark" data-button-accent="white" href="#" target="_blank" class="button-main w-inline-block">
+                    <span class="button-main-inner full-h">
+                      <span data-text="zendesk support" class="button-main-inner__back"></span>
+                      <span class="button-main-inner__front">
+                        <span class="button-main-inner__bg"></span>
+                        <span class="button-main-inner__text smaller-pad">
+                          <img src="maquettes/icons/ic-07.svg" alt="mail" class="button-main-inner__logo" />
+                          <span> zendesk support</span>
+                        </span>
+                      </span>
+                    </span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="footer-row">
+            <div class="footer-social-grid">
+              <a href="#" target="_blank" class="footer-social-link w-inline-block">
+                <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2.16C5.09 2.16 0 7.25 0 14.34c0 3.26 1.35 6.15 3.49 8.19 0.5 0.49 0.63 1.26 0.26 1.86l-0.5 0.79c-0.19 0.3-0.1 0.74 0.21 0.93l0.72 0.44c0.34 0.21 0.82 0.14 1.06-0.2l0.65-0.9c0.7 0.57 1.54 0.95 2.47 0.95 1.64 0 3.17-0.84 4.04-2.29 0.88-1.46 1.19-3.25 0.77-5.11-0.19-0.85-0.58-1.6-1.08-2.16 0.12-0.25 0.22-0.51 0.3-0.79 0.91-1.09 1.5-2.47 1.5-4.02 0-4.39-3.57-7.96-7.96-7.96z" fill="currentColor"></path>
+                </svg>
+              </a>
+              <a href="#" target="_blank" class="footer-social-link w-inline-block">
+                <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 0C5.37 0 0 5.37 0 12c0 3.31 1.35 6.32 3.49 8.43 0.22 0.22 0.31 0.5 0.25 0.81l-0.05 0.35c-0.04 0.31 0.15 0.61 0.45 0.78l0.83 0.37c0.67 0.39 1.46 0.4 2.04 0.08l1.34-0.74c1.22-0.73 2.49-1.29 3.73-1.58 1.46-0.35 2.86-0.35 4.31 0 1.24 0.29 2.51 0.85 3.73 1.58l1.34 0.74c0.58 0.32 1.37 0.31 2.04-0.08l0.83-0.37c0.3-0.17 0.49-0.47 0.45-0.78l-0.05-0.35c-0.06-0.31 0.03-0.59 0.25-0.81C22.65 18.32 24 15.31 24 12c0-6.63-5.37-12-12-12z" fill="currentColor"></path>
+                </svg>
+              </a>
+              <a href="#" target="_blank" class="footer-social-link w-inline-block">
+                <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 0C5.37 0 0 5.37 0 12c0 3.31 1.35 6.32 3.49 8.43 0.22 0.22 0.31 0.5 0.25 0.81l-0.05 0.35c-0.04 0.31 0.15 0.61 0.45 0.78l0.83 0.37c0.67 0.39 1.46 0.4 2.04 0.08l1.34-0.74c1.22-0.73 2.49-1.29 3.73-1.58 1.46-0.35 2.86-0.35 4.31 0 1.24 0.29 2.51 0.85 3.73 1.58l1.34 0.74c0.58 0.32 1.37 0.31 2.04-0.08l0.83-0.37c0.3-0.17 0.49-0.47 0.45-0.78l-0.05-0.35c-0.06-0.31 0.03-0.59 0.25-0.81C22.65 18.32 24 15.31 24 12c0-6.63-5.37-12-12-12z" fill="currentColor"></path>
+                </svg>
+              </a>
+              <a href="#" target="_blank" class="footer-social-link w-inline-block">
+                <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24" fill="none">
+                  <path d="M23.5 7.33c0-2.07-0.84-4.04-2.31-5.52-1.48-1.49-3.45-2.31-5.52-2.31-2.07 0-4.04 0.84-5.52 2.31C8.38 4.45 7.54 5.27 6.69 6.04c-0.21 0.2-0.25 0.5-0.11 0.74l0.44 0.72c0.16 0.27 0.01 0.66-0.28 0.82l-0.71 0.37c-0.49 0.26-0.72 0.86-0.47 1.35l0.58 1.16c0.18 0.36 0.41 0.66 0.7 0.88 1.06 0.82 2.27 1.38 3.55 1.65 1.34 0.28 2.72 0.35 4.08 0.2 2.77-0.31 5.26-1.44 7.16-3.27 1.9-1.84 2.98-4.39 2.98-7.25 0-0.43-0.04-0.84-0.12-1.24l-0.23-1.07c-0.08-0.39-0.49-0.65-0.89-0.56l-1.07-0.23c-0.36-0.09-0.77 0.05-1.01 0.36-0.28 0.35-0.44 0.82-0.37 1.27l0.11 0.87c0.01 0.15 0.05 0.29 0.1 0.42 1.28 2.42 1.78 5.15 1.49 7.92-0.3 2.76-1.44 5.24-3.25 7.15-1.84 1.9-4.39 2.98-7.25 2.98-0.43 0-0.84-0.04-1.24-0.12l-1.07-0.23c-0.39-0.08-0.65-0.49-0.56-0.89l0.23-1.07c0.08-0.39-0.05-0.77-0.36-1.01-0.35-0.28-0.82-0.44-1.27-0.37l-0.87 0.11c-0.15 0.01-0.29 0.05-0.42 0.1-2.42 1.28-5.15 1.78-7.92 1.49-2.76-0.3-5.24-1.44-7.15-3.25-1.9-1.84-2.98-4.39-2.98-7.25 0-0.43 0.04-0.84 0.12-1.24l0.23-1.07c0.08-0.39 0.49-0.65 0.89-0.56l1.07-0.23c0.36-0.09 0.77 0.05 1.01 0.36 0.28 0.35 0.44 0.82 0.37 1.27l-0.11 0.87c-0.01 0.15-0.05 0.29-0.1 0.42-1.28 2.42-1.78 5.15-1.49 7.92 0.3 2.76 1.44 5.24 3.25 7.15 1.84 1.9 4.39 2.98 7.25 2.98 0.43 0 0.84 0.04 1.24 0.12l1.07 0.23c0.39 0.08 0.65 0.49 0.56 0.89l-0.23 1.07c-0.08 0.39 0.05 0.77 0.36 1.01 0.35 0.28 0.82 0.44 1.27 0.37l0.87-0.11c0.15-0.01 0.29-0.05 0.42-0.1 2.42-1.28 5.15-1.78 7.92-1.49 2.76 0.3 5.24 1.44 7.15 3.25 1.9 1.84 2.98 4.39 2.98 7.25 0 0.43-0.04 0.84-0.12 1.24l-0.23 1.07c-0.08 0.39-0.49 0.65-0.89 0.56l-1.07 0.23c-0.36 0.09-0.77-0.05-1.01-0.36-0.28-0.35-0.44-0.82-0.37-1.27l0.11-0.87c0.01-0.15 0.05-0.29 0.1-0.42 1.28-2.42 1.78-5.15 1.49-7.92 0.3-2.76 1.44-5.24 3.25-7.15 1.84-1.9 4.39-2.98 7.25-2.98 2.07 0 4.04-0.84 5.52-2.31 1.49-1.48 2.31-3.45 2.31-5.52 0.01-2.07-0.83-4.04-2.3-5.52z" fill="currentColor"></path>
+                </svg>
+              </a>
+              <a href="#" target="_blank" class="footer-social-link w-inline-block">
+                <svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 24 24" fill="none">
+                  <path d="M21.19 7.21c-0.09-0.03-0.21-0.02-0.31 0.05l-1.82 1.16c-0.34 0.22-0.77 0.11-0.93-0.25l-0.26-0.62c-0.09-0.22-0.32-0.34-0.54-0.25l-1.82 0.76c-0.62 0.26-1.27 0.1-1.72-0.34l-1.2-1.18c-0.39-0.38-1.05-0.38-1.44 0l-1.2 1.18c-0.45 0.44-1.1 0.6-1.72 0.34l-1.82-0.76c-0.22-0.09-0.45 0.03-0.54 0.25l-0.26 0.62c-0.16 0.36-0.59 0.47-0.93 0.25l-1.82-1.16c-0.1-0.07-0.22-0.08-0.31-0.05-0.42-0.16-0.67-0.61-0.55-1.06l0.44-1.64c0.08-0.31 0.33-0.53 0.64-0.53h1.82c0.22 0 0.44 0.08 0.59 0.25l1.2 1.32c0.22 0.24 0.53 0.39 0.86 0.39 0.22 0 0.44-0.05 0.64-0.18l1.32-0.84c0.45-0.28 1.07-0.28 1.52 0l1.32 0.84c0.2 0.13 0.42 0.18 0.64 0.18 0.33 0 0.64-0.15 0.86-0.39l1.2-1.32c0.15-0.17 0.51-0.25 0.59-0.25h1.82c0.31 0 0.56 0.22 0.64 0.53l0.44 1.64c0.12 0.45-0.13 0.9-0.55 1.06z" fill="currentColor"></path>
+                </svg>
+              </a>
+            </div>
+            <div class="footer-row-col is--last">
+              <div class="footer-block-content">
+                <h3 class="h-m">Download Slush. <br /><span class="u--text--italic">Then Make it All Happen.</span></h3>
+              </div>
+              <div>
+                <ul role="list" class="link-list w-list-unstyled">
+                  <li><a href="#" class="p-l text-link link">home</a></li>
+                  <li><a href="#" class="p-l text-link link">Card</a></li>
+                  <li><a href="#" class="p-l text-link link w--current">defi / earn</a></li>
+                  <li><a href="#" class="p-l text-link link">get started</a></li>
+                  <li><a href="#" class="p-l text-link link">security</a></li>
+                  <li><a href="#" class="p-l text-link link">Download</a></li>
+                  <li><a href="#" class="p-l text-link link">Guides</a></li>
+                </ul>
+              </div>
+              <div class="footer-cr">
+                <p class="p-m u--weight--bold u--text--caps">© <span>2025</span> Magic Game Store.</p>
+              </div>
+              <ul role="list" class="link-list w-list-unstyled">
+                <li><a href="#" class="p-m text-link link">FAQ</a></li>
+                <li><a href="#" class="p-m text-link link">brand assets</a></li>
+                <li><a href="#" class="p-m text-link link">Privacy Notice</a></li>
+                <li><a href="#" class="p-m text-link link">Terms of service</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+  </main>
+
+</body>
+</html>

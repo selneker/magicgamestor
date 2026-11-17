@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin:0; background:#fff; font:12px monospace; }
+  .grid { display:grid; grid-template-columns:repeat(8, 1fr); gap:4px; padding:4px; }
+  .cell { border:1px solid #ccc; text-align:center; padding:2px; }
+  .cell svg { width:64px; height:64px; }
+</style>
+</head>
+<body>
+<div class="grid" id="g"></div>
+<script>
+for (let i = 1; i <= 48; i++) {
+  const n = String(i).padStart(2, "0");
+  const d = document.createElement("div");
+  d.className = "cell";
+  d.innerHTML = `<svg viewBox="0 0 80 80"><use href="icons/icons.svg#ic-${n}" x="8" y="8" width="64" height="64" style="transform:translate(8px,8px)"></use></svg><div>ic-${n}</div>`;
+  document.getElementById("g").appendChild(d);
+}
+</script>
+</body>
+</html>
