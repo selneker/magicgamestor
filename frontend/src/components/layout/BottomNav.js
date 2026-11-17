@@ -91,7 +91,7 @@ export function BottomNav() {
                   />
                 )}
                 <span className="relative z-10 flex items-center">
-                  <Icon name={name} className="h-6 w-6 shrink-0" />
+                  <Icon name={name} className="h-6 w-6 shrink-0" data-icon-reveal />
                   <motion.span
                     initial={false}
                     animate={{ width: active ? "auto" : 0, opacity: active ? 1 : 0 }}

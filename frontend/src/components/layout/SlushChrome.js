@@ -13,6 +13,7 @@ import {
   isCaptureMode,
   gsapReady,
   initCardReveals,
+  initIconReveals,
   initSlantedText,
   initHeadingReveal,
   initMarquee,
@@ -63,6 +64,9 @@ export function SlushChrome() {
       // Chargement initial — intro de la page (fondu doux via runPageLoad),
       // plus de volet 3D. (PL-005-FE-07 : transitions de page supprimées.)
       if (main) runPageLoad(main, 0.15);
+      // Reveles d'icones au chargement (echelle 0 -> 1, easing elastique,
+      // decalage echelonne), comme la maquette. Une seule fois par boot.
+      initIconReveals(document);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

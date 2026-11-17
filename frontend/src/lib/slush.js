@@ -280,6 +280,27 @@ export function initCardReveals(scope) {
   return () => cleanups.forEach((fn) => fn());
 }
 
+/* --------------- Reveles d'icones (maquettes/icons) -----------------
+   La maquette revele ses icones au chargement : echelle 0 -> 1,
+   easing elastique, decalage echelonne par position. En SPA, relance a
+   chaque changement de route (les icones sont de nouveaux noeuds DOM).
+   Ne concerne pas les cartes produit (aucune icone/img ajoutee la-dedans). */
+export function initIconReveals(scope) {
+  const gsap = gsapReady();
+  if (!gsap || isCaptureMode()) return () => {};
+  const { reduceMotion } = matchMediaConditions();
+  const targets = scope.querySelectorAll("[data-icon-reveal]");
+  if (!targets.length) return () => {};
+  if (reduceMotion) {
+    gsap.set(targets, { clearProps: "transform,opacity" });
+    return () => {};
+  }
+  gsap.set(targets, { scale: 0, autoAlpha: 0, transformOrigin: "50% 50%" });
+  const tl = gsap.timeline({ defaults: { ease: "slush", duration: 0.6 } });
+  tl.to(targets, { scale: 1, autoAlpha: 1, stagger: { each: 0.06, from: "start" } });
+  return () => tl.kill();
+}
+
 export function initSlantedText(scope) {
   const gsap = gsapReady();
   if (!gsap || isCaptureMode()) return () => {};
