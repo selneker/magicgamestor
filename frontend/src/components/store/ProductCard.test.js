@@ -69,9 +69,9 @@ afterEach(() => { delete global.mockGames; delete global.IS_REACT_ACT_ENVIRONMEN
 test("Free Fire : l'ajout puis le « + » incrémentent la carte ET le panier", async () => {
   const { container, root } = await mountCard(FF);
   try {
-    await act(async () => { byLabel(container, "Ajouter au panier : 310 Diamants").click(); });
+    await act(async () => { byLabel(container, "product.addToCart : 310 Diamants").click(); });
     expect(probeQty(container)).toEqual([["ff-310", 1]]);
-    const inc = byLabel(container, "Ajouter un exemplaire : 310 Diamants");
+    const inc = byLabel(container, "product.addOne : 310 Diamants");
     expect(inc.disabled).toBe(false);
     await act(async () => { inc.click(); });
     expect(probeQty(container)).toEqual([["ff-310", 2]]);
@@ -82,31 +82,31 @@ test("Free Fire : l'ajout puis le « + » incrémentent la carte ET le panier", 
 test("Free Fire : le plafond réel du panier (20) est respecté, carte/panier alignés", async () => {
   const { container, root } = await mountCard(FF);
   try {
-    await act(async () => { byLabel(container, "Ajouter au panier : 310 Diamants").click(); });
+    await act(async () => { byLabel(container, "product.addToCart : 310 Diamants").click(); });
     for (let i = 0; i < 25; i++) {
-      const inc = byLabel(container, "Ajouter un exemplaire : 310 Diamants");
+      const inc = byLabel(container, "product.addOne : 310 Diamants");
       if (inc.disabled) break;
       await act(async () => { inc.click(); });
     }
     expect(probeQty(container)).toEqual([["ff-310", 20]]);
-    expect(byLabel(container, "Ajouter un exemplaire : 310 Diamants").disabled).toBe(true);
+    expect(byLabel(container, "product.addOne : 310 Diamants").disabled).toBe(true);
   } finally { await unmountCard(container, root); }
 });
 
 test("Abonnements (Prime) : « + » toujours désactivé, quantité forcée à 1", async () => {
   const { container, root } = await mountCard(PRIME);
   try {
-    await act(async () => { byLabel(container, "Ajouter au panier : Prime").click(); });
+    await act(async () => { byLabel(container, "product.addToCart : Prime").click(); });
     expect(probeQty(container)).toEqual([["pubg-prime", 1]]);
-    expect(byLabel(container, "Ajouter un exemplaire : Prime").disabled).toBe(true);
+    expect(byLabel(container, "product.addOne : Prime").disabled).toBe(true);
   } finally { await unmountCard(container, root); }
 });
 
 test("PUBG Mobile : ajout + « + » inchangés (plafond 20)", async () => {
   const { container, root } = await mountCard(PUBG);
   try {
-    await act(async () => { byLabel(container, "Ajouter au panier : 60 UC").click(); });
-    await act(async () => { byLabel(container, "Ajouter un exemplaire : 60 UC").click(); });
+    await act(async () => { byLabel(container, "product.addToCart : 60 UC").click(); });
+    await act(async () => { byLabel(container, "product.addOne : 60 UC").click(); });
     expect(probeQty(container)).toEqual([["pubg-60", 2]]);
   } finally { await unmountCard(container, root); }
 });
@@ -114,16 +114,16 @@ test("PUBG Mobile : ajout + « + » inchangés (plafond 20)", async () => {
 test("Produit indisponible : aucun bouton d'ajout sur la carte", async () => {
   const { container, root } = await mountCard(FF_OFF);
   try {
-    expect(container.textContent).toContain("Indisponible");
-    expect(byLabel(container, "Ajouter au panier : Pack épuisé")).toBeUndefined();
-    expect(byLabel(container, "Ajouter un exemplaire : Pack épuisé")).toBeUndefined();
+    expect(container.textContent).toContain("product.unavailable");
+    expect(byLabel(container, "product.addToCart : Pack épuisé")).toBeUndefined();
+    expect(byLabel(container, "product.addOne : Pack épuisé")).toBeUndefined();
   } finally { await unmountCard(container, root); }
 });
 
 test("Parcours panier : setQty met à jour la carte (même source de vérité)", async () => {
   const { container, root } = await mountCard(FF);
   try {
-    await act(async () => { byLabel(container, "Ajouter au panier : 310 Diamants").click(); });
+    await act(async () => { byLabel(container, "product.addToCart : 310 Diamants").click(); });
     await act(async () => { container.querySelector('[data-testid="probe-set-5"]').click(); });
     expect(probeQty(container)).toEqual([["ff-310", 5]]);
     expect(container.querySelector('[aria-live="polite"]').textContent).toContain("5");
@@ -169,7 +169,7 @@ test("Produit Populaire : le badge « Populaire » (flamme) reste affiche", asyn
   try {
     const badge = container.querySelector('[data-testid="card-context-pubg-60-uc-pop"]');
     expect(badge).not.toBeNull();
-    expect(badge.textContent).toContain("Populaire");
+    expect(badge.textContent).toContain("catalog.popular");
     expect(badge.querySelector("svg")).not.toBeNull();
     // Fond neon + texte encre : deux surfaces fixes, qui ne suivent pas le theme.
     expect(badge.className).toContain("bg-[color:var(--card-badge-bg)]");
@@ -216,7 +216,7 @@ test("L'article porte une bordure fine (border) et pas border-2", async () => {
 test("CTA et focus de la carte passent par les jetons --card-cta-* / --card-focus", async () => {
   const { container, root } = await mountCard(PUBG);
   try {
-    const addBtn = byLabel(container, "Ajouter au panier : 60 UC");
+    const addBtn = byLabel(container, "product.addToCart : 60 UC");
     expect(addBtn.className).toContain("bg-[color:var(--card-cta-bg)]");
     // Modèle : le bouton rond n'a PAS de bordure (même couleur que le fond).
     expect(addBtn.className).not.toContain("border-2");
@@ -248,7 +248,7 @@ test("Free Fire : le montant « 310 » et l'unité « Diamants » sont la vedett
 test("Free Fire : le bouton d'achat est « + » (monnaie), comme pour PUBG", async () => {
   const { container, root } = await mountCard(FF);
   try {
-    const addBtn = byLabel(container, "Ajouter au panier : 310 Diamants");
+    const addBtn = byLabel(container, "product.addToCart : 310 Diamants");
     expect(addBtn).toBeTruthy();
     // Chemin du « + » (ICONS.plus) : toute monnaie de jeu donne « + ».
     expect(addBtn.querySelector('path[d="M12 5v14M5 12h14"]')).toBeTruthy();
@@ -321,7 +321,7 @@ test("Alignement modèle : la pastille d'un pack sans montant porte « + »", as
   const PACK = { id: "pack-frag", slug: "pack-frag", name: "Fragments matériaux", type: "material", price: 5000, game_id: "pubg-mobile", purchasable: true };
   const { container, root } = await mountCard(PACK);
   try {
-    const addBtn = byLabel(container, "Ajouter au panier : Fragments matériaux");
+    const addBtn = byLabel(container, "product.addToCart : Fragments matériaux");
     expect(addBtn.querySelector('path[d="M12 5v14M5 12h14"]')).toBeTruthy();
   } finally { await unmountCard(container, root); }
 });
@@ -385,7 +385,7 @@ test("Mapping des étiquettes : evo → « pack évolutif »", async () => {
   try {
     expect([...container.querySelectorAll("p")].some((p) => p.textContent === "card.category.evo")).toBe(true);
     // L'evo garde son icône « panier ».
-    expect(byLabel(container, "Ajouter au panier : Pack évolutif").querySelector("circle")).toBeTruthy();
+    expect(byLabel(container, "product.addToCart : Pack évolutif").querySelector("circle")).toBeTruthy();
   } finally { await unmountCard(container, root); }
 });
 
@@ -395,7 +395,7 @@ test("Zones tactiles 44 px : cœur et bouton rond étendus par pseudo-élément"
     const heart = container.querySelector("button[aria-pressed]");
     expect(heart.className).toContain("before:-inset-1.5");
     expect(heart.className).toContain("before:content-['']");
-    const addBtn = byLabel(container, "Ajouter au panier : 60 UC");
+    const addBtn = byLabel(container, "product.addToCart : 60 UC");
     expect(addBtn.className).toContain("before:-inset-0.5");
     expect(addBtn.className).toContain("before:content-['']");
   } finally { await unmountCard(container, root); }

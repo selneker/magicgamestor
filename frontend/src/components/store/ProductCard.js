@@ -23,10 +23,10 @@ const ICONS = {
 
 // Badge de type de la carte : abonnements/évolutif inchangés ; sinon la monnaie
 // DU JEU (PUBG « UC » comme avant, Free Fire « Diamants », CODM « CP »…) — jamais de « UC » codé en dur.
-export const typeLabel = (product, game, lang) => {
-  if (product.type === "prime_plus") return "Prime+";
-  if (product.type === "prime") return "Prime";
-  if (product.type === "evo") return "Évolutif";
+export const typeLabel = (product, game, lang, t) => {
+  if (product.type === "prime_plus") return t("catalog.prime_plus");
+  if (product.type === "prime") return t("catalog.prime");
+  if (product.type === "evo") return t("product.typeEvo");
   return currencyOf(game) || gameTypeLabel(game, product.type, lang);
 };
 
@@ -71,7 +71,7 @@ export function ProductCard({ product, index = 0, badge }) {
   const categoryKey = product.type === "prime" || product.type === "prime_plus" ? "card.category.subscription" : product.type === "evo" ? "card.category.evo" : "card.category.pack";
   const context = badge || (product.popular ? "popular" : product.type === "evo" ? "evo" : "offer");
   const contextIcon = context === "popular" ? "flame" : context === "evo" ? "crown" : product.type === "prime" || product.type === "prime_plus" ? "bolt" : "cart";
-  const contextLabel = context === "popular" ? "Populaire" : context === "evo" ? "Elite Pack" : product.type === "prime_plus" ? "Abonnement" : product.type === "prime" ? "Abonnement" : `Pack ${currencyLabel}`;
+  const contextLabel = context === "popular" ? t("catalog.popular") : context === "evo" ? t("card.context.evo") : product.type === "prime_plus" || product.type === "prime" ? t("card.category.subscription") : t("card.packCurrency", { currency: currencyLabel });
   // Seuls les badges de type / de categorie sont retires : la carte n'affiche
   // plus que « Populaire » (flamme), la remise et « Indisponible ».
   const showPopular = context === "popular";
@@ -102,7 +102,7 @@ export function ProductCard({ product, index = 0, badge }) {
 
   return (
     <article data-testid={`product-card-${product.slug}`} className={`product-card group relative flex min-w-0 h-full mgs-card flex-col rounded-[28px] border border-[color:var(--card-border)] bg-[color:var(--card-surface)] p-3 sm:p-5 shadow-none transition duration-200 ease-out hover:shadow-[4px_4px_0_var(--card-shadow)] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
-      <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-[28px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[color:var(--card-focus)]" aria-label={product.name || product.slug || "Produit"} />
+      <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-[28px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[color:var(--card-focus)]" aria-label={product.name || product.slug || t("product.fallbackLabel")} />
       <div className="relative z-10 flex h-full flex-col text-[color:var(--card-ink)]">
         <div className="flex items-start justify-between gap-1.5 sm:gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-3">
@@ -150,14 +150,14 @@ export function ProductCard({ product, index = 0, badge }) {
             theme et tombe a 1,12:1 sur le blanc en mode sombre. */}
         <div className={`flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border border-[color:var(--card-border)] sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-[color:var(--card-pill-bg)] py-1 pl-3 pr-0.5 text-[color:var(--card-ink)]" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
           {!available ? (
-            <span className="font-body text-sm font-bold uppercase tracking-wide">Indisponible</span>
+            <span className="font-body text-sm font-bold uppercase tracking-wide">{t("product.unavailable")}</span>
           ) : qty > 0 ? (
             <>
-              <button type="button" aria-label={`${qty === 1 ? "Retirer du panier" : "Retirer un exemplaire"} : ${product.name || product.slug}`} onClick={handleDecrease} className={`grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
+              <button type="button" aria-label={`${qty === 1 ? t("cart.removeFromCart") : t("cart.removeOneFromCart")} : ${product.name || product.slug}`} onClick={handleDecrease} className={`grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
                 <Icon name={qty === 1 ? "trash" : "minus"} />
               </button>
-              <span className="min-w-0 text-center font-body text-sm font-bold leading-tight text-neo" aria-live="polite"><span className="font-display text-2xl font-extrabold">{qty}</span> au panier</span>
-              <button type="button" aria-label={`Ajouter un exemplaire : ${product.name || product.slug}`} disabled={qty >= max} onClick={handleIncrease} className={`grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
+              <span className="min-w-0 text-center font-body text-sm font-bold leading-tight text-neo" aria-live="polite"><span className="font-display text-2xl font-extrabold">{qty}</span> {t("product.inCartShort")}</span>
+              <button type="button" aria-label={`${t("product.addOne")} : ${product.name || product.slug}`} disabled={qty >= max} onClick={handleIncrease} className={`grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
                 <Icon name="plus" />
               </button>
             </>
@@ -166,7 +166,7 @@ export function ProductCard({ product, index = 0, badge }) {
               {/* Le prix ne doit JAMAIS être coupé : whitespace-nowrap, pas de truncate.
                   mgs-card-price : 14px en container query sous 170px de carte (index.css). */}
               <div className="flex min-w-0 flex-1 items-center gap-1"><span className="mgs-card-price min-w-0 whitespace-nowrap font-display font-extrabold leading-none tracking-normal text-base sm:text-2xl">{formatAr(product.price, lang)}</span></div>
-              <button type="button" aria-label={`Ajouter au panier : ${product.name || product.slug}`} onClick={handleAdd} className={`relative before:absolute before:-inset-0.5 before:content-[''] grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-[color:var(--card-cta-bg)] text-[color:var(--card-cta-fg)] transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
+              <button type="button" aria-label={`${t("product.addToCart")} : ${product.name || product.slug}`} onClick={handleAdd} className={`relative before:absolute before:-inset-0.5 before:content-[''] grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-[color:var(--card-cta-bg)] text-[color:var(--card-cta-fg)] transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
                 <Icon name={actionIconName} />
               </button>
             </>
