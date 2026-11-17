@@ -56,7 +56,14 @@ export function errorMessage(e, fallback = "Une erreur est survenue") {
   return d.msg || String(d);
 }
 
-export const formatAr = (n, locale = "fr-FR") => `${Number(n || 0).toLocaleString(locale).replace(/\u202f/g, " ")} Ar`;
+// Montant en ariary formate selon la langue de l'app (mgs_lang) : fr ->
+// fr-FR (espaces comme separateurs de milliers), en -> en-GB (points et
+// virgule). Les composants passent deja `lang` explicitement ; la valeur
+// par defaut ne s'applique que quand aucun argument explicite n'est fourni.
+export const formatAr = (n, locale) => {
+  const loc = locale || (typeof localStorage !== "undefined" && localStorage.getItem("mgs_lang") === "en" ? "en-GB" : "fr-FR");
+  return `${Number(n || 0).toLocaleString(loc).replace(/\u202f/g, " ")} Ar`;
+};
 
 export function sessionId() {
   let id = localStorage.getItem("mgs_session");

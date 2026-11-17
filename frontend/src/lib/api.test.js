@@ -1,4 +1,4 @@
-import { api } from "@/lib/api";
+import { api, formatAr } from "@/lib/api";
 
 // L'interceptor restaure la session : le cookie access dure 15 min, le refresh cookie 30 jours.
 // Sans ce refresh silencieux sur /auth/me, un utilisateur qui revient (access expiré) serait
@@ -146,5 +146,35 @@ describe("api interceptor — restauration de session", () => {
     expect(a.data).toEqual({ user_id: "u1" });
     expect(b.data).toEqual({ user_id: "u1" });
     expect(calls.filter((c) => c.url === "/auth/refresh")).toHaveLength(1);
+  });
+});
+
+describe("formatAr — montant Ariary selon la langue (T4.5)", () => {
+  const original = localStorage.getItem("mgs_lang");
+  afterEach(() => {
+    if (original === null) localStorage.removeItem("mgs_lang");
+    else localStorage.setItem("mgs_lang", original);
+  });
+
+  test("sans argument explicite : defaut fr-FR en francais, et sans mgs_lang", () => {
+    localStorage.setItem("mgs_lang", "fr");
+    expect(formatAr(1234.5)).toBe("1 234,5 Ar");
+    localStorage.removeItem("mgs_lang");
+    expect(formatAr(1234.5)).toBe("1 234,5 Ar");
+  });
+
+  test("sans argument explicite : en-GB quand la langue stockee est anglais", () => {
+    localStorage.setItem("mgs_lang", "en");
+    expect(formatAr(1234.5)).toBe("1,234.5 Ar");
+  });
+
+  test("un argument explicite est prioritaire sur la langue stockee", () => {
+    localStorage.setItem("mgs_lang", "en");
+    expect(formatAr(1234.5, "fr-FR")).toBe("1 234,5 Ar");
+  });
+
+  test("valeur nulle ou indefinie : montant a zero", () => {
+    expect(formatAr(null)).toBe("0 Ar");
+    expect(formatAr(undefined)).toBe("0 Ar");
   });
 });
