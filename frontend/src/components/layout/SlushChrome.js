@@ -17,6 +17,7 @@ import {
   initHeadingReveal,
   initMarquee,
   initGlobalParallax,
+  getLenis,
 } from "@/lib/slush";
 
 /* ── PL-005-FE-03 (refonte Slush) — chrome global du design system ────────
@@ -75,7 +76,21 @@ export function SlushChrome() {
       "data-page",
       location.pathname === "/" ? "home" : "site"
     );
-    window.scrollTo(0, 0); // navigation instantanée : retour en haut à chaque page
+    // PL-005-FE-08f (G3-3, chasse glitches) — reset de scroll. Course
+    // critique vérifiée par trappe du setter scrollTop : au commit, le
+    // document rétrécit, le navigateur clampe la position (2000→972) et
+    // Lenis re-synchronise sa cible APRÈS notre écriture — le reset immédiat
+    // est écrasé et l'utilisateur atterrit en pleine page. On écrit donc
+    // deux fois : tout de suite (moins de flash), puis un frame plus tard
+    // (une fois le clamp et la re-synchronisation Lenis passés) — vérifié :
+    // seul le reset différé tient.
+    const resetScroll = () => {
+      const l = getLenis();
+      if (l) l.scrollTo(0, { immediate: true });
+      else window.scrollTo(0, 0);
+    };
+    resetScroll();
+    requestAnimationFrame(resetScroll);
     if (!gsapReady() || isCaptureMode()) return undefined;
     const cleanups = [
       initCardReveals(document),
