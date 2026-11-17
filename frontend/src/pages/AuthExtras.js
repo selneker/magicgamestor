@@ -25,8 +25,8 @@ function Shell({ title, subtitle, testId, back, children }) {
         </header>
       )}
       <p className="eyebrow">Magic Game Store</p>
-      <h1 className="font-display text-[26px] font-bold leading-tight text-slate-900">{title}</h1>
-      {subtitle && <p className="mt-1 text-slate-500">{subtitle}</p>}
+      <h1 className="font-display text-[26px] font-bold leading-tight text-foreground">{title}</h1>
+      {subtitle && <p className="mt-1 text-muted-foreground">{subtitle}</p>}
       <div className="mt-5 rounded-[2rem] border border-slate-100 bg-white p-5">{children}</div>
     </div>
   );
@@ -50,14 +50,14 @@ export function ForgotPassword() {
   };
   return (
     <Shell title={t("auth.forgotTitle")} subtitle={t("auth.forgotSub")} testId="forgot-password-page" back>
-      {sent ? <p className="text-sm" data-testid="forgot-sent">{t("auth.forgotSent")}</p> : (
+      {sent ? <p className="text-sm dark:text-ink" data-testid="forgot-sent">{t("auth.forgotSent")}</p> : (
         <form onSubmit={submit} className="space-y-4">
-          <div><label htmlFor="fp-email" className="text-sm font-medium">{t("auth.email")}</label><Input id="fp-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 h-11 rounded-xl" data-testid="forgot-email-input" /></div>
+          <div><label htmlFor="fp-email" className="text-sm font-medium">{t("auth.email")}</label><Input id="fp-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 h-11 rounded-xl dark:text-ink" data-testid="forgot-email-input" /></div>
           {captcha.enabled && <CaptchaWidget key={captchaKey} ref={captcha.ref} onVerify={captcha.onVerify} onError={captcha.onError} />}
           <Button type="submit" disabled={busy || (captcha.enabled && !captcha.ready)} className="h-11 w-full rounded-full font-semibold" data-testid="forgot-submit">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.forgotCta")}</Button>
         </form>
       )}
-      <p className="mt-4 text-center text-sm text-slate-500"><Link to="/connexion" className="font-semibold text-foreground" data-testid="back-to-login">{t("auth.login")}</Link></p>
+      <p className="mt-4 text-center text-sm text-slate-500"><Link to="/connexion" className="font-semibold text-foreground dark:text-ink" data-testid="back-to-login">{t("auth.login")}</Link></p>
     </Shell>
   );
 }

@@ -22,15 +22,19 @@ import { Diamond, KV, pretty } from "@/components/store/PaymentFlow";
 // la famille « en attente » : bordure encrée, horloge — même style que les
 // anciens statuts de vérification, tokens existants clair et sombre.
 const STYLE = {
-  pending_payment: ["border-foreground bg-transparent text-foreground", Clock],
-  awaiting_verification: ["border-foreground bg-transparent text-foreground", Clock],
-  proof_submitted: ["border-foreground bg-transparent text-foreground", Clock],
-  late_payment: ["border-foreground bg-transparent text-foreground", Clock],
+  // PL-CHK — pilules autoportantes : bg-card fixe le fond (blanc clair /
+  // #1F1F1F sombre) quel que soit le parent — sur la liste admin (cartes
+  // bg-white, blanc littéral) le texte foreground restait crème sur blanc
+  // en sombre (1.14:1) ; sur OrderTrack la pilule est inchangée visuellement.
+  pending_payment: ["border-foreground bg-card text-foreground", Clock],
+  awaiting_verification: ["border-foreground bg-card text-foreground", Clock],
+  proof_submitted: ["border-foreground bg-card text-foreground", Clock],
+  late_payment: ["border-foreground bg-card text-foreground", Clock],
   paid: ["border-primary-foreground bg-primary text-primary-foreground", CheckCircle2],
   delivered: ["border-foreground bg-foreground text-background", PackageCheck],
-  cancelled: ["border-foreground/40 bg-transparent text-muted-foreground line-through", XCircle],
+  cancelled: ["border-foreground/40 bg-card text-muted-foreground line-through", XCircle],
   failed: ["border-destructive bg-destructive text-destructive-foreground", XCircle],
-  expired: ["border-foreground/40 bg-transparent text-muted-foreground", Clock],
+  expired: ["border-foreground/40 bg-card text-muted-foreground", Clock],
 };
 
 export function StatusPill({ status, small = false }) {

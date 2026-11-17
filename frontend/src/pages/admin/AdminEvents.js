@@ -37,7 +37,7 @@ export default function AdminEvents() {
         {events.map((ev) => (
           <div key={ev.id} data-testid={`admin-event-${ev.slug}`} className={`flex items-center gap-3 rounded-2xl border bg-white p-4 ${ev.active ? "border-slate-100" : "border-dashed opacity-60"}`}>
             {ev.image_url && <img src={ev.image_url} alt="" className="h-14 w-20 rounded-xl object-cover" />}
-            <div className="min-w-0 flex-1"><p className="truncate font-display font-bold text-foreground">{ev.title_fr}</p><p className="text-xs dark:text-ink">♥ {ev.likes} · ↗ {ev.shares} · {ev.product_slug || "—"}</p></div>
+            <div className="min-w-0 flex-1"><p className="truncate font-display font-bold text-foreground dark:text-ink">{ev.title_fr}</p><p className="text-xs dark:text-ink">♥ {ev.likes} · ↗ {ev.shares} · {ev.product_slug || "—"}</p></div>
             <Button size="icon" variant="ghost" className="rounded-full" aria-label={t("admin.edit")} onClick={() => setEditing({ ...EMPTY, ...ev })} data-testid={`admin-edit-event-${ev.slug}`}><Pencil className="h-4 w-4" /></Button>
             <Button size="icon" variant="ghost" className="rounded-full text-slate-400 hover:text-foreground" aria-label={t("admin.delete")} onClick={() => remove(ev)} data-testid={`admin-delete-event-${ev.slug}`}><Trash2 className="h-4 w-4" /></Button>
           </div>
