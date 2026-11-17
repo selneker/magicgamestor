@@ -194,8 +194,8 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
           </Select>
           <OrderProofs order={o} className="h-11 flex-1 sm:h-[34px] sm:flex-none" />
           {o.status === "pending_payment" && o.payment_method !== "manual" && (
-            <><Button className="h-11 rounded-[8px] text-xs sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "completed")} data-testid={`admin-simulate-paid-${o.order_number}`}>{t("admin.forcePaid")}</Button>
-            <Button className="h-11 rounded-[8px] text-xs sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "failed")} data-testid={`admin-simulate-failed-${o.order_number}`}>{t("admin.forceFailed")}</Button></>
+            <><Button className="h-11 rounded-[8px] text-xs dark:text-ink sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "completed")} data-testid={`admin-simulate-paid-${o.order_number}`}>{t("admin.forcePaid")}</Button>
+            <Button className="h-11 rounded-[8px] text-xs dark:text-ink sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "failed")} data-testid={`admin-simulate-failed-${o.order_number}`}>{t("admin.forceFailed")}</Button></>
           )}
           {isSuperAdmin && <Button size="icon" variant="ghost" className="h-11 w-11 shrink-0 rounded-[8px] text-slate-400 hover:text-rose-600 sm:h-[34px] sm:w-[34px]" aria-label={t("admin.delete")} onClick={() => onRemove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
         </div>

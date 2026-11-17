@@ -52,7 +52,7 @@ export function ForgotPassword() {
     <Shell title={t("auth.forgotTitle")} subtitle={t("auth.forgotSub")} testId="forgot-password-page" back>
       {sent ? <p className="text-sm dark:text-ink" data-testid="forgot-sent">{t("auth.forgotSent")}</p> : (
         <form onSubmit={submit} className="space-y-4">
-          <div><label htmlFor="fp-email" className="text-sm font-medium">{t("auth.email")}</label><Input id="fp-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 h-11 rounded-xl dark:text-ink" data-testid="forgot-email-input" /></div>
+          <div><label htmlFor="fp-email" className="text-sm font-medium dark:text-ink">{t("auth.email")}</label><Input id="fp-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 h-11 rounded-xl dark:text-ink" data-testid="forgot-email-input" /></div>
           {captcha.enabled && <CaptchaWidget key={captchaKey} ref={captcha.ref} onVerify={captcha.onVerify} onError={captcha.onError} />}
           <Button type="submit" disabled={busy || (captcha.enabled && !captcha.ready)} className="h-11 w-full rounded-full font-semibold" data-testid="forgot-submit">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.forgotCta")}</Button>
         </form>
@@ -79,8 +79,8 @@ export function ResetPassword() {
   return (
     <Shell title={t("auth.resetTitle")} subtitle={t("auth.resetSub")} testId="reset-password-page">
       <form onSubmit={submit} className="space-y-4">
-        <div><label htmlFor="rp-pass" className="text-sm font-medium">{t("auth.newPassword")}</label><Input id="rp-pass" type="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="mt-1 h-11 rounded-xl" data-testid="reset-password-input" /></div>
-        <div><label htmlFor="rp-confirm" className="text-sm font-medium">{t("auth.confirmPassword")}</label><Input id="rp-confirm" type="password" required minLength={8} value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} className="mt-1 h-11 rounded-xl" data-testid="reset-confirm-input" /></div>
+        <div><label htmlFor="rp-pass" className="text-sm font-medium dark:text-ink">{t("auth.newPassword")}</label><Input id="rp-pass" type="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="mt-1 h-11 rounded-xl dark:text-ink" data-testid="reset-password-input" /></div>
+        <div><label htmlFor="rp-confirm" className="text-sm font-medium dark:text-ink">{t("auth.confirmPassword")}</label><Input id="rp-confirm" type="password" required minLength={8} value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} className="mt-1 h-11 rounded-xl dark:text-ink" data-testid="reset-confirm-input" /></div>
         <Button type="submit" disabled={busy} className="h-11 w-full rounded-full font-semibold" data-testid="reset-submit">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.resetCta")}</Button>
       </form>
     </Shell>
