@@ -17,6 +17,7 @@ import {
   initHeadingReveal,
   initMarquee,
   initGlobalParallax,
+  getLenis,
 } from "@/lib/slush";
 
 /* ── PL-005-FE-03 (refonte Slush) — chrome global du design system ────────
@@ -31,6 +32,10 @@ let booted = false; // une seule intro de chargement par rechargement complet
 
 export function SlushChrome() {
   const location = useLocation();
+  // PL-005-FE-08c : le premier montage de la route est couvert par le boot
+  // (runPageLoad y est lancé) — les suivants peuvent avoir besoin d'un
+  // rejou d'intro (voir l'effet de route).
+  const firstRoute = useRef(true);
 
   // Boot global : classes, easings, Lenis, curseur, direction, capture.
   useEffect(() => {
@@ -71,8 +76,24 @@ export function SlushChrome() {
       "data-page",
       location.pathname === "/" ? "home" : "site"
     );
-    window.scrollTo(0, 0); // navigation instantanée : retour en haut à chaque page
-    if (!gsapReady() || isCaptureMode()) return undefined;
+    // PL-005-FE-08f (G3-3, chasse glitches) — reset de scroll. Course
+    // critique vérifiée par trappe du setter scrollTop : au commit, le
+    // document rétrécit, le navigateur clampe la position (2000→972) et
+    // Lenis re-synchronise sa cible APRÈS notre écriture — le reset immédiat
+    // est écrasé et l'utilisateur atterrit en pleine page. On écrit donc
+    // deux fois : tout de suite (moins de flash), puis un frame plus tard
+    // (une fois le clamp et la re-synchronisation Lenis passés) — vérifié :
+    // seul le reset différé tient.
+    const resetScroll = () => {
+      const l = getLenis();
+      if (l) l.scrollTo(0, { immediate: true });
+      else window.scrollTo(0, 0);
+    };
+    resetScroll();
+    // Annulé au cleanup (revue du 17/11) : un rAF en attente ne doit pas
+    // tirer après un changement de route suivant.
+    const rafId = requestAnimationFrame(resetScroll);
+    if (!gsapReady() || isCaptureMode()) return () => cancelAnimationFrame(rafId);
     const cleanups = [
       initCardReveals(document),
       initSlantedText(document),
@@ -81,6 +102,20 @@ export function SlushChrome() {
       initGlobalParallax(document),
     ];
     window.ScrollTrigger && window.ScrollTrigger.refresh();
+    // PL-005-FE-08c (G1, propriétaire) — retour SPA sur une page à héros
+    // (logo, lien) : le héros est un NOUVEAU nœud DOM, la règle
+    // `html.has-js [data-hero-content] { opacity: 0 }`
+    // (design-system.css:6664) s'y réapplique, et `runPageLoad` — la seule
+    // chose qui repasse l'opacité à 1 — ne tournait qu'au boot (drapeau
+    // `booted`). Résultat observé (sonde) : opacité calculée 0, fond blanc
+    // seul. On rejoue l'intro quand la vue montée en porte un ; les gardes
+    // reduced-motion/capture sont dans runPageLoad. Le drapeau ci-dessous
+    // évite de la rejouer AU PREMIER montage (le boot l'a déjà lancée).
+    if (!firstRoute.current) {
+      const main = document.querySelector(".main-w");
+      if (main?.querySelector("[data-hero-content]")) runPageLoad(main, 0.15);
+    }
+    firstRoute.current = false;
     return () => cleanups.forEach((fn) => fn && fn());
   }, [location.pathname]);
 
