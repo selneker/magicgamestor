@@ -1,0 +1,812 @@
+[
+  {
+    "label": "feuille-preuve 360x560 light",
+    "ok": true,
+    "innerHeight": 560,
+    "footer": {
+      "found": true,
+      "top": 495,
+      "bottom": 560,
+      "right": 360
+    },
+    "buttons": {
+      "proof-submit": {
+        "found": true,
+        "top": 508,
+        "bottom": 548,
+        "right": 344
+      },
+      "proof-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-annulation 360x560 light",
+    "ok": true,
+    "innerHeight": 560,
+    "footer": {
+      "found": true,
+      "top": 437,
+      "bottom": 560,
+      "right": 360
+    },
+    "buttons": {
+      "cancel-keep": {
+        "found": true,
+        "top": 450,
+        "bottom": 490,
+        "right": 344
+      },
+      "cancel-confirm": {
+        "found": true,
+        "top": 498,
+        "bottom": 548,
+        "right": 344
+      },
+      "cancel-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-captcha 360x560 light",
+    "ok": true,
+    "innerHeight": 560,
+    "footer": {
+      "found": true,
+      "top": 495,
+      "bottom": 560,
+      "right": 360
+    },
+    "buttons": {
+      "captcha-sheet-submit": {
+        "found": true,
+        "top": 508,
+        "bottom": 548,
+        "right": 344
+      },
+      "captcha-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-preuve 360x560 dark",
+    "ok": true,
+    "innerHeight": 560,
+    "footer": {
+      "found": true,
+      "top": 495,
+      "bottom": 560,
+      "right": 360
+    },
+    "buttons": {
+      "proof-submit": {
+        "found": true,
+        "top": 508,
+        "bottom": 548,
+        "right": 344
+      },
+      "proof-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-annulation 360x560 dark",
+    "ok": true,
+    "innerHeight": 560,
+    "footer": {
+      "found": true,
+      "top": 437,
+      "bottom": 560,
+      "right": 360
+    },
+    "buttons": {
+      "cancel-keep": {
+        "found": true,
+        "top": 450,
+        "bottom": 490,
+        "right": 344
+      },
+      "cancel-confirm": {
+        "found": true,
+        "top": 498,
+        "bottom": 548,
+        "right": 344
+      },
+      "cancel-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-captcha 360x560 dark",
+    "ok": true,
+    "innerHeight": 560,
+    "footer": {
+      "found": true,
+      "top": 495,
+      "bottom": 560,
+      "right": 360
+    },
+    "buttons": {
+      "captcha-sheet-submit": {
+        "found": true,
+        "top": 508,
+        "bottom": 548,
+        "right": 344
+      },
+      "captcha-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-preuve 360x640 light",
+    "ok": true,
+    "innerHeight": 640,
+    "footer": {
+      "found": true,
+      "top": 575,
+      "bottom": 640,
+      "right": 360
+    },
+    "buttons": {
+      "proof-submit": {
+        "found": true,
+        "top": 588,
+        "bottom": 628,
+        "right": 344
+      },
+      "proof-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-annulation 360x640 light",
+    "ok": true,
+    "innerHeight": 640,
+    "footer": {
+      "found": true,
+      "top": 517,
+      "bottom": 640,
+      "right": 360
+    },
+    "buttons": {
+      "cancel-keep": {
+        "found": true,
+        "top": 530,
+        "bottom": 570,
+        "right": 344
+      },
+      "cancel-confirm": {
+        "found": true,
+        "top": 578,
+        "bottom": 628,
+        "right": 344
+      },
+      "cancel-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-captcha 360x640 light",
+    "ok": true,
+    "innerHeight": 640,
+    "footer": {
+      "found": true,
+      "top": 575,
+      "bottom": 640,
+      "right": 360
+    },
+    "buttons": {
+      "captcha-sheet-submit": {
+        "found": true,
+        "top": 588,
+        "bottom": 628,
+        "right": 344
+      },
+      "captcha-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-preuve 360x640 dark",
+    "ok": true,
+    "innerHeight": 640,
+    "footer": {
+      "found": true,
+      "top": 575,
+      "bottom": 640,
+      "right": 360
+    },
+    "buttons": {
+      "proof-submit": {
+        "found": true,
+        "top": 588,
+        "bottom": 628,
+        "right": 344
+      },
+      "proof-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-annulation 360x640 dark",
+    "ok": true,
+    "innerHeight": 640,
+    "footer": {
+      "found": true,
+      "top": 517,
+      "bottom": 640,
+      "right": 360
+    },
+    "buttons": {
+      "cancel-keep": {
+        "found": true,
+        "top": 530,
+        "bottom": 570,
+        "right": 344
+      },
+      "cancel-confirm": {
+        "found": true,
+        "top": 578,
+        "bottom": 628,
+        "right": 344
+      },
+      "cancel-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-captcha 360x640 dark",
+    "ok": true,
+    "innerHeight": 640,
+    "footer": {
+      "found": true,
+      "top": 575,
+      "bottom": 640,
+      "right": 360
+    },
+    "buttons": {
+      "captcha-sheet-submit": {
+        "found": true,
+        "top": 588,
+        "bottom": 628,
+        "right": 344
+      },
+      "captcha-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-preuve 390x844 light",
+    "ok": true,
+    "innerHeight": 844,
+    "footer": {
+      "found": true,
+      "top": 779,
+      "bottom": 844,
+      "right": 390
+    },
+    "buttons": {
+      "proof-submit": {
+        "found": true,
+        "top": 792,
+        "bottom": 832,
+        "right": 374
+      },
+      "proof-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-annulation 390x844 light",
+    "ok": true,
+    "innerHeight": 844,
+    "footer": {
+      "found": true,
+      "top": 721,
+      "bottom": 844,
+      "right": 390
+    },
+    "buttons": {
+      "cancel-keep": {
+        "found": true,
+        "top": 734,
+        "bottom": 774,
+        "right": 374
+      },
+      "cancel-confirm": {
+        "found": true,
+        "top": 782,
+        "bottom": 832,
+        "right": 374
+      },
+      "cancel-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-captcha 390x844 light",
+    "ok": true,
+    "innerHeight": 844,
+    "footer": {
+      "found": true,
+      "top": 779,
+      "bottom": 844,
+      "right": 390
+    },
+    "buttons": {
+      "captcha-sheet-submit": {
+        "found": true,
+        "top": 792,
+        "bottom": 832,
+        "right": 374
+      },
+      "captcha-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-preuve 390x844 dark",
+    "ok": true,
+    "innerHeight": 844,
+    "footer": {
+      "found": true,
+      "top": 779,
+      "bottom": 844,
+      "right": 390
+    },
+    "buttons": {
+      "proof-submit": {
+        "found": true,
+        "top": 792,
+        "bottom": 832,
+        "right": 374
+      },
+      "proof-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-annulation 390x844 dark",
+    "ok": true,
+    "innerHeight": 844,
+    "footer": {
+      "found": true,
+      "top": 721,
+      "bottom": 844,
+      "right": 390
+    },
+    "buttons": {
+      "cancel-keep": {
+        "found": true,
+        "top": 734,
+        "bottom": 774,
+        "right": 374
+      },
+      "cancel-confirm": {
+        "found": true,
+        "top": 782,
+        "bottom": 832,
+        "right": 374
+      },
+      "cancel-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-captcha 390x844 dark",
+    "ok": true,
+    "innerHeight": 844,
+    "footer": {
+      "found": true,
+      "top": 779,
+      "bottom": 844,
+      "right": 390
+    },
+    "buttons": {
+      "captcha-sheet-submit": {
+        "found": true,
+        "top": 792,
+        "bottom": 832,
+        "right": 374
+      },
+      "captcha-sheet-desktop-close": {
+        "found": true,
+        "top": 0,
+        "bottom": 0,
+        "right": 0
+      }
+    }
+  },
+  {
+    "label": "feuille-preuve 1366x620 light",
+    "ok": true,
+    "innerHeight": 620,
+    "footer": {
+      "found": true,
+      "top": 412,
+      "bottom": 487,
+      "right": 923
+    },
+    "buttons": {
+      "proof-submit": {
+        "found": true,
+        "top": 425,
+        "bottom": 471,
+        "right": 907
+      },
+      "proof-sheet-desktop-close": {
+        "found": true,
+        "top": 425,
+        "bottom": 471,
+        "right": 679
+      }
+    }
+  },
+  {
+    "label": "feuille-annulation 1366x620 light",
+    "ok": true,
+    "innerHeight": 620,
+    "footer": {
+      "found": true,
+      "top": 405,
+      "bottom": 480,
+      "right": 923
+    },
+    "buttons": {
+      "cancel-keep": {
+        "found": true,
+        "top": 418,
+        "bottom": 464,
+        "right": 755
+      },
+      "cancel-confirm": {
+        "found": true,
+        "top": 418,
+        "bottom": 464,
+        "right": 953
+      },
+      "cancel-sheet-desktop-close": {
+        "found": true,
+        "top": 418,
+        "bottom": 464,
+        "right": 544
+      }
+    }
+  },
+  {
+    "label": "feuille-captcha 1366x620 light",
+    "ok": true,
+    "innerHeight": 620,
+    "footer": {
+      "found": true,
+      "top": 332,
+      "bottom": 407,
+      "right": 923
+    },
+    "buttons": {
+      "captcha-sheet-submit": {
+        "found": true,
+        "top": 345,
+        "bottom": 391,
+        "right": 907
+      },
+      "captcha-sheet-desktop-close": {
+        "found": true,
+        "top": 345,
+        "bottom": 391,
+        "right": 679
+      }
+    }
+  },
+  {
+    "label": "feuille-preuve 1366x620 dark",
+    "ok": true,
+    "innerHeight": 620,
+    "footer": {
+      "found": true,
+      "top": 412,
+      "bottom": 487,
+      "right": 923
+    },
+    "buttons": {
+      "proof-submit": {
+        "found": true,
+        "top": 425,
+        "bottom": 471,
+        "right": 907
+      },
+      "proof-sheet-desktop-close": {
+        "found": true,
+        "top": 425,
+        "bottom": 471,
+        "right": 679
+      }
+    }
+  },
+  {
+    "label": "feuille-annulation 1366x620 dark",
+    "ok": true,
+    "innerHeight": 620,
+    "footer": {
+      "found": true,
+      "top": 405,
+      "bottom": 480,
+      "right": 923
+    },
+    "buttons": {
+      "cancel-keep": {
+        "found": true,
+        "top": 418,
+        "bottom": 464,
+        "right": 755
+      },
+      "cancel-confirm": {
+        "found": true,
+        "top": 418,
+        "bottom": 464,
+        "right": 953
+      },
+      "cancel-sheet-desktop-close": {
+        "found": true,
+        "top": 418,
+        "bottom": 464,
+        "right": 544
+      }
+    }
+  },
+  {
+    "label": "feuille-captcha 1366x620 dark",
+    "ok": true,
+    "innerHeight": 620,
+    "footer": {
+      "found": true,
+      "top": 332,
+      "bottom": 407,
+      "right": 923
+    },
+    "buttons": {
+      "captcha-sheet-submit": {
+        "found": true,
+        "top": 345,
+        "bottom": 391,
+        "right": 907
+      },
+      "captcha-sheet-desktop-close": {
+        "found": true,
+        "top": 345,
+        "bottom": 391,
+        "right": 679
+      }
+    }
+  },
+  {
+    "label": "feuille-preuve 1280x720 light",
+    "ok": true,
+    "innerHeight": 720,
+    "footer": {
+      "found": true,
+      "top": 462,
+      "bottom": 537,
+      "right": 880
+    },
+    "buttons": {
+      "proof-submit": {
+        "found": true,
+        "top": 475,
+        "bottom": 521,
+        "right": 864
+      },
+      "proof-sheet-desktop-close": {
+        "found": true,
+        "top": 475,
+        "bottom": 521,
+        "right": 636
+      }
+    }
+  },
+  {
+    "label": "feuille-annulation 1280x720 light",
+    "ok": true,
+    "innerHeight": 720,
+    "footer": {
+      "found": true,
+      "top": 455,
+      "bottom": 530,
+      "right": 880
+    },
+    "buttons": {
+      "cancel-keep": {
+        "found": true,
+        "top": 468,
+        "bottom": 514,
+        "right": 712
+      },
+      "cancel-confirm": {
+        "found": true,
+        "top": 468,
+        "bottom": 514,
+        "right": 910
+      },
+      "cancel-sheet-desktop-close": {
+        "found": true,
+        "top": 468,
+        "bottom": 514,
+        "right": 501
+      }
+    }
+  },
+  {
+    "label": "feuille-captcha 1280x720 light",
+    "ok": true,
+    "innerHeight": 720,
+    "footer": {
+      "found": true,
+      "top": 382,
+      "bottom": 457,
+      "right": 880
+    },
+    "buttons": {
+      "captcha-sheet-submit": {
+        "found": true,
+        "top": 395,
+        "bottom": 441,
+        "right": 864
+      },
+      "captcha-sheet-desktop-close": {
+        "found": true,
+        "top": 395,
+        "bottom": 441,
+        "right": 636
+      }
+    }
+  },
+  {
+    "label": "feuille-preuve 1280x720 dark",
+    "ok": true,
+    "innerHeight": 720,
+    "footer": {
+      "found": true,
+      "top": 462,
+      "bottom": 537,
+      "right": 880
+    },
+    "buttons": {
+      "proof-submit": {
+        "found": true,
+        "top": 475,
+        "bottom": 521,
+        "right": 864
+      },
+      "proof-sheet-desktop-close": {
+        "found": true,
+        "top": 475,
+        "bottom": 521,
+        "right": 636
+      }
+    }
+  },
+  {
+    "label": "feuille-annulation 1280x720 dark",
+    "ok": true,
+    "innerHeight": 720,
+    "footer": {
+      "found": true,
+      "top": 455,
+      "bottom": 530,
+      "right": 880
+    },
+    "buttons": {
+      "cancel-keep": {
+        "found": true,
+        "top": 468,
+        "bottom": 514,
+        "right": 712
+      },
+      "cancel-confirm": {
+        "found": true,
+        "top": 468,
+        "bottom": 514,
+        "right": 910
+      },
+      "cancel-sheet-desktop-close": {
+        "found": true,
+        "top": 468,
+        "bottom": 514,
+        "right": 501
+      }
+    }
+  },
+  {
+    "label": "feuille-captcha 1280x720 dark",
+    "ok": true,
+    "innerHeight": 720,
+    "footer": {
+      "found": true,
+      "top": 382,
+      "bottom": 457,
+      "right": 880
+    },
+    "buttons": {
+      "captcha-sheet-submit": {
+        "found": true,
+        "top": 395,
+        "bottom": 441,
+        "right": 864
+      },
+      "captcha-sheet-desktop-close": {
+        "found": true,
+        "top": 395,
+        "bottom": 441,
+        "right": 636
+      }
+    }
+  }
+]

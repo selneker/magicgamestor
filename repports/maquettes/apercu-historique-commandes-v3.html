@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette — Historique des commandes (PL-005-FE-01)</title>
+<style>
+  :root{
+    --bg:#0a0a0b; --surface:#121315; --surface-2:#1b1d20; --line:#24272b; --line-2:#2a2d31;
+    --text:#f2f2ee; --muted:#9aa0a6; --muted-2:#6c7279; --lime:#CBFE01;
+    --green:#00a650; --orange:#ff7900; --gold:#f0b90b; --red:#ff5a5a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#050506;color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;padding:28px;display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start;justify-content:center}
+  h2{width:100%;text-align:center;font-size:15px;color:var(--muted);font-weight:600;margin:0 0 -6px}
+  .col{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .label{font-size:12px;color:var(--muted-2);font-weight:600;letter-spacing:.02em}
+  .phone{width:375px;height:760px;background:var(--bg);border-radius:30px;border:1px solid var(--line-2);position:relative;overflow:hidden;box-shadow:0 0 0 6px #000;display:flex;flex-direction:column}
+
+  /* top bar */
+  .top{flex:none;padding:16px 16px 10px;border-bottom:1px solid var(--line)}
+  .top .ttl{font-size:19px;font-weight:600}
+  .tabs{display:flex;gap:18px;margin-top:12px}
+  .tab{font-size:13px;font-weight:600;color:var(--muted);padding-bottom:9px;position:relative}
+  .tab.on{color:var(--text)}
+  .tab.on:after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--lime);border-radius:2px}
+
+  .scroll{flex:1;overflow:auto;padding:12px 14px 18px}
+  .notice{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .notice b{color:var(--text)}
+  .notice .arrow{margin-left:auto;color:var(--muted-2)}
+
+  /* order card (list) */
+  .ocard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
+  .ocard .row1{display:flex;align-items:flex-start;gap:10px}
+  .ocard .name{font-weight:600;font-size:14.5px}
+  .ocard .sub{font-size:11.5px;color:var(--muted-2);margin-top:2px}
+  .badge{margin-left:auto;margin-top:-2px;font-size:11px;font-weight:600;padding:4px 9px;border-radius:7px;white-space:nowrap;flex:none;background:transparent;border:1px solid var(--line-2)}
+  .b-done{color:#3ddb8a;border-color:rgba(61,219,138,.35)}
+  .b-progress{color:var(--lime);border-color:rgba(203,254,1,.35)}
+  .b-pending{color:var(--muted);border-color:var(--line-2)}
+  .b-cancel{color:rgba(255,255,255,.62);border-color:rgba(255,255,255,.30)}
+  .b-refund{color:var(--gold);border-color:rgba(240,185,11,.35)}
+
+  .ocard .row2{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px}
+  .ocard .amount{font-weight:600;font-size:15.5px;font-variant-numeric:tabular-nums}
+  .ocard .prod{font-size:12.5px;color:var(--muted)}
+
+  .ocard .row3{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+  .oid{font-size:11.5px;color:var(--muted-2);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:5px}
+  .copy{width:18px;height:18px;border-radius:5px;display:grid;place-items:center;color:var(--muted-2);flex:none}
+  .date{font-size:11px;color:var(--muted-2);margin-left:auto}
+
+  .help-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--text);background:var(--surface-2);border:1px solid var(--line-2);border-radius:8px;padding:6px 10px;margin-top:10px}
+  .help-pill .ic{font-size:12px;line-height:1}
+
+  /* ===== detail screen ===== */
+  .detail-top{display:flex;align-items:center;gap:10px;padding:14px 16px 6px}
+  .back{width:30px;height:30px;display:grid;place-items:center;color:var(--text);font-size:17px}
+  .detail-top .ttl{font-size:16px;font-weight:600;flex:1;text-align:center;margin-right:30px}
+
+  .hero{text-align:center;padding:14px 20px 6px}
+  .hero .amt{font-size:30px;font-weight:600;font-variant-numeric:tabular-nums}
+  .hero .status{margin-top:8px;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
+  .hero .status.ok{color:#3ddb8a}
+  .hero .status.prog{color:var(--lime)}
+
+  .dcard{margin:16px 14px 0;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:4px 14px 6px}
+  .dcard .hrow{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line)}
+  .dcard .hrow .gm{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px}
+  .chat-btn{background:var(--lime);color:#000;font-weight:600;font-size:12.5px;padding:7px 14px;border-radius:8px;display:flex;align-items:center;gap:5px}
+
+  .dline{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .dline:last-of-type{border-bottom:none}
+  .dline .k{color:var(--muted)}
+  .dline .v{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+  .pm{display:flex;align-items:center;gap:7px}
+  .pm .dot2{width:7px;height:7px;border-radius:50%}
+  .chevrow{display:flex;justify-content:center;padding:9px 0 5px}
+  .chev-btn{width:26px;height:26px;border-radius:8px;border:1px solid var(--line-2);display:grid;place-items:center;color:var(--muted);font-size:11px}
+
+  .hero .status.done{display:inline-flex;align-items:center;gap:7px;color:#3ddb8a}
+  .hero .check{width:19px;height:19px;border-radius:50%;background:#3ddb8a;color:#06140d;display:grid;place-items:center;font-size:11px;font-weight:600}
+
+  .alink{display:flex;align-items:center;justify-content:space-between;margin:14px 14px 0;padding:14px 2px;border-bottom:1px solid var(--line);font-size:13.5px;font-weight:600}
+  .alink .ic{color:var(--muted)}
+  .alink .r{margin-left:auto;color:var(--muted-2)}
+
+  .ai-note{margin:14px 14px 0;background:rgba(203,254,1,.07);border:1px solid rgba(203,254,1,.25);border-radius:14px;padding:11px 12px;font-size:12px;color:var(--text);display:flex;gap:8px}
+  .ai-note .ic{width:20px;height:20px;border-radius:6px;background:var(--lime);color:#000;display:grid;place-items:center;font-weight:600;font-size:11px;flex:none}
+
+  .spacer{flex:1}
+  .bottom{padding:14px 16px 18px;border-top:1px solid var(--line)}
+  .btn{display:block;width:100%;height:50px;border-radius:999px;background:var(--lime);color:#000;font-weight:600;font-size:14.5px;text-align:center;line-height:50px}
+  .btn.ghost{background:transparent;border:1px solid var(--line-2);color:var(--text);margin-top:8px}
+
+  .annot{max-width:375px;font-size:12px;color:var(--muted-2);line-height:1.6}
+  .annot b{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<h2>PL-005-FE-01 — Historique des commandes client (liste + détail). Style : cartes arrondies existantes du site (checkout Binance), PAS le badge carré de l'admin.</h2>
+
+<div class="col">
+  <div class="label">ÉCRAN 1 — Liste « Mes commandes »</div>
+  <div class="phone">
+    <div class="top">
+      <div class="ttl">Mes commandes</div>
+      <div class="tabs">
+        <div class="tab on">Toutes</div>
+        <div class="tab">En cours</div>
+        <div class="tab">Terminées</div>
+      </div>
+    </div>
+    <div class="scroll">
+
+      <div class="ocard">
+        <div class="row1">
+          <div>
+            <div class="name">Free Fire — 310 Diamants</div>
+            <div class="sub">ID joueur 52050065597</div>
+</div>
+          <div class="badge b-progress">Payée · livraison</div>
+        </div>
+        <div class="row2">
+          <div class="amount">4 600 Ar</div>
+          <div class="prod">Binance USDT</div>
+        </div>
+        <div class="row3">
+          <div class="oid">MGS-66458C <span class="copy">⧉</span></div>
+          <div class="date">13 nov. 16:30</div>
+        </div>
+      </div>
+
+      <div class="ocard">
+        <div class="row1">
+          <div>
+            <div class="name">PUBG Mobile — Weekly Pass</div>
+            <div class="sub">ID joueur 5123456789</div>
+</div>
+          <div class="badge b-done">Livrée</div>
+        </div>
+        <div class="row2">
+          <div class="amount">11 500 Ar</div>
+          <div class="prod">MVola</div>
+        </div>
+        <div class="row3">
+          <div class="oid">MGS-66201A <span class="copy">⧉</span></div>
+          <div class="date">12 nov. 09:04</div>
+        </div>
+      </div>
+
+      <div class="ocard">
+        <div class="row1">
+          <div>
+            <div class="name">Mobile Legends — 112 Diamants</div>
+            <div class="sub">ID · serveur 998211 (2093)</div>
+</div>
+          <div class="badge b-pending">En attente</div>
+        </div>
+        <div class="row2">
+          <div class="amount">9 800 Ar</div>
+          <div class="prod">Orange Money</div>
+        </div>
+        <div class="row3">
+          <div class="oid">MGS-66512F <span class="copy">⧉</span></div>
+          <div class="date">14 nov. 08:02</div>
+        </div>
+        <div class="help-pill"><span class="ic">💬</span> Besoin d'aide ?</div>
+      </div>
+
+      <div class="ocard">
+        <div class="row1">
+          <div>
+            <div class="name">Free Fire — 1080 Diamants</div>
+            <div class="sub">ID joueur 52050065597</div>
+</div>
+          <div class="badge b-refund">Remboursée</div>
+        </div>
+        <div class="row2">
+          <div class="amount">15 200 Ar</div>
+          <div class="prod">Binance USDT</div>
+        </div>
+        <div class="row3">
+          <div class="oid">MGS-65890D <span class="copy">⧉</span></div>
+          <div class="date">09 nov. 19:47</div>
+        </div>
+      </div>
+
+      <div class="ocard">
+        <div class="row1">
+          <div>
+            <div class="name">PUBG Mobile — 60 UC</div>
+            <div class="sub">ID joueur 5123456789</div>
+</div>
+          <div class="badge b-cancel">Annulée</div>
+        </div>
+        <div class="row2">
+          <div class="amount">4 100 Ar</div>
+          <div class="prod">MVola</div>
+        </div>
+        <div class="row3">
+          <div class="oid">MGS-65710B <span class="copy">⧉</span></div>
+          <div class="date">07 nov. 14:12</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <div class="annot">
+    <b>Carte</b> : nom du jeu + produit en texte (aucune icône), badge de statut à droite — <b>pas une pilule</b> : petit rectangle bordé (radius 7px), fond transparent, texte coloré selon le statut (vert=livrée, lime=en cours, gris=en attente, rouge=annulée, or=remboursée), comme Binance.<br>
+    Ligne 2 : montant en gras à gauche, méthode de paiement en gris à droite.<br>
+    Ligne 3 : numéro de commande + copie, date à droite.<br>
+    Pastille « Besoin d'aide ? » (radius 8px, pas une pilule, icône 💬 au lieu d'un point vert) <b>seulement sur les commandes non terminées</b> (en attente / en cours) → ouvre l'assistant IA (PL-005-BE-01) avec le contexte de cette commande déjà chargé.
+  </div>
+</div>
+
+<div class="col">
+  <div class="label">ÉCRAN 2 — Détail d'une commande</div>
+  <div class="phone">
+    <div class="detail-top">
+      <div class="back">←</div>
+      <div class="ttl">Commande MGS-66458C</div>
+    </div>
+
+    <div class="hero">
+      <div class="amt">4 600 Ar</div>
+      <div class="status prog">● Payée — livraison en cours</div>
+    </div>
+
+    <div class="dcard">
+      <div class="hrow">
+        <div class="gm">Free Fire</div>
+        
+      </div>
+      <div class="dline"><div class="k">Produit</div><div class="v">310 Diamants</div></div>
+      <div class="dline"><div class="k">ID joueur</div><div class="v">52050065597</div></div>
+      <div class="dline"><div class="k">Méthode</div><div class="v pm"><span class="dot2" style="background:var(--gold)"></span>Binance USDT</div></div>
+      <div class="chevrow"><button class="bare-chev">⌄</button></div>
+    </div>
+
+    <div class="ai-note">
+      <div class="ic">AI</div>
+      <div>L'assistant a confirmé : livraison généralement sous 30 min après paiement validé. Si ça dépasse 2h, le support prend le relais.</div>
+    </div>
+
+    <div class="alink">
+      <div class="ic">💬</div> Besoin d'aide avec cette commande
+      <div class="r">›</div>
+    </div>
+    <div class="alink">
+      <div class="ic">🧾</div> Télécharger le reçu
+      <div class="r">›</div>
+    </div>
+
+    <div class="spacer"></div>
+    <div class="bottombar">
+      <div class="chat2">💬 Chat</div>
+      <div class="main2">Commander à nouveau</div>
+    </div>
+  </div>
+  <div class="annot">
+    <b>En-tête</b> : montant + statut (couleurs identiques à la liste).<br>
+    <b>Carte</b> : nom du jeu en texte seul (aucune icône). Lignes visibles : produit / ID joueur / méthode <u>uniquement</u>. Le bouton « Chat » n'est plus dans la carte : il est dans la barre du bas, arrondi en pilule comme « Commander à nouveau ».<br>
+    <b>Chevron</b> : icône seule, sans bordure ni fond, <u>sous le contenu</u> ; une fois ouvert il reste tout en bas (sous les lignes dépliées), tourné vers le haut — il ne se retrouve jamais au milieu.<br>
+    <b>Encart IA</b> (lime clair) : réponse courte de l'assistant quand la commande n'est pas terminée — <u>jamais</u> pour une commande livrée/remboursée/annulée.<br>
+    <b>Reçu téléchargeable</b> : ouvre une vue reçu imprimable (logo, commande, montant, méthode, date, statut) → le client clique « Imprimer / Enregistrer en PDF » du navigateur. Aucune route backend, aucune dépendance : généré côté client à partir des données déjà affichées.<br>
+    « Commander à nouveau » = <b>pré-remplit un nouveau panier</b> avec le même jeu/produit/ID, le client repasse par le flux normal (jamais une commande forcée). Masqué si une commande en attente de paiement existe déjà pour ce produit — bouton « Reprendre le paiement » à la place (logique existante).
+  </div>
+</div>
+
+<div class="col">
+  <div class="label">ÉCRAN 2bis — En-tête quand la commande est LIVRÉE</div>
+  <div class="phone" style="height:170px">
+    <div class="hero" style="padding-top:28px">
+      <div class="amt">11 500 Ar</div>
+      <div class="status done" style="margin-top:9px;font-size:14px"><span class="check">✓</span> Livrée</div>
+    </div>
+  </div>
+  <div class="annot">
+    Dès que le statut passe à <b>Livrée</b>, l'en-tête remplace le point de couleur par une <b>coche ronde verte pleine</b> + le mot « Livrée » en vert, comme la capture Binance (gros montant, puis coche + statut, rien d'autre). Même traitement nulle part ailleurs (pas pour en attente/en cours/annulée/remboursée, qui gardent le point de couleur simple).
+  </div>
+</div>
+
+<!-- ===================== ROUND 2 — corrections du 14/11 ===================== -->
+<style>
+  .rule{width:100%;border:none;border-top:1px dashed var(--line-2);margin:10px 0 0}
+  .round2{width:100%;text-align:center;font-size:15px;color:var(--text);font-weight:600;margin-top:10px}
+
+  .desk{width:720px;background:var(--bg);border:1px solid var(--line-2);border-radius:18px;padding:22px;box-shadow:0 0 0 6px #000}
+  .srow{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .srow .ttl2{font-size:21px;font-weight:600}
+  .cmdbtn{display:inline-flex;align-items:center;gap:12px;height:40px;padding:0 10px 0 16px;border-radius:20px;background:#2c2c2c;color:rgba(255,255,255,.85);font-size:14px;font-weight:500}
+  .cmdbtn kbd{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:6px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.5);font:500 11px/1 inherit}
+  .cmdopen{display:inline-flex;align-items:center;gap:10px;height:40px;width:300px;padding:0 10px 0 14px;border-radius:20px;background:#2c2c2c;color:#fff;font-size:14px;font-weight:500}
+  .cmdopen .ph{flex:1;color:rgba(255,255,255,.35)}
+  .cmdopen kbd{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:6px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.5);font:500 11px/1 inherit}
+  .dcard-wide{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin-bottom:10px}
+  .dcard-wide .c1{flex:1 1 40%}
+  .dcard-wide .c2{flex:0 0 140px;text-align:right}
+  .dcard-wide .c3{flex:0 0 170px;text-align:right}
+
+  .bare-chev{border:none;background:none;color:var(--muted);font-size:14px;padding:10px;display:grid;place-items:center}
+
+  .badge2{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:rgba(255,255,255,.62)}
+  .badge2 .x{font-size:10px}
+
+  .expand-box{margin:0 14px;padding:10px 0 2px;font-size:12.5px}
+  .expand-box .dline{padding:8px 0}
+
+  .bottombar{display:flex;gap:8px;padding:14px 16px 18px;border-top:1px solid var(--line)}
+  .bottombar .chat2{flex:0 0 92px;height:48px;border-radius:999px;background:var(--lime);color:#000;font-weight:600;font-size:13.5px;display:grid;place-items:center}
+  .bottombar .main2{flex:1;height:48px;border-radius:999px;border:1px solid var(--line-2);display:grid;place-items:center;font-weight:600;font-size:13.5px}
+</style>
+
+<hr class="rule">
+<div class="round2">RONDE 2 — corrections du 14 novembre (lire avec les notes ci-dessous)</div>
+
+<div class="col">
+  <div class="label">ÉCRAN 3 — Liste desktop, cartes élargies + bouton de recherche</div>
+  <div class="desk">
+    <div class="srow">
+      <div class="ttl2">Mes commandes</div>
+      <div class="cmdbtn">Rechercher <span style="display:inline-flex;gap:4px"><kbd>Ctrl</kbd><kbd>K</kbd></span></div>
+    </div>
+    <div style="margin:-4px 0 16px;display:flex;justify-content:flex-end"><div class="cmdopen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span class="ph">N° de commande ou ID joueur</span><kbd>Esc</kbd></div></div>
+    <div class="dcard-wide">
+      <div class="c1"><b>Free Fire — 310 Diamants</b><br><span style="color:var(--muted-2);font-size:12px">MGS-66458C</span></div>
+      <div class="c2" style="color:var(--muted)">Binance USDT</div>
+      <div class="c3"><b>4 600 Ar</b><br><span class="badge" style="margin-left:0" class="b-progress">Payée · livraison</span></div>
+    </div>
+    <div class="dcard-wide">
+      <div class="c1"><b>PUBG Mobile — 60 UC</b><br><span style="color:var(--muted-2);font-size:12px">MGS-778868</span></div>
+      <div class="c2" style="color:var(--muted)">MVola</div>
+      <div class="c3"><b>4 600 Ar</b><br><span class="badge b-done" style="margin-left:0">Livrée</span></div>
+    </div>
+  </div>
+  <div class="annot">
+    <b>Bouton de recherche = style du composant fourni</b> (voir <code>reference-command-button.tsx</code>) :
+    fond #2c2c2c, hauteur 40px, rayon 20px, sans ombre ni bordure, texte « Rechercher » + touches
+    <kbd>Ctrl</kbd> <kbd>K</kbd> (⌘ K sur Mac), ouverture en champ de 300px (icône loupe, placeholder,
+    touche Esc), Échap / clic dehors / champ vide referme. Le champ ouvert est montré juste au-dessus
+    des cartes (état ouvert) ; l'état fermé est dans l'en-tête à droite.<br>
+    L'ancien bloc « Suivre une commande » (2 champs + bouton) <b>disparaît</b>. En dessous :
+    directement <b>l'historique</b>. Cartes desktop plus larges (3 colonnes souples).<br>
+    <b>Poids de police</b> : aucun texte au-dessus de 600 (semi-bold) sur ces pages.
+  </div>
+</div>
+
+<div class="col">
+  <div class="label">ÉCRAN 4 — Détail corrigé (chevron nu, badge annulée, boutons en bas)</div>
+  <div class="phone" style="height:620px">
+    <div class="detail-top"><div class="back">←</div><div class="ttl">Commande</div></div>
+    <div class="hero">
+      <div class="amt">700 Ar</div>
+      <div class="status"><span class="badge2"><span class="x">✕</span> Annulée</span></div>
+    </div>
+    <div class="dcard">
+      <div class="dline"><div class="k">Produit</div><div class="v">1× 5 diamants</div></div>
+      <div class="dline"><div class="k">ID joueur</div><div class="v">2208105694 · zone 4307</div></div>
+      <div class="dline" style="border-bottom:none"><div class="k">Méthode</div><div class="v pm"><span class="dot2" style="background:var(--muted-2)"></span>USSD</div></div>
+      <div class="expand-box" style="display:block;border-top:1px solid var(--line)">
+        <div class="dline"><div class="k">Numéro de commande</div><div class="v">MGS-8727A0 ⧉</div></div>
+        <div class="dline" style="border-bottom:none"><div class="k">Commandée le</div><div class="v">10 nov. 11:21</div></div>
+      </div>
+      <div class="chevrow"><button class="bare-chev" style="transform:rotate(180deg)">⌄</button></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="bottombar">
+      <div class="chat2">💬 Chat</div>
+      <div class="main2">Commander à nouveau</div>
+    </div>
+  </div>
+  <div class="annot">
+    <b>Chevron</b> : icône nue (aucune bordure, aucun fond, zone cliquable 44px invisible). Ouvert : le contenu replié s'affiche au-dessus et le chevron <b>reste tout en bas</b>, tourné vers le haut.<br>
+    <b>Badge « Annulée »</b> (détail) : <b>aucune bordure, aucune couleur rouge</b> — icône ✕ + texte en <b>blanc à ~62 % d'opacité</b> (tolérance 58–65 %). Même blanc 62 % dans la liste (bordure fine blanche 30 % conservée pour tous les badges de liste). Vérifier le contraste AA réel sur les deux thèmes (si 62 % échoue en thème clair, utiliser l'encre du thème à 62 %).<br>
+    <b>Date et numéro de commande</b> : <u>uniquement</u> dans la zone repliée (avec preuve / raison d'annulation).<br>
+    <b>Flèche ← du haut</b> : style identique à la flèche de retour de la page de paiement (réutiliser ce composant) ; elle ramène <b>toujours</b> à la page des commandes initiale (liste), jamais « retour navigateur ».<br>
+    <b>Barre du bas</b> : le bouton « Chat » et le bouton principal (« Commander à nouveau » /
+    « Reprendre le paiement ») sont groupés dans une barre fixée en bas de l'écran — même principe à
+    appliquer sur la page de paiement si ses boutons ne le sont pas déjà (à vérifier dans l'inventaire).
+  </div>
+</div>
+
+</body>
+</html>

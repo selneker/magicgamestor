@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette — Historique des commandes (PL-005-FE-01)</title>
+<style>
+  :root{
+    --bg:#0a0a0b; --surface:#121315; --surface-2:#1b1d20; --line:#24272b; --line-2:#2a2d31;
+    --text:#f2f2ee; --muted:#9aa0a6; --muted-2:#6c7279; --lime:#CBFE01;
+    --green:#00a650; --orange:#ff7900; --gold:#f0b90b; --red:#ff5a5a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#050506;color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;padding:28px;display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start;justify-content:center}
+  h2{width:100%;text-align:center;font-size:15px;color:var(--muted);font-weight:600;margin:0 0 -6px}
+  .col{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .label{font-size:12px;color:var(--muted-2);font-weight:700;letter-spacing:.02em}
+  .phone{width:375px;height:760px;background:var(--bg);border-radius:30px;border:1px solid var(--line-2);position:relative;overflow:hidden;box-shadow:0 0 0 6px #000;display:flex;flex-direction:column}
+
+  /* top bar */
+  .top{flex:none;padding:16px 16px 10px;border-bottom:1px solid var(--line)}
+  .top .ttl{font-size:19px;font-weight:800}
+  .tabs{display:flex;gap:18px;margin-top:12px}
+  .tab{font-size:13px;font-weight:700;color:var(--muted);padding-bottom:9px;position:relative}
+  .tab.on{color:var(--text)}
+  .tab.on:after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--lime);border-radius:2px}
+
+  .scroll{flex:1;overflow:auto;padding:12px 14px 18px}
+  .notice{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .notice b{color:var(--text)}
+  .notice .arrow{margin-left:auto;color:var(--muted-2)}
+
+  /* order card (list) */
+  .ocard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
+  .ocard .row1{display:flex;align-items:center;gap:10px}
+  .ocard .name{font-weight:700;font-size:14.5px}
+  .ocard .sub{font-size:11.5px;color:var(--muted-2);margin-top:2px}
+  .badge{margin-left:auto;font-size:11px;font-weight:700;padding:4px 9px;border-radius:7px;white-space:nowrap;flex:none;background:transparent;border:1px solid var(--line-2)}
+  .b-done{color:#3ddb8a;border-color:rgba(61,219,138,.35)}
+  .b-progress{color:var(--lime);border-color:rgba(203,254,1,.35)}
+  .b-pending{color:var(--muted);border-color:var(--line-2)}
+  .b-cancel{color:var(--red);border-color:rgba(255,90,90,.35)}
+  .b-refund{color:var(--gold);border-color:rgba(240,185,11,.35)}
+
+  .ocard .row2{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px}
+  .ocard .amount{font-weight:800;font-size:15.5px;font-variant-numeric:tabular-nums}
+  .ocard .prod{font-size:12.5px;color:var(--muted)}
+
+  .ocard .row3{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+  .oid{font-size:11.5px;color:var(--muted-2);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:5px}
+  .copy{width:18px;height:18px;border-radius:5px;display:grid;place-items:center;color:var(--muted-2);flex:none}
+  .date{font-size:11px;color:var(--muted-2);margin-left:auto}
+
+  .help-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--text);background:var(--surface-2);border:1px solid var(--line-2);border-radius:8px;padding:6px 10px;margin-top:10px}
+  .help-pill .ic{font-size:12px;line-height:1}
+
+  /* ===== detail screen ===== */
+  .detail-top{display:flex;align-items:center;gap:10px;padding:14px 16px 6px}
+  .back{width:30px;height:30px;display:grid;place-items:center;color:var(--text);font-size:17px}
+  .detail-top .ttl{font-size:16px;font-weight:800;flex:1;text-align:center;margin-right:30px}
+
+  .hero{text-align:center;padding:14px 20px 6px}
+  .hero .amt{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums}
+  .hero .status{margin-top:8px;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700}
+  .hero .status.ok{color:#3ddb8a}
+  .hero .status.prog{color:var(--lime)}
+
+  .dcard{margin:16px 14px 0;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:4px 14px 6px}
+  .dcard .hrow{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line)}
+  .dcard .hrow .gm{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px}
+  .chat-btn{background:var(--lime);color:#000;font-weight:800;font-size:12.5px;padding:7px 14px;border-radius:8px;display:flex;align-items:center;gap:5px}
+
+  .dline{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .dline:last-of-type{border-bottom:none}
+  .dline .k{color:var(--muted)}
+  .dline .v{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+  .pm{display:flex;align-items:center;gap:7px}
+  .pm .dot2{width:7px;height:7px;border-radius:50%}
+  .chevrow{display:flex;justify-content:center;padding:9px 0 5px}
+  .chev-btn{width:26px;height:26px;border-radius:8px;border:1px solid var(--line-2);display:grid;place-items:center;color:var(--muted);font-size:11px}
+
+  .hero .status.done{display:inline-flex;align-items:center;gap:7px;color:#3ddb8a}
+  .hero .check{width:19px;height:19px;border-radius:50%;background:#3ddb8a;color:#06140d;display:grid;place-items:center;font-size:11px;font-weight:900}
+
+  .alink{display:flex;align-items:center;justify-content:space-between;margin:14px 14px 0;padding:14px 2px;border-bottom:1px solid var(--line);font-size:13.5px;font-weight:700}
+  .alink .ic{color:var(--muted)}
+  .alink .r{margin-left:auto;color:var(--muted-2)}
+
+  .ai-note{margin:14px 14px 0;background:rgba(203,254,1,.07);border:1px solid rgba(203,254,1,.25);border-radius:14px;padding:11px 12px;font-size:12px;color:var(--text);display:flex;gap:8px}
+  .ai-note .ic{width:20px;height:20px;border-radius:6px;background:var(--lime);color:#000;display:grid;place-items:center;font-weight:900;font-size:11px;flex:none}
+
+  .spacer{flex:1}
+  .bottom{padding:14px 16px 18px;border-top:1px solid var(--line)}
+  .btn{display:block;width:100%;height:50px;border-radius:999px;background:var(--lime);color:#000;font-weight:800;font-size:14.5px;text-align:center;line-height:50px}
+  .btn.ghost{background:transparent;border:1px solid var(--line-2);color:var(--text);margin-top:8px}
+
+  .annot{max-width:375px;font-size:12px;color:var(--muted-2);line-height:1.6}
+  .annot b{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<h2>PL-005-FE-01 — Historique des commandes client (liste + détail). Style : cartes arrondies existantes du site (checkout Binance), PAS le badge carré de l'admin.</h2>
+
+<div class="col">
+  <div class="label">ÉCRAN 1 — Liste « Mes commandes »</div>
+  <div class="phone">
+    <div class="top">
+      <div class="ttl">Mes commandes</div>
+      <div class="tabs">
+        <div class="tab on">Toutes</div>
+        <div class="tab">En cours</div>
+        <div class="tab">Terminées</div>
+      </div>
+    </div>
+    <div class="scroll">
+
+      <div class="ocard">
+        <div class="row1">
+          <div>
+            <div class="name">Free Fire — 310 Diamants</div>
+            <div class="sub">ID joueur 52050065597</div>
+</div>
+          <div class="badge b-progress">Payée · livraison</div>
+        </div>
+        <div class="row2">
+          <div class="amount">4 600 Ar</div>
+          <div class="prod">Binance USDT</div>
+        </div>
+        <div class="row3">
+          <div class="oid">MGS-66458C <span class="copy">⧉</span></div>
+          <div class="date">13 nov. 16:30</div>
+        </div>
+      </div>
+
+      <div class="ocard">
+        <div class="row1">
+          <div>
+            <div class="name">PUBG Mobile — Weekly Pass</div>
+            <div class="sub">ID joueur 5123456789</div>
+</div>
+          <div class="badge b-done">Livrée</div>
+        </div>
+        <div class="row2">
+          <div class="amount">11 500 Ar</div>
+          <div class="prod">MVola</div>
+        </div>
+        <div class="row3">
+          <div class="oid">MGS-66201A <span class="copy">⧉</span></div>
+          <div class="date">12 nov. 09:04</div>
+        </div>
+      </div>
+
+      <div class="ocard">
+        <div class="row1">
+          <div>
+            <div class="name">Mobile Legends — 112 Diamants</div>
+            <div class="sub">ID · serveur 998211 (2093)</div>
+</div>
+          <div class="badge b-pending">En attente</div>
+        </div>
+        <div class="row2">
+          <div class="amount">9 800 Ar</div>
+          <div class="prod">Orange Money</div>
+        </div>
+        <div class="row3">
+          <div class="oid">MGS-66512F <span class="copy">⧉</span></div>
+          <div class="date">14 nov. 08:02</div>
+        </div>
+        <div class="help-pill"><span class="ic">💬</span> Besoin d'aide ?</div>
+      </div>
+
+      <div class="ocard">
+        <div class="row1">
+          <div>
+            <div class="name">Free Fire — 1080 Diamants</div>
+            <div class="sub">ID joueur 52050065597</div>
+</div>
+          <div class="badge b-refund">Remboursée</div>
+        </div>
+        <div class="row2">
+          <div class="amount">15 200 Ar</div>
+          <div class="prod">Binance USDT</div>
+        </div>
+        <div class="row3">
+          <div class="oid">MGS-65890D <span class="copy">⧉</span></div>
+          <div class="date">09 nov. 19:47</div>
+        </div>
+      </div>
+
+      <div class="ocard">
+        <div class="row1">
+          <div>
+            <div class="name">PUBG Mobile — 60 UC</div>
+            <div class="sub">ID joueur 5123456789</div>
+</div>
+          <div class="badge b-cancel">Annulée</div>
+        </div>
+        <div class="row2">
+          <div class="amount">4 100 Ar</div>
+          <div class="prod">MVola</div>
+        </div>
+        <div class="row3">
+          <div class="oid">MGS-65710B <span class="copy">⧉</span></div>
+          <div class="date">07 nov. 14:12</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <div class="annot">
+    <b>Carte</b> : nom du jeu + produit en texte (aucune icône), badge de statut à droite — <b>pas une pilule</b> : petit rectangle bordé (radius 7px), fond transparent, texte coloré selon le statut (vert=livrée, lime=en cours, gris=en attente, rouge=annulée, or=remboursée), comme Binance.<br>
+    Ligne 2 : montant en gras à gauche, méthode de paiement en gris à droite.<br>
+    Ligne 3 : numéro de commande + copie, date à droite.<br>
+    Pastille « Besoin d'aide ? » (radius 8px, pas une pilule, icône 💬 au lieu d'un point vert) <b>seulement sur les commandes non terminées</b> (en attente / en cours) → ouvre l'assistant IA (PL-005-BE-01) avec le contexte de cette commande déjà chargé.
+  </div>
+</div>
+
+<div class="col">
+  <div class="label">ÉCRAN 2 — Détail d'une commande</div>
+  <div class="phone">
+    <div class="detail-top">
+      <div class="back">←</div>
+      <div class="ttl">Commande MGS-66458C</div>
+    </div>
+
+    <div class="hero">
+      <div class="amt">4 600 Ar</div>
+      <div class="status prog">● Payée — livraison en cours</div>
+    </div>
+
+    <div class="dcard">
+      <div class="hrow">
+        <div class="gm">Free Fire</div>
+        <div class="chat-btn">💬 Chat</div>
+      </div>
+      <div class="dline"><div class="k">Produit</div><div class="v">310 Diamants</div></div>
+      <div class="dline"><div class="k">ID joueur</div><div class="v">52050065597</div></div>
+      <div class="dline"><div class="k">Méthode</div><div class="v pm"><span class="dot2" style="background:var(--gold)"></span>Binance USDT</div></div>
+      <div class="dline"><div class="k">Commandée le</div><div class="v">13 nov. 16:30</div></div>
+      <div class="chevrow"><div class="chev-btn">⌄</div></div>
+    </div>
+
+    <div class="ai-note">
+      <div class="ic">AI</div>
+      <div>L'assistant a confirmé : livraison généralement sous 30 min après paiement validé. Si ça dépasse 2h, le support prend le relais.</div>
+    </div>
+
+    <div class="alink">
+      <div class="ic">💬</div> Besoin d'aide avec cette commande
+      <div class="r">›</div>
+    </div>
+    <div class="alink">
+      <div class="ic">🧾</div> Télécharger le reçu
+      <div class="r">›</div>
+    </div>
+
+    <div class="spacer"></div>
+    <div class="bottom">
+      <div class="btn ghost">Commander à nouveau</div>
+    </div>
+  </div>
+  <div class="annot">
+    <b>En-tête</b> : montant + statut (couleurs identiques à la liste).<br>
+    <b>Carte</b> : nom du jeu en texte seul (aucune icône) + bouton « Chat » (radius 8px, pas une pilule) → assistant IA.<br>
+    Lignes produit / ID joueur / méthode / date ; sous la carte, un <b>bouton icône seul</b> (carré bordé 26 px, chevron, même logique que le repli mobile de l'admin) qui replie/déplie les détails existants (preuve, raison d'annulation…) — pas de texte « Détails ».<br>
+    <b>Encart IA</b> (lime clair) : réponse courte de l'assistant quand la commande n'est pas terminée — <u>jamais</u> pour une commande livrée/remboursée/annulée.<br>
+    <b>Reçu téléchargeable</b> : ouvre une vue reçu imprimable (logo, commande, montant, méthode, date, statut) → le client clique « Imprimer / Enregistrer en PDF » du navigateur. Aucune route backend, aucune dépendance : généré côté client à partir des données déjà affichées.<br>
+    « Commander à nouveau » = <b>pré-remplit un nouveau panier</b> avec le même jeu/produit/ID, le client repasse par le flux normal (jamais une commande forcée). Masqué si une commande en attente de paiement existe déjà pour ce produit — bouton « Reprendre le paiement » à la place (logique existante).
+  </div>
+</div>
+
+<div class="col">
+  <div class="label">ÉCRAN 2bis — En-tête quand la commande est LIVRÉE</div>
+  <div class="phone" style="height:170px">
+    <div class="hero" style="padding-top:28px">
+      <div class="amt">11 500 Ar</div>
+      <div class="status done" style="margin-top:9px;font-size:14px"><span class="check">✓</span> Livrée</div>
+    </div>
+  </div>
+  <div class="annot">
+    Dès que le statut passe à <b>Livrée</b>, l'en-tête remplace le point de couleur par une <b>coche ronde verte pleine</b> + le mot « Livrée » en vert, comme la capture Binance (gros montant, puis coche + statut, rien d'autre). Même traitement nulle part ailleurs (pas pour en attente/en cours/annulée/remboursée, qui gardent le point de couleur simple).
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,52 @@
+[
+  {
+    "label": "01-tunnel-cle-invalide 360x640 light",
+    "ok": true,
+    "notes": []
+  },
+  {
+    "label": "01-tunnel-cle-invalide 360x640 dark",
+    "ok": true,
+    "notes": []
+  },
+  {
+    "label": "02-resume-unpayable 360x640 light",
+    "ok": true,
+    "notes": []
+  },
+  {
+    "label": "02-resume-unpayable 360x640 dark",
+    "ok": true,
+    "notes": []
+  },
+  {
+    "label": "03-recommencer-boutique 360x640 light",
+    "ok": true,
+    "notes": []
+  },
+  {
+    "label": "03-recommencer-boutique 360x640 dark",
+    "ok": true,
+    "notes": []
+  },
+  {
+    "label": "04-recommencer-expire 360x640 light",
+    "ok": true,
+    "notes": []
+  },
+  {
+    "label": "04-recommencer-expire 360x640 dark",
+    "ok": true,
+    "notes": []
+  },
+  {
+    "label": "05-banniere-commande-valide 360x640 light",
+    "ok": true,
+    "notes": []
+  },
+  {
+    "label": "05-banniere-commande-valide 360x640 dark",
+    "ok": true,
+    "notes": []
+  }
+]

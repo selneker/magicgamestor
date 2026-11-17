@@ -1,0 +1,24 @@
+{
+  "business": "Magic Game Store — recharges de jeux vidéo à Madagascar (magicgame.store)",
+  "unit": "commande",
+  "price": 15000,
+  "variable": [
+    {"label": "Coût fournisseur de top-up (revente UC/packs)", "cost": 13200},
+    {"label": "Frais de paiement (MVola / Orange Money / USDT)", "cost": 300},
+    {"label": "Vérification d'identité joueur (API fournisseur)", "cost": 100}
+  ],
+  "fixed_monthly": [
+    {"label": "Salaire gérant (1 équivalent temps plein)", "cost": 400000},
+    {"label": "Hébergement backend, domaines, outils SaaS", "cost": 60000},
+    {"label": "Frais divers (assurance, bancaires)", "cost": 30000}
+  ],
+  "startup": [
+    {"label": "Immatriculation et patente (commerce à Madagascar)", "cost": 150000},
+    {"label": "Float de caisse fournisseur de top-up", "cost": 500000},
+    {"label": "Matériel et aménagement", "cost": 200000},
+    {"label": "Publicité de lancement", "cost": 100000}
+  ],
+  "days_per_month": 30,
+  "plan_per_day": 8,
+  "ramp_per_day": [2, 3, 4, 5, 5, 6, 6, 7, 7, 8, 8, 10]
+}
