@@ -6651,6 +6651,15 @@ body {
   color: var(--color--dark);
 }
 
+/* ——— bordure des cartes à thème (annotation Magic Game : « bordure en
+       noir, comme les boutons » — .125em solid var(--color--dark)).
+       Scope cartes uniquement : les boutons gèrent leur bordure via
+       data-button-theme / .button-main-inner__bg, le slideshow la sienne. ——— */
+.two-col-grid__visual[data-box-theme],
+.step-card[data-box-theme] {
+  border: .125em solid var(--color--dark);
+}
+
 /* ——— accessibilité (ajout Magic Game, pas dans Slush) ——— */
 :focus-visible {
   outline: 3px solid var(--color--violet);
