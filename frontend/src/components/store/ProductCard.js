@@ -117,7 +117,7 @@ export function ProductCard({ product, index = 0, badge }) {
           // Carte monnaie : UNE seule vedette — le montant. Le nom du produit
           // reste accessible aux lecteurs d'écran uniquement (MGS-FE-CARDS-20261104-02).
           <>
-            <h2 className="sr-only">{product.name || product.slug}</h2>
+            <h3 className="sr-only">{product.name || product.slug}</h3>
             <p className={"mt-2 flex min-w-0 items-baseline gap-1 font-display font-extrabold tracking-tighter " + (figureLength >= 5 ? "text-2xl min-[400px]:text-3xl sm:text-4xl" : figureLength >= 4 ? "text-3xl min-[400px]:text-4xl sm:text-5xl" : "text-4xl min-[400px]:text-5xl sm:text-6xl")}>
               {/* Le montant ne doit JAMAIS être coupé : c'est la vedette. */}
               <span className="shrink-0 leading-none">{figure}</span>
@@ -131,7 +131,7 @@ export function ProductCard({ product, index = 0, badge }) {
           // étiquette de catégorie discrète. Aucune hauteur minimale.
           <>
             <p className="mt-3 font-body text-[10px] font-bold uppercase leading-3 tracking-[0.08em] text-[color:var(--card-ink-muted)] sm:text-xs">{t(categoryKey)}</p>
-            <h2 className="mt-1 line-clamp-2 break-words font-display text-[18px] font-extrabold leading-5 tracking-[-0.02em] [text-wrap:balance] sm:text-[20px] sm:leading-6">{product.name || product.slug}</h2>
+            <h3 className="mt-1 line-clamp-2 break-words font-display text-[18px] font-extrabold leading-5 tracking-[-0.02em] [text-wrap:balance] sm:text-[20px] sm:leading-6">{product.name || product.slug}</h3>
           </>
         )}
 

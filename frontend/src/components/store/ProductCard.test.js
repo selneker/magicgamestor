@@ -342,7 +342,7 @@ test("Alignement modèle : badge « Populaire » bordure encre fixe, padding 9px
 test("Carte monnaie : plus de titre visible, le nom passe en sr-only", async () => {
   const { container, root } = await mountCard(PUBG);
   try {
-    const h2 = container.querySelector("h2");
+    const h2 = container.querySelector("h3");
     expect(h2).toBeTruthy();
     expect(h2.className).toContain("sr-only");
     expect(h2.textContent).toContain("60 UC");
@@ -360,7 +360,7 @@ test("Carte pack : étiquette de catégorie + titre vedette, sans hauteur minima
     expect(label).toBeTruthy();
     expect(label.className).toContain("uppercase");
     expect(label.className).toContain("text-[color:var(--card-ink-muted)]");
-    const h2 = container.querySelector("h2");
+    const h2 = container.querySelector("h3");
     expect(h2.textContent).toContain("Fragments matériaux");
     expect(h2.className).toContain("line-clamp-2");
     expect(h2.className).toContain("[text-wrap:balance]");

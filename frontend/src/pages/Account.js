@@ -79,7 +79,7 @@ function Row({ icon: Icon, label, helper, trailing, onClick, to, testid, danger,
 function Section({ title, children, testid }) {
   return (
     <section className="mt-6" data-testid={testid}>
-      <p className="eyebrow px-1 pb-2">{title}</p>
+      <h2 className="eyebrow px-1 pb-2">{title}</h2>
       <div className="divide-y divide-[color:var(--rule)] overflow-hidden rounded-[22px] border bg-card">{children}</div>
     </section>
   );
