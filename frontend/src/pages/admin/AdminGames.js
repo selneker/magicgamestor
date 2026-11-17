@@ -127,8 +127,8 @@ export default function AdminGames() {
                 : <Gamepad2 className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="break-words font-display text-sm font-bold leading-snug text-foreground sm:text-base">{g.name}</p>
-              <p className="mt-0.5 break-words text-xs text-muted-foreground">{g.id} · {g.active ? t("admin.active") : t("admin.inactive")}</p>
+              <p className="break-words font-display text-sm font-bold leading-snug dark:text-ink sm:text-base">{g.name}</p>
+              <p className="mt-0.5 break-words text-xs dark:text-ink">{g.id} · {g.active ? t("admin.active") : t("admin.inactive")}</p>
               <div className="mt-1.5" data-testid={`game-readiness-badge-${g.id}`}><Readiness readiness={g.readiness} compact /></div>
             </div>
             <div className="flex shrink-0 items-center gap-1">

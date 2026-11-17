@@ -44,7 +44,7 @@ export function PaymentCountdown({ order, onZero }) {
   return (
     <div className="flex items-baseline gap-2 py-1" data-testid="payment-countdown">
       <p className="text-[16px] leading-6 text-foreground">{t("checkout.countdownLabel")}</p>
-      <p className={`num font-display text-[16px] font-extrabold leading-6 text-amber-700 dark:text-amber-400`} role="timer" data-testid="payment-countdown-value">{text}</p>
+      <p className={`num font-display text-[16px] font-extrabold leading-6 text-ink dark:text-amber-400`} role="timer" data-testid="payment-countdown-value">{text}</p>
       <span role="status" className="sr-only" data-testid="payment-countdown-announce">{announce}</span>
     </div>
   );
