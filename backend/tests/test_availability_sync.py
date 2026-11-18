@@ -77,8 +77,12 @@ SIX_SKUS = ("13", "14", "15", "16", "17", "19")
 
 
 def _sync(reading, products, *, health=None, out_result=True, in_result=True,
-          sync_enabled=True):
-    """Un passage avec tout ce qui touche l'extérieur simulé."""
+          sync_enabled=True, mode="apply"):
+    """Un passage avec tout ce qui touche l'extérieur simulé.
+
+    `mode="apply"` par défaut : les tests historiques décrivent les écritures. Le mode réel par
+    défaut du module (observe) est vérifié à part, explicitement.
+    """
     mark_out = AsyncMock(return_value=out_result)
     mark_in = AsyncMock(return_value=in_result)
     notify = AsyncMock()
@@ -90,7 +94,8 @@ def _sync(reading, products, *, health=None, out_result=True, in_result=True,
             patch.object(stock, "mark_supplier_unavailable", mark_out), \
             patch.object(stock, "mark_supplier_available", mark_in), \
             patch.object(availability_sync.notifications, "notify_admin", notify), \
-            patch.object(stock, "sync_enabled", lambda: sync_enabled):
+            patch.object(stock, "sync_enabled", lambda: sync_enabled), \
+            patch.object(availability_sync, "sync_mode", lambda: mode):
         counters = _run(availability_sync.run_once())
     return SimpleNamespace(counters=counters, mark_out=mark_out, mark_in=mark_in,
                            notify=notify, fetch=fetch, db=fake_db)
@@ -101,8 +106,10 @@ def test_les_compteurs_retournes_sont_ceux_du_plan():
                    [_product(sku) for sku in SIX_SKUS])
 
     assert set(result.counters) == {"checked", "marked_out", "marked_in", "skipped",
-                                    "pages_ok", "pages_failed"}
+                                    "pages_ok", "pages_failed",
+                                    "mode", "would_mark_out", "would_mark_in"}
     assert result.counters["checked"] == 6
+    assert result.counters["mode"] == "apply"
 
 
 def test_out_of_stock_marque_en_rupture_confirmee():
@@ -142,7 +149,8 @@ def test_page_illisible_et_aucun_sku_conclu_n_ecrit_rien():
     result.mark_out.assert_not_awaited()
     result.mark_in.assert_not_awaited()
     assert result.counters == {"checked": 0, "marked_out": 0, "marked_in": 0, "skipped": 0,
-                               "pages_ok": 0, "pages_failed": 1}
+                               "pages_ok": 0, "pages_failed": 1, "mode": "apply",
+                               "would_mark_out": 0, "would_mark_in": 0}
 
 
 def test_releve_suspect_est_ignore():
@@ -269,3 +277,76 @@ def test_une_alerte_ne_nomme_jamais_le_fournisseur():
     for text in (payload["title"], payload["body"]):
         assert "shop2topup" not in text.lower()
         assert "shop2topup" not in payload["url"].lower()
+
+
+# --------------------------------------------------------------------------- #
+# Décisions de revue T06 : mode observe, couverture insuffisante, abonnements
+# --------------------------------------------------------------------------- #
+
+def test_le_mode_par_defaut_est_observe_et_toute_valeur_inconnue_aussi(monkeypatch):
+    """On n'écrit que sur un choix explicite : défaut et fautes de frappe restent en observe."""
+    monkeypatch.delenv("STOCK_SYNC_MODE", raising=False)
+    assert availability_sync.sync_mode() == "observe"
+    monkeypatch.setenv("STOCK_SYNC_MODE", "APPLY ")
+    assert availability_sync.sync_mode() == "apply"
+    for value in ("true", "1", "on", "obeys", ""):
+        monkeypatch.setenv("STOCK_SYNC_MODE", value)
+        assert availability_sync.sync_mode() == "observe"
+
+
+def test_mode_observe_n_ecrit_rien_mais_compte_ce_qu_il_aurait_ecrit():
+    result = _sync(_reading({"13": False, "14": True, "19": True}),
+                   [_product("13"), _product("14"), _product("19")], mode="observe")
+
+    result.mark_out.assert_not_awaited()
+    result.mark_in.assert_not_awaited()
+    assert result.counters["mode"] == "observe"
+    assert result.counters["would_mark_out"] == 1
+    assert result.counters["would_mark_in"] == 2
+    assert result.counters["checked"] == 3
+    assert result.counters["marked_out"] == 0
+    assert result.counters["marked_in"] == 0
+
+
+def test_mode_observe_surveille_quand_meme_la_sante_du_releve():
+    """Le mode change les écritures, pas la surveillance : 3 passages en échec alertent."""
+    health = FakeHealth()
+    for _ in range(3):
+        result = _sync(_reading({}, pages_ok=0, pages_failed=1), [_product("13")],
+                       health=health, mode="observe")
+
+    assert result.notify.await_count == 1
+    assert result.notify.await_args.kwargs["event"] == "stock_sync_unhealthy"
+    assert health.doc["alerted"] is True
+
+
+def test_couverture_insuffisante_compte_comme_page_en_echec_pour_la_sante():
+    """1 SKU couvert sur 6, toutes pages lues : c'est un relevé aveugle, donc un échec."""
+    health = FakeHealth()
+    reading = _reading({"13": True}, pages_ok=1)
+
+    for _ in range(2):
+        result = _sync(reading, [_product(sku) for sku in SIX_SKUS], health=health)
+        result.notify.assert_not_awaited()
+
+    third = _sync(reading, [_product(sku) for sku in SIX_SKUS], health=health)
+    assert third.notify.await_count == 1
+    assert third.notify.await_args.kwargs["event"] == "stock_sync_unhealthy"
+    assert health.doc["failed_streak"] == 3
+    assert health.doc["coverage_suspect"] is True
+    # Les compteurs de pages restent ceux du relevé réel : aucune page n'a échoué.
+    assert third.counters["pages_failed"] == 0
+    third.mark_out.assert_not_awaited()
+    third.mark_in.assert_not_awaited()
+
+    # Relevé complet : retour à la normale, une seule fois.
+    good = _sync(_reading({sku: True for sku in SIX_SKUS}), [_product(sku) for sku in SIX_SKUS],
+                 health=health)
+    assert good.notify.await_args.kwargs["event"] == "stock_sync_recovered"
+    assert health.doc["coverage_suspect"] is False
+
+
+def test_les_alertes_de_sante_sont_abonnees_au_canal_telegram():
+    from services import notifications
+
+    assert {"stock_sync_unhealthy", "stock_sync_recovered"} <= notifications.telegram.DEFAULT_EVENTS

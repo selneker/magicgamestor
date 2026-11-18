@@ -11,9 +11,10 @@ Ce module applique au catalogue le relevé de `shop2topup_stock`. C'est le seul 
 3. **Un relevé douteux ne touche à rien.** Aucune page lue, ou moins de la moitié des SKU attendus
    couverts : l'état du catalogue reste tel quel (même prudence que `stock_signals.py:42`).
 
-La santé du relevé est suivie à part : `pages_failed` non vide pendant `HEALTH_STREAK_ALERT`
-passages de suite ⇒ **une** alerte admin par les canaux existants ; le premier passage sans échec
-envoie le retour à la normale, une seule fois. Une lecture qui échoue en silence est le pire des
+La santé du relevé est suivie à part : `pages_failed` non vide — ou une couverture insuffisante,
+qui est un échec de relevé au même titre — pendant `HEALTH_STREAK_ALERT` passages de suite ⇒
+**une** alerte admin par les canaux existants ; le premier passage sans échec envoie le retour à
+la normale, une seule fois. Une lecture qui échoue en silence est le pire des
 cas : le signal mourrait sans que personne ne le sache.
 
 `STOCK_SYNC_ENABLED=false` rend le passage inerte : aucune requête, aucune écriture. Un verrou
@@ -22,6 +23,7 @@ empêche deux passages de se chevaucher ; le second est ignoré (une lecture dur
 """
 import asyncio
 import logging
+import os
 from datetime import datetime, timezone
 
 from core.db import db
@@ -44,8 +46,9 @@ HEALTH_URL = "/admin/catalogue"
 HEALTH_MESSAGES = {
     "unhealthy": (
         "Relevé de disponibilité en échec",
-        f"Au moins une page est illisible depuis {HEALTH_STREAK_ALERT} passages : le catalogue "
-        "n'est plus mis à jour. Vérifiez la source de disponibilité.",
+        f"Le relevé est incomplet (page illisible ou couverture insuffisante) depuis "
+        f"{HEALTH_STREAK_ALERT} passages : le catalogue n'est plus mis à jour. Vérifiez la source "
+        "de disponibilité.",
     ),
     "recovered": (
         "Relevé de disponibilité rétabli",
@@ -54,13 +57,36 @@ HEALTH_MESSAGES = {
     ),
 }
 
+# Mode d'application du relevé (décision de revue T06).
+SYNC_MODE_ENV = "STOCK_SYNC_MODE"
+MODE_APPLY = "apply"
+MODE_OBSERVE = "observe"
+
+
+def sync_mode() -> str:
+    """`STOCK_SYNC_MODE` : `apply` écrit, `observe` se contente de journaliser.
+
+    Défaut `observe` : ce relevé est nouveau, il n'écrit donc rien dans le catalogue tant que le
+    propriétaire ne l'a pas demandé explicitement. Toute valeur inconnue retombe sur `observe` —
+    on n'écrit que sur un choix explicite, jamais par accident. La santé du relevé, elle, est
+    suivie dans les deux modes : le mode change les écritures, pas la surveillance.
+    """
+    raw = (os.environ.get(SYNC_MODE_ENV) or "").strip().lower()
+    return MODE_APPLY if raw == MODE_APPLY else MODE_OBSERVE
+
+
 _run_lock = asyncio.Lock()
 
 
 def _counters() -> dict:
-    """Compteurs renvoyés par un passage (aucun détail produit, aucune donnée client)."""
+    """Compteurs renvoyés par un passage (aucun détail produit, aucune donnée client).
+
+    `would_mark_*` ne compte que les écritures qu'un passage en `observe` aurait faites : le
+    propriétaire peut comparer l'intention et l'effet avant de passer en `apply`.
+    """
     return {"checked": 0, "marked_out": 0, "marked_in": 0, "skipped": 0,
-            "pages_ok": 0, "pages_failed": 0}
+            "pages_ok": 0, "pages_failed": 0,
+            "mode": MODE_OBSERVE, "would_mark_out": 0, "would_mark_in": 0}
 
 
 async def _mapped_products() -> list[dict]:
@@ -85,14 +111,16 @@ async def _notify_health(kind: str) -> None:
         logger.warning("Alerte de santé non envoyée (%s)", type(exc).__name__)
 
 
-async def _update_health(*, pages_ok: int, pages_failed: int,
+async def _update_health(*, pages_ok: int, pages_failed: int, suspect: bool = False,
                          now: datetime | None = None) -> None:
     """Suit la santé du relevé : une alerte par épisode de panne, un retour par rétablissement.
 
+    `suspect` (couverture insuffisante) compte comme un échec : un relevé qui ne couvre pas la
+    moitié des SKU attendus laisse le catalogue aveugle exactement comme une page illisible.
     L'état est écrit **avant** l'envoi : un passage suivant ne peut donc pas répéter l'alerte.
     Un journal de santé indisponible n'empêche ni la synchro ni l'alerte.
     """
-    failing = pages_failed > 0
+    failing = pages_failed > 0 or suspect
     try:
         state = await db.stock_sync_health.find_one({"_id": HEALTH_ID}) or {}
     except Exception as exc:  # type: ignore[attr-defined]
@@ -107,6 +135,7 @@ async def _update_health(*, pages_ok: int, pages_failed: int,
             {"_id": HEALTH_ID},
             {"$set": {"failed_streak": streak, "alerted": alert or (alerted and not recovered),
                       "pages_ok": pages_ok, "pages_failed": pages_failed,
+                      "coverage_suspect": bool(suspect),
                       "last_run_at": (now or datetime.now(timezone.utc)).isoformat()}},
             upsert=True)
     except Exception as exc:  # type: ignore[attr-defined]
@@ -122,8 +151,9 @@ async def _update_health(*, pages_ok: int, pages_failed: int,
 async def run_once(now: datetime | None = None) -> dict:
     """Un passage complet : lire la source, appliquer l'état, suivre la santé.
 
-    Inerte si `STOCK_SYNC_ENABLED` est faux. Ne lève jamais : c'est une tâche du cron, une panne
-    du relevé ne doit pas interrompre les autres tâches.
+    Inerte si `STOCK_SYNC_ENABLED` est faux. En mode `observe` (défaut), tout est lu, journalisé
+    et surveillé, mais **aucune écriture** n'est faite. Ne lève jamais : c'est une tâche du cron,
+    une panne du relevé ne doit pas interrompre les autres tâches.
     """
     counters = _counters()
     if not stock.sync_enabled():
@@ -138,6 +168,8 @@ async def run_once(now: datetime | None = None) -> dict:
 
 
 async def _sync(counters: dict, now: datetime | None) -> dict:
+    mode = sync_mode()
+    counters["mode"] = mode
     try:
         products = await _mapped_products()
     except Exception as exc:  # type: ignore[attr-defined]
@@ -150,22 +182,33 @@ async def _sync(counters: dict, now: datetime | None) -> dict:
     reading = await shop2topup_stock.fetch_stock()
     counters["pages_ok"] = reading.pages_ok
     counters["pages_failed"] = reading.pages_failed
-    await _update_health(pages_ok=reading.pages_ok, pages_failed=reading.pages_failed, now=now)
 
     expected = {product["sku"] for product in products}
     covered = expected & set(reading.states)
-    if not reading.conclusive or len(covered) < len(expected) * SUSPECT_COVERAGE_RATIO:
+    # Une couverture insuffisante est un échec de RELEVÉ pour la santé, au même titre qu'une page
+    # illisible (décision de revue T06) ; les compteurs de pages, eux, ne comptent que le réel.
+    suspect = not reading.conclusive or len(covered) < len(expected) * SUSPECT_COVERAGE_RATIO
+    await _update_health(pages_ok=reading.pages_ok, pages_failed=reading.pages_failed,
+                         suspect=suspect, now=now)
+    if suspect:
         # Une page en échec n'invalide pas les autres : on ne juge que la couverture réelle.
         logger.warning("relevé ignoré : %d SKU attendu(s), %d couvert(s), %d page(s) en échec, "
                        "aucun état modifié", len(expected), len(covered), reading.pages_failed)
         return counters
 
+    observing = mode != MODE_APPLY
     for product in products:
         verdict = reading.states.get(product["sku"])
         if verdict is None:
             counters["skipped"] += 1  # ni publié ni conclu : jamais une rupture
             continue
         counters["checked"] += 1
+        if observing:
+            # Mode observe : on journalise l'écriture qu'on aurait faite, sans l'écrire.
+            counters["would_mark_out" if not verdict else "would_mark_in"] += 1
+            logger.info("mode observe : le produit %s serait marqué %s (aucune écriture)",
+                        product.get("id"), "en rupture" if not verdict else "disponible")
+            continue
         if verdict:
             if await stock.mark_supplier_available(product, actor="stock-sync",
                                                    source=stock.CONFIRMED_STOCK_SOURCE):
@@ -177,4 +220,7 @@ async def _sync(counters: dict, now: datetime | None) -> dict:
     logger.info("synchro terminée : %(checked)d vérifié(s), %(marked_out)d en rupture, "
                 "%(marked_in)d rétabli(s), %(skipped)d ignoré(s), %(pages_ok)d page(s) lue(s), "
                 "%(pages_failed)d en échec", counters)
+    if observing:
+        logger.info("mode observe : %(would_mark_out)d rupture(s) et %(would_mark_in)d retour(s) "
+                    "auraient été écrits, aucune écriture effectuée", counters)
     return counters

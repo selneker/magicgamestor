@@ -197,13 +197,14 @@ async def clear_supplier_unavailability(product_id: str,
 
     Une rupture confirmée par un relevé n'expire jamais sur durée : sans cette route, une page
     corrigée chez le fournisseur laisserait le produit bloqué. Passe par la même fonction que le
-    relevé (`mark_supplier_available`), ne touche jamais `manual_unavailable`, et reste soumise à
-    `STOCK_SYNC_ENABLED` comme toute la synchro.
+    relevé (`mark_supplier_available`) avec `force=True` : l'action de l'admin est indépendante de
+    `STOCK_SYNC_ENABLED`, sinon une synchro coupée rendrait la rupture impossible à lever. Ne
+    touche jamais `manual_unavailable`.
     """
     product = await db.products.find_one({"id": product_id}, PUBLIC)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    await stock.mark_supplier_available(product, actor=admin.get("user_id") or "admin")
+    await stock.mark_supplier_available(product, actor=admin.get("user_id") or "admin", force=True)
     fresh = await db.products.find_one({"id": product_id}, PUBLIC) or product
     return _public(fresh, admin=True, refund_counts=await stock_signals.refund_window_counts())
 

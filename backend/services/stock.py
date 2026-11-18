@@ -41,6 +41,9 @@ MAX_STALE_MINUTES = 7 * 24 * 60
 STOCK_ERROR_CODES = frozenset({
     "out_of_stock", "outofstock", "out-of-stock", "sold_out", "soldout", "no_stock",
     "insufficient_stock", "stock_insufficient", "stock_unavailable", "unavailable_stock",
+    # Shop2Topup nomme « produit non vendable à cet instant » un code distinct de la rupture
+    # franche (`PRODUCT_UNAVAILABLE`, 409) : même effet pour le catalogue, donc même classe.
+    "product_unavailable",
 })
 # Phrases de stock acceptées dans le message d'erreur. Volontairement étroites : « indisponible »
 # seul ou « balance » ne suffisent jamais (le fournisseur les emploie aussi pour ses pannes).
@@ -258,7 +261,8 @@ async def mark_supplier_unavailable(product: dict | None, *, actor: str | None =
 
 
 async def mark_supplier_available(product: dict | None, *, actor: str | None = None,
-                                  source: str = CONFIRMED_STOCK_SOURCE) -> bool:
+                                  source: str = CONFIRMED_STOCK_SOURCE,
+                                  force: bool = False) -> bool:
     """Lève une rupture sur un relevé fournisseur réussi (`InStock`) — règle 1.
 
     Efface `supplier_available`, `supplier_checked_at` et `supplier_available_confirmed` : le
@@ -266,12 +270,15 @@ async def mark_supplier_available(product: dict | None, *, actor: str | None = N
     Transition ATOMIQUE : le filtre ne retient que ce qui est réellement en rupture, donc un
     `InStock` répété n'écrit rien et n'alerte plus. `manual_unavailable` n'est jamais touché : le
     forçage admin reste prioritaire et indépendant.
-    `STOCK_SYNC_ENABLED=false` la neutralise aussi, en symétrie du marquage.
+    `STOCK_SYNC_ENABLED=false` neutralise la synchro automatique, en symétrie du marquage.
+    `force=True` est réservé à l'action MANUELLE de l'admin (route `PATCH …/supplier-availability`) :
+    une rupture constatée doit pouvoir être levée même quand la synchro automatique est coupée,
+    sinon le produit resterait bloqué sans aucun moyen d'en sortir.
     L'alerte `stock_restored` part même si l'admin a forcé l'indisponibilité : le produit reste
     alors non achetable, mais les deux signaux ne sont jamais confondus.
     Ne lève jamais : l'appelant (job de synchro) ne doit pas échouer sur ce marquage.
     """
-    if not sync_enabled():
+    if not force and not sync_enabled():
         # Symétrie avec le marquage : le drapeau coupe la synchro dans les deux sens, sinon des
         # ruptures se lèveraient toutes seules alors que plus personne ne les confirme.
         return False

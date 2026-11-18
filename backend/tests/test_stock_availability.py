@@ -667,6 +667,22 @@ def test_lifting_is_cut_off_by_the_sync_flag(patched_stock, monkeypatch):
     patched_stock.restored.assert_not_awaited()
 
 
+def test_admin_lifting_ignores_the_sync_flag(patched_stock, monkeypatch):
+    """`force=True` (route admin) : une rupture constatée doit rester levable même synchro coupée."""
+    monkeypatch.setenv("STOCK_SYNC_ENABLED", "false")
+    patched_stock.products.docs = [
+        {"id": "p1", "name": "60 UC", "supplier_checked_at": _iso(_now()), **CONFIRMED_OUT},
+    ]
+    assert _run(stock.mark_supplier_available({"id": "p1", "name": "60 UC"},
+                                              actor="admin-1", force=True)) is True
+    doc = patched_stock.products.docs[0]
+    assert "supplier_available" not in doc
+    assert stock.purchasable(doc) is True
+    patched_stock.restored.assert_awaited_once_with("60 UC", "p1")
+    # Le forçage admin ne touche jamais le forçage manuel, qui reste prioritaire.
+    assert "manual_unavailable" not in doc
+
+
 def test_repeated_constat_refreshes_the_timestamp_without_alerting(patched_stock, monkeypatch):
     """Le rafraîchissement à chaque passage est ce qui empêche une rupture qui dure d'expirer."""
     monkeypatch.delenv("STOCK_SYNC_ENABLED", raising=False)
