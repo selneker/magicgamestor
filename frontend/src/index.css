@@ -593,16 +593,15 @@ html.dark body[data-page="home"] {
        la ligne la plus large ≤ 320px ; gras/italique/capitales inchangés. */
     .footer .h-m { font-size: min(4.375em, 15vw); }
 
-    /* Point 4 — héros : le surligné « SANS DÉTOUR. » passe du néon
-       (#D4FF00, design-system.css:7397) au vert du footer ; le texte
-       encre dessus reste ≈ 10,9:1. */
-    .hero-lime { background: var(--color--green-700); }
-
     /* Point 4 — interligne : .76 de la maquette écrase les lignes du
        .h-d (« SANS » touche « VOS JEUX. », l'accent de « DÉTOUR » touche
        la ligne du dessus). .95 ne superpose plus rien. Le bloc surligné
        (inline-block) ne déborde plus sous la dernière ligne : la
        compensation de design-system.css:7400 n'a plus d'objet. */
+    /* (Ancien « hero-lime passe au vert du footer » retiré sur retour
+       du propriétaire : le surligné reste le NÉON #D4FF00 du design
+       system, la même couleur que les pastilles des cartes produit.
+       Le texte encre dessus ≈ 15:1.) */
     .page-hero .h-d { line-height: .95; margin-bottom: 0; }
 
     /* Point 4 — la flèche de « CHOISIR UN JEU » ne passe plus à la ligne :
