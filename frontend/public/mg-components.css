@@ -70,7 +70,7 @@ body[data-page="home"] .cta-banner-section .button-main-inner__text { color: var
 /* ——— FAQ : accordéon sur cartes bordées (même gabarit que trust-card) ;
        cible tactile ≥44px, le « + » pivote en « × » comme product-card ——— */
 .faq-list { display: grid; gap: .8em; max-width: 60em; }
-.faq-item { border-radius: 1.4em; border: 1px solid hsl(0 0% 7% / .2); background: var(--color--light); }
+.faq-item { border-radius: 1.4em; border: .125em solid var(--color--dark); background: var(--color--light); }
 .faq-q {
   display: flex; align-items: center; justify-content: space-between; gap: 1em;
   width: 100%; min-height: 3.2em; padding: .9em 1.3em;
@@ -107,8 +107,9 @@ body[data-page="home"] .cta-banner-section .button-main-inner__text { color: var
 .link:hover::after, .link:focus-visible::after { transform: scaleX(1); }
 
 /* Nos compositions utilisent le visuel deux-col en pleine largeur
-   (Slush le fixe à 33.75em avec ratio 1 pour sa mise en page éditoriale) */
-.two-col-grid__visual { width: 100%; aspect-ratio: auto; }
+   (Slush le fixe à 33.75em avec ratio 1 pour sa mise en page éditoriale).
+   Règle design system : bordure encre .125em sur toutes les boxes/cards. */
+.two-col-grid__visual { width: 100%; aspect-ratio: auto; border: .125em solid var(--color--dark); }
 
 /* Titre de composant (remplace l'ancien .h-m maquette — le .h-m
    Slush est un titre display géant, réservé à la hiérarchie Slush) */
@@ -413,7 +414,7 @@ body[data-page="home"] .cta-banner-section .button-main-inner__text { color: var
 @media screen and (min-width: 992px) { .trust-grid { grid-template-columns: repeat(4, 1fr); } }
 .trust-card {
   border-radius: 1.4em;
-  border: 1px solid hsl(0 0% 7% / .2);
+  border: .125em solid var(--color--dark);
   padding: 1.3em;
   display: flex;
   flex-direction: column;
@@ -424,13 +425,13 @@ body[data-page="home"] .cta-banner-section .button-main-inner__text { color: var
 .trust-card span { font-size: .78em; color: hsl(0 0% 7% / .65); line-height: 1.45; }
 
 .stars { color: var(--color--dark); letter-spacing: .1em; font-size: .9em; }
-.review-card { border-radius: 1.4em; background: var(--color--light); border: 1px solid hsl(0 0% 7% / .2); padding: 1.4em; display: flex; flex-direction: column; gap: .6em; }
+.review-card { border-radius: 1.4em; background: var(--color--light); border: .125em solid var(--color--dark); padding: 1.4em; display: flex; flex-direction: column; gap: .6em; }
 .review-card .who { font-size: .75em; color: hsl(0 0% 7% / .6); }
 
 /* --- Étapes --- */
 .steps-grid { display: grid; gap: .8em; counter-reset: step; }
 @media screen and (min-width: 768px) { .steps-grid { grid-template-columns: repeat(3, 1fr); } }
-.step-card { border-radius: 1.4em; padding: 1.5em; display: flex; flex-direction: column; gap: .7em; }
+.step-card { border-radius: 1.4em; border: .125em solid var(--color--dark); padding: 1.5em; display: flex; flex-direction: column; gap: .7em; }
 .step-card__num { font-family: var(--font-display); font-weight: 800; font-size: 2em; line-height: 1; opacity: .25; }
 .step-card .ic-use { width: 2.6em; height: 2.6em; }
 

@@ -64,7 +64,10 @@
         --card-surface: hsl(var(--cream));
         --card-ink: #111111;
         --card-ink-muted: hsl(0 0% 7% / .7);
-        --card-border: hsl(0 0% 7% / .35);
+        /* bordure carte : encre pleine (règle design system « bordures
+           encre .125em sur toutes les boxes/cards » — cf. design-system
+           .button-main[data-button-theme="light"]) */
+        --card-border: var(--color--dark, #111111);
         --card-pill-bg: #FFFFFF;
         --card-cta-bg: #111111;
         --card-cta-fg: var(--neo-card-bg);
@@ -204,7 +207,8 @@
         --card-surface: hsl(var(--card));
         --card-ink: hsl(var(--cream));
         --card-ink-muted: hsl(var(--cream) / .72);
-        --card-border: hsl(var(--cream) / .16);
+        /* en sombre la carte est encre : la bordure devient crème visible */
+        --card-border: hsl(var(--cream) / .85);
         --card-pill-bg: #111111;
         --card-cta-bg: var(--neo-card-bg);
         --card-cta-fg: #111111;

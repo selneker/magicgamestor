@@ -426,7 +426,7 @@ export default function Home() {
       {events.map((ev) => (
         <section className="section" key={ev.id} data-testid="home-event">
           <div className="container">
-            <div className="overflow-hidden rounded-[28px] border bg-card lg:grid lg:grid-cols-2">
+            <div className="overflow-hidden rounded-[28px] border-2 border-[color:var(--card-border)] bg-card lg:grid lg:grid-cols-2">
               <img src={ev.image_url} alt={localized(ev, "title", lang)} className="h-56 w-full border-b object-cover lg:h-full lg:border-b-0 lg:border-r" loading="lazy" />
               <div className="p-6 sm:p-10">
                 <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[color:var(--brand-ink)]">{t("common.promo")}</span>
