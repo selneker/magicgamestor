@@ -112,7 +112,7 @@ button.icon-btn-3d:active { rotate: 1 0 0 85deg; translate: 0 -.1em 0; }
 @media screen and (min-width: 768px) { .reviews-grid { grid-template-columns: repeat(3, 1fr); } }
 
 /* ——— FAQ : accordéon sur cartes bordées (même gabarit que trust-card) ;
-       cible tactile ≥44px, interrupteur toggle à la place du « + » ——— */
+       cible tactile ≥44px, chevron fin ˅/^ à la place du « + » ——— */
 .faq-list { display: grid; gap: .8em; max-width: 60em; }
 .faq-item { border-radius: 1.4em; border: .125em solid var(--color--dark); background: var(--color--light); }
 .faq-q {
@@ -121,34 +121,24 @@ button.icon-btn-3d:active { rotate: 1 0 0 85deg; translate: 0 -.1em 0; }
   background: none; border: 0; cursor: pointer;
   font: inherit; font-weight: 700; color: inherit; text-align: left;
 }
-/* FAQ : interrupteur toggle à la place du « + » — piste grise bordée
-   d'encre, curseur encre ; ouvert : piste néon, curseur glissé à droite.
-   La cible tactile reste le .faq-q entier (≥ 3.2em). */
-.faq-toggle {
+/* FAQ : chevron fin à la place du « + » (retour du propriétaire sur
+   l'interrupteur) — un trait « ˅ » quand c'est fermé, « ^ » retourné
+   quand c'est ouvert, sans pastille. La cible tactile reste le .faq-q
+   entier (≥ 3.2em). */
+.faq-chevron {
   flex: none;
-  position: relative;
-  width: 3.4em; height: 2em;
-  border-radius: 999px;
-  background: hsl(0 0% 7% / .18);
-  border: .125em solid var(--color--dark);
-  transition: background-color .25s var(--color-ease);
+  width: .95em; height: .95em;
+  border-right: 2px solid var(--color--dark);
+  border-bottom: 2px solid var(--color--dark);
+  rotate: 45deg;              /* fermé : pointe vers le bas (˅) */
+  margin-right: .18em;        /* compense le coin coupé du chevron */
+  transition: rotate .5s var(--elastic-ease-out);
 }
-.faq-toggle::after {
-  content: "";
-  position: absolute;
-  top: 50%; left: .15em;
-  width: 1.3em; height: 1.3em;
-  margin-top: -.65em;
-  border-radius: 999px;
-  background: var(--color--dark);
-  transition: translate .5s var(--elastic-ease-out), background-color .25s var(--color-ease);
-}
-.faq-q[aria-expanded="true"] .faq-toggle { background: var(--color--neon); }
-.faq-q[aria-expanded="true"] .faq-toggle::after { translate: 1.4em 0; }
+.faq-q[aria-expanded="true"] .faq-chevron { rotate: -135deg; }  /* ouvert : ^ */
 .faq-a { display: none; padding: 0 1.3em 1.2em; }
 .faq-a.is--open { display: block; }
 .faq-a p { font-size: .9em; color: hsl(0 0% 7% / .75); line-height: 1.5; max-width: 46em; }
-@media (prefers-reduced-motion: reduce) { .faq-toggle, .faq-toggle::after { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .faq-chevron { transition: none; } }
 
 .gap--small { display: flex; gap: .75em; flex-wrap: wrap; }
 .gap--reg { display: flex; gap: 1.25em; flex-wrap: wrap; align-items: center; }

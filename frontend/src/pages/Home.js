@@ -325,7 +325,7 @@ function Faq() {
                 onClick={() => setOpen(open === i ? null : i)}
               >
                 <span>{q}</span>
-                <span className="faq-toggle" aria-hidden="true"></span>
+                <span className="faq-chevron" aria-hidden="true"></span>
               </button>
               <div className={`faq-a${open === i ? " is--open" : ""}`} id={`faq-a${i + 1}`}><p>{a}</p></div>
             </div>
