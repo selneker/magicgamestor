@@ -378,18 +378,21 @@ diff + rejeu du raisonnement temporel à la main **sans** Mongo (les deux foncti
 mappés, branché sur le **cron existant** — aucune nouvelle route.
 
 **Critères d'acceptation :**
-- [ ] SKU `OutOfStock` ⇒ `purchasable()` = `False` immédiatement, **sans commande client**
-- [ ] SKU `InStock` ⇒ de nouveau achetable (via `mark_supplier_available`, T05)
-- [ ] SKU **absent du relevé** ou page illisible ⇒ **aucune modification**
-- [ ] relevé **vide ou suspect** (moins de la moitié des SKU attendus) ⇒ relevé ignoré, aucun état touché
+- [x] SKU `OutOfStock` ⇒ `purchasable()` = `False` immédiatement, **sans commande client**
+- [x] SKU `InStock` ⇒ de nouveau achetable (via `mark_supplier_available`, T05)
+- [x] SKU **absent du relevé** ou page illisible ⇒ **aucune modification**
+- [x] relevé **vide ou suspect** (moins de la moitié des SKU attendus) ⇒ relevé ignoré, aucun état touché
       (même prudence que `stock_signals.py:42` (`SUSPECT_DROP_RATIO`))
-- [ ] **santé du relevé** : compteur `pages_ok`, et alerte admin si **aucune** lecture réussie depuis N passages
+- [x] **santé du relevé** : compteur `pages_ok`, et alerte admin si **aucune** lecture réussie depuis N passages
       — sinon le signal meurt en silence, ce qui est le pire des cas
-- [ ] aucun nom de fournisseur dans les réponses publiques ni les alertes
-- [ ] compteurs retournés : `checked`, `marked_out`, `marked_in`, `skipped`, `pages_ok`, `pages_failed`
-- [ ] branché dans `order_maintenance.run_all()` (`order_maintenance.py:279-296`), **une ligne**, sans
+- [x] aucun nom de fournisseur dans les réponses publiques ni les alertes
+- [x] compteurs retournés : `checked`, `marked_out`, `marked_in`, `skipped`, `pages_ok`, `pages_failed`
+- [x] branché dans `order_maintenance.run_all()` (`order_maintenance.py:279-296`), **une ligne**, sans
       modifier la signature des autres tâches
-- [ ] durée bornée : le relevé ne peut pas faire expirer la route cron (budget total explicite)
+- [x] durée bornée : le relevé ne peut pas faire expirer la route cron (budget total explicite)
+
+Fait le 18/11/2026 : 16 tests dans `test_availability_sync.py`, 3 dans `test_shop2topup_stock.py`,
+1 dans `test_stock_availability.py` (vue publique sans `supplier_mapping`).
 
 **Vérification :** tests unitaires (fake collection + relevé simulé) ; puis contrôle manuel sur le **60 UC**
 (le passer en rupture simulée → carte « OUT OF STOCK » ; le remettre → revenu).
