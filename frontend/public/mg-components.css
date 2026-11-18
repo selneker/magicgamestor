@@ -35,13 +35,20 @@ body[data-page="home"] .cta-banner-section {
   body[data-page="home"] .cta-banner-section { padding-block: 10em; }
 }
 body[data-page="home"] .cta-banner-section .ticker-note { color: hsl(48 20% 94% / .55); }
-/* Le footer n'est PAS un panneau crème (ses cartes sociales le sont déjà :
-   crème sur crème les effacerait) mais il partage la largeur des sections :
-   même retrait latéral, même respiration en bas de page. */
+/* Le footer est un PANNEAU comme les sections de l'accueil : même largeur,
+   mêmes angles, même interstice d'encre — sinon ses blocs flottent sur le
+   fond et la section paraît plus étroite que celles du dessus.
+   Surface = le vert Slush de la colonne (jamais du crème : les cartes
+   sociales sont crème et disparaîtraient, ce qui arrivait sur mobile).
+   La colonne .is--last devient transparente : elle se fond dans le panneau. */
 body[data-page="home"] .footer {
+  background-color: var(--color--green-700);
+  border-radius: 2.5em;
   margin-inline: .5em;
   margin-bottom: .5em;
+  padding-block: 1.25em;
 }
+body[data-page="home"] .footer .footer-row-col.is--last { background-color: transparent; }
 /* le bottom-nav mobile est fixe : on lui réserve la place sous le footer */
 @media screen and (max-width: 991px) {
   body[data-page="home"] .footer { padding-bottom: 6em; }
