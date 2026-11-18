@@ -104,11 +104,20 @@ function CartButton({ circle = false }) {
       </button>
     );
   }
+  // Bouton panier bureau : pilule maquette ronde (.button-main, 44px) —
+  // bordure arrondie + flip 3D au survol/appui (dos violet « Panier »),
+  // comme les pilules de nav. Le compteur reste un badge néon.
   return (
-    <Button variant="ghost" size="icon" onClick={() => setOpen(true)} data-testid="cart-button" aria-label={t("nav.cart")} className="relative rounded-none">
-      <Icon name="portefeuille" className="h-5 w-5" data-icon-reveal />
-      {count > 0 && <span data-testid="cart-count" className="absolute right-0 top-0.5 flex h-4 min-w-4 items-center justify-center bg-primary px-1 text-[10px] font-black text-[color:var(--brand-ink)]">{count}</span>}
-    </Button>
+    <button type="button" onClick={() => setOpen(true)} data-testid="cart-button" aria-label={t("nav.cart")} className="button-main nav-cart-btn" data-button-theme="light" data-button-accent="violet">
+      <span className="button-main-inner full-h">
+        <span className="button-main-inner__back" data-text={t("nav.cart")}></span>
+        <span className="button-main-inner__front">
+          <span className="button-main-inner__bg"></span>
+          <span className="button-main-inner__text"><Icon name="portefeuille" className="h-5 w-5" data-icon-reveal /></span>
+        </span>
+      </span>
+      {count > 0 && <span data-testid="cart-count" className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full border border-[color:var(--color--dark)] bg-primary px-1 text-[10px] font-black text-[color:var(--brand-ink)]">{count}</span>}
+    </button>
   );
 }
 

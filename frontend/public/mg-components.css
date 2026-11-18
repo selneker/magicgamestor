@@ -86,6 +86,12 @@ body[data-page="home"] .cta-banner-section .button-main-inner__text { color: var
 .banner-game__arrow { width: .8em; height: .8em; margin-left: .15em; }
 @media (prefers-reduced-motion: reduce) { .banner-game { transition: none; } .banner-game:hover { transform: none; } }
 
+/* ——— Panier bureau : pilule maquette ronde 44px (composant CartButton),
+       flip 3D au survol/appui, badge compteur néon en coin. ——— */
+.nav-cart-btn { width: 2.75em; height: 2.75em; }
+.nav-cart-btn .button-main-inner__text { padding: 0; }
+.nav-cart-btn .button-main-inner__back::before { font-size: .55em; letter-spacing: .04em; }
+
 /* ——— Avis : 1 colonne sur mobile (le 3-up en ligne débordait) ——— */
 .reviews-grid { display: grid; gap: .8em; grid-template-columns: 1fr; }
 @media screen and (min-width: 768px) { .reviews-grid { grid-template-columns: repeat(3, 1fr); } }
