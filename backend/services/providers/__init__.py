@@ -24,12 +24,17 @@ def get_provider(game_id: str | None = None) -> Provider:
     name = GAME_PROVIDER.get(game_id or "", DEFAULT_PROVIDER)
     provider = _INSTANCES.get(name)
     if provider is None:
-        if name == "fazercards":
+        # Branches NOMMÉES : un fournisseur inconnu est une erreur de configuration, pas un
+        # prétexte à servir silencieusement FazerCards (repli historique supprimé, T07).
+        if name == "shop2topup":
+            from services.providers.shop2topup_adapter import Shop2TopupProvider
+            provider = Shop2TopupProvider()
+        elif name == "fazercards":
             from services.providers.fazercards_adapter import FazerCardsProvider
             provider = FazerCardsProvider()
-        else:  # pragma: no cover - aucun autre provider en Phase 2
-            from services.providers.fazercards_adapter import FazerCardsProvider
-            provider = FazerCardsProvider()
+        else:
+            raise ProviderUnavailableError(f"Fournisseur inconnu : {name}", status_code=503,
+                                           code="unknown_provider")
         _INSTANCES[name] = provider
     return provider
 
