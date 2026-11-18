@@ -475,7 +475,8 @@ html.dark body[data-page="home"] {
 @media screen and (max-width: 991px) {
     body[data-page="home"] { background-color: var(--color--light); }
     body[data-page="home"] .page-hero,
-    body[data-page="home"] .section {
+    body[data-page="home"] .section,
+    body[data-page="home"] .footer {
         border-radius: 0;
         margin-inline: 0;
         margin-bottom: 0;

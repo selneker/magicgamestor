@@ -35,6 +35,13 @@ body[data-page="home"] .cta-banner-section {
   body[data-page="home"] .cta-banner-section { padding-block: 10em; }
 }
 body[data-page="home"] .cta-banner-section .ticker-note { color: hsl(48 20% 94% / .55); }
+/* Le footer n'est PAS un panneau crème (ses cartes sociales le sont déjà :
+   crème sur crème les effacerait) mais il partage la largeur des sections :
+   même retrait latéral, même respiration en bas de page. */
+body[data-page="home"] .footer {
+  margin-inline: .5em;
+  margin-bottom: .5em;
+}
 /* le bottom-nav mobile est fixe : on lui réserve la place sous le footer */
 @media screen and (max-width: 991px) {
   body[data-page="home"] .footer { padding-bottom: 6em; }
