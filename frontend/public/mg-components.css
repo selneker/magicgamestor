@@ -783,6 +783,30 @@ html.has-js .ic-anim-pop.is--popped { opacity: 1; transform: scale(1); transitio
 .page-bottom { padding-bottom: 7.5em; }
 .hero-cta-row { display: flex; flex-wrap: wrap; gap: .8em; margin-top: 1.6em; }
 .hero-lime { display: inline-block; background: var(--color--neon); color: var(--color--dark); padding: 0 .18em; border-radius: .18em; }
+
+/* ——— Icônes animées (hero, étapes, preuves) ———
+   Le CSS de la maquette (design-system.css, .ic-anim-*) anime `.ic-part-corps`,
+   un groupe SITUÉ DANS le sprite <use>. La shadow box de <use> empêche la règle
+   d'y descendre (vérifié dans Chrome : 0 animation sur les .ic-*). On anime donc
+   le <svg> hôte, qui est dans le document — même mouvement, même durée. */
+.ic-anim-float { animation: ic-float 3.6s ease-in-out infinite; }
+.ic-anim-coin { animation: ic-sway 3.4s ease-in-out infinite; }
+/* le rotateY de la maquette s'écrase sans perspective sur un <svg> : 2D */
+@keyframes ic-sway {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(6deg); }
+}
+/* Bandeau d'icônes du hero : décoratif, dans la rangée de boutons (sous eux à
+   390 px, à leur droite en desktop) — aucun chevauchement avec le titre. */
+.hero-icons { display: flex; align-items: center; gap: 1.2em; margin-top: .6em; pointer-events: none; }
+@media screen and (min-width: 992px) { .hero-icons { margin-left: auto; margin-top: 0; } }
+.hero-icon { display: inline-flex; filter: drop-shadow(0 .3em .35em hsl(0 0% 7% / .18)); }
+.hero-icon--manette { transform: rotate(-7deg); }
+.hero-icon--piece { transform: rotate(5deg); }
+.hero-icon--fusee { transform: rotate(-4deg); }
+.hero-icons .ic-use { width: 3.4em; height: 3.4em; animation-delay: -.4s; }
+.hero-icon--piece .ic-use { width: 2.9em; height: 2.9em; animation-delay: -1.7s; }
+.hero-icon--fusee .ic-use { width: 3.8em; height: 3.8em; animation-delay: -2.5s; }
 /* le bloc lime (inline-block) déborde sous la dernière ligne du .h-d
    (line-height .76) et recouvrait le paragraphe suivant — on réserve
    la place sous le titre */
@@ -793,6 +817,7 @@ html.has-js .ic-anim-pop.is--popped { opacity: 1; transform: scale(1); transitio
 
 /* Respect de prefers-reduced-motion : animations décoratives coupées */
 @media (prefers-reduced-motion: reduce) {
+  .ic-anim-float, .ic-anim-coin { animation: none !important; }
   .ic-anim-float .ic-part-corps, .ic-anim-coin .ic-part-corps, .ic-anim-coin .ic-part-detail-1,
   .ic-anim-gear .ic-part-corps, .ic-anim-twinkle .ic-part-detail-1, .ic-anim-twinkle .ic-part-detail-2,
   .ic-anim-twinkle .ic-part-detail-3 { animation: none !important; }
