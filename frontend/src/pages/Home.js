@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Gamepad2, KeyRound, MessageCircle, Rocket, ShieldCheck, Tag, Timer, Wallet } from "lucide-react";
 import { api } from "@/lib/api";
 import { useGames } from "@/context/GameContext";
 import { useLang, localized } from "@/context/LanguageContext";
+import { Icon } from "@/components/ui/icon";
 import { GameCard } from "@/components/game/GameCard";
 import { ProductCard } from "@/components/store/ProductCard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,7 +25,7 @@ export function GameLogo({ game, className = "h-14 w-14" }) {
     <span className={`flex shrink-0 items-center justify-center overflow-hidden rounded-[12px] border border-[color:var(--rule-strong)] bg-primary text-[color:var(--brand-ink)] ${className}`}>
       {game.icon_url && !broken
         ? <img src={game.icon_url} alt="" className="h-full w-full object-cover" loading="lazy" onError={() => setBroken(true)} />
-        : <Gamepad2 className="h-1/2 w-1/2" strokeWidth={2} aria-hidden="true" />}
+        : <Icon name="manette" className="h-1/2 w-1/2" aria-hidden="true" />}
     </span>
   );
 }
@@ -43,8 +43,8 @@ export function GameLogo({ game, className = "h-14 w-14" }) {
    "home"], posé par SlushChrome).
    Contenu 100 % réel (règle 6) : les sections commerce du site (offres
    populaires, abonnements, événement, support) restent, habillées par les
-   mêmes classes maquette. Les icônes animées de la maquette (sprites
-   .ic-anim-*) n'existent pas dans le site : lucide à la place (statique). */
+   mêmes classes maquette. Les icônes viennent de la bibliothèque
+   maquettes/icons (sprite public/icons.svg, composant Icon). */
 
 // Face avant des boutons maquette (thème light : crème bordée d'encre).
 function ButtonMain({ to, label, accent = "light", theme = "light", className = "", cursor, testId, children }) {
@@ -132,7 +132,9 @@ function CtaBanner() {
 }
 
 // « Comment ça marche » (maquette .steps-grid, accents jaune/bleu/vert).
-const STEPS_ICONS = [Tag, KeyRound, Rocket];
+// Icônes de la bibliothèque maquettes/icons (sprite public/icons.svg),
+// pas de lucide : étiquettes (choix du pack), clé (identifiants), fusée.
+const STEPS_ICONS = ["etiquettes", "cle", "fusee"];
 const STEPS_THEMES = ["yellow", "blue", "green"];
 
 function Steps() {
@@ -147,11 +149,11 @@ function Steps() {
         </div>
         <div className="steps-grid">
           {steps.map(([title, desc], i) => {
-            const Icon = STEPS_ICONS[i];
+            const name = STEPS_ICONS[i];
             return (
               <div className="step-card" data-card-reveal="card" data-box-theme={STEPS_THEMES[i]} key={title} data-testid={`home-step-${i}`}>
                 <span className="step-card__num" aria-hidden="true">{i + 1}</span>
-                <Icon className="ic-use" strokeWidth={1.5} aria-hidden="true" />
+                <Icon name={name} className="ic-use" data-icon-reveal aria-hidden="true" />
                 <h3 className="h-c">{title}</h3>
                 <p className="p-m">{desc}</p>
               </div>
@@ -164,7 +166,9 @@ function Steps() {
 }
 
 // « Pourquoi Magic Game Store ? » (maquette .trust-grid).
-const WHY_ICONS = [ShieldCheck, Wallet, Timer, MessageCircle];
+// Icônes maquettes : contrôle OK (compte vérifié), portefeuille
+// (Mobile Money & USDT), chrono (suivi temps réel), bulle (support).
+const WHY_ICONS = ["chat-ok", "portefeuille", "chrono", "bulle-noire"];
 
 function WhyChoose() {
   const { t } = useLang();
@@ -180,10 +184,10 @@ function WhyChoose() {
         <div className="section-head"><h2 className="h-l" data-anim-slant>{t("store.whyTitle")}</h2></div>
         <div className="trust-grid">
           {items.map(([title, desc], i) => {
-            const Icon = WHY_ICONS[i];
+            const name = WHY_ICONS[i];
             return (
               <div className="trust-card" data-card-reveal="card" key={title} data-testid={`home-why-${i}`}>
-                <Icon className="ic-use" strokeWidth={1.5} aria-hidden="true" />
+                <Icon name={name} className="ic-use" data-icon-reveal aria-hidden="true" />
                 <strong>{title}</strong>
                 <span>{desc}</span>
               </div>
@@ -256,7 +260,7 @@ function GamesCards({ games }) {
           {games.length < 2 && (
             <div className="two-col-grid__visual" data-card-reveal="card" data-box-theme="glacier" style={{ minHeight: "16em" }} data-testid="home-game-soon">
               <svg className="mg-shape" viewBox="0 0 200 200" aria-hidden="true"><rect x="20" y="20" width="160" height="160" rx="46" transform="rotate(8 100 100)" fill="currentColor" /><path d="M115 55l-40 62h29l-11 38 46-64h-30l18-36z" fill="hsl(0 0% 0% / .12)" /></svg>
-              <Gamepad2 className="ic-use opacity-45" strokeWidth={1.25} aria-hidden="true" />
+              <Icon name="blocs" className="ic-use opacity-45" aria-hidden="true" />
               <span style={{ position: "relative", zIndex: 1 }}>
                 <strong className="h-c" style={{ display: "block" }}>{t("store.soonCard")}</strong>
                 <span className="p-m">{t("store.soonSub")}</span>
@@ -446,7 +450,7 @@ export default function Home() {
         <div className="container">
           <div className="grid gap-3 md:grid-cols-[1.4fr_1fr]">
             <div className="trust-card" data-card-reveal="card">
-              <ShieldCheck className="ic-use" strokeWidth={1.5} aria-hidden="true" />
+              <Icon name="avion" className="ic-use" data-icon-reveal aria-hidden="true" />
               <strong className="h-c" style={{ display: "block" }}>{t("store.deliveryNote")}</strong>
               <span>{t("store.step2d")}</span>
             </div>
