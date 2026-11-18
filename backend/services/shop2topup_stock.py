@@ -44,6 +44,12 @@ USER_AGENT = "MagicGameStore-stock/1.0"
 REQUEST_TIMEOUT_S = 10.0
 TOTAL_BUDGET_S = 30.0
 
+# Pages mesurées le 18/11/2026 (§ 2.3 du plan) : HTTP 200, JSON-LD `Product → offers → offers[]`.
+# C'est la liste par défaut de `fetch_stock()`. Les sous-pages Free Fire (`free-fire/eu`, `/sg`…)
+# sont lisibles de la même façon, mais leur URL n'a pas été vérifiée une par une : elles ne sont
+# donc pas déclarées ici (on n'invente pas d'URL) et se passent explicitement en argument.
+KNOWN_PAGES: tuple[str, ...] = ("pubg-mobile", "free-fire/mena-direct-topup")
+
 _SCHEMA_PREFIXES = ("https://schema.org/", "http://schema.org/")
 
 # Valeurs `schema.org` qui ont un sens pour nous. Toute autre valeur n'est pas conclue : voir règle 1.
@@ -222,16 +228,21 @@ def page_url(slug: str) -> str:
 
 
 async def fetch_stock(
-    pages: Sequence[str],
+    pages: Sequence[str] = KNOWN_PAGES,
     *,
     client: httpx.AsyncClient | None = None,
 ) -> StockReading:
     """Relève l'état publié pour les pages demandées.
 
     `pages` est une **liste explicite** d'identifiants de page (`pubg-mobile`,
-    `free-fire/mena-direct-topup`…). Les sous-pages ne sont pas découvertes en
-    suivant les liens du site : un crawl n'a pas de budget borné, et une page peut
-    lier n'importe quoi. Elles se déclarent donc ici, une par une.
+    `free-fire/mena-direct-topup`…), `KNOWN_PAGES` par défaut : les deux pages vérifiées
+    le 18/11. Les sous-pages ne sont pas découvertes en suivant les liens du site — un crawl
+    n'a pas de budget borné, et une page peut lier n'importe quoi. Elles se déclarent donc
+    une par une, soit ici, soit à l'appel.
+
+    Un identifiant qui n'est pas une chaîne est ignoré, journalisé et compté dans
+    `pages_failed` : la lecture ne doit jamais lever sur une entrée mal formée. Un slug
+    répété n'est lu qu'une fois, dans l'ordre d'apparition.
 
     Un SKU publié sur plusieurs pages prend le dernier état lu **sans jamais
     écraser en silence** : un changement d'état entre deux pages est journalisé.
@@ -239,9 +250,22 @@ async def fetch_stock(
     `client` permet d'injecter un transport (tests). Sans lui, la fonction crée le
     sien et le referme.
     """
-    slugs = [slug for slug in (s.strip() for s in pages) if slug]
+    valid: list[str] = []
+    invalid = 0
+    for raw in pages:
+        if not isinstance(raw, str):
+            invalid += 1
+            logger.warning("page ignorée : identifiant de type %s, aucune requête",
+                           type(raw).__name__)
+            continue
+        slug = raw.strip()
+        if slug:
+            valid.append(slug)
+    # Déduplication en conservant l'ordre : un même slug n'est lu qu'une fois.
+    slugs = list(dict.fromkeys(valid))
     if not slugs:
-        return StockReading()
+        # Aucun identifiant exploitable : les entrées invalides restent comptées en échec.
+        return StockReading(pages_failed=invalid)
 
     own_client = client is None
     if own_client:
@@ -257,7 +281,9 @@ async def fetch_stock(
     states: dict[str, bool] = {}
     unknown: dict[str, int] = {}
     pages_ok = 0
-    pages_failed = 0
+    # Les identifiants inexploitables comptent comme des pages en échec : un relevé qui les
+    # ignorerait silencieusement laisserait croire que tout a été lu.
+    pages_failed = invalid
     deadline = time.monotonic() + TOTAL_BUDGET_S
 
     try:
@@ -308,7 +334,12 @@ async def fetch_stock(
 
     finally:
         if own_client:
-            await client.aclose()
+            try:
+                await client.aclose()
+            except Exception as exc:
+                # Une fermeture ratée ne doit pas annuler un relevé déjà effectué : le contrat
+                # du module est qu'aucune exception ne sort de la lecture.
+                logger.warning("fermeture du client impossible (%s)", type(exc).__name__)
 
     reading = StockReading(
         states=states,

@@ -307,3 +307,68 @@ def test_fetch_stock_conflit_entre_deux_pages_dernier_gagne_et_c_est_journalise(
 
     assert reading.states == {"7": False}
     assert any("le dernier relevé est retenu" in r.getMessage() for r in caplog.records)
+
+
+# --------------------------------------------------------------------------- #
+# T02c — les quatre défauts relevés en relecture
+# --------------------------------------------------------------------------- #
+
+def test_fetch_stock_dedoublonne_les_slugs_identiques():
+    """`"a", "a"` ne doit pas lancer deux requêtes : un relevé est une photo, pas une liste."""
+    client = _StubClient({PUBG_URL: _Response(fixture("pubg-mobile.html"))})
+
+    reading = run(s2t.fetch_stock(["pubg-mobile", " pubg-mobile ", "pubg-mobile"], client=client))
+
+    assert len(client.calls) == 1
+    assert reading.pages_ok == 1
+    assert len(reading.states) == 34
+
+
+def test_fetch_stock_ignore_un_identifiant_qui_n_est_pas_une_chaine(caplog):
+    """Un `None` ou un entier ne lève pas : il est ignoré, journalisé et compté en échec."""
+    client = _StubClient({PUBG_URL: _Response(fixture("pubg-mobile.html"))})
+
+    reading = run(s2t.fetch_stock([None, 42, "pubg-mobile"], client=client))
+
+    assert len(client.calls) == 1
+    assert reading.pages_ok == 1
+    assert reading.pages_failed == 2
+    assert any("page ignorée" in r.getMessage() for r in caplog.records)
+
+    # Aucun slug exploitable : les entrées invalides restent comptées, aucune requête.
+    only_invalid = run(s2t.fetch_stock([None], client=client))
+    assert only_invalid.pages_failed == 1
+    assert only_invalid.states == {}
+    assert len(client.calls) == 1
+
+
+def test_fetch_stock_sans_argument_lit_les_pages_declarees():
+    """La liste par défaut est la constante du module, pas une liste vide ni une invention."""
+    assert s2t.KNOWN_PAGES == ("pubg-mobile", "free-fire/mena-direct-topup")
+    client = _StubClient({
+        PUBG_URL: _Response(fixture("pubg-mobile.html")),
+        FF_URL: _Response(fixture("free-fire-mena-direct-topup.html")),
+    })
+
+    reading = run(s2t.fetch_stock(client=client))
+
+    assert [url for url, _ in client.calls] == [s2t.page_url(known) for known in s2t.KNOWN_PAGES]
+    assert reading.pages_ok == 2
+    assert reading.pages_failed == 0
+    assert len(reading.states) == 34 + 21
+
+
+def test_fetch_stock_ne_leve_pas_si_la_fermeture_du_client_echoue(monkeypatch):
+    """Le relevé déjà effectué est renvoyé même quand `aclose()` échoue."""
+    class _BrokenClose(_StubClient):
+        async def aclose(self) -> None:
+            raise RuntimeError("close failed")
+
+    client = _BrokenClose({PUBG_URL: _Response(fixture("pubg-mobile.html"))})
+    # Client créé par le module (donc refermé par lui) : c'est le seul chemin qui ferme.
+    monkeypatch.setattr(s2t.httpx, "AsyncClient", lambda **kwargs: client)
+
+    reading = run(s2t.fetch_stock(["pubg-mobile"]))
+
+    assert reading.pages_ok == 1
+    assert len(reading.states) == 34
