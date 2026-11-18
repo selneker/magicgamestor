@@ -228,7 +228,7 @@ def page_url(slug: str) -> str:
 
 
 async def fetch_stock(
-    pages: Sequence[str] = KNOWN_PAGES,
+    pages: Sequence[str] | str = KNOWN_PAGES,
     *,
     client: httpx.AsyncClient | None = None,
 ) -> StockReading:
@@ -242,7 +242,9 @@ async def fetch_stock(
 
     Un identifiant qui n'est pas une chaîne est ignoré, journalisé et compté dans
     `pages_failed` : la lecture ne doit jamais lever sur une entrée mal formée. Un slug
-    répété n'est lu qu'une fois, dans l'ordre d'apparition.
+    répété — ou écrit avec une barre finale (`pubg-mobile/`) — n'est lu qu'une fois, dans
+    l'ordre d'apparition. Une chaîne nue (`fetch_stock("pubg-mobile")`) est UNE page, jamais
+    une suite de caractères.
 
     Un SKU publié sur plusieurs pages prend le dernier état lu **sans jamais
     écraser en silence** : un changement d'état entre deux pages est journalisé.
@@ -250,6 +252,10 @@ async def fetch_stock(
     `client` permet d'injecter un transport (tests). Sans lui, la fonction crée le
     sien et le referme.
     """
+    if isinstance(pages, str):
+        # `fetch_stock("pubg-mobile")` doit lire une page : sans cela, la boucle ci-dessous
+        # itérerait sur les caractères et demanderait `/en/shop/p`, `/en/shop/u`…
+        pages = (pages,)
     valid: list[str] = []
     invalid = 0
     for raw in pages:
@@ -258,9 +264,14 @@ async def fetch_stock(
             logger.warning("page ignorée : identifiant de type %s, aucune requête",
                            type(raw).__name__)
             continue
-        slug = raw.strip()
+        # La barre finale ne fait pas une autre page : `pubg-mobile/` == `pubg-mobile`.
+        slug = raw.strip().strip("/")
         if slug:
             valid.append(slug)
+        else:
+            # Un slug vide est un échec de lecture, jamais un « rien à lire » silencieux.
+            invalid += 1
+            logger.warning("page ignorée : identifiant vide, aucune requête")
     # Déduplication en conservant l'ordre : un même slug n'est lu qu'une fois.
     slugs = list(dict.fromkeys(valid))
     if not slugs:

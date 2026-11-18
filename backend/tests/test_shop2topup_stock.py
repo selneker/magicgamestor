@@ -372,3 +372,42 @@ def test_fetch_stock_ne_leve_pas_si_la_fermeture_du_client_echoue(monkeypatch):
 
     assert reading.pages_ok == 1
     assert len(reading.states) == 34
+
+
+# --------------------------------------------------------------------------- #
+# T06 — trois entrées qui ne doivent jamais produire de requête en trop
+# --------------------------------------------------------------------------- #
+
+def test_fetch_stock_accepte_une_chaine_nue_comme_une_page():
+    """`fetch_stock("pubg-mobile")` lit UNE page, jamais les caractères de la chaîne."""
+    client = _StubClient({PUBG_URL: _Response(fixture("pubg-mobile.html"))})
+
+    reading = run(s2t.fetch_stock("pubg-mobile", client=client))
+
+    assert [url for url, _ in client.calls] == [PUBG_URL]
+    assert reading.pages_ok == 1
+    assert reading.pages_failed == 0
+    assert len(reading.states) == 34
+
+
+def test_fetch_stock_compte_un_slug_vide_en_echec(caplog):
+    """Un slug vide est un échec de lecture, jamais un « rien à lire » silencieux."""
+    client = _StubClient({PUBG_URL: _Response(fixture("pubg-mobile.html"))})
+
+    reading = run(s2t.fetch_stock(["", "   ", "/", "pubg-mobile"], client=client))
+
+    assert len(client.calls) == 1
+    assert reading.pages_ok == 1
+    assert reading.pages_failed == 3
+    assert any("identifiant vide" in r.getMessage() for r in caplog.records)
+
+
+def test_fetch_stock_traite_la_barre_finale_comme_la_meme_page():
+    """`pubg-mobile` et `pubg-mobile/` désignent la même page : une seule requête."""
+    client = _StubClient({PUBG_URL: _Response(fixture("pubg-mobile.html"))})
+
+    reading = run(s2t.fetch_stock(["pubg-mobile", "pubg-mobile/"], client=client))
+
+    assert len(client.calls) == 1
+    assert reading.pages_ok == 1
+    assert len(reading.states) == 34
