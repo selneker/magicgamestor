@@ -104,6 +104,10 @@ class FakeCollection:
             self.docs.append(doc)
             return SimpleNamespace(modified_count=1, matched_count=1)
         found[0].update(update.get("$set") or {})
+        # `mark_supplier_available` efface l'état par `$unset` : sans cela, le fake garderait
+        # `supplier_available: False` et le test ne verrait jamais la levée de rupture.
+        for key in update.get("$unset") or {}:
+            found[0].pop(key, None)
         return SimpleNamespace(modified_count=1, matched_count=1)
 
 

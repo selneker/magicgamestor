@@ -179,6 +179,7 @@ async def fzr_mappings(game: str | None = None):
                                                           "active": 1, "game_id": 1, "requires_mapping": 1,
                                                           "fazercards_mapping": 1, "supplier_available": 1,
                                                           "supplier_checked_at": 1, "manual_unavailable": 1,
+                                                          "supplier_available_confirmed": 1,
                                                           "absent_from_supplier_list": 1,
                                                           "supplier_list_checked_at": 1}).sort("sort_order", 1)]
     # PL-STOCK-2 : compteurs de remboursements en UNE requête pour toute la liste.
