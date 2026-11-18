@@ -1,16 +1,20 @@
 """PL-STOCK-1 — disponibilité fournisseur d'un produit (état unique « achetable »).
 
-Le fournisseur de cartes n'expose AUCUN champ de stock dans son catalogue (voir le rapport du lot) :
-l'indisponibilité ne peut donc pas être lue à la source. Ce module centralise les deux signaux
-réellement observables et le calcul qui en découle :
+Ce module centralise l'état de disponibilité fournisseur d'un produit et le calcul qui en découle.
+Il ne lit aucune source : c'est `shop2topup_stock` qui relève, et le job de synchro qui applique.
 
-- `supplier_available` : `True`/`False` = dernier état CONSTATÉ (échec de livraison pour rupture),
-  `None`/absent = inconnu. Aucune panne fournisseur ne marque tout le catalogue : seul un échec de
-  livraison explicitement classé « rupture » écrit `False`.
-- `supplier_checked_at` : date ISO UTC du constat. Passé `STOCK_STALE_MINUTES` (60 par défaut), un
-  état `False` n'est plus opposé au client : il redevient « inconnu », donc achetable. Sans source
-  de stock, c'est ce délai qui assure le retour automatique à la vente (mécanisme H) ; un nouveau
-  échec le re-bloquera immédiatement.
+- `supplier_available` : `True`/`False` = dernier état CONSTATÉ, `None`/absent = inconnu. Aucune
+  panne fournisseur ne marque tout le catalogue : seul un constat explicite écrit `False`.
+- `supplier_available_confirmed` : la rupture vient d'un **relevé fournisseur réussi**
+  (`OutOfStock`, `source = CONFIRMED_STOCK_SOURCE`). Elle **n'expire jamais sur durée** : rien ne
+  l'efface hors `mark_supplier_available` (relevé `InStock`). Aucune route admin ne la lève encore :
+  le jour où elle existera, elle passera par cette même fonction. Une rupture *déduite* (échec de
+  livraison, série de remboursements, disparition de la liste d'offres) n'est qu'une présomption :
+  elle garde l'expiration `STOCK_STALE_MINUTES` (60 min).
+- `supplier_checked_at` : date ISO UTC du dernier constat. Passé `STOCK_STALE_MINUTES`, une rupture
+  **non confirmée** redevient « inconnu », donc achetable. Cette date est **rafraîchie à chaque
+  constat** (même quand la rupture est déjà connue) : une rupture qui dure ne vieillit donc pas.
+  Une rupture **confirmée** l'ignore complètement (règle 1).
 - `manual_unavailable` : forçage admin, prioritaire et SANS expiration. Il ne touche jamais
   `supplier_available`.
 
@@ -47,10 +51,15 @@ STOCK_ERROR_WORDS = (
 )
 
 ADMIN_FIELDS = ("supplier_available", "supplier_checked_at", "manual_unavailable",
+                "supplier_available_confirmed",
                 "absent_from_supplier_list", "supplier_list_checked_at", "absent_streak",
                 "absent_first_at")
 REASON_SUPPLIER = "supplier_out_of_stock"
 REASON_ADMIN = "admin"
+# Source d'une rupture CONFIRMÉE : un relevé fournisseur réussi qui a lu `OutOfStock`.
+# Toute autre source (`delivery`, `refund`, `offers_list`) n'est qu'une présomption, et garde
+# l'expiration de 60 min.
+CONFIRMED_STOCK_SOURCE = "shop2topup"
 
 
 def _now() -> datetime:
@@ -87,16 +96,20 @@ def stale_minutes() -> int:
 
 
 def supplier_state(product: dict | None, now: datetime | None = None) -> bool | None:
-    """État EFFECTIF fournisseur : `False` (rupture fraîche) · `True` (disponible) · `None` (inconnu).
+    """État EFFECTIF fournisseur : `False` (rupture) · `True` (disponible) · `None` (inconnu).
 
-    Un `False` non daté ou plus vieux que `stale_minutes()` vaut « inconnu » : on ne bloque jamais
-    une vente sur une information périmée.
+    Une rupture **confirmée par relevé** reste `False` quel que soit son âge : rien ne l'efface à
+    part `mark_supplier_available` (relevé `InStock`). Une rupture *déduite*, non datée ou plus
+    vieille que `stale_minutes()`, vaut « inconnu » : on ne bloque jamais une vente sur une
+    information périmée.
     """
     raw = (product or {}).get("supplier_available")
     if raw is True:
         return True
     if raw is not False:
         return None
+    if (product or {}).get("supplier_available_confirmed") is True:
+        return False
     checked = _parse((product or {}).get("supplier_checked_at"))
     if checked is None:
         return None
@@ -165,6 +178,7 @@ def admin_fields(product: dict | None, now: datetime | None = None,
     fields = {
         "supplier_available": supplier_state(product, now),
         "supplier_checked_at": product.get("supplier_checked_at"),
+        "supplier_available_confirmed": bool(product.get("supplier_available_confirmed")),
         "manual_unavailable": bool(product.get("manual_unavailable")),
         # PL-STOCK-2 : observation de la liste fournisseur (`observe` ne bloque jamais la vente).
         "absent_from_supplier_list": bool(product.get("absent_from_supplier_list")),
@@ -197,33 +211,90 @@ async def mark_supplier_unavailable(product: dict | None, *, actor: str | None =
                                     source: str = "delivery") -> bool:
     """Mécanisme C — marque immédiatement le produit indisponible après une rupture constatée.
 
-    Transition ATOMIQUE : seule la première bascule (`supplier_available != False`) modifie le
-    document, écrit l'audit et alerte l'admin. Une répétition (autre unité, autre commande) est un
-    no-op silencieux. `STOCK_SYNC_ENABLED=false` désactive tout marquage automatique.
+    La bascule est ATOMIQUE : seule la première (`supplier_available != False`) écrit l'audit et
+    alerte l'admin. Une répétition (autre unité, autre commande, passage suivant du relevé)
+    **rafraîchit seulement `supplier_checked_at`**, sans nouvelle alerte : c'est ce qui empêche une
+    rupture qui dure d'expirer au bout de `STOCK_STALE_MINUTES`.
+    `STOCK_SYNC_ENABLED=false` désactive tout marquage automatique.
     Ne lève jamais : l'issue de la livraison ne dépend pas de ce marquage.
+
+    `source` est conservée dans `supplier_available_confirmed` : une rupture issue d'un relevé
+    fournisseur réussi (`CONFIRMED_STOCK_SOURCE`) n'expire jamais sur durée. Une présomption déjà
+    posée peut donc être **confirmée** plus tard ; une présomption ne dégrade jamais une
+    confirmation existante.
     """
     if not sync_enabled():
         return False
     product_id = str((product or {}).get("id") or "").strip()
     if not product_id:
         return False
+    confirmed = source == CONFIRMED_STOCK_SOURCE
     stamp = _now().isoformat()
     try:
-        result = await db.products.update_one(
+        transition = await db.products.update_one(
             {"id": product_id, "supplier_available": {"$ne": False}},
-            {"$set": {"supplier_available": False, "supplier_checked_at": stamp}})
+            {"$set": {"supplier_available": False, "supplier_checked_at": stamp,
+                      "supplier_available_confirmed": confirmed}})
+        if transition.modified_count != 1:
+            # Déjà en rupture : on ne rafraîchit que la date (et on confirme si le relevé l'a lue).
+            refresh = {"supplier_checked_at": stamp}
+            if confirmed:
+                refresh["supplier_available_confirmed"] = True
+            await db.products.update_one(
+                {"id": product_id, "supplier_available": False}, {"$set": refresh})
+            return False
     except Exception as exc:  # type: ignore[attr-defined]
         logger.warning("Marquage stock impossible (%s)", type(exc).__name__)
+        return False
+    name = str((product or {}).get("name") or product_id)
+    try:
+        await audit("product.supplier_unavailable", actor, product_id,
+                    {"source": source, "supplier_available": False,
+                     "supplier_available_confirmed": confirmed})
+        await notifications.notify_stock_unavailable(name, product_id)
+    except Exception as exc:  # type: ignore[attr-defined]
+        logger.warning("Alerte stock non envoyée (%s)", type(exc).__name__)
+    return True
+
+
+async def mark_supplier_available(product: dict | None, *, actor: str | None = None,
+                                  source: str = CONFIRMED_STOCK_SOURCE) -> bool:
+    """Lève une rupture sur un relevé fournisseur réussi (`InStock`) — règle 1.
+
+    Efface `supplier_available`, `supplier_checked_at` et `supplier_available_confirmed` : le
+    produit redevient « inconnu », donc achetable immédiatement, sans attendre l'expiration.
+    Transition ATOMIQUE : le filtre ne retient que ce qui est réellement en rupture, donc un
+    `InStock` répété n'écrit rien et n'alerte plus. `manual_unavailable` n'est jamais touché : le
+    forçage admin reste prioritaire et indépendant.
+    `STOCK_SYNC_ENABLED=false` la neutralise aussi, en symétrie du marquage.
+    L'alerte `stock_restored` part même si l'admin a forcé l'indisponibilité : le produit reste
+    alors non achetable, mais les deux signaux ne sont jamais confondus.
+    Ne lève jamais : l'appelant (job de synchro) ne doit pas échouer sur ce marquage.
+    """
+    if not sync_enabled():
+        # Symétrie avec le marquage : le drapeau coupe la synchro dans les deux sens, sinon des
+        # ruptures se lèveraient toutes seules alors que plus personne ne les confirme.
+        return False
+    product_id = str((product or {}).get("id") or "").strip()
+    if not product_id:
+        return False
+    try:
+        result = await db.products.update_one(
+            {"id": product_id, "supplier_available": False},
+            {"$unset": {"supplier_available": "", "supplier_checked_at": "",
+                        "supplier_available_confirmed": ""}})
+    except Exception as exc:  # type: ignore[attr-defined]
+        logger.warning("Levée de rupture impossible (%s)", type(exc).__name__)
         return False
     if result.modified_count != 1:
         return False
     name = str((product or {}).get("name") or product_id)
     try:
-        await audit("product.supplier_unavailable", actor, product_id,
-                    {"source": source, "supplier_available": False})
-        await notifications.notify_stock_unavailable(name, product_id)
+        await audit("product.supplier_available", actor, product_id,
+                    {"source": source, "supplier_available": None})
+        await notifications.notify_stock_restored(name, product_id)
     except Exception as exc:  # type: ignore[attr-defined]
-        logger.warning("Alerte stock non envoyée (%s)", type(exc).__name__)
+        logger.warning("Alerte retour stock non envoyée (%s)", type(exc).__name__)
     return True
 
 
@@ -253,11 +324,15 @@ async def expire_stale_states(now: datetime | None = None) -> dict:
     alerte `stock_restored` n'est émise qu'à la transition réelle. Un produit encore forcé par
     l'admin est bien remis à « inconnu » mais n'alerte pas (il reste indisponible, rien ne change
     pour le client).
+
+    Les ruptures **confirmées** (`supplier_available_confirmed`) sont exclues du balayage : elles
+    ne doivent jamais expirer sur durée (règle 1). Seul `mark_supplier_available` les lève.
     """
     moment = now or _now()
     cutoff = (moment - timedelta(minutes=stale_minutes())).isoformat()
     query = {
         "supplier_available": {"$in": [True, False]},
+        "supplier_available_confirmed": {"$ne": True},
         "$or": [{"supplier_checked_at": {"$lt": cutoff}},
                 {"supplier_checked_at": {"$exists": False}}],
     }
@@ -265,7 +340,8 @@ async def expire_stale_states(now: datetime | None = None) -> dict:
     expired = restored = 0
     async for product in db.products.find(query, projection):
         result = await db.products.update_one(
-            {"id": product.get("id"), "supplier_available": product.get("supplier_available")},
+            {"id": product.get("id"), "supplier_available": product.get("supplier_available"),
+             "supplier_available_confirmed": {"$ne": True}},
             {"$set": {"supplier_available": None, "supplier_checked_at": moment.isoformat()}})
         if result.modified_count != 1:
             continue
