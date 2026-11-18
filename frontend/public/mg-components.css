@@ -63,6 +63,29 @@ body[data-page="home"] .cta-banner-section .button-main-inner__bg {
 }
 body[data-page="home"] .cta-banner-section .button-main-inner__text { color: var(--color--light); }
 
+/* ——— Jeux de la boutique sous le marquee (plus d'espace vide) :
+       pilules crème bordées d'encre, logo du jeu, flèche Slush. ——— */
+.banner-games { display: flex; flex-wrap: wrap; gap: .6em; margin-top: 1.1em; }
+.banner-game {
+  display: inline-flex;
+  align-items: center;
+  gap: .55em;
+  border: .125em solid var(--color--dark);
+  background: var(--color--light);
+  color: var(--color--dark);
+  border-radius: 999px;
+  padding: .3em 1em .3em .35em;
+  font-weight: 700;
+  font-size: .9em;
+  min-height: 2.75em;
+  transition: transform .5s var(--elastic-ease-out), background-color .2s var(--color-ease);
+}
+.banner-game:hover { transform: translateY(-2px); }
+.banner-game__logo { width: 2.1em; height: 2.1em; border-width: .09em; }
+.banner-game__name { white-space: nowrap; }
+.banner-game__arrow { width: .8em; height: .8em; margin-left: .15em; }
+@media (prefers-reduced-motion: reduce) { .banner-game { transition: none; } .banner-game:hover { transform: none; } }
+
 /* ——— Avis : 1 colonne sur mobile (le 3-up en ligne débordait) ——— */
 .reviews-grid { display: grid; gap: .8em; grid-template-columns: 1fr; }
 @media screen and (min-width: 768px) { .reviews-grid { grid-template-columns: repeat(3, 1fr); } }

@@ -99,7 +99,7 @@ function Hero({ shopUrl }) {
 // trouvait jamais) : le port React les ajoute pour que l'animation joue.
 const MARQUEE_ACCENTS = ["white", "orange", "blue", "violet", "green"];
 
-function CtaBanner() {
+function CtaBanner({ games }) {
   const { t } = useLang();
   const notes = t("footer.tickerMessages") || [];
   const label = t("store.bannerCta");
@@ -127,6 +127,23 @@ function CtaBanner() {
         </div>
       </div>
       <p className="container ticker-note">{notes[0] || ""}</p>
+      {/* Le bandeau n'est plus un espace vide : sous le marquee, les jeux
+          réellement disponibles en boutique — chaque pilule mène au
+          catalogue du jeu (choix du jeu depuis l'accueil). */}
+      {games.length > 0 && (
+        <div className="container" data-testid="home-banner-games">
+          <p className="eyebrow" style={{ color: "inherit" }}>{t("store.gamesTitle")}</p>
+          <div className="banner-games">
+            {games.map((g) => (
+              <Link to={`/boutique?game=${g.id}`} className="banner-game" key={g.id} data-testid={`banner-game-${g.slug || g.id}`}>
+                <GameLogo game={g} className="banner-game__logo" />
+                <span className="banner-game__name">{g.name}</span>
+                <svg className="banner-game__arrow" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5873 10L0 8.4127L6.30385 2.13152L0.793651 2.1542V0H10V9.20635H7.8458L7.86848 3.67347L1.5873 10Z" fill="currentColor" /></svg>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -390,7 +407,7 @@ export default function Home() {
   return (
     <div data-testid="home-page">
       <Hero shopUrl={shopUrl} />
-      <CtaBanner />
+      <CtaBanner games={games} />
 
       <Steps />
 
