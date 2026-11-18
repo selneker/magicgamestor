@@ -66,14 +66,30 @@ let directionHandler = null;
 export function initNavDirection() {
   if (directionHandler || !gsapReady()) return;
   let lastY = window.scrollY;
+  // Perf (retour du propriétaire : scroll saccadé hors Firefox) : Lenis
+  // émet un événement scroll PAR FRAME pendant son animation. Écrire
+  // setAttribute à chaque frame — même à la même valeur — déclenche une
+  // invalidation de style; les règles qui consomment ces attributs passent
+  // par :has() (design-system.css:6301), coûteuse à réévaluer dans
+  // Chromium. On n'écrit donc QUE quand la valeur change réellement —
+  // data-scrolling-direction n'est consommé par aucun CSS/JS du projet,
+  // mais on garde le contrat (écriture au changement) comme la maquette.
+  let lastDirection = null;
+  let lastStarted = null;
   directionHandler = () => {
     const y = window.scrollY;
     if (Math.abs(y - lastY) < 10) return;
     const direction = y > lastY ? "down" : "up";
     const started = y > 50;
     lastY = y;
-    document.body.setAttribute("data-scrolling-direction", direction);
-    document.body.setAttribute("data-scrolling-started", String(started));
+    if (direction !== lastDirection) {
+      document.body.setAttribute("data-scrolling-direction", direction);
+      lastDirection = direction;
+    }
+    if (started !== lastStarted) {
+      document.body.setAttribute("data-scrolling-started", String(started));
+      lastStarted = started;
+    }
     const gsap = gsapReady();
     if (!gsap) return;
     if (direction === "down" && started && window.innerWidth >= 992) {
@@ -227,7 +243,13 @@ export function initMarquee(scope) {
       onUpdate: (self) => {
         const down = self.direction === 1;
         tween.timeScale(down ? -dir : dir);
-        el.setAttribute("data-marquee-status", down ? "normal" : "inverted");
+        // Perf : onUpdate tire PAR FRAME pendant que la section est visible.
+        // N'écrire l'attribut que si le sens change réellement (aucun CSS
+        // ne consomme data-marquee-status, mutation morte sinon).
+        const status = down ? "normal" : "inverted";
+        if (el.getAttribute("data-marquee-status") !== status) {
+          el.setAttribute("data-marquee-status", status);
+        }
       },
     });
 
