@@ -332,13 +332,13 @@ La forme est `{"shop2topup": {"sku": "13", "uc_total": 60, "mode": "direct"}}` ;
 **Critères d'acceptation :**
 - [ ] manifeste explicite, une ligne par couple (`sku`, `product_slug`, `uc_total`, `name_seen`),
       **relu et validé par le propriétaire avant commit**
-- [ ] règle de lecture inscrite en tête du fichier : unité obligatoire (`UC`), total = **somme** des nombres,
+- [x] règle de lecture inscrite en tête du fichier : unité obligatoire (`UC`), total = **somme** des nombres,
       « WOW Coins » exclu
-- [ ] rattachement idempotent : deux démarrages → aucun doublon, aucune écriture inutile
-- [ ] T04 n'écrit **que** `supplier_mapping["shop2topup"]` (A1) ; aucune autre clé fournisseur n'est créée
-- [ ] `fazercards_mapping` **jamais** modifié (test dédié)
+- [x] rattachement idempotent : deux démarrages → aucun doublon, aucune écriture inutile
+- [x] T04 n'écrit **que** `supplier_mapping["shop2topup"]` (A1) ; aucune autre clé fournisseur n'est créée
+- [x] `fazercards_mapping` **jamais** modifié (test dédié)
 - [ ] un produit sans `supplier_mapping["shop2topup"]` n'est **jamais** touché par la synchro
-- [ ] les 6 couples UC de § 2.4 constituent le jeu de départ **proposé** ; prime/évolutif restent hors
+- [x] les 6 couples UC de § 2.4 constituent le jeu de départ **proposé** ; prime/évolutif restent hors
       manifeste tant que le propriétaire ne les a pas validés (A3 : aucun ajout de produit dans ce chantier)
 
 **Vérification :** test du backfill sur collection factice + relecture ligne à ligne du manifeste.
