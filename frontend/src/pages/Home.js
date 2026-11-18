@@ -266,9 +266,10 @@ function GamesCards({ games }) {
         {/* auto-fit : 1 colonne naturelle en mobile (pas de titres écrasés),
             3 colonnes ≥ 768 px, pas de trou à côté de la 3e carte — les
             tracks vides de auto-fit sont réduites à 0. Écrase les paliers
-            2/3/4 colonnes de .packs-grid (mg-components.css:292). */}
+            2/3/4 colonnes de .packs-grid (mg-components.css:292).
+            TOUS les jeux : la section est le sélecteur de jeu de l'accueil. */}
         <div className="packs-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(18em, 1fr))" }}>
-          {games.slice(0, 3).map((g, i) => (
+          {games.map((g, i) => (
             <Link to={`/boutique?game=${g.id}`} className="two-col-grid__visual" data-card-reveal="card" data-box-theme={GAME_THEMES[i % GAME_THEMES.length]} style={{ minHeight: "16em" }} key={g.id} data-testid={`home-game-${g.slug || g.id}`}>
               <svg className="mg-shape" viewBox="0 0 200 200" aria-hidden="true"><rect x="20" y="20" width="160" height="160" rx="46" transform="rotate(8 100 100)" fill="currentColor" /><path d="M115 55l-40 62h29l-11 38 46-64h-30l18-36z" fill="hsl(0 0% 0% / .18)" /></svg>
               <GameLogo game={g} className="ic-use h-[6em] w-[6em] rounded-[1em]" />
