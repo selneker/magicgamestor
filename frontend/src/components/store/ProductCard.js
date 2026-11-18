@@ -156,7 +156,9 @@ export function ProductCard({ product, index = 0, badge }) {
               <button type="button" aria-label={`${qty === 1 ? t("cart.removeFromCart") : t("cart.removeOneFromCart")} : ${product.name || product.slug}`} onClick={handleDecrease} className={`grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
                 <Icon name={qty === 1 ? "trash" : "minus"} />
               </button>
-              <span className="min-w-0 text-center font-body text-sm font-bold leading-tight text-neo" aria-live="polite"><span className="font-display text-2xl font-extrabold">{qty}</span> {t("product.inCartShort")}</span>
+              {/* Annotation propriétaire : le chiffre SEUL (1, 2, …) — le
+                  mot « au panier » reste pour les lecteurs d'écran. */}
+              <span className="min-w-0 text-center font-body text-sm font-bold leading-tight text-neo" aria-live="polite"><span className="font-display text-2xl font-extrabold">{qty}</span><span className="sr-only"> {t("product.inCartShort")}</span></span>
               <button type="button" aria-label={`${t("product.addOne")} : ${product.name || product.slug}`} disabled={qty >= max} onClick={handleIncrease} className={`grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
                 <Icon name="plus" />
               </button>
