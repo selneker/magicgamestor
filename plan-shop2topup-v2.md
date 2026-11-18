@@ -304,18 +304,18 @@ sera branché sur rien.
 
 ### Phase 1 — Vérité fournisseur
 
-#### T03 — Vérifier ce que l'API revendeur expose réellement *(modifié — C2)*
+#### T03 — Vérifier ce que l'API revendeur expose réellement *(modifié — C2)* *(fait le 18/11/2026, mesuré)*
 **Description :** **ne rien supposer**. Un relevé unique et daté de la réponse catalogue de l'API revendeur,
 pour répondre à une seule question : **y a-t-il un champ de stock par SKU ?**
 
 **Critères d'acceptation :**
-- [ ] clé lue **uniquement** depuis `os.environ` ; **jamais** écrite dans un fichier, un log ou un rapport
-- [ ] rapport `RAPPORT-SHOP2TOPUP-API.md` : forme exacte de la réponse (noms de champs), présence/absence de
+- [x] clé lue **uniquement** depuis `os.environ` ; **jamais** écrite dans un fichier, un log ou un rapport
+- [x] rapport `RAPPORT-SHOP2TOPUP-API.md` : forme exacte de la réponse (noms de champs), présence/absence de
       stock, forme de l'authentification, endpoints observés
-- [ ] verdict explicite : **`api`** (stock présent) ou **`jsonld`** (absent) — pas « peut-être »
-- [ ] si `api` : la branche API est choisie et T02 est étendue pour l'utiliser ; si `jsonld` : rien ne change,
+- [x] verdict explicite : **`api`** (stock présent) ou **`jsonld`** (absent) — pas « peut-être »
+- [x] si `api` : la branche API est choisie et T02 est étendue pour l'utiliser ; si `jsonld` : rien ne change,
       T02 reste la source et l'API ne sert qu'à commander
-- [ ] aucun prix reporté dans le plan sans source (le relevé peut citer les prix **observés**, datés)
+- [x] aucun prix reporté dans le plan sans source (le relevé peut citer les prix **observés**, datés)
 
 **Vérification :** exécution par le propriétaire, clé exportée dans la session du terminal (A7), rapport relu.
 **Dépendances :** T01, **P1** · **Fichiers :** `RAPPORT-SHOP2TOPUP-API.md`, éventuel script de relevé

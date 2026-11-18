@@ -3,11 +3,10 @@
 **Date :** mercredi 18/11/2026 · **Branche :** `feat/shop2topup-bascule` · **Plan :** `plan-shop2topup-v2.md` (§ T03)
 **Question unique de T03 :** la réponse catalogue de l'API revendeur expose-t-elle un **état de stock par SKU** ?
 
-> **Statut : partiel — verdict `jsonld` documentaire, non mesuré.** La clé `SHOP2TOPUP_API_KEY` a d'abord été
-> absente, puis fournie dans la session du terminal ; les **3 appels authentifiés** tentés le 18/11/2026 ont tous
-> été refusés en **`403 IP_NOT_ALLOWED`** car l'allowlist du compte est **vide** (§ 3 bis). Aucun corps de catalogue
-> n'a donc été lu. Ce rapport établit la réponse sur la **documentation publique de l'API** (lue intégralement le
-> 18/11/2026) et sur **deux relevés réels non concluants** : un `401` sans clé, trois `403` avec clé.
+> **Statut : complet et mesuré.** Le 18/11/2026, **11 appels GET authentifiés** ont été envoyés : 3 refusés en
+> `403 IP_NOT_ALLOWED` (allowlist alors vide), puis **8 réussis** après ouverture de l'allowlist. Le catalogue réel
+> ne contient **aucun champ de stock** sur les **55 offres** lues, et `item_id` = `sku` public (§ 5 bis). Verdict
+> `jsonld` **confirmé par la mesure**, plus seulement par la documentation.
 
 ---
 
@@ -18,7 +17,7 @@
 | H1 | « stock » | Tout champ booléen ou numérique, publié **par produit**, qui dirait « vendable / en rupture » | C'est ce que `fetch_stock()` doit rendre pour T06 |
 | H2 | Documentation = fait ? | La doc est traitée comme **preuve documentaire**, pas comme mesure live | Le plan (C2) interdit de supposer ; une doc peut retarder sur le code |
 | H3 | La clé absente, puis fournie | Au premier passage elle était absente : on ne l'a cherchée nulle part, aucun `.env` créé. Au second, elle a été fournie comme variable de session ; elle n'a été ni écrite, ni committée, ni affichée | Consigne du prompt et A7 |
-| H4 | Prix | Les prix relevés ici sont des **prix publics** (page boutique), pas le `unit_price` revendeur (ce que MGS paie) | Deux prix différents, la doc le dit explicitement |
+| H4 | Prix | Deux prix distincts, tous deux mesurés : `price`/`unit_price` de l'API = ce que **MGS paie** ; le prix de la page publique (JSON-LD) = ce que **le client paie** | La doc le dit et le relevé du 18/11/2026 le confirme (12 : `0.319173` vs `0.35`) |
 
 ---
 
@@ -32,10 +31,12 @@
 | `https://shop2topup.com/en/reseller-api/docs/orders` | doc publique | statuts, idempotence, forme des réponses commande |
 | `https://shop2topup.com/en/reseller-api/docs/errors` | doc publique | les 43 codes d'erreur, dont ceux de rupture |
 | `GET https://shop2topup.com/api/endpoints/v1/account` **sans en-tête** | **appel réel**, 18/11/2026 | HTTP **401** — voir § 3 |
-| `/account`, `/catalog/big-categories`, `/catalog/categories` **avec clé** | **3 appels réels**, 18/11/2026 | HTTP **403 `IP_NOT_ALLOWED`** — voir § 3 bis |
+| `/account`, `/catalog/big-categories`, `/catalog/categories` **avec clé, allowlist vide** | **3 appels réels**, 18/11/2026 | HTTP **403 `IP_NOT_ALLOWED`** — voir § 3 bis |
+| `/catalog/big-categories`, `/catalog/categories`, `/catalog/subcategories?categoryId=2`, `/catalog/subcategory/12/price`, `/catalog/category/2/requirements`, `/catalog/categories` (relue), `/catalog/subcategories?categoryId=4` **avec clé, allowlist ouverte** | **8 appels réels**, 18/11/2026 | HTTP **200** — voir § 3 bis et § 5 bis |
 
-Aucune autre requête n'a été envoyée. La clé n'a été **ni écrite dans un fichier, ni committée, ni affichée** : elle
-n'a existé que comme variable d'environnement de la session du terminal.
+Aucune autre requête n'a été envoyée : **11 GET au total** (3 + 8), jamais plus de 8 par session, aucun
+`POST`/`PUT`/`DELETE`. La clé n'a été **ni écrite dans un fichier, ni committée, ni affichée** : elle n'a existé que
+comme variable d'environnement de la session du terminal.
 
 ---
 
@@ -71,19 +72,19 @@ sans le bloc `details` montré par la doc. **T07 doit lire `error.code` avec rep
 
 ---
 
-## 3 bis. Relevé authentifié du 18/11/2026 — 3 GET, 3 × `403 IP_NOT_ALLOWED`
+## 3 bis. Relevé authentifié du 18/11/2026 — 11 GET, deux sessions (3 refusés, 8 réussis)
 
-Clé fournie par le propriétaire dans la session du terminal (A7), jamais écrite ni affichée. Script : annexe A.
-**3 appels sur les 8 autorisés**, 10 s de délai, `User-Agent: MagicGameStore-stock/1.0`, aucun retry, aucun
-`POST`/`PUT`/`DELETE`.
+Clé lue **uniquement** depuis `os.environ` (A7), jamais écrite ni affichée. `GET` seulement, 10 s par appel,
+`User-Agent: MagicGameStore-stock/1.0`, aucun retry. **11 appels réels au total, jamais plus de 8 par session**,
+aucune écriture.
 
-| # | Requête | Code HTTP | `error.code` |
+| Passage | Appels | Résultat | Cause |
 |---|---|---|---|
-| 1 | `GET /account` | **403** | `IP_NOT_ALLOWED` |
-| 2 | `GET /catalog/big-categories` | **403** | `IP_NOT_ALLOWED` |
-| 3 | `GET /catalog/categories` | **403** | `IP_NOT_ALLOWED` |
+| T03b | 3 | `403` ×3 `IP_NOT_ALLOWED` | allowlist du compte **vide** : « No IPs allowed. Configure your IP allowlist first. » |
+| T03c, 1er essai | 3 | **`200` ×3** | arrêt volontaire du script : il lisait `body["categories"]` au lieu de `data` (§ ci-dessous) |
+| T03c, 2e essai | 5 | **`200` ×5** | 4 appels du script corrigé + 1 `?categoryId=4` — mesures ci-dessous |
 
-Enveloppe reçue, identique aux trois appels (aucune donnée de compte, aucun solde) :
+Enveloppe du passage T03b, identique aux trois appels (aucune donnée de compte, aucun solde) :
 
 ```json
 {"success": false,
@@ -93,41 +94,74 @@ Enveloppe reçue, identique aux trois appels (aucune donnée de compte, aucun so
            "action": "FIX_INPUT", "retryable": false, "retry_after": null}}
 ```
 
-Aucun en-tête `X-RateLimit-*` sur une réponse 403.
+Aucun en-tête `X-RateLimit-*` sur une réponse 403. L'enveloppe d'erreur est celle du § 3 : `code`/`msg` à la
+racine **et** `error{code, message, action, retryable, retry_after}`, sans bloc `details`.
 
-**Ce que ces trois appels prouvent, et ce qu'ils ne prouvent pas :**
+### Forme réelle des réponses — un écart qui compte
+
+Chaque réponse porte `{"success": true, "data": …}` (ou `account`) : la charge est sous **`data`**, jamais sous
+`categories` / `subcategories`. Un consommateur qui lit `body["categories"]` reçoit `[]` et conclut à tort que le
+catalogue est vide — c'est exactement ce qui a arrêté le premier essai de T03c après trois appels. **T07 et T08
+doivent lire `data`.**
+
+| Route (T03c) | Forme mesurée — champs réels | `X-RateLimit-Limit` |
+|---|---|---|
+| `GET /account` | `{success, account:{email, wallet}}` — **2** champs, pas les 8 documentés | **60** |
+| `GET /catalog/big-categories` | `{success, data:[{id, name, description}]}` | 5000 |
+| `GET /catalog/categories` | `{success, data:[{id, name, description, big_category_id, big_category_name, region_ids[], country_ids[], requirements{}}]}` — **290** entrées | 5000 |
+| `GET /catalog/subcategories?categoryId=2` | `{success, data:[{id, item_id, name, description, category_id, category_name, fulfillment_type, returns_voucher, product_type, conditions, price}]}` — **34** entrées | 5000 |
+| `GET /catalog/subcategories?categoryId=4` | même forme, **21** entrées | 5000 |
+| `GET /catalog/subcategory/12/price` | `{success, data:{item_id, item_name, unit_price, currency, original_price, discount_applied, pricing_level_id, timestamp}}` | 5000 |
+| `GET /catalog/category/2/requirements` | `{success, data:[{field_name, data_type, placeholder}]}` — **`player_id` seul** | 5000 |
+
+Deux champs que la doc ne met pas en avant : `conditions` (objet, **vide sur les 55 offres lues**) et, côté
+catégorie, `region_ids` / `country_ids` / `requirements`.
+
+**Prix revendeur observés le 18/11/2026 14:25 UTC** — `unit_price` = ce que MGS paie, distinct du prix public :
+
+| `item_id` | Nom | `unit_price` | Prix public (JSON-LD) |
+|---|---|---|---|
+| 12 | 10 UC | `0.319173` | `0.35` |
+| 28 | 100 + 10 Diamonds | `0.93558` | `0.97` |
+| 29 | 210 + 21 Diamonds | `1.9158` | — |
+| 30 | 530 + 53 Diamonds | `4.6872` | — |
+| 31 | 1 080 + 108 Diamonds | `9.3744` | — |
+
+### Ce que ces appels prouvent
 
 | Prouvé | Preuve |
 |---|---|
-| La clé est **acceptée** : on dépasse le contrôle d'authentification | un refus de clé rendrait `401 MISSING_API_KEY` / `INVALID_API_KEY` (§ 3, mesuré) ; ici la réponse est `403` et nomme un autre contrôle |
-| Le format `Bearer <keyId>.<secret>` est le bon | la requête est parvenue à la couche d'autorisation, pas rejetée en amont |
-| L'**allowlist est vide**, pas seulement « cette IP n'est pas la bonne » | le message est « **No** IPs allowed. **Configure your IP allowlist first.** » — aucune adresse n'est autorisée, donc **aucune** machine ne peut appeler aujourd'hui, Render compris |
-| L'enveloppe d'erreur observée sans clé est la même avec clé | `code`/`msg` à la racine **et** `error{code,message,action,retryable,retry_after}` ; pas de bloc `details` |
+| La clé est acceptée, l'allowlist ouverte | `200` sur les **8 appels réussis** de T03c (7 routes distinctes) |
+| L'**absence de champ de stock** est mesurée, pas déduite | 11 champs par offre, `champs_de_stock = AUCUN` sur **55** offres (34 PUBG + 21 Free Fire), deux catégories |
+| Un « stock » n'est pas caché sous `conditions` | `conditions = {}` sur 55/55 |
+| Le catalogue est complet et cohérent avec la page publique | 34 offres PUBG côté API ↔ 34 JSON-LD ; 21 ↔ 21 pour Free Fire MENA |
+| Les limites de débit du § 7 | `X-RateLimit-Limit` relevé sur chaque réponse |
+| `item_id` = SKU public | § 5 bis |
 
-| **Non prouvé** | Conséquence |
+| **Resté non prouvé** | Conséquence |
 |---|---|
-| La forme réelle des réponses catalogue (donc **l'absence de champ de stock**) | le verdict `jsonld` du § 6 reste **documentaire** : aucun corps de catalogue n'a été lu |
-| La limite de débit effective | non atteinte, non observée |
-| `item_id` = SKU public | **T04 reste bloquée** |
+| La rupture **à l'avance**, quelle qu'elle soit | inconnaissable avant la commande (§ 5) |
+| Le comportement de `POST /orders/create` | hors T03, jamais appelé |
 
-**Aucun contournement n'a été tenté** (ni changement d'en-tête, ni autre chemin d'accès, ni retry), conformément à A4.
-La seule sortie possible est côté propriétaire : configurer l'allowlist, ou lancer le relevé depuis l'IP autorisée.
+**Aucun contournement n'a été tenté**, ni pendant le passage refusé en `403` ni après : pas de changement d'en-tête,
+pas d'autre chemin d'accès, pas de retry.
 
 ---
 
-## 4. Ce que l'API expose — route par route (documentation, 18/11/2026)
+## 4. Ce que l'API expose — route par route (documentation, **confrontée au relevé** du 18/11/2026)
 
 Base : `https://shop2topup.com/api/endpoints/v1`. Tout est JSON, montants en **chaînes décimales** (`"0.950000"`),
-horodatages UTC ISO 8601.
+horodatages UTC ISO 8601. Chaque réponse enveloppe sa charge dans **`data`** (§ 3 bis) — la colonne « champs » ci-dessous
+liste ce que contient `data`, pas la racine.
 
 | Route | Méthode | Champs de la réponse | Utilité pour MGS |
 |---|---|---|---|
-| `/account` | GET | `success`, `account{id, email, username, client_type, wallet, enabled, verified, created_at}` | **T08** : solde du wallet, état du compte avant une série de commandes |
+| `/account` | GET | **mesuré** : `success`, `account{email, wallet}` — la doc annonce 8 champs, 2 seulement sont rendus | **T08** : solde du wallet, état du compte avant une série de commandes |
 | `/catalog/big-categories` | GET | `id`, `name`, `description` | navigation |
-| `/catalog/categories` | GET | `id`, `name`, `description`, `big_category_id`, `big_category_name` | trouver la catégorie PUBG / Free Fire |
-| `/catalog/subcategories` | GET | `item_id`, `name`, `description`, `category_id`, `category_name`, **`price`**, `product_type`, `fulfillment_type`, `returns_voucher` | **le catalogue vendable** — et c'est là que le stock **manque** |
+| `/catalog/categories` | GET | `id`, `name`, `description`, `big_category_id`, `big_category_name`, **`region_ids[]`**, **`country_ids[{id, code, name}]`**, **`requirements{}`** — **290** catégories | trouver la catégorie PUBG / Free Fire |
+| `/catalog/subcategories` | GET | **mesuré, 34 offres (PUBG) / 21 (Free Fire)** : `id`, `item_id`, `name`, `description`, `category_id`, `category_name`, **`price`**, `product_type`, `fulfillment_type`, `returns_voucher`, `conditions` | **le catalogue vendable** — et c'est là que le stock **manque** |
 | `/catalog/subcategory/{itemId}/price` | GET | `item_id`, `item_name`, **`unit_price`**, `currency`, `original_price`, `discount_applied`, `timestamp` | **T04/T09** : prix revendeur juste avant commande (`expected_unit_price`) |
-| `/catalog/category/{categoryId}/requirements` | GET | `field_name`, `data_type`, `placeholder`, `select_options` | **T07** : champs d'identité à collecter (player id, server…) |
+| `/catalog/category/{categoryId}/requirements` | GET | `field_name`, `data_type`, `placeholder`, `select_options` — **mesuré sur PUBG Mobile Direct Topup : `player_id` seul** (`text`, « Enter player ID »), aucun champ serveur | **T07** : champs d'identité à collecter |
 | `/player/validate` | POST | — | **hors T03**, jamais appelé (écrit / consomme un quota) |
 | `/orders/create` | POST | `order{order_id, status, player_id, player_name, subcategory_name, quantity, charged_amount, currency, created_at}` | **hors T03**, jamais appelé |
 | `/orders/{orderId}` | GET | idem + `completed_at`, `vouchers[]`, `sub_transactions[]` | **T08** : statut par commande (3 req/60 s) |
@@ -147,11 +181,13 @@ Notes de la doc, utiles plus tard :
 
 ## 5. Ce que l'API **n'expose pas** — la réponse à T03
 
-**Aucun des cinq endpoints catalogue ne publie d'état de stock par produit.** Les champs documentés sont, au
-complet : `id`, `item_id`, `name`, `description`, `category_id`, `category_name`, `big_category_id`,
-`big_category_name`, `price`, `unit_price`, `currency`, `original_price`, `discount_applied`, `timestamp`,
-`product_type`, `fulfillment_type`, `returns_voucher`, plus les champs de formulaire des `requirements`.
-Aucun `stock`, `availability`, `in_stock`, `inventory`, `quantity_available`, `sold_out`.
+**Aucun des cinq endpoints catalogue ne publie d'état de stock par produit — c'est mesuré, plus seulement
+documenté.** Relevé du 18/11/2026 (§ 3 bis) : `champs_de_stock = AUCUN` sur **55 offres** réelles (34 PUBG Mobile
+Direct Topup + 21 Free Fire MENA Direct Topup), 11 champs par offre. Les champs observés sont, au complet :
+`id`, `item_id`, `name`, `description`, `category_id`, `category_name`, `fulfillment_type`, `returns_voucher`,
+`product_type`, `conditions`, `price` (plus `unit_price`/`currency`/`original_price`/`discount_applied`/`timestamp`
+sur la route prix). Aucun `stock`, `availability`, `in_stock`, `inventory`, `quantity_available`, `sold_out`, et
+`conditions` — le seul objet libre — est **vide sur 55/55**.
 
 La rupture n'est connaissable qu'**au moment de commander**, par un code d'erreur — jamais à l'avance :
 
@@ -168,15 +204,43 @@ oui ; le stock, non. Un test de disponibilité par l'API coûterait une **comman
 
 ---
 
+## 5 bis. `item_id` (API) = `sku` public — **prouvé le 18/11/2026** *(débloque T04)*
+
+T04 ne pouvait pas figer le manifeste sans savoir si l'`item_id` de l'API désigne le même objet que le `sku` du
+JSON-LD public. **C'est le même identifiant**, même numérotation, même cardinalité, sur deux catégories
+indépendantes :
+
+| Catégorie API | Côté API (`/catalog/subcategories`) | Côté public (JSON-LD de la page) | Concordance |
+|---|---|---|---|
+| `categoryId=2` « Direct Topup / PUBG Mobile » | **34** offres ; `item_id` 12 = « 10 UC » | **34** offres ; `sku` 12 = « 10 UC » et c'est la **seule `OutOfStock`** (`backend/tests/fixtures/shop2topup/README.md:8`) | identique |
+| `categoryId=4` « Mena Direct Topup / Free Fire » | **21** offres ; `item_id` 28 = « 100 + 10 Diamonds » | **21** offres ; `sku` 28 = « 100 + 10 Diamonds » (`free-fire-mena-direct-topup.html:21`) | identique |
+
+Points de contrôle supplémentaires, tous concordants :
+
+- sur chaque ligne, **`id` = `item_id`** — l'identifiant d'offre et l'identifiant vendable ne divergent pas ;
+- la suite PUBG se suit des deux côtés : 12 → « 10 UC », 13 → « 60 UC », 14 → « 300 + 25 UC », 15 → « 600 + 60 UC »
+  (les six couples de § 2.4 du plan tombent donc sur les mêmes numéros) ;
+- le `sku` de **page** (`Product.sku` du JSON-LD, ex. `"4"` pour Free Fire MENA) est égal au **`categoryId`** de
+  l'API — utile pour retrouver une catégorie depuis une URL, sans table de correspondance.
+
+**Ce que T04 peut donc écrire** : `supplier_mapping["shop2topup"]["sku"]` = `item_id` de l'API = `sku` du JSON-LD.
+L'identité est la même des deux côtés de la frontière `fetch_stock()`, et le relevé public de T02 reste valable tel
+quel pour les commandes.
+
+**Ce que cela ne prouve pas** : que le prix soit stable entre la lecture et la commande — c'est le rôle de
+`expected_unit_price` (T09).
+
+---
+
 ## 6. Verdict
 
 > **`jsonld`** — la source de vérité du stock reste la page publique lue par `fetch_stock()` (T02). L'API ne
 > sert qu'à **commander** et à **lire le prix revendeur**.
 
-Confiance : **élevée** sur la documentation (les 5 routes catalogue sont listées avec tous leurs champs, et la
-limite de débit les compte comme « all five »), **toujours non mesurée** : la clé a été fournie le 18/11/2026 mais
-les 3 appels authentifiés ont été refusés en `403 IP_NOT_ALLOWED` (§ 3 bis), avant toute lecture de catalogue. Ce que
-ce verdict ne couvre pas : un champ ajouté après la rédaction de la doc — c'est ce qu'un relevé réussi trancherait.
+Confiance : **élevée, et cette fois mesurée.** La documentation annonçait l'absence de stock ; le relevé du
+18/11/2026 la confirme sur 55 offres réelles, deux catégories, sans champ caché (`conditions` vide partout). Ce que
+ce verdict ne couvre pas : un ajout de champ postérieur au relevé, et le comportement de `POST /orders/create`, qui
+n'a pas été appelé (hors T03).
 
 Aucun changement à faire en T02 : `STOCK_SOURCE=jsonld` reste le défaut du plan (§ 9).
 
@@ -184,7 +248,9 @@ Aucun changement à faire en T02 : `STOCK_SOURCE=jsonld` reste le défaut du pla
 
 ## 7. Limites de débit réelles — elles corrigent le plan
 
-Le plan (§ 8, question ouverte n° 5) retenait « 3 req/60 s et HMAC-SHA256 », « non relus ». Mesuré dans la doc :
+Le plan (§ 8, question ouverte n° 5) retenait « 3 req/60 s et HMAC-SHA256 », « non relus ». Lu dans la doc **et
+confirmé sur le fil le 18/11/2026** : chaque réponse porte `X-RateLimit-Limit`, relevé à **5000** sur les routes
+catalogue et **60** sur `/account` (§ 3 bis).
 
 | Route | Limite | Fenêtre | Comptée par |
 |---|---|---|---|
@@ -205,10 +271,12 @@ Le plan (§ 8, question ouverte n° 5) retenait « 3 req/60 s et HMAC-SHA256 »,
 
 ---
 
-## 8. Prix observés le 18/11/2026 (page publique — **pas** le prix revendeur)
+## 8. Prix **publics** observés le 18/11/2026 — distincts du prix revendeur
 
-Relevé sur `https://shop2topup.com/en` le 18/11/2026. Prix **publics** ; le `unit_price` de l'API (ce que MGS
-paie) n'est pas connu sans clé, et la doc ne dit nulle part qu'il égale le prix public.
+Relevé sur `https://shop2topup.com/en` le 18/11/2026. Prix **publics** (ce que le client paie), à ne pas confondre
+avec le `unit_price` de l'API (ce que MGS paie), lui aussi mesuré le même jour sur 5 offres (§ 3 bis). Les deux
+séries ne se déduisent pas l'une de l'autre : l'écart mesuré va de **3,7 %** (`item_id` 28 : `0.93558` payé,
+`0.97` public) à **9,7 %** (`item_id` 12 : `0.319173` payé, `0.35` public).
 
 | Produit annoncé | Prix public |
 |---|---|
@@ -232,16 +300,16 @@ observations datées.
 | Tâche | Impact |
 |---|---|
 | **T02** | aucun. `fetch_stock()` reste la source ; `STOCK_SOURCE=jsonld` |
-| **T04** | le manifeste se construit sur le **SKU public** (`"13"`, `"14"`…) et sur `supplier_mapping["shop2topup"]`. L'API nomme le même objet `item_id` : **rien ne prouve encore que `item_id` = SKU public**. À vérifier avec la clé **avant** de figer le manifeste — sinon T09 activera des produits qui ne correspondent à rien |
+| **T04** | **débloquée** : `item_id` (API) = `sku` (JSON-LD public), prouvé sur deux catégories (§ 5 bis). Le manifeste peut porter `sku` = `item_id` sans risque de désigner un autre objet. Reste à valider **la liste** des six couples, pas l'identité |
 | **T06** | aucun changement de source. La santé du relevé reste `pages_ok`/`pages_failed` |
-| **T07** | `is_out_of_stock_error()` doit reconnaître **trois** codes : `OUT_OF_STOCK`, `INSUFFICIENT_STOCK`, `PRODUCT_UNAVAILABLE` (§ 5). Lire `error.code` **avec repli sur `code`** (§ 3) |
-| **T08** | `GET /account` donne `wallet` → l'alerte de solde bas est réalisable sans scraping. Attention : 60 req/60 s, et `GET /orders/{id}` est limité à 3 req/60 s |
-| **T03 (suite)** | relevé authentifié **tenté et bloqué** : 3 × `403 IP_NOT_ALLOWED`, allowlist vide (§ 3 bis). Reprise dès que le propriétaire a autorisé une IP : § 10 |
-| **P1 (clé)** | la clé **existe** et est acceptée par l'API ; il manque l'**allowlist**, qui n'est pas un secret mais un réglage du compte revendeur |
+| **T07** | `is_out_of_stock_error()` doit reconnaître **trois** codes : `OUT_OF_STOCK`, `INSUFFICIENT_STOCK`, `PRODUCT_UNAVAILABLE` (§ 5). Lire `error.code` **avec repli sur `code`** (§ 3), et **`data`** pour la charge utile (§ 3 bis). Identité joueur : `player_id` seul pour PUBG Mobile Direct Topup — pas de champ serveur |
+| **T08** | `GET /account` donne `wallet` → l'alerte de solde bas est réalisable sans scraping, **mais l'objet `account` ne rend que `email` et `wallet`** (2 champs mesurés, pas 8). `GET /orders/{id}` reste limité à 3 req/60 s ; les routes catalogue sont à 5000/60 s toutes réponses confondues |
+| **T03** | **terminée et mesurée** le 18/11/2026 : 11 GET (3 refusés, 8 réussis), verdict `jsonld` confirmé, `item_id` = `sku` (§ 5 bis) |
+| **P1 (clé)** | la clé est acceptée et l'allowlist est ouverte. Reste à savoir **quelle IP** y est autorisée : si c'est celle de Render, la production passera et une machine locale non — le champ `IP_NOT_ALLOWED` ne dit pas laquelle |
 
 ---
 
-## 10. Comment terminer T03 (procédure pour le propriétaire)
+## 10. Refaire un relevé (procédure — **déjà exécutée le 18/11/2026**)
 
 1. Exporter la clé **dans la session du terminal**, jamais dans un fichier :
 
@@ -249,10 +317,10 @@ observations datées.
    export SHOP2TOPUP_API_KEY='<keyId>.<secret>'
    ```
 
-2. Copier l'annexe A dans un fichier **hors du dépôt** (ex. `/tmp/s2t_probe.py`) et lancer :
+2. Copier l'annexe A dans un fichier **hors du dépôt** (ex. `/tmp/opencode/s2t_probe.py`) et lancer :
 
    ```bash
-   python3 /tmp/s2t_probe.py
+   python3 /tmp/opencode/s2t_probe.py
    ```
 
    Le script fait **au plus 6 GET** (compteur bloquant à 15), 10 s de délai, `User-Agent`
@@ -262,9 +330,12 @@ observations datées.
 3. Reporter dans ce rapport : la date, les codes HTTP obtenus, la liste `champs_de_stock`, et confirmer ou
    infirmer le § 6.
 
-**Si l'appel répond `403 IP_NOT_ALLOWED`** : l'allowlist est le verrou (§ 3 bis — le 18/11/2026 elle était **vide**,
-donc aucune machine ne passait, Render compris). Issues acceptables : (a) ajouter l'IP autorisée dans l'allowlist du
-compte revendeur, (b) lancer le relevé depuis cette IP. Ne rien contourner.
+**Si l'appel répond `403 IP_NOT_ALLOWED`** : c'est l'allowlist qui bloque (§ 3 bis — elle était **vide** au premier
+passage, donc aucune machine ne passait, Render compris). Issues acceptables : (a) ajouter l'IP autorisée dans
+l'allowlist du compte revendeur, (b) lancer le relevé depuis cette IP. Ne rien contourner.
+
+**Piège rencontré** : la charge utile est sous **`data`**, pas sous `categories`/`subcategories` (§ 3 bis). Un script
+qui lit `body["categories"]` s'arrête après trois appels en croyant le catalogue vide. L'annexe A est corrigée.
 
 ---
 
@@ -356,16 +427,17 @@ def main() -> int:
     probe = Probe(key)
     probe.get("/account")
     probe.get("/catalog/big-categories")
-    # navigation sur le corps BRUT : `record["body"]` est purgé, et `id` y devient `<id>`
+    # navigation sur le corps BRUT : `record["body"]` est purgé, et `id` y devient `<id>`.
+    # La charge utile est sous `data`, jamais sous `categories` / `subcategories`.
     raw_categories, _ = probe.get("/catalog/categories")
-    items = (raw_categories or {}).get("categories") or []
+    items = (raw_categories or {}).get("data") or []
     target = next(
         (c for c in items if "pubg" in str(c.get("name", "")).lower()),
         items[0] if items else None,
     )
     if target:
         raw_subs, _ = probe.get(f"/catalog/subcategories?categoryId={target['id']}")
-        subs = (raw_subs or {}).get("subcategories") or []
+        subs = (raw_subs or {}).get("data") or []
         if subs:
             probe.get(f"/catalog/subcategory/{subs[0]['item_id']}/price")
         probe.get(f"/catalog/category/{target['id']}/requirements")
@@ -376,7 +448,7 @@ def main() -> int:
     stock_fields = sorted(k for k in everything if any(h in k.lower() for h in STOCK_HINTS))
 
     report = {
-        "date": "à dater par le propriétaire",
+        "date": "2026-11-18",
         "base": BASE,
         "appels": probe.calls,
         "champs_vus": sorted(everything),
