@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Just a moment...</title>
+</head>
+<body>
+<!--
+  FIXTURE SYNTHÉTIQUE — page sans aucun bloc JSON-LD.
+
+  Représente les deux cas de panne que la lecture doit absorber sans rien conclure :
+  - une page de protection anti-bot (le cas A4 du plan : IP de Render refusée) ;
+  - une page d'erreur ou une page produit dont la structure a changé.
+
+  Attendu : `parse_html()` retourne un dictionnaire vide, sans lever d'exception.
+-->
+<div id="challenge">
+  <h1>Checking your browser before accessing</h1>
+  <p>This process is automatic. Your browser will redirect shortly.</p>
+</div>
+</body>
+</html>
