@@ -92,6 +92,21 @@ body[data-page="home"] .cta-banner-section .button-main-inner__text { color: var
 .nav-cart-btn .button-main-inner__text { padding: 0; }
 .nav-cart-btn .button-main-inner__back::before { font-size: .55em; letter-spacing: .04em; }
 
+/* ——— Appui (hold/clic) sur les boutons icônes des pastilles produit :
+       même ressort que les .button-main — le bouton bascule en 3D et
+       revient au relâchement (perspective portée par la pastille). ——— */
+.product-card .cart-cta-row { perspective: 500px; }
+button.icon-btn-3d {
+  backface-visibility: hidden;
+  transition: rotate .75s var(--elastic-ease-out), translate .85s var(--elastic-ease-out),
+              transform .15s ease, background-color .2s var(--color-ease);
+}
+button.icon-btn-3d:active { rotate: 1 0 0 85deg; translate: 0 -.1em 0; }
+@media (prefers-reduced-motion: reduce) {
+  button.icon-btn-3d { transition: background-color .2s var(--color-ease); }
+  button.icon-btn-3d:active { rotate: none; translate: none; }
+}
+
 /* ——— Avis : 1 colonne sur mobile (le 3-up en ligne débordait) ——— */
 .reviews-grid { display: grid; gap: .8em; grid-template-columns: 1fr; }
 @media screen and (min-width: 768px) { .reviews-grid { grid-template-columns: repeat(3, 1fr); } }

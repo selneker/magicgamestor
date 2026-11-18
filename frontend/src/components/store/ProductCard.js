@@ -148,18 +148,18 @@ export function ProductCard({ product, index = 0, badge }) {
         {/* La pastille de prix peint un fond blanc FIXE (`--card-pill-bg`) : son
             texte doit donc etre une encre fixe (`text-ink`), sinon il suit le
             theme et tombe a 1,12:1 sur le blanc en mode sombre. */}
-        <div className={`flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border border-[color:var(--card-border)] sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-[color:var(--card-pill-bg)] py-1 pl-3 pr-0.5 text-[color:var(--card-ink)]" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
+        <div className={`cart-cta-row flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border border-[color:var(--card-border)] sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-[color:var(--card-pill-bg)] py-1 pl-3 pr-0.5 text-[color:var(--card-ink)]" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
           {!available ? (
             <span className="font-body text-sm font-bold uppercase tracking-wide">{t("product.unavailable")}</span>
           ) : qty > 0 ? (
             <>
-              <button type="button" aria-label={`${qty === 1 ? t("cart.removeFromCart") : t("cart.removeOneFromCart")} : ${product.name || product.slug}`} onClick={handleDecrease} className={`grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
+              <button type="button" aria-label={`${qty === 1 ? t("cart.removeFromCart") : t("cart.removeOneFromCart")} : ${product.name || product.slug}`} onClick={handleDecrease} className={`icon-btn-3d grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
                 <Icon name={qty === 1 ? "trash" : "minus"} />
               </button>
               {/* Annotation propriétaire : le chiffre SEUL (1, 2, …) — le
                   mot « au panier » reste pour les lecteurs d'écran. */}
               <span className="min-w-0 text-center font-body text-sm font-bold leading-tight text-neo" aria-live="polite"><span className="font-display text-2xl font-extrabold">{qty}</span><span className="sr-only"> {t("product.inCartShort")}</span></span>
-              <button type="button" aria-label={`${t("product.addOne")} : ${product.name || product.slug}`} disabled={qty >= max} onClick={handleIncrease} className={`grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
+              <button type="button" aria-label={`${t("product.addOne")} : ${product.name || product.slug}`} disabled={qty >= max} onClick={handleIncrease} className={`icon-btn-3d grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
                 <Icon name="plus" />
               </button>
             </>
@@ -168,7 +168,7 @@ export function ProductCard({ product, index = 0, badge }) {
               {/* Le prix ne doit JAMAIS être coupé : whitespace-nowrap, pas de truncate.
                   mgs-card-price : 14px en container query sous 170px de carte (index.css). */}
               <div className="flex min-w-0 flex-1 items-center gap-1"><span className="mgs-card-price min-w-0 whitespace-nowrap font-display font-extrabold leading-none tracking-normal text-base sm:text-2xl">{formatAr(product.price, lang)}</span></div>
-              <button type="button" aria-label={`${t("product.addToCart")} : ${product.name || product.slug}`} onClick={handleAdd} className={`relative before:absolute before:-inset-0.5 before:content-[''] grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-[color:var(--card-cta-bg)] text-[color:var(--card-cta-fg)] transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
+              <button type="button" aria-label={`${t("product.addToCart")} : ${product.name || product.slug}`} onClick={handleAdd} className={`icon-btn-3d relative before:absolute before:-inset-0.5 before:content-[''] grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-[color:var(--card-cta-bg)] text-[color:var(--card-cta-fg)] transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
                 <Icon name={actionIconName} />
               </button>
             </>
