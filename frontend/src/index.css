@@ -710,132 +710,21 @@ html.dark body[data-page="home"] {
 }
 
 /* ── Slush : anatomie du bouton 3D (template_to_use.html) ──
-   Le markup .button-main > .button-main-inner > (__back + __front)
-   est deja rendu par Header.js (DesktopNavButton). Ce CSS apporte les
-   transitions et l'effet 3D au survol (face avant qui bascule vers
-   l'arriere, face arriere qui vient au premier plan). */
-.button-main,
-.nav-btn-circle {
-    transition: 0.5s var(--elastic-ease-out);
+   L'anatomie complète (.button-main-inner en GRID, faces __back/__front
+   posées en grid-area 1/1, hover 3D, thèmes data-button-theme/accent)
+   vient de design-system.css (copie verbatim du Slush) : NE PAS la
+   dupliquer ici. Une version précédente de ce bloc la réimplémentait en
+   flex absolu (width/height:100%, enfants position:absolute) — les deux
+   anatomies entraient en conflit et le conteneur interne se repliait à
+   0px : les CTA du héros, du bandeau « Recharger », du support (« Ouvrir
+   le chat ») et les pilules de nav devenaient invisibles.
+   Seul ajout local nécessaire : un <a> est inline par défaut, le contenu
+   grid du Slush ne s'y dimensionne pas — on passe l'ancre en bloc de
+   ligne. */
+.button-main {
     display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
+    vertical-align: middle;
 }
-
-.button-main-inner {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-
-.button-main-inner.full-h {
-    min-height: 100%;
-}
-
-.button-main-inner__back,
-.button-main-inner__front {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backface-visibility: hidden;
-    transform-style: preserve-3d;
-}
-
-.button-main-inner__back {
-    transition: translate var(--duration-medium) var(--elastic-ease-out),
-                rotate var(--duration-default) var(--elastic-ease-out),
-                opacity 0.15s ease-out;
-    translate: 0 2em -6em;
-    rotate: 1 0 0 -90deg;
-}
-
-.button-main-inner__back::before {
-    content: attr(data-text);
-    display: contents;
-    font-weight: bold;
-    text-transform: uppercase;
-    transition: translate var(--duration-default) var(--elastic-ease-out);
-    translate: 0 0.75em 0;
-}
-
-.button-main-inner__front {
-    transition: translate var(--duration-medium) var(--elastic-ease-out),
-                rotate var(--duration-default) var(--elastic-ease-out),
-                opacity var(--duration-fade) ease-out;
-}
-
-.button-main-inner__bg {
-    position: absolute;
-    inset: 0;
-    transition: background-color 0.2s var(--color-ease);
-}
-
-.button-main-inner__text {
-    position: relative;
-    transition: translate var(--duration-default) var(--elastic-ease-out);
-    white-space: nowrap;
-}
-
-/* Hover 3D : la face avant bascule vers l'arriere, la face arriere
-   revient au premier plan (texte encre sur l'accent de position). */
-.button-main:is(:hover, :focus-visible) .button-main-inner__front {
-    translate: 0 -2em -6em;
-    rotate: 1 0 0 85deg;
-    opacity: 0;
-}
-
-.button-main:is(:hover, :focus-visible) .button-main-inner__text {
-    translate: 0 -0.75em 0;
-    transition-delay: 0s;
-}
-
-.button-main:is(:hover, :focus-visible) .button-main-inner__back {
-    transition: translate var(--duration-medium) var(--elastic-ease-out),
-                rotate var(--duration-default) var(--elastic-ease-out),
-                opacity 0.075s ease-in;
-    rotate: 1 0 0 0deg;
-    translate: 0 0 0;
-    opacity: 1;
-}
-
-.button-main:is(:hover, :focus-visible) .button-main-inner__back::before {
-    translate: 0 0em 0;
-    transition-delay: calc(var(--index, 1) * 0.012s);
-}
-
-.button-main:active, .nav-btn-circle:active {
-    transform: scale(0.955);
-}
-
-/* Thèmes de bouton (data-button-theme + data-button-accent) */
-.button-main[data-button-theme="light"] .button-main-inner__bg {
-    background: var(--color--light);
-    border: 0.125em solid var(--color--dark);
-}
-.button-main[data-button-theme="light"] .button-main-inner__text {
-    color: var(--color--dark);
-}
-.button-main[data-button-theme="dark"] .button-main-inner__bg {
-    background: var(--color--dark);
-}
-.button-main[data-button-theme="dark"] .button-main-inner__text {
-    color: var(--color--dark);
-}
-.button-main[data-button-accent="white"]  .button-main-inner__back { background: var(--color--light); }
-.button-main[data-button-accent="blue"]   .button-main-inner__back { background: var(--color--blue-700); }
-.button-main[data-button-accent="yellow"] .button-main-inner__back { background: var(--color--yellow-700); }
-.button-main[data-button-accent="violet"] .button-main-inner__back { background: var(--color--violet-700); }
-.button-main[data-button-accent="green"]  .button-main-inner__back { background: var(--color--green-700); }
-.button-main[data-button-accent="orange"] .button-main-inner__back { background: var(--color--orange-800); }
-.button-main[data-button-accent="dark"]   .button-main-inner__back { background: var(--color--dark); }
 
 /* Themes de surface (data-box-theme) — surface couleur, texte adapte */
 [data-box-theme="white"]  { background: var(--color--light) !important; }

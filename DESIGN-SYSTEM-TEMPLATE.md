@@ -69,6 +69,20 @@ Les valeurs réelles des couleurs ne sont **pas définies dans ce fichier** (ell
 | `data-button-accent` | `white`, `blue`, `yellow`, `violet`, `green`, `orange`, `dark` | Couleur de la face arrière du bouton (effet 3D au survol) |
 | `data-box-theme` | `white`, `black`, `blue`, `yellow`, `violet`, `green`, `orange`, `purple`, `glacier` | Fond d'encart (`. [data-box-theme]`, `!important`) ; le noir s'applique aussi avec la classe `.u--bg--black` |
 
+### Règle maison : bordures encre sur TOUTES les boxes et cards
+
+Tout encart, carte ou panneau coloré porte la bordure Slush des boutons :
+
+```css
+/* boxes/cards : .125em solid var(--color--dark), comme .button-main */
+.trust-card, .review-card, .faq-item, .step-card, .two-col-grid__visual { border: .125em solid var(--color--dark); }
+```
+
+- Valeur : `0.125em solid var(--color--dark)` — exactement la bordure de `.button-main[data-button-theme="light"]` (§5) ; jamais un `1px hsl(0 0% 7% / .2)` doux.
+- S'applique à **toutes** les surfaces : trust-card, review-card, faq-item, step-card, cartes de jeux (`two-col-grid__visual`), cartes produit, encarts promo/événement.
+- Sur une box colorée (`data-box-theme`) la bordure reste encre ; sur un panneau encre (`.panel-black`, bandeau CTA) la bordure est inutile (encre sur encre) — on ne l'ajoute pas.
+- Toute nouvelle box/carte créée au projet doit porter cette bordure : c'est la signature « brutaliste » du design system.
+
 ### Utilitaires de fond couleur
 
 `u--bg--blue`, `u--bg--violet`, `u--bg--yellow`, `u--bg--orange`, `u--bg--green`, `u--bg--black` (sur `.logo-section__item`, etc.).
