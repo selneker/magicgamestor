@@ -235,6 +235,19 @@
     }
     * { border-color: var(--rule); }
     html { scroll-behavior: smooth; overflow-x: hidden; }
+    /* Lenis (public/vendor/lenis.min.js) : CSS requise officielle de la lib.
+       Lenis pose `lenis lenis-smooth` sur <html> et écrit scrollTop à chaque
+       frame ; sans `scroll-behavior: auto !important`, chaque écriture est
+       ré-interprétée en scroll programmé « smooth » — Chromium relance son
+       animation à chaque frame et la position réelle rampe derrière la cible
+       Lenis (scroll collé/saccadé), alors que Firefox tolère l'interruption.
+       Sans Lenis (capture, reduced-motion, no-gsap) les classes absentes
+       laissent le comportement natif intact. */
+    html.lenis, html.lenis body { height: auto; }
+    .lenis.lenis-smooth { scroll-behavior: auto !important; }
+    .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+    .lenis.lenis-stopped { overflow: hidden; }
+    .lenis.lenis-smooth iframe { pointer-events: none; }
     body {
         @apply bg-background text-foreground antialiased;
         font-family: var(--font-body);
