@@ -268,15 +268,15 @@ retourne un état par SKU. C'est **la** brique qui alimentera le job de T06 ; el
 tourne (le backend, sur Render), pas dans `frontend/scripts`.
 
 **Critères d'acceptation :**
-- [ ] `backend/services/shop2topup_stock.py` expose `fetch_stock(slugs) -> StockReading` avec
+- [x] `backend/services/shop2topup_stock.py` expose `fetch_stock(slugs) -> StockReading` avec
       `{sku: bool}` + `pages_ok` / `pages_failed` — **aucune I/O réseau au chargement du module**
-- [ ] lecture du JSON-LD `Product → offers → offers[]` (`sku`, `availability`), pas de regex sur du HTML
-- [ ] suit les **sous-pages** (`/free-fire/mena-direct-topup` & co), dédupliquées
-- [ ] **fusion d'état** : un relevé partiel met à jour ce qu'il a lu et **ne conclut rien** sur le reste
-- [ ] une page illisible ⇒ `pages_failed`, **aucun** SKU inventé, **aucune** exception propagée
-- [ ] délai par requête borné, budget total borné, `User-Agent` identifiable
-- [ ] aucun nom de fournisseur dans les messages destinés au client
-- [ ] tests unitaires sur **fixtures HTML** (aucun appel réseau) : page normale, SKU absent, page illisible,
+- [x] lecture du JSON-LD `Product → offers → offers[]` (`sku`, `availability`), pas de regex sur du HTML
+- [x] suit les **sous-pages** (`/free-fire/mena-direct-topup` & co), dédupliquées
+- [x] **fusion d'état** : un relevé partiel met à jour ce qu'il a lu et **ne conclut rien** sur le reste
+- [x] une page illisible ⇒ `pages_failed`, **aucun** SKU inventé, **aucune** exception propagée
+- [x] délai par requête borné, budget total borné, `User-Agent` identifiable
+- [x] aucun nom de fournisseur dans les messages destinés au client
+- [x] tests unitaires sur **fixtures HTML** (aucun appel réseau) : page normale, SKU absent, page illisible,
       relevé partiel
 
 **Vérification :** `pytest backend/tests/test_shop2topup_stock.py` (propriétaire) ; relecture du diff.
@@ -291,10 +291,10 @@ tourne (le backend, sur Render), pas dans `frontend/scripts`.
 sera branché sur rien.
 
 **Critères d'acceptation :**
-- [ ] `frontend/scripts/scrape-stock.mjs`, zéro dépendance, Node ≥ 18
-- [ ] options `--list`, `--slug <id>`, `--json` ; sortie lisible sans `--json`
-- [ ] mêmes règles que T02 : sous-pages suivies, page illisible ⇒ code de sortie 2
-- [ ] aucune écriture dans le dépôt, aucun secret
+- [x] `frontend/scripts/scrape-stock.mjs`, zéro dépendance, Node ≥ 18
+- [x] options `--list`, `--slug <id>`, `--json` ; sortie lisible sans `--json`
+- [x] mêmes règles que T02 : sous-pages suivies, page illisible ⇒ code de sortie 2
+- [x] aucune écriture dans le dépôt, aucun secret
 
 **Vérification :** `node frontend/scripts/scrape-stock.mjs --list` puis `--slug pubg-mobile`.
 **Dépendances :** T02 (mêmes règles) · **Fichiers :** `frontend/scripts/scrape-stock.mjs` · **Taille :** S
@@ -356,14 +356,14 @@ l'horodatage doit être rafraîchi ; quand il dit « disponible », l'état doit
 pas laissé à l'expiration.
 
 **Critères d'acceptation :**
-- [ ] `mark_supplier_unavailable()` rafraîchit `supplier_checked_at` à **chaque** passage ; l'audit et
+- [x] `mark_supplier_unavailable()` rafraîchit `supplier_checked_at` à **chaque** passage ; l'audit et
       l'alerte ne sont émis **qu'à la transition** (une seule fois par épisode)
-- [ ] nouvelle `mark_supplier_available()` : efface `supplier_available` + `supplier_checked_at`, auditée à
+- [x] nouvelle `mark_supplier_available()` : efface `supplier_available` + `supplier_checked_at`, auditée à
       la transition seulement, ne touche **jamais** `manual_unavailable`
-- [ ] rupture maintenue **> 60 min** ⇒ toujours non achetable (test dédié, horloge injectée)
-- [ ] retour fournisseur ⇒ achetable **au premier passage suivant** (test dédié)
-- [ ] la docstring de module (`stock.py:3-4`) est corrigée : la prémisse « aucun stock publié » n'est plus vraie
-- [ ] `STOCK_SYNC_ENABLED=false` neutralise toujours tout marquage automatique
+- [x] rupture maintenue **> 60 min** ⇒ toujours non achetable (test dédié, horloge injectée)
+- [x] retour fournisseur ⇒ achetable **au premier passage suivant** (test dédié)
+- [x] la docstring de module (`stock.py:3-4`) est corrigée : la prémisse « aucun stock publié » n'est plus vraie
+- [x] `STOCK_SYNC_ENABLED=false` neutralise toujours tout marquage automatique
 - [ ] les tests existants de `test_stock_availability.py` restent verts
 
 **Vérification :** `pytest backend/tests/test_stock_availability.py` (propriétaire). En local : relecture du
