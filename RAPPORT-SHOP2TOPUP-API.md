@@ -3,10 +3,11 @@
 **Date :** mercredi 18/11/2026 · **Branche :** `feat/shop2topup-bascule` · **Plan :** `plan-shop2topup-v2.md` (§ T03)
 **Question unique de T03 :** la réponse catalogue de l'API revendeur expose-t-elle un **état de stock par SKU** ?
 
-> **Statut : partiel — la clé `SHOP2TOPUP_API_KEY` est absente de cette session.** Aucun appel authentifié n'a
-> donc été fait. Ce rapport établit la réponse **sur la documentation publique de l'API** (lue intégralement le
-> 18/11/2026) et sur **un appel réel non authentifié** qui prouve que l'API répond à cette machine. Le relevé
-> daté et authentifié reste à faire par le propriétaire : § 11.
+> **Statut : partiel — verdict `jsonld` documentaire, non mesuré.** La clé `SHOP2TOPUP_API_KEY` a d'abord été
+> absente, puis fournie dans la session du terminal ; les **3 appels authentifiés** tentés le 18/11/2026 ont tous
+> été refusés en **`403 IP_NOT_ALLOWED`** car l'allowlist du compte est **vide** (§ 3 bis). Aucun corps de catalogue
+> n'a donc été lu. Ce rapport établit la réponse sur la **documentation publique de l'API** (lue intégralement le
+> 18/11/2026) et sur **deux relevés réels non concluants** : un `401` sans clé, trois `403` avec clé.
 
 ---
 
@@ -16,7 +17,7 @@
 |---|---|---|---|
 | H1 | « stock » | Tout champ booléen ou numérique, publié **par produit**, qui dirait « vendable / en rupture » | C'est ce que `fetch_stock()` doit rendre pour T06 |
 | H2 | Documentation = fait ? | La doc est traitée comme **preuve documentaire**, pas comme mesure live | Le plan (C2) interdit de supposer ; une doc peut retarder sur le code |
-| H3 | La clé absente | On ne cherche pas la clé ailleurs, on ne crée aucun `.env` | Consigne du prompt et A7 |
+| H3 | La clé absente, puis fournie | Au premier passage elle était absente : on ne l'a cherchée nulle part, aucun `.env` créé. Au second, elle a été fournie comme variable de session ; elle n'a été ni écrite, ni committée, ni affichée | Consigne du prompt et A7 |
 | H4 | Prix | Les prix relevés ici sont des **prix publics** (page boutique), pas le `unit_price` revendeur (ce que MGS paie) | Deux prix différents, la doc le dit explicitement |
 
 ---
@@ -31,8 +32,10 @@
 | `https://shop2topup.com/en/reseller-api/docs/orders` | doc publique | statuts, idempotence, forme des réponses commande |
 | `https://shop2topup.com/en/reseller-api/docs/errors` | doc publique | les 43 codes d'erreur, dont ceux de rupture |
 | `GET https://shop2topup.com/api/endpoints/v1/account` **sans en-tête** | **appel réel**, 18/11/2026 | HTTP **401** — voir § 3 |
+| `/account`, `/catalog/big-categories`, `/catalog/categories` **avec clé** | **3 appels réels**, 18/11/2026 | HTTP **403 `IP_NOT_ALLOWED`** — voir § 3 bis |
 
-Aucune autre requête n'a été envoyée. Aucune clé n'a été lue, écrite ni affichée.
+Aucune autre requête n'a été envoyée. La clé n'a été **ni écrite dans un fichier, ni committée, ni affichée** : elle
+n'a existé que comme variable d'environnement de la session du terminal.
 
 ---
 
@@ -65,6 +68,50 @@ GET https://shop2topup.com/api/endpoints/v1/account
 Deux enseignements : l'API **répond** à cette machine (pas d'anti-bot — le risque A4 concerne la page publique,
 pas l'API), et l'enveloppe réelle porte le code **deux fois** (à la racine en `code`/`msg`, et dans `error.code`)
 sans le bloc `details` montré par la doc. **T07 doit lire `error.code` avec repli sur `code`.**
+
+---
+
+## 3 bis. Relevé authentifié du 18/11/2026 — 3 GET, 3 × `403 IP_NOT_ALLOWED`
+
+Clé fournie par le propriétaire dans la session du terminal (A7), jamais écrite ni affichée. Script : annexe A.
+**3 appels sur les 8 autorisés**, 10 s de délai, `User-Agent: MagicGameStore-stock/1.0`, aucun retry, aucun
+`POST`/`PUT`/`DELETE`.
+
+| # | Requête | Code HTTP | `error.code` |
+|---|---|---|---|
+| 1 | `GET /account` | **403** | `IP_NOT_ALLOWED` |
+| 2 | `GET /catalog/big-categories` | **403** | `IP_NOT_ALLOWED` |
+| 3 | `GET /catalog/categories` | **403** | `IP_NOT_ALLOWED` |
+
+Enveloppe reçue, identique aux trois appels (aucune donnée de compte, aucun solde) :
+
+```json
+{"success": false,
+ "msg": "No IPs allowed. Configure your IP allowlist first.",
+ "code": "IP_NOT_ALLOWED", "action": "FIX_INPUT", "retryable": false, "retry_after": null,
+ "error": {"code": "IP_NOT_ALLOWED", "message": "No IPs allowed. Configure your IP allowlist first.",
+           "action": "FIX_INPUT", "retryable": false, "retry_after": null}}
+```
+
+Aucun en-tête `X-RateLimit-*` sur une réponse 403.
+
+**Ce que ces trois appels prouvent, et ce qu'ils ne prouvent pas :**
+
+| Prouvé | Preuve |
+|---|---|
+| La clé est **acceptée** : on dépasse le contrôle d'authentification | un refus de clé rendrait `401 MISSING_API_KEY` / `INVALID_API_KEY` (§ 3, mesuré) ; ici la réponse est `403` et nomme un autre contrôle |
+| Le format `Bearer <keyId>.<secret>` est le bon | la requête est parvenue à la couche d'autorisation, pas rejetée en amont |
+| L'**allowlist est vide**, pas seulement « cette IP n'est pas la bonne » | le message est « **No** IPs allowed. **Configure your IP allowlist first.** » — aucune adresse n'est autorisée, donc **aucune** machine ne peut appeler aujourd'hui, Render compris |
+| L'enveloppe d'erreur observée sans clé est la même avec clé | `code`/`msg` à la racine **et** `error{code,message,action,retryable,retry_after}` ; pas de bloc `details` |
+
+| **Non prouvé** | Conséquence |
+|---|---|
+| La forme réelle des réponses catalogue (donc **l'absence de champ de stock**) | le verdict `jsonld` du § 6 reste **documentaire** : aucun corps de catalogue n'a été lu |
+| La limite de débit effective | non atteinte, non observée |
+| `item_id` = SKU public | **T04 reste bloquée** |
+
+**Aucun contournement n'a été tenté** (ni changement d'en-tête, ni autre chemin d'accès, ni retry), conformément à A4.
+La seule sortie possible est côté propriétaire : configurer l'allowlist, ou lancer le relevé depuis l'IP autorisée.
 
 ---
 
@@ -127,8 +174,9 @@ oui ; le stock, non. Un test de disponibilité par l'API coûterait une **comman
 > sert qu'à **commander** et à **lire le prix revendeur**.
 
 Confiance : **élevée** sur la documentation (les 5 routes catalogue sont listées avec tous leurs champs, et la
-limite de débit les compte comme « all five »), **non mesurée** en live (clé absente). Ce que ce verdict ne
-couvre pas : un champ ajouté après la rédaction de la doc. C'est précisément ce que le relevé du § 11 tranche.
+limite de débit les compte comme « all five »), **toujours non mesurée** : la clé a été fournie le 18/11/2026 mais
+les 3 appels authentifiés ont été refusés en `403 IP_NOT_ALLOWED` (§ 3 bis), avant toute lecture de catalogue. Ce que
+ce verdict ne couvre pas : un champ ajouté après la rédaction de la doc — c'est ce qu'un relevé réussi trancherait.
 
 Aucun changement à faire en T02 : `STOCK_SOURCE=jsonld` reste le défaut du plan (§ 9).
 
@@ -188,7 +236,8 @@ observations datées.
 | **T06** | aucun changement de source. La santé du relevé reste `pages_ok`/`pages_failed` |
 | **T07** | `is_out_of_stock_error()` doit reconnaître **trois** codes : `OUT_OF_STOCK`, `INSUFFICIENT_STOCK`, `PRODUCT_UNAVAILABLE` (§ 5). Lire `error.code` **avec repli sur `code`** (§ 3) |
 | **T08** | `GET /account` donne `wallet` → l'alerte de solde bas est réalisable sans scraping. Attention : 60 req/60 s, et `GET /orders/{id}` est limité à 3 req/60 s |
-| **T03 (suite)** | relevé authentifié à faire : § 10 |
+| **T03 (suite)** | relevé authentifié **tenté et bloqué** : 3 × `403 IP_NOT_ALLOWED`, allowlist vide (§ 3 bis). Reprise dès que le propriétaire a autorisé une IP : § 10 |
+| **P1 (clé)** | la clé **existe** et est acceptée par l'API ; il manque l'**allowlist**, qui n'est pas un secret mais un réglage du compte revendeur |
 
 ---
 
@@ -213,9 +262,9 @@ observations datées.
 3. Reporter dans ce rapport : la date, les codes HTTP obtenus, la liste `champs_de_stock`, et confirmer ou
    infirmer le § 6.
 
-**Si l'appel répond `403 IP_NOT_ALLOWED`** : la clé est épinglée sur l'IP de Render (§ 3). Deux issues, toutes
-deux acceptables : (a) lancer le relevé depuis Render, ou (b) retirer temporairement l'allowlist le temps du
-relevé. Ne rien contourner.
+**Si l'appel répond `403 IP_NOT_ALLOWED`** : l'allowlist est le verrou (§ 3 bis — le 18/11/2026 elle était **vide**,
+donc aucune machine ne passait, Render compris). Issues acceptables : (a) ajouter l'IP autorisée dans l'allowlist du
+compte revendeur, (b) lancer le relevé depuis cette IP. Ne rien contourner.
 
 ---
 
@@ -307,15 +356,16 @@ def main() -> int:
     probe = Probe(key)
     probe.get("/account")
     probe.get("/catalog/big-categories")
-    _, categories = probe.get("/catalog/categories")
-    items = (categories.get("body") or {}).get("categories") or []
+    # navigation sur le corps BRUT : `record["body"]` est purgé, et `id` y devient `<id>`
+    raw_categories, _ = probe.get("/catalog/categories")
+    items = (raw_categories or {}).get("categories") or []
     target = next(
         (c for c in items if "pubg" in str(c.get("name", "")).lower()),
         items[0] if items else None,
     )
     if target:
-        probe.get(f"/catalog/subcategories?categoryId={target['id']}")
-        subs = (probe.calls[-1]["body"] or {}).get("subcategories") or []
+        raw_subs, _ = probe.get(f"/catalog/subcategories?categoryId={target['id']}")
+        subs = (raw_subs or {}).get("subcategories") or []
         if subs:
             probe.get(f"/catalog/subcategory/{subs[0]['item_id']}/price")
         probe.get(f"/catalog/category/{target['id']}/requirements")
