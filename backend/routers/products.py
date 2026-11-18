@@ -30,6 +30,10 @@ def _public(p: dict, admin: bool = False, refund_counts: dict[str, int] | None =
     product.update(stock.public_fields(status))
     for field in SUPPLIER_FIELDS:
         product.pop(field, None)
+    if not admin:
+        # T04/A1 : le rattachement fournisseur (ids de SKU, prix d'achat indirect) n'a rien à
+        # faire dans une réponse publique. L'admin le garde pour la page Fournisseur.
+        product.pop("supplier_mapping", None)
     if admin:
         product.update(stock.admin_fields(status, refund_counts=refund_counts))
     product.setdefault("game_id", DEFAULT_GAME_ID)  # products created before Phase 1
@@ -184,6 +188,24 @@ async def set_product_availability(product_id: str, body: AvailabilityIn,
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
     return _public(product, admin=True, refund_counts=await stock_signals.refund_window_counts())
+
+
+@router.patch("/admin/products/{product_id}/supplier-availability")
+async def clear_supplier_unavailability(product_id: str,
+                                        admin=Depends(require_permission("catalog.manage"))):
+    """T06 — lève à la main une rupture constatée par le relevé fournisseur.
+
+    Une rupture confirmée par un relevé n'expire jamais sur durée : sans cette route, une page
+    corrigée chez le fournisseur laisserait le produit bloqué. Passe par la même fonction que le
+    relevé (`mark_supplier_available`), ne touche jamais `manual_unavailable`, et reste soumise à
+    `STOCK_SYNC_ENABLED` comme toute la synchro.
+    """
+    product = await db.products.find_one({"id": product_id}, PUBLIC)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    await stock.mark_supplier_available(product, actor=admin.get("user_id") or "admin")
+    fresh = await db.products.find_one({"id": product_id}, PUBLIC) or product
+    return _public(fresh, admin=True, refund_counts=await stock_signals.refund_window_counts())
 
 
 @router.delete("/admin/products/{product_id}", dependencies=[Depends(require_permission("catalog.manage"))])

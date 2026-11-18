@@ -382,6 +382,18 @@ def test_public_payload_never_names_the_supplier():
         assert forbidden not in text
 
 
+def test_public_view_hides_supplier_mapping():
+    """T06 : le rattachement fournisseur (ids de SKU) ne sort jamais d'une réponse publique."""
+    from routers.products import _public
+
+    product = {"id": "p1", "slug": "60-uc", "name": "60 UC", "price": 5000, "type": "uc",
+               "supplier_mapping": {"shop2topup": {"sku": "13", "uc_total": 60,
+                                                   "mode": "direct"}}}
+    assert "supplier_mapping" not in _public(product)
+    # La vue admin le garde : c'est elle qui alimente la page Fournisseur.
+    assert _public(product, admin=True)["supplier_mapping"] == product["supplier_mapping"]
+
+
 # --------------------------------------------------------------------------- #
 # F — garde 409 à la création de commande, sans aucune écriture
 # --------------------------------------------------------------------------- #
