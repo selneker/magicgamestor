@@ -68,12 +68,16 @@ function ButtonMain({ to, label, accent = "light", theme = "light", className = 
   );
 }
 
-function Hero({ shopUrl }) {
+function Hero({ shopUrl, games }) {
   const { t } = useLang();
+  // L'eyebrow sert à quelque chose : il liste les jeux réellement
+  // disponibles (« PUBG Mobile · Free Fire · … ») ; repli sur le libellé
+  // statique tant que la boutique n'a aucun jeu.
+  const eyebrow = games.length > 0 ? games.map((g) => g.name).join(" · ") : t("store.heroEyebrow");
   return (
     <section className="page-hero" data-testid="hero">
       <div className="container" data-hero-content>
-        <p className="eyebrow" data-hero-fade>{t("store.heroEyebrow")}</p>
+        <p className="eyebrow" data-hero-fade>{eyebrow}</p>
         <h1 className="h-d" data-anim-hero style={{ marginTop: ".35em" }} data-testid="hero-title">
           {t("store.heroA")} <span className="hero-lime">{t("store.heroB")}</span>
         </h1>
@@ -320,7 +324,7 @@ function Faq() {
                 onClick={() => setOpen(open === i ? null : i)}
               >
                 <span>{q}</span>
-                <span className="faq-plus" aria-hidden="true">+</span>
+                <span className="faq-toggle" aria-hidden="true"></span>
               </button>
               <div className={`faq-a${open === i ? " is--open" : ""}`} id={`faq-a${i + 1}`}><p>{a}</p></div>
             </div>
@@ -406,7 +410,7 @@ export default function Home() {
 
   return (
     <div data-testid="home-page">
-      <Hero shopUrl={shopUrl} />
+      <Hero shopUrl={shopUrl} games={games} />
       <CtaBanner games={games} />
 
       <Steps />
