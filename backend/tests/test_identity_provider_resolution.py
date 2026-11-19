@@ -78,6 +78,7 @@ def detail_of(exc_info) -> str:
 @pytest.mark.parametrize("game", [
     {"id": "some-game"},
     FREE_FIRE_GAME,
+    PUBG_GAME,
     {"id": ML, "identity_fields": ML_FIELDS, "identity_verifier": None},
     {"id": ML, "identity_fields": ML_FIELDS, "identity_verifier": {"provider": "fazercards"}},
     {"id": ML, "identity_fields": ML_FIELDS, "identity_verifier": {"provider": "FazerCards"}},
@@ -89,16 +90,15 @@ def test_games_without_neferbyte_config_resolve_to_fazercards(game):
     assert isinstance(provider, IdentityProvider)
 
 
-def test_pubg_identity_follows_the_topup_switch():
-    """Bascule T08 : la table envoie PUBG Mobile à Shop2Topup, donc la validation d'identité aussi.
+def test_pubg_identity_does_not_follow_the_topup_switch():
+    """T16 : PUBG Mobile est LIVRÉ par Shop2Topup, mais son identité reste vérifiée par FazerCards.
 
-    Conséquence **assumée et signalée** : `validate_identity` de l'adaptateur Shop2Topup exige une
-    offre (`sub_category_id`) que le préflight ne fournit pas encore. La résolution du fournisseur
-    PAR COMMANDE est le sujet de T16 ; d'ici là, une validation d'identité PUBG répond 409
-    `missing_offer` au lieu d'être validée par FazerCards.
+    Le préflight n'envoie pas l'offre qu'exige `validate_identity` de Shop2Topup : suivre la table
+    de top-up rendrait la validation PUBG indisponible du seul fait de la bascule.
     """
+    assert get_provider("pubg-mobile").name == "shop2topup"
     provider = resolve_identity_provider(PUBG_GAME)
-    assert provider.name == "shop2topup"
+    assert provider.name == "fazercards"
     assert isinstance(provider, Provider)
     assert isinstance(provider, IdentityProvider)
 
@@ -109,11 +109,25 @@ def test_resolution_without_game_document_defaults_to_fazercards():
 
 def test_topup_resolution_follows_the_table():
     # Bascule T08 : PUBG Mobile livré par Shop2Topup ; Free Fire reste sur FazerCards (T12) ;
-    # un jeu inconnu retombe sur le fournisseur par défaut.
+    # un jeu inconnu retombe sur le fournisseur par défaut (T16 : Shop2Topup, plus FazerCards).
     assert GAME_PROVIDER == {"pubg-mobile": "shop2topup", "free-fire": "fazercards"}
     assert get_provider("pubg-mobile").name == "shop2topup"
     assert get_provider("free-fire").name == "fazercards"
-    assert get_provider("future-game").name == "fazercards"
+    assert get_provider("future-game").name == "shop2topup"
+
+
+def test_explicit_provider_name_wins_over_the_table():
+    """T16 : le nom porté par la commande prime sur la table (retrait de FazerCards sans perte)."""
+    assert get_provider("pubg-mobile", "fazercards").name == "fazercards"
+    assert get_provider("free-fire", "shop2topup").name == "shop2topup"
+
+
+def test_owner_env_override_wins_over_the_table(monkeypatch):
+    """T16 : `TOPUP_PROVIDER_<GAME>` est la bascule « une variable + un redémarrage »."""
+    monkeypatch.setenv("TOPUP_PROVIDER_PUBG_MOBILE", "fazercards")
+    assert get_provider("pubg-mobile").name == "fazercards"
+    # Un jeu non surchargé garde la table.
+    assert get_provider("free-fire").name == "fazercards"
 
 
 # --------------------------------------------------------------------------- #

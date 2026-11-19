@@ -162,3 +162,70 @@ class TestLiveEndpoint:
         assert "x-api-key" not in text
         assert "fzr.cards" not in text
         assert set(r.json().keys()) <= {"valid", "player_name", "region", "message"}
+
+
+# ---------- T16 : un refus de validation fournisseur est un 4xx avec `code`, jamais un 500 ----------
+
+class TestProviderValidationErrorNever500:
+    """Quel que soit le fournisseur, `ProviderValidationError` sort en 409/422, jamais en 500.
+
+    Shop2Topup lève 409 `missing_offer` (l'offre exigée par `POST /player/validate` n'est pas dans
+    le préflight) ; un refus sans statut explicite devient 422. Les deux routes d'identité sont
+    couvertes : générique et compat PUBG.
+    """
+
+    def _client(self, monkeypatch, exc):
+        from types import SimpleNamespace
+
+        from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from routers import fazercards as router_module
+
+        async def fake_find_one(query, projection=None):
+            return {"id": query.get("id")}
+
+        class RefusingProvider:
+            name = "fournisseur-de-test"
+
+            async def validate_identity(self, game_id, fields):
+                raise exc
+
+        monkeypatch.setattr(router_module.db, "games", SimpleNamespace(find_one=fake_find_one))
+        monkeypatch.setattr(router_module, "check", lambda *_a, **_k: None)
+        monkeypatch.setattr(router_module.providers, "resolve_identity_provider",
+                            lambda game=None: RefusingProvider())
+        app = FastAPI()
+        app.include_router(router_module.router)
+        return TestClient(app)
+
+    def test_missing_offer_is_409_with_its_code(self, monkeypatch):
+        from services.providers import ProviderValidationError
+
+        client = self._client(monkeypatch, ProviderValidationError(
+            "Offre requise pour valider l'identité joueur.", status_code=409, code="missing_offer"))
+        r = client.post("/fazercards/validate-id",
+                        json={"game_id": "pubg-mobile", "fields": {"player_id": VALID_PUBG_ID}})
+        assert r.status_code == 409, r.text
+        assert r.json() == {"detail": "Offre requise pour valider l'identité joueur.",
+                            "code": "missing_offer", "game_id": "pubg-mobile"}
+
+    def test_legacy_pubg_route_translates_the_same_error(self, monkeypatch):
+        from services.providers import ProviderValidationError
+
+        client = self._client(monkeypatch, ProviderValidationError(
+            "Offre requise pour valider l'identité joueur.", status_code=409, code="missing_offer"))
+        r = client.post("/fazercards/pubg/validate-id", json={"player_id": VALID_PUBG_ID})
+        assert r.status_code == 409, r.text
+        assert r.json()["code"] == "missing_offer" and r.json()["game_id"] == "pubg-mobile"
+
+    def test_refusal_without_explicit_status_becomes_422(self, monkeypatch):
+        from services.providers import ProviderValidationError
+
+        # Défaut de `ProviderError` = 502 : un refus de validation ne doit pas sortir en 5xx.
+        client = self._client(monkeypatch, ProviderValidationError("Refus ambigu.",
+                                                                  code="region_mismatch"))
+        r = client.post("/fazercards/validate-id",
+                        json={"game_id": "pubg-mobile", "fields": {"player_id": VALID_PUBG_ID}})
+        assert r.status_code == 422, r.text
+        assert r.json()["code"] == "region_mismatch"

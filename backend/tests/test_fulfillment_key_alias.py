@@ -263,7 +263,8 @@ def test_l_envoi_utilise_le_payload_du_preflight_et_la_meme_cle(monkeypatch):
     async def no_sync(*_args, **_kwargs):
         return None
 
-    monkeypatch.setattr(fzr_fulfillment.providers, "get_provider", lambda _game_id: FakeProvider())
+    monkeypatch.setattr(fzr_fulfillment.providers, "get_provider",
+                        lambda _game_id=None, provider_name=None: FakeProvider())
     monkeypatch.setattr(fzr_fulfillment, "_sync_mgs_status", no_sync)
     monkeypatch.setattr(fzr_fulfillment, "audit", lambda *a, **k: _noop())
 

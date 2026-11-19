@@ -348,9 +348,10 @@ def verify_fzr_signature(raw: bytes, signature: str | None) -> bool:
     """Signature HMAC-SHA256 sur le RAW BODY — déléguée à l'adapter FazerCards.
 
     Le webhook est GLOBAL au fournisseur, pas à un jeu : le provider est résolu sans jeu
-    (aucun jeu, PUBG Mobile compris, n'est présumé être celui du webhook).
+    (aucun jeu, PUBG Mobile compris, n'est présumé être celui du webhook) et NOMMÉ explicitement :
+    c'est un événement FazerCards, jamais celui du fournisseur de top-up courant (T16).
     """
-    return providers.get_provider(None).verify_webhook_signature(raw, signature)
+    return providers.get_provider(None, "fazercards").verify_webhook_signature(raw, signature)
 
 
 @router.post("/fazercards/webhook")

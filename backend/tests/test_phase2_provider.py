@@ -35,8 +35,8 @@ def env_and_cache(monkeypatch):
     fazercards._discovery_cache["data"] = None
     monkeypatch.setenv("FAZERCARDS_API_KEY", "fc_dummy_for_tests")
     # T08 : PUBG Mobile est livré par Shop2Topup. Cette suite teste l'adaptateur FAZERCARDS, encore
-    # en service pour les commandes sans jeu et pour Free Fire jusqu'à T12 ; tant que la résolution
-    # par nom n'existe pas (T16), épingler la table est le seul moyen de demander FazerCards.
+    # en service pour les commandes sans jeu et pour Free Fire jusqu'à T12 : la table est épinglée
+    # pour les tests qui passent par `get_provider(<jeu>)` sans nom explicite (T16).
     monkeypatch.setitem(providers.GAME_PROVIDER, "pubg-mobile", "fazercards")
     yield
     fazercards._catalog_cache.clear()
@@ -52,8 +52,8 @@ def test_adapter_implements_provider_interface():
     prov = providers.get_provider("pubg-mobile")
     assert isinstance(prov, Provider) and prov.name == "fazercards"
     assert providers.get_provider("pubg-mobile") is prov  # registry : instance réutilisée
-    # Un jeu inconnu retombe sur le provider par défaut (un seul provider en Phase 2).
-    assert providers.get_provider("future-game").name == "fazercards"
+    # T16 : un jeu inconnu retombe sur le fournisseur par défaut, qui n'est plus FazerCards.
+    assert providers.get_provider("future-game").name == "shop2topup"
 
 
 def test_status_normalization_maps_to_mgs_set():
@@ -194,3 +194,21 @@ def test_get_categories_returns_all_categories(monkeypatch):
     result = run(prov.get_categories())
     assert result == fake_cats
 
+
+
+# --------------------------------------------------------------------------- #
+# T16 — le fournisseur vient de l'UNITÉ, pas de la table du moment
+# --------------------------------------------------------------------------- #
+def test_unite_portant_fazercards_reste_chez_fazercards():
+    """Une commande partie chez FazerCards y reste, même si la table envoie PUBG à Shop2Topup."""
+    order = {"game_id": "pubg-mobile"}
+    assert fzr_fulfillment._provider_name(order, {"provider": "fazercards"}) == "fazercards"
+    assert providers.get_provider("pubg-mobile", "fazercards").name == "fazercards"
+
+
+def test_unite_legacy_sans_champ_provider_reste_chez_fazercards():
+    """Avant T16 aucune unité ne portait `provider` : une unité legacy est forcément FazerCards."""
+    assert fzr_fulfillment._provider_name({"game_id": "pubg-mobile"}, {}) == "fazercards"
+    assert fzr_fulfillment._provider_name({"game_id": "pubg-mobile"}, None) is None
+    # Commande legacy sans jeu : FazerCards, jamais le fournisseur par défaut du moment.
+    assert fzr_fulfillment._provider_name({}, None) == "fazercards"

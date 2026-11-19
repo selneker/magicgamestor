@@ -215,16 +215,16 @@ class NeferbyteProvider(IdentityProvider):
 # Résolution par jeu (synchrone : le document jeu est déjà chargé)
 # --------------------------------------------------------------------------- #
 def _fazercards(game_id: str | None = None) -> IdentityProvider:
-    """Fournisseur par défaut : celui de TOP-UP du jeu, résolu par `get_provider(game_id)`.
+    """Vérificateur par défaut : FazerCards, INDÉPENDAMMENT de la table de TOP-UP (T16).
 
-    `game_id` est transmis tel quel : la table `GAME_PROVIDER` peut désigner un fournisseur de
-    secours PAR JEU, et la validation d'identité doit honorer ce choix comme avant BE-4
-    (`get_provider(None)` l'ignorerait). Aucun jeu ne change de comportement aujourd'hui : la table
-    ne contient que FazerCards.
+    La table `GAME_PROVIDER` dit qui LIVRE le top-up ; elle ne dit pas qui vérifie une identité.
+    `Shop2TopupProvider.validate_identity` exige l'offre (`sub_category_id`) que le préflight
+    n'envoie pas : la suivre rendrait la validation PUBG indisponible du seul fait de la bascule.
+    `game_id` est donc transmis, mais avec le nom explicite `IDENTITY_PROVIDER`.
     """
-    from services.providers import get_provider
+    from services.providers import IDENTITY_PROVIDER, get_provider
 
-    provider = get_provider(game_id)
+    provider = get_provider(game_id, IDENTITY_PROVIDER)
     # Vérification de CAPACITÉ (et non de type nominal) : un fournisseur qui ne sait pas valider
     # une identité est une mauvaise configuration (503), mais un provider simulé/duck-typé qui
     # expose `validate_identity` reste utilisable (les bancs de tests existants en dépendent).
@@ -239,8 +239,8 @@ def resolve_identity_provider(game: dict | None = None) -> IdentityProvider:
     FazerCards si le champ est absent / `None` / `{"provider": "fazercards"}` ; Neferbyte si la
     configuration est cohérente ; 503 `unsupported_game` sinon (aucun appel fournisseur).
 
-    Dans les deux cas « FazerCards », la résolution passe par `get_provider(<id du jeu>)` : le
-    fournisseur de secours reste choisi par jeu, exactement comme avant BE-4.
+    Dans les deux cas « FazerCards », le vérificateur est FazerCards quel que soit le fournisseur
+    de TOP-UP du jeu (`IDENTITY_PROVIDER`, T16) : la bascule de top-up ne change pas l'identité.
     """
     from core.games import identity_spec
 

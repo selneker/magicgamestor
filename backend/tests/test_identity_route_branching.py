@@ -126,7 +126,7 @@ def make_client(monkeypatch, games: dict, fazercards_provider=None,
 
     fzr_calls: list = []
 
-    def fake_get_provider(game_id=None):
+    def fake_get_provider(game_id=None, provider_name=None):
         fzr_calls.append(game_id)
         return fazercards_provider
 
@@ -165,8 +165,8 @@ def test_ref_free_fire_success(monkeypatch, rate_limit):
                         "game_id": FREE_FIRE}
     assert provider.calls == [(FREE_FIRE, {"player_id": FF_ID})]
     assert nef_calls == []
-    # Résolution par défaut = `get_provider(<id du jeu>)`, comme avant BE-4 : un fournisseur de
-    # secours choisi par jeu (table GAME_PROVIDER) reste honoré.
+    # Résolution par défaut = FazerCards pour ce jeu (aucun `identity_verifier`) ; l'ID du jeu est
+    # bien transmis à `get_provider` (T16 : nom explicite, la table de top-up n'est plus suivie).
     assert fzr_calls == [FREE_FIRE]
 
 
@@ -470,7 +470,8 @@ def test_real_app_wiring_legacy_route(monkeypatch, rate_limit):
         return _project(PUBG_GAME, projection) if query.get("id") == PUBG else None
 
     monkeypatch.setattr(fzr_router.db, "games", SimpleNamespace(find_one=fake_find_one))
-    monkeypatch.setattr(fzr_router.providers, "get_provider", lambda game_id=None: provider)
+    monkeypatch.setattr(fzr_router.providers, "get_provider",
+                        lambda game_id=None, provider_name=None: provider)
 
     import server as server_module
 
@@ -481,30 +482,34 @@ def test_real_app_wiring_legacy_route(monkeypatch, rate_limit):
     assert r.json() == {"valid": True, "player_name": "Kapotue", "region": "ID"}
 
 
-def test_identity_validation_honours_per_game_provider_table(monkeypatch, rate_limit):
-    """Un fournisseur de secours associé à UN jeu dans `GAME_PROVIDER` reste utilisé.
+def test_identity_validation_ignores_the_topup_table(monkeypatch, rate_limit):
+    """T16 : l'identité ne suit PAS `GAME_PROVIDER`, elle demande FazerCards explicitement.
 
-    Preuve que la résolution par défaut transmet bien l'ID du jeu à `get_provider` : avec
-    `get_provider(None)`, la table par jeu serait ignorée et FazerCards serait appelé.
+    PUBG Mobile est livré par Shop2Topup, mais le préflight n'envoie pas l'offre qu'exige
+    `validate_identity` de Shop2Topup : la validation d'identité doit rester chez FazerCards.
     """
     from services import providers as providers_mod
 
-    backup = FakeProvider(IdentityValidation(valid=True, player_name="FFPlayer", region="SG"))
-    backup.name = "backup"
-    monkeypatch.setattr(providers_mod, "GAME_PROVIDER", {FREE_FIRE: "backup"})
-    monkeypatch.setitem(providers_mod._INSTANCES, "backup", backup)
+    calls: list = []
+    provider = FakeProvider(IdentityValidation(valid=True, player_name="FFPlayer", region="SG"))
 
-    # `patch_get_provider=False` : le VRAI `get_provider` lit la table simulée.
-    client, fzr_calls, nef_calls = make_client(monkeypatch, {FREE_FIRE: FF_GAME},
-                                               patch_get_provider=False)
+    def fake_get_provider(game_id=None, provider_name=None):
+        calls.append((game_id, provider_name))
+        return provider
+
+    monkeypatch.setattr(providers_mod, "GAME_PROVIDER", {FREE_FIRE: "shop2topup"})
+    monkeypatch.setattr(fzr_router.providers, "get_provider", fake_get_provider)
+
+    client, _fzr_calls, nef_calls = make_client(monkeypatch, {FREE_FIRE: FF_GAME}, provider,
+                                                patch_get_provider=False)
 
     r = post_identity(client, FREE_FIRE, {"player_id": FF_ID})
 
     assert r.status_code == 200
     assert r.json() == {"valid": True, "player_name": "FFPlayer", "region": "SG",
                         "game_id": FREE_FIRE}
-    assert backup.calls == [(FREE_FIRE, {"player_id": FF_ID})]
-    assert fzr_calls == [] and nef_calls == []
+    assert calls == [(FREE_FIRE, "fazercards")]
+    assert nef_calls == []
 
 
 # --------------------------------------------------------------------------- #
@@ -550,7 +555,7 @@ def preflight_env(monkeypatch):
                             "price_usd": "0.5000"}],
                 "fields": [{"key": "player_id"}]}
 
-    def fake_get_provider(game_id=None):
+    def fake_get_provider(game_id=None, provider_name=None):
         state["fzr_calls"].append(game_id)
         return FakeProvider(exc=state["fzr_exc"])
 
