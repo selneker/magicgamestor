@@ -285,10 +285,10 @@
             posthog.init("phc_DbsPb39SRc8z3EiQ6Dhj6ikv4H4rTKcht9d4sZSesceP", {
                 api_host: "https://ap.emergent.sh",
                 person_profiles: "identified_only", // or 'always' to create profiles for anonymous users as well,
-                session_recording: {
-                    recordCrossOriginIframes: true,
-                    capturePerformance: false,
-                },
+                // Le recorder de session (posthog-recorder.js) tournait un setInterval
+                // qui bloquait le thread principal jusqu'a 6,8 s par frame : scroll
+                // saccade sur mobile. Les analytics (pageviews/events) restent actifs.
+                disable_session_recording: true,
             });
         </script>
     </body>

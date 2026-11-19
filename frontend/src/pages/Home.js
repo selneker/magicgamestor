@@ -91,6 +91,13 @@ function Hero({ shopUrl, games }) {
             <svg className="button-main-inner__arrow" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5873 10L0 8.4127L6.30385 2.13152L0.793651 2.1542V0H10V9.20635H7.8458L7.86848 3.67347L1.5873 10Z" fill="currentColor" /></svg>
           </ButtonMain>
           <ButtonMain to="/suivi" label={t("store.ctaTrack")} theme="light" accent="blue" testId="hero-cta-track" />
+          {/* Icônes décoratives (retour propriétaire : « des icônes comme sur
+              Slush, en mouvement ») — ornementales, hors arbre a11y. */}
+          <div className="hero-icons" aria-hidden="true">
+            <span className="hero-icon hero-icon--manette"><Icon name="manette" className="ic-use ic-anim-float" /></span>
+            <span className="hero-icon hero-icon--piece"><Icon name="piece" className="ic-use ic-anim-coin" /></span>
+            <span className="hero-icon hero-icon--fusee"><Icon name="fusee" className="ic-use ic-anim-float" /></span>
+          </div>
         </div>
       </div>
     </section>
@@ -174,7 +181,7 @@ function Steps() {
             return (
               <div className="step-card" data-card-reveal="card" data-box-theme={STEPS_THEMES[i]} key={title} data-testid={`home-step-${i}`}>
                 <span className="step-card__num" aria-hidden="true">{i + 1}</span>
-                <Icon name={name} className="ic-use" data-icon-reveal aria-hidden="true" />
+                <Icon name={name} className="ic-use ic-anim-float" style={{ animationDelay: `${i * -0.9}s` }} data-icon-reveal aria-hidden="true" />
                 <h3 className="h-c">{title}</h3>
                 <p className="p-m">{desc}</p>
               </div>
@@ -190,6 +197,8 @@ function Steps() {
 // Icônes maquettes : contrôle OK (compte vérifié), portefeuille
 // (Mobile Money & USDT), chrono (suivi temps réel), bulle (support).
 const WHY_ICONS = ["chat-ok", "portefeuille", "chrono", "bulle-noire"];
+// Animation par icône : le portefeuille « penche » (pièce), les autres flottent.
+const WHY_ANIMS = ["ic-anim-float", "ic-anim-coin", "ic-anim-float", "ic-anim-float"];
 
 function WhyChoose() {
   const { t } = useLang();
@@ -208,7 +217,7 @@ function WhyChoose() {
             const name = WHY_ICONS[i];
             return (
               <div className="trust-card" data-card-reveal="card" key={title} data-testid={`home-why-${i}`}>
-                <Icon name={name} className="ic-use" data-icon-reveal aria-hidden="true" />
+                <Icon name={name} className={`ic-use ${WHY_ANIMS[i]}`} style={{ animationDelay: `${i * -1.2}s` }} data-icon-reveal aria-hidden="true" />
                 <strong>{title}</strong>
                 <span>{desc}</span>
               </div>
