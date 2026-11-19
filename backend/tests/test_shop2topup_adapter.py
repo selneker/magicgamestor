@@ -427,11 +427,29 @@ def test_un_lot_est_decoupe_a_cinquante():
         return _json({"success": True,
                       "orders": [{"order_id": value, "status": "pending"} for value in calls[-1]]})
 
-    batch = _run(_provider(handler).get_orders([f"cmd-{index}" for index in range(120)]))
+    batch = _run(_provider(handler).get_orders([f"cmd-{index}" for index in range(100)]))
 
-    assert [len(chunk) for chunk in calls] == [50, 50, 20]
-    assert batch.requested == 120
-    assert len(batch.orders) == 120
+    assert [len(chunk) for chunk in calls] == [50, 50]
+    assert batch.requested == 100
+    assert len(batch.orders) == 100
+
+
+def test_un_troisieme_lot_est_refuse_par_le_budget(monkeypatch):
+    """120 identifiants = 3 lots ; le budget n'en autorise que 2 par 60 s, et il ne dort pas."""
+    calls = []
+    alerts = _catch_alerts(monkeypatch)
+
+    def handler(request):
+        calls.append(json.loads(request.content)[adapter.BATCH_REQUEST_KEY])
+        return _json({"success": True,
+                      "orders": [{"order_id": value, "status": "pending"} for value in calls[-1]]})
+
+    with pytest.raises(ProviderUnavailableError) as exc:
+        _run(_provider(handler).get_orders([f"cmd-{index}" for index in range(120)]))
+
+    assert exc.value.code == "rate_budget_exceeded"
+    assert [len(chunk) for chunk in calls] == [50, 50]  # le 3e lot n'est jamais parti
+    assert len(alerts) == 1                             # une seule alerte par épisode
 
 
 def test_reconciliation_commence_par_les_plus_anciennes(monkeypatch):
