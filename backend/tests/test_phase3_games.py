@@ -187,7 +187,8 @@ def test_free_fire_resolves_to_the_existing_provider():
     from services import providers
     assert providers.GAME_PROVIDER.get(FREE_FIRE) == "fazercards"
     assert providers.get_provider(FREE_FIRE).name == "fazercards"
-    assert providers.get_provider(PUBG).name == "fazercards"
+    # T08 : PUBG Mobile est passé à Shop2Topup (fournisseur principal du chantier).
+    assert providers.get_provider(PUBG).name == "shop2topup"
 
 
 # --------------------------------------------------------------------------- #

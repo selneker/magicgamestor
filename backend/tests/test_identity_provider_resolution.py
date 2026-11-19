@@ -78,7 +78,6 @@ def detail_of(exc_info) -> str:
 @pytest.mark.parametrize("game", [
     {"id": "some-game"},
     FREE_FIRE_GAME,
-    PUBG_GAME,
     {"id": ML, "identity_fields": ML_FIELDS, "identity_verifier": None},
     {"id": ML, "identity_fields": ML_FIELDS, "identity_verifier": {"provider": "fazercards"}},
     {"id": ML, "identity_fields": ML_FIELDS, "identity_verifier": {"provider": "FazerCards"}},
@@ -90,14 +89,30 @@ def test_games_without_neferbyte_config_resolve_to_fazercards(game):
     assert isinstance(provider, IdentityProvider)
 
 
+def test_pubg_identity_follows_the_topup_switch():
+    """Bascule T08 : la table envoie PUBG Mobile à Shop2Topup, donc la validation d'identité aussi.
+
+    Conséquence **assumée et signalée** : `validate_identity` de l'adaptateur Shop2Topup exige une
+    offre (`sub_category_id`) que le préflight ne fournit pas encore. La résolution du fournisseur
+    PAR COMMANDE est le sujet de T16 ; d'ici là, une validation d'identité PUBG répond 409
+    `missing_offer` au lieu d'être validée par FazerCards.
+    """
+    provider = resolve_identity_provider(PUBG_GAME)
+    assert provider.name == "shop2topup"
+    assert isinstance(provider, Provider)
+    assert isinstance(provider, IdentityProvider)
+
+
 def test_resolution_without_game_document_defaults_to_fazercards():
     assert resolve_identity_provider(None).name == "fazercards"
 
 
-def test_topup_resolution_is_unchanged():
-    # `get_provider()` reste le résolveur de TOP-UP : aucune table modifiée par BE-3.
-    assert GAME_PROVIDER == {"pubg-mobile": "fazercards", "free-fire": "fazercards"}
-    assert get_provider("pubg-mobile").name == "fazercards"
+def test_topup_resolution_follows_the_table():
+    # Bascule T08 : PUBG Mobile livré par Shop2Topup ; Free Fire reste sur FazerCards (T12) ;
+    # un jeu inconnu retombe sur le fournisseur par défaut.
+    assert GAME_PROVIDER == {"pubg-mobile": "shop2topup", "free-fire": "fazercards"}
+    assert get_provider("pubg-mobile").name == "shop2topup"
+    assert get_provider("free-fire").name == "fazercards"
     assert get_provider("future-game").name == "fazercards"
 
 

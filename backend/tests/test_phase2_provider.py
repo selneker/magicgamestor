@@ -34,6 +34,10 @@ def env_and_cache(monkeypatch):
     fazercards._catalog_cache.clear()
     fazercards._discovery_cache["data"] = None
     monkeypatch.setenv("FAZERCARDS_API_KEY", "fc_dummy_for_tests")
+    # T08 : PUBG Mobile est livré par Shop2Topup. Cette suite teste l'adaptateur FAZERCARDS, encore
+    # en service pour les commandes sans jeu et pour Free Fire jusqu'à T12 ; tant que la résolution
+    # par nom n'existe pas (T16), épingler la table est le seul moyen de demander FazerCards.
+    monkeypatch.setitem(providers.GAME_PROVIDER, "pubg-mobile", "fazercards")
     yield
     fazercards._catalog_cache.clear()
     fazercards._discovery_cache["data"] = None
