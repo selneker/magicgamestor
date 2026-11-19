@@ -184,6 +184,8 @@ def test_seules_les_unites_shop2topup_sont_interrogees_et_mises_a_jour(monkeypat
     result = run(order_maintenance.reconcile_shop2topup_units(provider=provider))
 
     assert [unit["provider_order_id"] for unit in provider.units] == ["s2t-1"]
+    # Une commande livrée a toutes ses unités `completed` : elle ne doit pas consommer le budget.
+    assert orders.find_query["status"] == {"$ne": "delivered"}
     assert result == {"shop2topup_units": 1, "batches": 1, "updated": 1,
                       "not_found": 0, "starved": 0}
     assert orders.updates[0][1]["$set"]["fazercards.provider_status"] == "completed"

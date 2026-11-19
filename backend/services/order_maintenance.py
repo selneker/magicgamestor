@@ -409,8 +409,12 @@ async def reconcile_shop2topup_units(now: datetime | None = None, provider=None)
     """
     result = {"shop2topup_units": 0, "batches": 0, "updated": 0, "not_found": 0, "starved": 0}
     try:
+        # `delivered` est exclu : toutes ses unités sont déjà `completed`, les re-sonder ferait
+        # consommer le budget par l'historique et affamerait les unités en cours. Les commandes
+        # annulées/échouées restent suivies si une unité est partie (remboursement à constater).
         cursor = db.orders.find(
-            {"status": "paid", "fazercards_provider_ids": {"$exists": True, "$ne": []}},
+            {"status": {"$ne": "delivered"},
+             "fazercards_provider_ids": {"$exists": True, "$ne": []}},
             SHOP2TOPUP_ORDER_PROJECTION,
         ).limit(SHOP2TOPUP_MAX_ORDERS)
         orders = await cursor.to_list(SHOP2TOPUP_MAX_ORDERS)
