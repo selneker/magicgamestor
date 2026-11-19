@@ -386,13 +386,16 @@ mappés, branché sur le **cron existant** — aucune nouvelle route.
 - [x] **santé du relevé** : compteur `pages_ok`, et alerte admin si **aucune** lecture réussie depuis N passages
       — sinon le signal meurt en silence, ce qui est le pire des cas
 - [x] aucun nom de fournisseur dans les réponses publiques ni les alertes
-- [x] compteurs retournés : `checked`, `marked_out`, `marked_in`, `skipped`, `pages_ok`, `pages_failed`
+- [x] compteurs retournés : `checked`, `marked_out`, `marked_in`, `skipped`, `pages_ok`, `pages_failed`,
+      plus, depuis la revue, `mode` (`observe` par défaut / `apply`), `would_mark_out`, `would_mark_in`
+      et `coverage_suspect`
 - [x] branché dans `order_maintenance.run_all()` (`order_maintenance.py:279-296`), **une ligne**, sans
       modifier la signature des autres tâches
 - [x] durée bornée : le relevé ne peut pas faire expirer la route cron (budget total explicite)
 
-Fait le 18/11/2026 : 16 tests dans `test_availability_sync.py`, 3 dans `test_shop2topup_stock.py`,
-1 dans `test_stock_availability.py` (vue publique sans `supplier_mapping`).
+Fait le 18/11/2026 : 21 tests dans `test_availability_sync.py` (dont 5 sur le mode `observe`, la santé et
+les alertes), 3 dans `test_shop2topup_stock.py`, 1 de plus dans `test_stock_availability.py` (vue publique
+sans `supplier_mapping` ; levée admin ignorée par `STOCK_SYNC_ENABLED`).
 
 **Vérification :** tests unitaires (fake collection + relevé simulé) ; puis contrôle manuel sur le **60 UC**
 (le passer en rupture simulée → carte « OUT OF STOCK » ; le remettre → revenu).
@@ -412,16 +415,21 @@ Fait le 18/11/2026 : 16 tests dans `test_availability_sync.py`, 3 dans `test_sho
 Ne toucher ni au domaine, ni aux signatures existantes.
 
 **Critères d'acceptation :**
-- [ ] `name = "shop2topup"` ; `normalize_status()` couvre `pending|completed|refunded|partial` (+ statuts
+- [x] `name = "shop2topup"` ; `normalize_status()` couvre `pending|completed|refunded|partial` (+ statuts
       inconnus ⇒ `processing`, comme l'adaptateur actuel `fazercards_adapter.py:40-42`)
-- [ ] `get_categories()` / `get_offers()` : ids fournisseur, **jamais** codés en dur
-- [ ] erreurs fournisseur traduites vers `services.providers.errors` (`OUT_OF_STOCK`,
+- [x] `get_categories()` / `get_offers()` : ids fournisseur, **jamais** codés en dur
+- [x] erreurs fournisseur traduites vers `services.providers.errors` (`OUT_OF_STOCK`,
       `INSUFFICIENT_STOCK`, `PRODUCT_UNAVAILABLE`, `PRICING_UPDATING` ⇒ classes existantes)
-- [ ] `is_out_of_stock_error()` reconnaît les codes Shop2Topup **sans** casser FazerCards
+- [x] `is_out_of_stock_error()` reconnaît les codes Shop2Topup **sans** casser FazerCards
       (`stock.py:180-193`, `STOCK_ERROR_CODES`)
-- [ ] enregistrement dans `get_provider()` **explicite** (branche nommée, pas le repli silencieux actuel
+- [x] enregistrement dans `get_provider()` **explicite** (branche nommée, pas le repli silencieux actuel
       `providers/__init__.py:30-32`)
-- [ ] aucun appel réseau dans les tests (transport bouchonné)
+- [x] aucun appel réseau dans les tests (transport bouchonné)
+
+Fait le 19/11/2026 : `shop2topup_adapter.py` (clé lue dans `os.environ` à chaque appel, enveloppe `data`
+**et** clé documentée, catalogue sans id codé en dur), 26 tests dans `test_shop2topup_adapter.py`,
+`py_compile` OK. Reste à faire **par le propriétaire** : l'appel réel de validation d'identité (A7).
+Sans `offer_id` le préflight ne peut pas l'appeler — voir Points ouverts du rapport (T16).
 
 **Vérification :** tests unitaires + un appel réel de validation d'identité (clé lue depuis les variables
 Render, A7 — jamais depuis un fichier).
@@ -435,20 +443,28 @@ Render, A7 — jamais depuis un fichier).
 les statuts **sans se faire brider**.
 
 **Critères d'acceptation :**
-- [ ] même `idempotency_key` réutilisée en cas de retry ⇒ **aucun double achat** (comportement déjà en place,
+- [x] même `idempotency_key` réutilisée en cas de retry ⇒ **aucun double achat** (comportement déjà en place,
       `fzr_fulfillment.py:123-134` — la préserver, pas la réinventer)
 - [ ] webhook : signature HMAC-SHA256 vérifiée sur le **RAW BODY**, réponse rapide, traitement ensuite
-      (le motif de `routers/fzr_orders.py:352-360` est repris tel quel)
-- [ ] **limite de requêtes** : la valeur (annoncée 3 req/60 s **dans la doc — à reconfirmer**) est traitée
+      (le motif de `routers/fzr_orders.py:352-360` est repris tel quel) — **signature et normalisation
+      faites** dans l'adaptateur ; la **route** n'est pas créée (hors périmètre de cette session)
+- [x] **limite de requêtes** : la valeur (annoncée 3 req/60 s **dans la doc — à reconfirmer**) est traitée
       comme une **hypothèse à vérifier**, pas comme un fait ; le code applique un **budget** (compteur +
       fenêtre), pas un sleep codé en dur
-- [ ] « lots de 50 toutes les 30 s » **seulement si** un endpoint de statut **par lot** est documenté ;
+- [x] « lots de 50 toutes les 30 s » **seulement si** un endpoint de statut **par lot** est documenté ;
       sinon : file d'attente + budget, priorité aux unités les plus anciennes, journalisation des unités
       affamées
-- [ ] ordre de grandeur assumé (~300 commandes/mois, soit ~10/jour) : le budget doit tenir sans jamais
+- [x] ordre de grandeur assumé (~300 commandes/mois, soit ~10/jour) : le budget doit tenir sans jamais
       dépasser la limite, y compris avec un arriéré
-- [ ] `failed` / `refunded` ⇒ chemin de remboursement **existant**, aucun nouveau mécanisme
-- [ ] `GAME_PROVIDER` pointe PUBG Mobile vers `shop2topup`
+- [x] `failed` / `refunded` ⇒ chemin de remboursement **existant**, aucun nouveau mécanisme
+- [x] `GAME_PROVIDER` pointe PUBG Mobile vers `shop2topup`
+
+Fait le 19/11/2026 : budget dur (catalogue/création 5000, statut 3/60 s **par commande**, lot 2/60 s),
+une alerte par épisode, `get_orders()` par lots de 50, `reconcile()` plus anciennes d'abord avec journal des
+affamées, `DUPLICATE_ORDER` ⇒ relecture. `POST /orders/batch` est **documenté** (RAPPORT § 4) : le lot est
+utilisé, pas la file d'attente. Reste à faire **par le propriétaire** : la commande de test réelle et le
+premier appel réel de `POST /orders/batch` (le nom du champ d'entrée n'est pas documenté — une seule
+constante `BATCH_REQUEST_KEY` à corriger si besoin).
 
 **Vérification :** tests unitaires (signature valide/invalide, idempotence, budget respecté) ; **commande de
 test réelle** encadrée par le propriétaire.
@@ -458,6 +474,10 @@ T08b (webhook + budget) si la session déborde.
 
 > **Checkpoint B** — une commande de test est livrée de bout en bout, et le statut est réconcilié sans
 > dépasser le budget.
+>
+> **Non atteint le 19/11/2026** : le code est en place et couvert par des tests à transport simulé, mais
+> aucune commande réelle n'a été passée (aucun appel fournisseur autorisé dans cette session). Checkpoint B
+> reste à valider par le propriétaire avec une clé Render.
 
 ---
 
