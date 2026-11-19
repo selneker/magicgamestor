@@ -553,6 +553,15 @@ FazerCards, aucun produit n'est désactivé.
       simulé d'après la documentation ; les trois événements sont dans `telegram.py`.
 - [x] **T09B script (19/11/2026)** : `--rate auto` lit le taux stocké, ou l'interroge sur P2P.Army
       avec `--live` ; le reste du script ne change pas.
+- [x] **préalable T09C (19/11/2026)** : le relevé passe de `get_p2p_prices` à `get_p2p_order_book`
+      (une ligne par annonce ; seul endpoint documentant `min_fiat`/`max_fiat`, `user_id`,
+      `user_orders`, `user_rate`). Filtres : une annonce par vendeur (la moins chère),
+      `P2P_PAYMENT_METHODS` (défaut `mvola,orange`, **plus de repli** sur toutes les méthodes),
+      `P2P_REF_AMOUNT_AR` (200 000) contenu dans les limites, `P2P_MIN_COMPLETION_PCT` /
+      `P2P_MIN_ORDERS` (90 / 50). Moins de 3 annonces retenues ⇒ relevé refusé. `settings.p2p_rate`
+      porte en plus `n_ads` et `n_rejected` par raison. **Aucun filtre de restriction** : la
+      documentation ne publie aucun drapeau. Diagnostic en lecture seule :
+      `backend/scripts/p2p_rate_dump.py`. Aucun appel réel n'a été fait.
 - [ ] T09 exécutée **après** le Checkpoint B, jamais avant (A2)
 - [ ] les 8 lots UC sans équivalent passent `active: false` (décision P2 tranchée)
 - [ ] **A3 / P7 tranché** : **aucun produit créé**. Les lots Shop2Topup que MGS ne vend pas (10 UC, 8 100,

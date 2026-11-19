@@ -1,42 +1,62 @@
-"""PL-006-T09B-V1 — taux USDT/ariary lu sur P2P.Army, stocké et surveillé.
+"""PL-006-T09C-V1 — taux USDT/ariary lu sur P2P.Army, filtré, stocké et surveillé.
 
-SENS « BUY » / « SELL » — décision et preuve
-============================================
-Nous achetons de l'USDT avec des ariary : le prix qui compte est celui qu'un **acheteur** paie,
-donc la section `BUY`. La documentation P2P.Army (`https://p2p.army/en/p2p-api/docs`) ne définit
-pas ces deux mots en une phrase, mais son schéma d'historique les fixe : `buy` y est le
-**minimum** (« Minimum BUY price ») et `sell` le **maximum** (« Maximum SELL price »). Un minimum
-n'a de sens que du côté où l'on achète : `BUY` porte donc les offres de vente (le prix payé par
-l'acheteur), `SELL` les offres d'achat. C'est aussi la convention des places P2P (onglet « Acheter »).
-Risque assumé et vérifiable au premier relevé : comparer la valeur rendue à celle de l'onglet
-« Acheter » de l'application ; voir le rapport T09B.
+POURQUOI `get_p2p_order_book` ET PLUS `get_p2p_prices`
+=====================================================
+`get_p2p_prices` ne rend, par méthode de paiement, qu'un tableau de prix : aucune
+identité de vendeur, aucune limite, aucune qualité. On ne peut donc ni dédoublonner
+un vendeur, ni écarter une annonce inutilisable. La documentation expose
+`POST /get_p2p_order_book` (§ « P2P Ads (Standard) », `https://p2p.army/en/p2p-api/docs`),
+une ligne par annonce avec `price`, `min_fiat`, `max_fiat`, `payment_methods`,
+`user_id`, `adv_id`, `user_orders`, `user_rate`, `is_merchant` et `text` : c'est la
+seule source qui permette les filtres ci-dessous. Un seul appel sert donc au relevé
+et au diagnostic (`scripts/p2p_rate_dump.py`). Cet endpoint n'est pas réservé aux
+plans Pro (seul `/history/p2p_prices` l'est, d'après la même page).
 
-SOURCE ET FORME (documentation, aucune valeur inventée)
-=======================================================
-`POST https://p2p.army/v1/api/get_p2p_prices`, en-tête `X-APIKEY`, corps
-`{"market", "fiat", "asset", "limit"}` ; réponse `{"status": 1, "prices": [{"payment_method",
-"prices_BUY": ["…"], "prices_SELL": ["…"], …}]}`. Les annonces des opérateurs MVola / Orange
-Money / Airtel Money sont reconnues par leur code `payment_method` ; si ce filtre ne laisse pas
-assez d'annonces, on retombe sur toutes les méthodes (le `source` enregistré le dit).
+SENS « BUY » / « SELL »
+=======================
+Nous achetons de l'USDT avec des ariary : le prix qui compte est celui qu'un
+**acheteur** paie, donc `side=BUY`. Le schéma d'historique fixe `buy` comme
+**minimum** et `sell` comme **maximum** ; un minimum n'a de sens que du côté où
+l'on achète. Le carnet `BUY` rend les annonces de vente à ce prix.
+
+FILTRES — uniquement des champs documentés
+==========================================
+`method`    : `payment_methods` contient au moins une méthode de
+              `P2P_PAYMENT_METHODS` (défaut `mvola,orange`, sous-chaînes
+              insensibles à la casse). Airtel n'est plus retenu par défaut et il
+              n'y a **plus de repli** sur toutes les méthodes.
+`capacity`  : `min_fiat` ≤ `P2P_REF_AMOUNT_AR` (défaut 200 000) ≤ `max_fiat`.
+`quality`   : `user_rate` ≥ `P2P_MIN_COMPLETION_PCT` (défaut 90) et
+              `user_orders` ≥ `P2P_MIN_ORDERS` (défaut 50) ; champ absent vaut 0,
+              donc l'annonce est écartée faute de preuve.
+`duplicate` : une annonce par vendeur (`user_id`, sinon `adv_id`), la moins chère
+              gardée. Le dédoublonnage passe **après** les autres filtres : une
+              annonce moins chère mais inutilisable ne doit pas faire perdre le
+              vendeur.
+`price`     : `price` illisible ou ≤ 0 — une ligne inexploitable n'entre pas dans
+              la médiane (comptée à part pour que le total reste juste).
+`restricted`: **aucun filtre** — la documentation ne publie aucun drapeau de
+              restriction (identité, ancienneté, pays, annonce privée ou hors
+              ligne) ; seul `text` est du texte libre, donc rien n'est deviné et
+              `n_rejected["restricted"]` reste à 0, par transparence.
 
 RÈGLES
 ======
-1. Taux = **médiane des 5 meilleures annonces** `BUY` ; moins de 3 annonces valides ⇒ relevé refusé.
-2. Relevé refusé, taux hors 1 000–20 000 Ar/USDT, ou écart > 15 % avec le dernier bon taux ⇒ le
-   dernier bon taux reste en place, le problème est journalisé (jamais d'alerte pour un refus).
-3. Stockage dans `settings.p2p_rate` — clé **neuve**. `binance.rate_ar_per_usdt` n'est ni lu ni
-   écrit ici (il sert aux paiements crypto, `routers/crypto.py:27`).
-4. `sync_rate` est appelé par `order_maintenance.run_all()` : au plus une lecture toutes les
-   30 minutes, inerte sans `P2P_ARMY_API_KEY`, ne lève jamais.
-5. Plus de 60 minutes sans relevé valide ⇒ `p2p_rate_stale`, **une fois par épisode** ; le premier
-   relevé valide suivant envoie `p2p_rate_recovered`.
-6. Chaque relevé réussi vérifie la marge des six lots (même calcul que
-   `scripts/shop2topup_margin.py`, réutilisé) et alerte `margin_below_threshold` **une fois par lot
-   et par épisode** si la marge descend sous `MARGIN_ALERT_MIN_PCT` (défaut 0). Aucun prix n'est
-   modifié, aucun produit désactivé.
+1. Taux = **médiane des 5 meilleures annonces retenues** ; moins de 3 ⇒ relevé refusé.
+2. Relevé refusé, taux hors 1 000–20 000 Ar/USDT, ou écart > 15 % avec le dernier
+   bon taux ⇒ le dernier bon taux reste en place, le problème est journalisé.
+3. Stockage dans `settings.p2p_rate` — clé **neuve** — avec `n_ads` (retenues) et
+   `n_rejected` (par raison). `binance.rate_ar_per_usdt` n'est ni lu ni écrit ici.
+4. `sync_rate` est appelé par `order_maintenance.run_all()` : au plus une lecture
+   toutes les 30 minutes, inerte sans `P2P_ARMY_API_KEY`, ne lève jamais.
+5. Plus de 60 minutes sans relevé valide ⇒ `p2p_rate_stale`, une fois par épisode ;
+   le premier relevé valide suivant envoie `p2p_rate_recovered`.
+6. Chaque relevé réussi vérifie la marge des six lots (calcul de
+   `scripts/shop2topup_margin.py`, réutilisé) et alerte `margin_below_threshold`
+   une fois par lot et par épisode sous `MARGIN_ALERT_MIN_PCT` (défaut 0).
 
-La clé est lue uniquement par `os.environ["P2P_ARMY_API_KEY"]` et n'apparaît ni dans un journal,
-ni dans un message d'alerte, ni dans une exception.
+La clé est lue uniquement par `os.environ["P2P_ARMY_API_KEY"]` et n'apparaît ni dans
+un journal, ni dans un message d'alerte, ni dans une exception.
 """
 from __future__ import annotations
 
@@ -58,24 +78,34 @@ logger = logging.getLogger("mgs.p2p_rate")
 API_BASE = "https://p2p.army/v1/api"
 KEY_ENV = "P2P_ARMY_API_KEY"
 MARKET_ENV = "P2P_MARKET"
+METHODS_ENV = "P2P_PAYMENT_METHODS"
+REF_ENV = "P2P_REF_AMOUNT_AR"
+COMPLETION_ENV = "P2P_MIN_COMPLETION_PCT"
+ORDERS_ENV = "P2P_MIN_ORDERS"
 DEFAULT_MARKET = "binance"
+DEFAULT_METHODS = "mvola,orange"
+DEFAULT_REF_AMOUNT = "200000"
+DEFAULT_MIN_COMPLETION = "90"
+DEFAULT_MIN_ORDERS = "50"
 FIAT = "MGA"
 ASSET = "USDT"
 SIDE = "BUY"  # section « acheter de l'USDT » : le prix payé, voir l'en-tête
 TIMEOUT_S = 10.0
 
 MIN_ADS = 3
-TOP_ADS = 5
+BEST_ADS = 5     # médiane des 5 meilleures annonces retenues
+FETCH_ADS = 15   # annonces demandées au carnet (diagnostic inclus)
 MIN_RATE = 1_000.0
 MAX_RATE = 20_000.0
 MAX_DEVIATION_PCT = 15.0
 REFRESH_MINUTES = 30
 STALE_MINUTES = 60
 
+REASONS = ("method", "capacity", "restricted", "quality", "duplicate", "price")
+
 STORE_KEY = "store"
 RATE_FIELD = "p2p_rate"
 ALERT_URL = "/admin/catalogue"
-PAYMENT_WORDS = ("mvola", "orange", "airtel")
 MARGIN_ENV = "MARGIN_ALERT_MIN_PCT"
 
 
@@ -107,6 +137,26 @@ def market_name() -> str:
     return _env(MARKET_ENV) or DEFAULT_MARKET
 
 
+def _number(name: str, default: str, cast):
+    """Variable numérique ; valeur illisible ⇒ défaut documenté."""
+    try:
+        return cast(os.environ.get(name) or default)
+    except (TypeError, ValueError, InvalidOperation):
+        return cast(default)
+
+
+def payment_words() -> tuple[str, ...]:
+    """Méthodes utilisables : `P2P_PAYMENT_METHODS`, sous-chaînes insensibles à la casse."""
+    raw = os.environ.get(METHODS_ENV) or DEFAULT_METHODS
+    words = tuple(part.strip().lower() for part in raw.split(",") if part.strip())
+    return words or tuple(DEFAULT_METHODS.split(","))
+
+
+def ref_amount() -> Decimal:
+    """Montant de référence ariary que l'annonce doit pouvoir couvrir."""
+    return Decimal(str(_number(REF_ENV, DEFAULT_REF_AMOUNT, float)))
+
+
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -131,30 +181,77 @@ def margin_threshold() -> float:
         return 0.0
 
 
-def _prices(rows) -> list[Decimal]:
-    """Prix `BUY` valides (strictement positifs) de toutes les lignes fournies."""
-    found: list[Decimal] = []
-    for row in rows or []:
-        if not isinstance(row, dict):
+def _price(ad: dict) -> Decimal | None:
+    """Prix d'annonce (`price`, chaîne) ; `None` s'il est illisible ou nul."""
+    try:
+        value = Decimal(str(ad.get("price")).strip())
+    except (InvalidOperation, ValueError):
+        return None
+    return value if value > 0 else None
+
+
+def screen(ads) -> list[tuple[dict, Decimal | None, str | None]]:
+    """Une ligne par annonce : (annonce, prix retenu, motif de rejet ou `None`).
+
+    Ordre : prix lisible → méthode → capacité → qualité, puis doublons par vendeur
+    (l'annonce la moins chère de chaque vendeur survit). Voir l'en-tête du module
+    pour la justification de chaque champ et l'absence de filtre de restriction.
+    """
+    words = payment_words()
+    ref = ref_amount()
+    min_pct = _number(COMPLETION_ENV, DEFAULT_MIN_COMPLETION, float)
+    min_orders = _number(ORDERS_ENV, DEFAULT_MIN_ORDERS, float)
+
+    def why(ad: dict) -> str | None:
+        methods = [str(method).lower() for method in (ad.get("payment_methods") or [])]
+        if not any(word in method for method in methods for word in words):
+            return "method"
+        try:
+            low = Decimal(str(ad.get("min_fiat")).strip())
+            high = Decimal(str(ad.get("max_fiat")).strip())
+        except (InvalidOperation, ValueError):
+            return "capacity"
+        if not low <= ref <= high:
+            return "capacity"
+        try:
+            completion = float(ad.get("user_rate") or 0)
+            orders = float(ad.get("user_orders") or 0)
+        except (TypeError, ValueError):
+            return "quality"
+        return None if completion >= min_pct and orders >= min_orders else "quality"
+
+    rows: list[tuple[dict, Decimal | None, str | None]] = []
+    for ad in ads or []:
+        if not isinstance(ad, dict):
             continue
-        for raw in row.get("prices_BUY") or []:
-            try:
-                value = Decimal(str(raw).strip())
-            except (InvalidOperation, ValueError):
-                continue
-            if value > 0:
-                found.append(value)
-    return found
+        price = _price(ad)
+        rows.append((ad, price, "price" if price is None else why(ad)))
+
+    groups: dict[str, list[int]] = {}
+    for index, (ad, _price_value, reason) in enumerate(rows):
+        if reason is None:
+            groups.setdefault(str(ad.get("user_id") or ad.get("adv_id") or f"#{index}"),
+                               []).append(index)
+    for indexes in groups.values():
+        keep = min(indexes, key=lambda index: rows[index][1])
+        for index in indexes:
+            if index != keep:
+                rows[index] = (rows[index][0], None, "duplicate")
+    return rows
 
 
-def _wanted(row) -> bool:
-    method = str((row or {}).get("payment_method") or "").lower()
-    return any(word in method for word in PAYMENT_WORDS)
+def counts(rows) -> dict[str, int]:
+    """Nombre de rejets par raison ; les cinq motifs de l'énoncé restent à 0 s'ils sont vides."""
+    tally = {reason: 0 for reason in REASONS}
+    for _ad, _price_value, reason in rows or []:
+        if reason:
+            tally[reason] += 1
+    return tally
 
 
-async def fetch_rate(*, client: httpx.AsyncClient | None = None,
-                     market: str | None = None, now: datetime | None = None) -> dict:
-    """Un relevé P2P.Army ; lève `RateRefused` (catégorie seule) ou une erreur de transport."""
+async def fetch_ads(*, client: httpx.AsyncClient | None = None,
+                    market: str | None = None) -> list[dict]:
+    """Annonces brutes du carnet `BUY` (aucun filtre) ; lève `RateRefused` ou le transport."""
     key = api_key()
     if not key:
         raise RateRefused("api_key_missing")
@@ -163,9 +260,10 @@ async def fetch_rate(*, client: httpx.AsyncClient | None = None,
     client = client or httpx.AsyncClient(timeout=TIMEOUT_S)
     try:
         response = await client.post(
-            f"{API_BASE}/get_p2p_prices",
+            f"{API_BASE}/get_p2p_order_book",
             headers={"X-APIKEY": key},
-            json={"market": market, "fiat": FIAT, "asset": ASSET, "limit": TOP_ADS})
+            json={"market": market, "fiat": FIAT, "asset": ASSET,
+                  "side": SIDE, "limit": FETCH_ADS})
         response.raise_for_status()
         body = response.json()
     finally:
@@ -173,21 +271,25 @@ async def fetch_rate(*, client: httpx.AsyncClient | None = None,
             await client.aclose()
     if not isinstance(body, dict) or int(body.get("status") or 0) != 1:
         raise RateRefused("api_status")
-    rows = body.get("prices") or []
-    prices = _prices([row for row in rows if _wanted(row)])
-    mode = "+".join(PAYMENT_WORDS)
-    if len(prices) < MIN_ADS:  # filtre opérateur insuffisant : toutes les méthodes, en le disant
-        prices = _prices(rows)
-        mode = "all"
-    if len(prices) < MIN_ADS:
+    return [row for row in (body.get("ads") or []) if isinstance(row, dict)]
+
+
+async def fetch_rate(*, client: httpx.AsyncClient | None = None,
+                     market: str | None = None, now: datetime | None = None) -> dict:
+    """Un relevé filtré ; lève `RateRefused` (catégorie seule) ou une erreur de transport."""
+    market = market or market_name()
+    rows = screen(await fetch_ads(client=client, market=market))
+    kept = sorted(price for _ad, price, reason in rows if reason is None)
+    rejected = counts(rows)
+    logger.info("relevé P2P %s : %s annonces retenues, rejets %s", market, len(kept), rejected)
+    if len(kept) < MIN_ADS:
         raise RateRefused("not_enough_ads")
-    best = sorted(prices)[:TOP_ADS]
-    rate = float(median(best))
+    rate = float(median(kept[:BEST_ADS]))
     if not MIN_RATE <= rate <= MAX_RATE:
         raise RateRefused("out_of_range")
     return {"rate": round(rate, 2), "fetched_at": _iso(now or _now()),
-            "source": f"p2p_army:{market}:{SIDE}:{mode}",
-            "n_ads": len(prices), "market": market, "side": SIDE}
+            "source": f"p2p_army:{market}:{SIDE}:{'+'.join(payment_words())}",
+            "n_ads": len(kept), "n_rejected": rejected, "market": market, "side": SIDE}
 
 
 def _deviation(rate: float, previous) -> float:
@@ -300,7 +402,7 @@ async def sync_rate(now: datetime | None = None, client: httpx.AsyncClient | Non
 
     try:
         await _set({key: info[key] for key in
-                    ("rate", "fetched_at", "source", "n_ads", "market", "side")})
+                    ("rate", "fetched_at", "source", "n_ads", "n_rejected", "market", "side")})
     except Exception as exc:  # type: ignore[attr-defined]
         logger.warning("taux P2P non enregistré (%s)", type(exc).__name__)
         return {"p2p_rate": "store_error"}
