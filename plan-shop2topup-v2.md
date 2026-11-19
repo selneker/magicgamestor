@@ -543,6 +543,16 @@ FazerCards, aucun produit n'est désactivé.
       `OK`/`PERTE`). Essai à blanc sans réseau par défaut ; `--live` = au plus 3 GET.
       **Aucun relevé réel n'a été fait** : c'est le propriétaire qui lance `--live` avec son taux et ses
       frais, avant toute décision de prix.
+- [x] **préalable T09B (19/11/2026)** : `backend/services/p2p_rate.py` lit le taux USDT/MGA sur
+      P2P.Army (section `BUY`, médiane des 5 meilleures annonces, filtre MVola / Orange Money /
+      Airtel Money), le stocke dans `settings.p2p_rate` (clé neuve, réglage Binance
+      `rate_ar_per_usdt` non touché), le rafraîchit au plus toutes les 30 min dans
+      `order_maintenance.run_all()`, alerte `p2p_rate_stale` / `p2p_rate_recovered` (60 min) et
+      `margin_below_threshold` (`MARGIN_ALERT_MIN_PCT`) **une fois par lot et par épisode**.
+      Aucun prix modifié, aucun produit désactivé. **Aucun appel réel n'a été fait** : transport
+      simulé d'après la documentation ; les trois événements sont dans `telegram.py`.
+- [x] **T09B script (19/11/2026)** : `--rate auto` lit le taux stocké, ou l'interroge sur P2P.Army
+      avec `--live` ; le reste du script ne change pas.
 - [ ] T09 exécutée **après** le Checkpoint B, jamais avant (A2)
 - [ ] les 8 lots UC sans équivalent passent `active: false` (décision P2 tranchée)
 - [ ] **A3 / P7 tranché** : **aucun produit créé**. Les lots Shop2Topup que MGS ne vend pas (10 UC, 8 100,

@@ -22,7 +22,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from core.db import db
-from services import availability_sync, notifications, proofs, stock, stock_signals
+from services import availability_sync, notifications, p2p_rate, proofs, stock, stock_signals
 from services.providers.base import OrderStatus
 
 logger = logging.getLogger("mgs.order_maintenance")
@@ -523,7 +523,9 @@ async def run_all(now: datetime | None = None) -> dict:
                        # PL-006-T06 : relevé de disponibilité publiée, appliqué aux lots rattachés.
                        ("stock_availability", availability_sync.run_once),
                        # PL-006-T08C-V1 : statuts des SEULES unités Shop2Topup, dans le budget.
-                       ("shop2topup_reconcile", reconcile_shop2topup_units)):
+                       ("shop2topup_reconcile", reconcile_shop2topup_units),
+                       # PL-006-T09B-V1 : taux USDT/ariary P2P.Army, au plus toutes les 30 min.
+                       ("p2p_rate", p2p_rate.sync_rate)):
         try:
             result.update(await func(moment))
         except Exception as exc:  # déjà protégé, ceinture et bretelles

@@ -40,6 +40,9 @@ DEFAULT_EVENTS = frozenset({
     "stock_list_suspect",
     "stock_sync_unhealthy",
     "stock_sync_recovered",
+    "p2p_rate_stale",
+    "p2p_rate_recovered",
+    "margin_below_threshold",
     "test",
 })
 

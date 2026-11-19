@@ -8,6 +8,7 @@ import asyncio
 import importlib.util
 from decimal import Decimal
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -17,6 +18,7 @@ _spec = importlib.util.spec_from_file_location("shop2topup_margin", SCRIPT_PATH)
 margin = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(margin)
 
+from services import p2p_rate  # noqa: E402
 from services.providers.shop2topup_adapter import Shop2TopupProvider  # noqa: E402
 
 
@@ -167,3 +169,64 @@ def test_rate_obligatoire_et_taux_positif(monkeypatch, capsys):
 
     assert margin.main(["--rate", "0"]) == 2
     assert "taux invalide" in capsys.readouterr().out
+
+
+def test_rate_auto_lit_le_taux_stocke(monkeypatch):
+    """`--rate auto` sans `--live` : le taux de la maintenance, aucun appel fournisseur."""
+    monkeypatch.setenv("SHOP2TOPUP_API_KEY", "sentinelle-cle")
+    provider = FakeProvider()
+    lines = []
+    stored = AsyncMock(return_value={"rate": 4500.0,
+                                     "fetched_at": "2026-11-19T12:00:00+00:00"})
+
+    with patch.object(p2p_rate, "stored", stored):
+        code, output = lines_of(run(margin.run(rate="auto", provider=provider,
+                                               out=lines.append)), lines)
+
+    assert code == 0
+    assert "taux stocké" in output and "4 500" in output
+    assert "lots en perte :" in output
+    assert provider.calls == 0
+
+
+def test_rate_auto_live_interroge_p2p_army(monkeypatch):
+    monkeypatch.setenv("SHOP2TOPUP_API_KEY", "sentinelle-cle")
+    info = {"rate": 5100.0, "n_ads": 7, "source": "p2p_army:binance:BUY:all"}
+    lines = []
+
+    with patch.object(p2p_rate, "fetch_rate", AsyncMock(return_value=info)):
+        code, output = lines_of(run(margin.run(rate="auto", live=True,
+                                               provider=FakeProvider({"13": "0.85"}),
+                                               out=lines.append)), lines)
+
+    assert code == 0
+    assert "taux P2P.Army" in output and "5 100" in output
+    small = line_for(output, "60 UC")
+    assert "4 335" in small and "665" in small  # 0,85 × 5 100 = 4 335 Ar
+
+
+def test_rate_auto_sans_taux_stocke_arrete(monkeypatch):
+    monkeypatch.setenv("SHOP2TOPUP_API_KEY", "sentinelle-cle")
+    lines = []
+
+    with patch.object(p2p_rate, "stored", AsyncMock(return_value={})):
+        code, output = lines_of(run(margin.run(rate="auto", provider=FakeProvider(),
+                                               out=lines.append)), lines)
+
+    assert code == 2
+    assert "aucun taux stocké" in output
+
+
+def test_rate_auto_live_refus_arrete_avant_le_catalogue(monkeypatch):
+    monkeypatch.setenv("SHOP2TOPUP_API_KEY", "sentinelle-cle")
+    provider = FakeProvider({"13": "0.85"})
+    lines = []
+
+    with patch.object(p2p_rate, "fetch_rate",
+                      AsyncMock(side_effect=p2p_rate.RateRefused("not_enough_ads"))):
+        code, output = lines_of(run(margin.run(rate="auto", live=True, provider=provider,
+                                               out=lines.append)), lines)
+
+    assert code == 2
+    assert "not_enough_ads" in output
+    assert provider.calls == 0

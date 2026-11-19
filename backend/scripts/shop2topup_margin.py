@@ -28,9 +28,13 @@ MODE D'EMPLOI
         python backend/scripts/shop2topup_margin.py --rate 4500 --fee-pct 2 --live
     unset SHOP2TOPUP_API_KEY
 
+`--rate auto` (PL-006-T09B-V1) lit le taux stocké par la maintenance (`settings.p2p_rate`) ; avec
+`--live`, il interroge P2P.Army à la place (une requête POST, clé `P2P_ARMY_API_KEY`). Un relevé
+P2P refusé arrête le script avant tout appel au catalogue.
+
 `MONGO_URL` / `DB_NAME` ne servent qu'à l'import : `services.providers` charge `core.db` (client
 Motor paresseux) et `core.seed` relit `UC_PACKS`. Ce script n'ouvre aucune connexion et n'exécute
-aucune requête en base.
+aucune requête en base — sauf `--rate auto` sans `--live`, qui lit le seul réglage `p2p_rate`.
 
 GARDE-FOUS
 ==========
@@ -47,7 +51,7 @@ import argparse
 import asyncio
 import os
 import sys
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
@@ -158,7 +162,8 @@ def _error_label(exc: Exception) -> str:
 
 def _report(rows: list[dict], rate: Decimal, fee_pct: Decimal, live: bool, out) -> int:
     out(f"PL-006-T09A-V1 — marge par lot Shop2Topup — {GAME_ID} — "
-        + ("RELEVÉ RÉEL (GET uniquement)" if live else "ESSAI À BLANC (prix FICTIFS, aucun réseau)"))
+        + ("RELEVÉ RÉEL (GET uniquement)" if live
+           else "ESSAI À BLANC (prix FICTIFS, aucun appel fournisseur)"))
     out(f"taux : 1 USDT = {_ar(rate)} Ar · frais d'achat d'USDT : {fee_pct} % · "
         f"coût = revendeur × taux × (1 + frais/100)")
     out("prix MGS relus dans core/seed.py:9-12 · marge % du prix MGS · SKU = item_id du manifeste T04")
@@ -175,12 +180,52 @@ def _report(rows: list[dict], rate: Decimal, fee_pct: Decimal, live: bool, out) 
     return 0
 
 
-async def run(*, rate: Decimal, fee_pct: Decimal = Decimal(0), live: bool = False,
+async def _resolve_rate(raw, live: bool, out) -> Decimal | None:
+    """`--rate` numérique, ou `auto` : taux stocké (base) ou, avec `--live`, relevé P2P.Army."""
+    text = str(raw).strip()
+    if text.lower() != "auto":
+        try:
+            value = Decimal(text)
+        except InvalidOperation:
+            out("taux invalide : --rate attend un nombre strictement positif ou « auto ».")
+            return None
+        if value <= 0:
+            out("taux invalide : --rate doit être un nombre strictement positif.")
+            return None
+        return value
+    from services import p2p_rate  # import différé : `p2p_rate` réutilise ce module
+
+    if live:
+        try:
+            info = await p2p_rate.fetch_rate()
+        except Exception as exc:
+            reason = getattr(exc, "reason", None) or type(exc).__name__
+            out(f"taux P2P illisible ({reason}) — aucun chiffre affiché.")
+            return None
+        out(f"taux P2P.Army : 1 USDT = {info['rate']:.2f} Ar · {info['n_ads']} annonces · "
+            f"{info['source']}")
+        return Decimal(str(info["rate"]))
+    try:
+        saved = await p2p_rate.stored()
+    except Exception as exc:
+        out(f"taux stocké illisible ({type(exc).__name__}) — aucun chiffre affiché.")
+        return None
+    value = saved.get("rate")
+    if not value:
+        out("aucun taux stocké : lancer la maintenance d'abord, ou --rate auto --live.")
+        return None
+    out(f"taux stocké : 1 USDT = {float(value):.2f} Ar · "
+        f"relevé {saved.get('fetched_at') or 'inconnu'}")
+    return Decimal(str(value))
+
+
+async def run(*, rate: Decimal | str, fee_pct: Decimal = Decimal(0), live: bool = False,
               provider=None, out=print) -> int:
     """Exécute le relevé. `provider` n'est fourni que par les tests (transport bouchonné)."""
-    if rate <= 0:
-        out("taux invalide : --rate doit être un nombre strictement positif.")
+    resolved = await _resolve_rate(rate, live, out)
+    if resolved is None:
         return 2
+    rate = resolved
     if not live:
         return _report(build_rows(DRY_RUN_PRICES, rate, fee_pct), rate, fee_pct, live, out)
 
@@ -201,8 +246,9 @@ async def run(*, rate: Decimal, fee_pct: Decimal = Decimal(0), live: bool = Fals
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Marge par lot Shop2Topup, en lecture seule (essai à blanc par défaut).")
-    parser.add_argument("--rate", required=True, type=Decimal,
-                        help="taux de change : ariary par USDT (aucun taux codé en dur)")
+    parser.add_argument("--rate", required=True,
+                        help="taux : ariary par USDT, ou « auto » (taux stocké ; avec --live, "
+                             "relevé P2P.Army). Aucun taux n'est codé en dur")
     parser.add_argument("--fee-pct", default=Decimal(0), type=Decimal,
                         help="frais de votre achat d'USDT, en pourcentage (défaut 0)")
     parser.add_argument("--live", action="store_true",
