@@ -66,7 +66,7 @@ export function CheckoutSheet({ open, onOpenChange, busy = false, keepMounted = 
     }
   }, [keepMounted, open]);
 
-  const overlayCls = `fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 motion-reduce:animate-none ${hidden ? "invisible" : ""}`;
+  const overlayCls = `fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 motion-reduce:animate-none ${hidden ? "invisible" : ""}`;
   const contentCls = `fixed z-50 flex flex-col outline-none data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom motion-reduce:animate-none
     inset-x-0 bottom-0 max-h-[calc(100dvh-48px)] rounded-t-[24px] border-t border-[color:var(--rule)] bg-card
     lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-1/2 lg:w-[480px] lg:max-h-[80vh] lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-[24px] data-[state=closed]:lg:slide-out-to-bottom

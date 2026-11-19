@@ -244,7 +244,7 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
             minLength={f.min_length || undefined} maxLength={f.max_length || MAX_FIELD_FALLBACK} autoComplete="off"
             className="mt-1 h-12 rounded-[12px] num"
           />
-          {errors[f.key] && (values || {})[f.key] && <p id={`identity-err-${f.key}`} className="mt-1 text-xs font-semibold text-red-600" data-testid={`identity-field-error-${f.key}`}>{fieldMessage(errors[f.key], f)}</p>}
+          {errors[f.key] && (values || {})[f.key] && <p id={`identity-err-${f.key}`} className="mt-1 text-xs font-semibold text-destructive" data-testid={`identity-field-error-${f.key}`}>{fieldMessage(errors[f.key], f)}</p>}
         </div>
       ))}
       {showHelp && primary && primary.min_length && (
@@ -294,7 +294,7 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         // encadré vert ; libellés, textes et testids conservés (contrats S2/S4).
         <div role="status" className="mt-3" data-testid="identity-verify-valid">
           <p className="flex flex-wrap items-center gap-x-2 text-sm font-bold">
-            <CheckCircle2 className="h-[18px] w-[18px] shrink-0 text-emerald-600" aria-hidden="true" />
+            <CheckCircle2 className="h-[18px] w-[18px] shrink-0 text-[color:var(--status-done)]" aria-hidden="true" />
             <span className="min-w-0" data-testid="identity-verify-player-name">{t("checkout.verifyPlayerName")} : {state.name || "—"}</span>
           </p>
           <p className="mt-1 pl-[26px] text-xs text-muted-foreground">
@@ -322,7 +322,7 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
         // tentatives, fournisseur indisponible, verdict inconnu) : le repli
         // manuel est le bouton « Vérifier » ci-dessus, toujours visible —
         // AUCUN nouvel essai automatique.
-        <div role="alert" className="flex items-start gap-1.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700" data-testid="identity-verify-error">
+        <div role="alert" className="flex items-start gap-1.5 rounded-xl border border-[color:var(--status-refund)] bg-[color-mix(in_srgb,var(--status-refund)_12%,transparent)] p-3 text-sm text-[color:var(--status-refund)]" data-testid="identity-verify-error">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <p className="font-bold" data-testid="identity-verify-error-unavailable">{t(state.key)}</p>
         </div>
