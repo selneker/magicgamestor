@@ -78,31 +78,31 @@ export default function AuthPage({ mode = "login" }) {
       <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("auth.welcome")}</p>
       <h1 className="font-display text-[26px] font-bold leading-tight text-foreground">{mode === "login" ? t("auth.login") : t("auth.register")}</h1>
       <p className="mt-1 text-muted-foreground">{mode === "login" ? t("auth.loginSub") : t("auth.registerSub")}</p>
-      <div className="mt-5 rounded-[2rem] border border-slate-100 bg-white p-5 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-        <Button type="button" variant="outline" onClick={() => startGoogleLogin(from)} data-testid="google-login-button" className="h-11 w-full rounded-full font-semibold dark:text-ink">
+      <div className="mt-5 rounded-[2rem] border border-[color:var(--rule)] bg-card p-5">
+        <Button type="button" variant="outline" onClick={() => startGoogleLogin(from)} data-testid="google-login-button" className="h-11 w-full rounded-full font-semibold">
           <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A11 11 0 0 0 1 12c0 1.77.42 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
           {t("auth.google")}
         </Button>
-        <div className="my-4 flex items-center gap-3 text-xs font-semibold uppercase text-muted-foreground dark:text-slate-600"><span className="h-px flex-1 bg-slate-200" />{t("auth.or")}<span className="h-px flex-1 bg-slate-200" /></div>
+        <div className="my-4 flex items-center gap-3 text-xs font-semibold uppercase text-muted-foreground"><span className="h-px flex-1 bg-[color:var(--rule)]" />{t("auth.or")}<span className="h-px flex-1 bg-[color:var(--rule)]" /></div>
         <form onSubmit={submit} className="space-y-3.5">
-          {mode === "register" && <div><label htmlFor="name" className="text-sm font-semibold text-slate-700">{t("auth.name")}</label><Input id="name" data-testid="name-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required minLength={2} className="mt-1 h-11 rounded-xl dark:text-ink" /></div>}
-          <div><label htmlFor="email" className="text-sm font-semibold text-slate-700">{t("auth.email")}</label><Input id="email" type="email" data-testid="email-input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required className="mt-1 h-11 rounded-xl dark:text-ink" /></div>
+          {mode === "register" && <div><label htmlFor="name" className="text-sm font-semibold text-foreground">{t("auth.name")}</label><Input id="name" data-testid="name-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required minLength={2} className="mt-1 h-11 rounded-xl" /></div>}
+          <div><label htmlFor="email" className="text-sm font-semibold text-foreground">{t("auth.email")}</label><Input id="email" type="email" data-testid="email-input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required className="mt-1 h-11 rounded-xl" /></div>
           <div>
-            <label htmlFor="password" className="text-sm font-semibold text-slate-700">{t("auth.password")}</label>
+            <label htmlFor="password" className="text-sm font-semibold text-foreground">{t("auth.password")}</label>
             <div className="relative mt-1">
-              <Input id="password" type={showPassword ? "text" : "password"} data-testid="password-input" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={mode === "register" ? 8 : 6} className="h-11 rounded-xl pr-12 dark:text-ink" />
-              <button type="button" onClick={() => setShowPassword((s) => !s)} aria-label={showPassword ? t("account.hidePassword") : t("account.showPassword")} title={showPassword ? t("account.hidePassword") : t("account.showPassword")} className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-muted-foreground dark:text-slate-600 transition-colors hover:text-foreground dark:hover:text-ink focus:outline-none focus-visible:text-foreground dark:focus-visible:text-ink" data-testid="password-input-eye">
+              <Input id="password" type={showPassword ? "text" : "password"} data-testid="password-input" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={mode === "register" ? 8 : 6} className="h-11 rounded-xl pr-12" />
+              <button type="button" onClick={() => setShowPassword((s) => !s)} aria-label={showPassword ? t("account.hidePassword") : t("account.showPassword")} title={showPassword ? t("account.hidePassword") : t("account.showPassword")} className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:text-foreground" data-testid="password-input-eye">
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
           {mode === "login" && (
             <div className="flex items-center justify-between gap-3">
-              <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-slate-600" data-testid="remember-label">
+              <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground" data-testid="remember-label">
                 <Checkbox checked={form.remember} onCheckedChange={(v) => setForm({ ...form, remember: v === true })} data-testid="remember-checkbox" aria-label={t("auth.remember")} />
                 {t("auth.remember")}
               </label>
-              <Link to="/mot-de-passe-oublie" className="text-xs font-medium text-muted-foreground dark:text-slate-600 hover:text-foreground dark:hover:text-ink" data-testid="login-forgot-password-link">{t("auth.forgot")}</Link>
+              <Link to="/mot-de-passe-oublie" className="text-xs font-medium text-muted-foreground hover:text-foreground" data-testid="login-forgot-password-link">{t("auth.forgot")}</Link>
             </div>
           )}
           {showCaptcha && <CaptchaWidget key={captchaKey} ref={captcha.ref} onVerify={captcha.onVerify} onError={captcha.onError} visible={captchaRequired} />}
@@ -114,9 +114,9 @@ export default function AuthPage({ mode = "login" }) {
           {error && <p role="alert" className="rounded-xl bg-destructive p-3 text-sm font-semibold text-destructive-foreground" data-testid="auth-error">{error}</p>}
           <Button type="submit" disabled={busy || (captcha.enabled && showCaptcha && !captcha.ready)} className="h-11 w-full rounded-full text-base font-bold" data-testid="auth-submit">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.submit")}</Button>
         </form>
-        <p className="mt-4 text-center text-sm text-slate-500">
+        <p className="mt-4 text-center text-sm text-muted-foreground">
           {mode === "login" ? t("auth.noAccount") : t("auth.hasAccount")}{" "}
-          <Link to={mode === "login" ? "/inscription" : "/connexion"} state={location.state} className="font-semibold text-foreground dark:text-ink" data-testid="switch-auth-mode">{mode === "login" ? t("auth.register") : t("auth.login")}</Link>
+          <Link to={mode === "login" ? "/inscription" : "/connexion"} state={location.state} className="font-semibold text-foreground" data-testid="switch-auth-mode">{mode === "login" ? t("auth.register") : t("auth.login")}</Link>
         </p>
       </div>
     </div>

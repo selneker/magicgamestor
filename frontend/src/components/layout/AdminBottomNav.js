@@ -94,8 +94,7 @@ export function AdminBottomNav() {
           ref={sheetRef}
           aria-label={t("admin.more")}
           data-testid="admin-more-sheet"
-          className="fixed inset-x-0 bottom-0 z-[61] border bg-card text-card-foreground pb-[max(1rem,env(safe-area-inset-bottom))] lg:hidden"
-          style={{ borderRadius: "16px 16px 0 0" }}
+          className="fixed inset-x-0 bottom-0 z-[61] rounded-t-[16px] border bg-card text-card-foreground pb-[max(1rem,env(safe-area-inset-bottom))] lg:hidden"
         >
           <header className="flex items-center justify-between gap-3 border-b bg-foreground px-4 py-3 text-background">
             <p className="font-display text-sm font-semibold uppercase tracking-tight">{t("admin.more")}</p>

@@ -94,7 +94,7 @@ export default function Games() {
 // qu'une GameCard, pour éviter tout saut de déterminisme/CLers au chargement.
 function GameCardSkeleton() {
   return (
-    <div className="flex flex-col gap-2.5 rounded-[24px] border border-[color:var(--rule-strong)] bg-card p-3" data-testid="game-card-skeleton">
+    <div className="mgs-card flex flex-col gap-2.5 rounded-[28px] border border-[color:var(--card-border)] bg-[color:var(--card-surface)] p-3" data-testid="game-card-skeleton">
       <Skeleton className="aspect-square w-full rounded-[20px]" />
       <Skeleton className="h-4 w-3/4 rounded-full" />
       <Skeleton className="h-3 w-full rounded-full" />

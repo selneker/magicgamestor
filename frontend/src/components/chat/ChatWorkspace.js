@@ -56,7 +56,7 @@ export const ChatWorkspace = ({ admin = false }) => {
   };
   const changed = useCallback(() => { load(); refreshUnread(); }, [load, refreshUnread]);
   return <div data-testid="chat-workspace">
-    {error && <div role="alert" className="mb-3 rounded-xl border bg-card p-3" data-testid="chat-list-error"><p className="text-sm text-rose-600">{error}</p><Button variant="ghost" size="sm" onClick={() => load()} data-testid="chat-list-retry">{t("chat.retry")}</Button></div>}
+    {error && <div role="alert" className="mb-3 rounded-xl border bg-card p-3" data-testid="chat-list-error"><p className="text-sm text-destructive">{error}</p><Button variant="ghost" size="sm" onClick={() => load()} data-testid="chat-list-retry">{t("chat.retry")}</Button></div>}
     {loading ? <p data-testid="chat-loading" className="p-6 text-muted-foreground">{t("chat.loadingConversations")}</p> : <div className={admin ? "md:grid md:h-[var(--chat-h,auto)] md:grid-cols-[300px_minmax(0,1fr)] md:gap-4" : ""}>
       {admin && <aside data-testid="chat-conversations" className={`space-y-2 rounded-2xl border bg-card p-3 md:h-full md:min-h-0 md:overflow-y-auto ${selected ? "hidden md:block" : ""}`}>
         {conversations.length === 0 && <p className="p-3 text-sm text-muted-foreground" data-testid="chat-admin-empty">{t("chat.empty")}</p>}

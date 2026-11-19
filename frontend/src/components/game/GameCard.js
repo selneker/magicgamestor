@@ -43,17 +43,23 @@ export function GameCard({ game, className = "", testId }) {
   // Prix minimum : affiché seulement si le backend l'envoie déjà — à ce jour
   // il n'existe pas (aucun nouvel appel API autorisé).
   const minPrice = game.min_price;
+  // La rangée du bas n'est rendue QUE si une donnée réelle existe (note ≥ 5 avis
+  // ou prix minimum) : sinon aucun espace vide inutile en bas de carte.
+  const r = Number(game.rating);
+  const rc = Number(game.review_count);
+  const hasRating = Number.isFinite(r) && r > 0 && Number.isFinite(rc) && rc >= 5;
+  const showBottom = hasRating || minPrice != null;
   return (
     <Link
       to={`/boutique?game=${game.id}`}
       onClick={() => selectGame(game.id)}
       data-testid={testId || `game-card-${game.slug || game.id}`}
-      className={`group relative flex min-h-0 flex-col gap-2.5 overflow-hidden rounded-[24px] border border-[color:var(--rule-strong)] bg-card p-3 transition-transform duration-150 motion-reduce:transition-none hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand-lime)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:hsl(var(--background))] ${className}`}
+      className={`mgs-card group relative flex min-h-0 flex-col gap-2.5 overflow-hidden rounded-[28px] border border-[color:var(--card-border)] bg-[color:var(--card-surface)] p-3 text-[color:var(--card-ink)] shadow-none transition duration-200 ease-out hover:-translate-y-1 hover:shadow-[4px_4px_0_var(--card-shadow)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--card-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:hsl(var(--background))] ${className}`}
     >
       {/* Vignette 1:1 : ratio réservé (aspect-square) donc aucun saut de
           mise en page, largeur/hauteur déclarées sur l'img. Decorative :
           le nom est lisible juste dessous → alt="". */}
-      <span className="block w-full aspect-square overflow-hidden rounded-[20px] border border-[color:var(--rule)] bg-primary text-primary-foreground">
+      <span className="block w-full aspect-square overflow-hidden rounded-[20px] border border-[color:var(--card-border)] bg-[color:hsl(var(--muted))] text-[color:var(--card-ink)]">
         {game.icon_url && !broken ? (
           <img
             src={game.icon_url}
@@ -80,20 +86,22 @@ export function GameCard({ game, className = "", testId }) {
             {game.name}
           </span>
         )}
-        {desc && <span className="line-clamp-2 text-xs leading-snug text-muted-foreground">{desc}</span>}
+        {desc && <span className="line-clamp-2 text-xs leading-snug text-[color:var(--card-ink-muted)]">{desc}</span>}
       </span>
       {/* Rangée du bas : seulement du réel. Étoiles si la note + avis
           réels existent (≥ 5 avis), prix dès X si `min_price` existe.
           flex-wrap : à 320 px (2 colonnes ≈ 146 px par carte), le prix
           passe sous les étoiles au lieu d'être coupé. */}
-      <span className="mt-auto flex min-h-0 flex-wrap items-center justify-between gap-x-2 gap-y-0.5 px-1 pb-1">
-        <RatingStars rating={game.rating} reviewCount={game.review_count} />
-        {minPrice != null && (
-          <span className="shrink-0 text-[11px] font-semibold tabular-nums text-muted-foreground">
-            {lang === "en" ? "from" : "dès"} {formatAr(minPrice, lang)}
-          </span>
-        )}
-      </span>
+      {showBottom && (
+        <span className="mt-auto flex min-h-0 flex-wrap items-center justify-between gap-x-2 gap-y-0.5 px-1 pb-1">
+          <RatingStars rating={game.rating} reviewCount={game.review_count} />
+          {minPrice != null && (
+            <span className="shrink-0 text-[11px] font-semibold tabular-nums text-[color:var(--card-ink-muted)]">
+              {lang === "en" ? "from" : "dès"} {formatAr(minPrice, lang)}
+            </span>
+          )}
+        </span>
+      )}
     </Link>
   );
 }

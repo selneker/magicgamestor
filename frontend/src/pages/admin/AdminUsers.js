@@ -157,7 +157,7 @@ export default function AdminUsers() {
                   <Button size="sm" variant="outline" className="rounded-full" disabled={busy} onClick={() => revoke(u)} data-testid={`user-revoke-${u.user_id}`}><UserCog className="mr-1 h-3.5 w-3.5" />{t("admin.userMgmt.revokeAccess")}</Button>
                 )}
                 {u.role !== "super_admin" && (
-                  <Button size="icon" variant="ghost" className="rounded-full text-muted-foreground hover:text-rose-600" disabled={busy} aria-label={t("admin.delete")} onClick={() => remove(u)} data-testid={`user-delete-${u.user_id}`}><Trash2 className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" className="rounded-full text-muted-foreground hover:text-destructive" disabled={busy} aria-label={t("admin.delete")} onClick={() => remove(u)} data-testid={`user-delete-${u.user_id}`}><Trash2 className="h-4 w-4" /></Button>
                 )}
               </div>
             </div>

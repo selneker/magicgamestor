@@ -96,7 +96,7 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
   const [open, setOpen] = useState(false);
   const itemsText = o.items.map((i) => `${i.quantity}× ${i.name}${i.season_name ? ` · ${i.season_name}` : ""}${i.week_key ? ` · sem. ${i.week_key}` : ""}`).join(", ");
   return (
-    <article data-testid={`admin-order-${o.order_number}`} className="rounded-[16px] border border-[color:var(--rule)] bg-white px-4 py-[14px] sm:grid sm:grid-cols-[215px_1fr_auto] sm:items-start sm:gap-x-[18px] sm:gap-y-0">
+    <article data-testid={`admin-order-${o.order_number}`} className="rounded-[16px] border border-[color:var(--rule)] bg-card px-4 py-[14px] sm:grid sm:grid-cols-[215px_1fr_auto] sm:items-start sm:gap-x-[18px] sm:gap-y-0">
       {/* En-tête. Mobile : la tête du bloc repliable — un <button> PUR (la
           maquette ne met PAS d'icône de copie dans l'en-tête fermé, ce qui
           évite aussi d'imbriquer un bouton de copie dans le bouton de
@@ -115,8 +115,8 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
       >
         <span className="flex items-start justify-between gap-2.5">
           <span className="block min-w-0">
-            <span className="num block truncate text-[14px] font-bold text-foreground dark:text-ink">{o.order_number}</span>
-            <span className="num mt-[2px] block text-[11px] tracking-[0.04em] text-muted-foreground dark:text-slate-600">{`${new Date(o.created_at).toLocaleDateString("fr-FR")} ${new Date(o.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`}</span>
+            <span className="num block truncate text-[14px] font-bold text-foreground">{o.order_number}</span>
+            <span className="num mt-[2px] block text-[11px] tracking-[0.04em] text-muted-foreground">{`${new Date(o.created_at).toLocaleDateString("fr-FR")} ${new Date(o.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`}</span>
             <span className="mt-[7px] block leading-none"><StatusPill status={o.status} small /></span>
           </span>
           <span aria-hidden="true" className="mt-0.5 inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[8px] border border-[color:var(--rule-strong)] bg-background text-foreground">
@@ -130,11 +130,11 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
           produit ↔ date (marge 2 px), paiement/email ↔ badge de statut
           (marge 3 px, hauteurs de ligne fixées à 21/17/21 px). */}
       <div className="hidden min-w-0 sm:col-start-1 sm:row-start-1 sm:row-span-2 sm:block">
-        <span className="flex items-center gap-1.5 text-[14px] font-bold text-foreground dark:text-ink">
+        <span className="flex items-center gap-1.5 text-[14px] font-bold text-foreground">
           <span className="num truncate">{o.order_number}</span>
           <CopyButton small value={o.order_number} label="n° de commande" testId={`copy-order-${o.order_number}`} />
         </span>
-        <span className="num mt-[2px] block text-[11px] leading-[17px] tracking-[0.04em] text-muted-foreground dark:text-slate-600">{new Date(o.created_at).toLocaleString("fr-FR")}</span>
+        <span className="num mt-[2px] block text-[11px] leading-[17px] tracking-[0.04em] text-muted-foreground">{new Date(o.created_at).toLocaleString("fr-FR")}</span>
         <span className="mt-[7px] block leading-none"><StatusPill status={o.status} small /></span>
       </div>
 
@@ -143,8 +143,8 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
           est rendu dans la pile de la colonne 2 (copie bureau), visible
           uniquement là. */}
       <div className="mt-2 flex items-baseline justify-between gap-3 sm:contents">
-        <p className="min-w-0 truncate text-sm text-muted-foreground dark:text-slate-600 sm:hidden">{itemsText}</p>
-        <p className="num shrink-0 text-[17px] font-extrabold text-foreground dark:text-ink sm:col-start-3 sm:row-start-1 sm:text-right" data-testid={`admin-order-total-${o.order_number}`}>{formatAr(o.total, lang)}</p>
+        <p className="min-w-0 truncate text-sm text-muted-foreground sm:hidden">{itemsText}</p>
+        <p className="num shrink-0 text-[17px] font-extrabold text-foreground sm:col-start-3 sm:row-start-1 sm:text-right" data-testid={`admin-order-total-${o.order_number}`}>{formatAr(o.total, lang)}</p>
       </div>
 
       {/* Corps replié du mobile ; sur bureau, dissolution en cellules : pile
@@ -157,7 +157,7 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
         className={`${open ? "block" : "hidden"} min-w-0 border-t border-[color:var(--rule)] pt-2.5 sm:contents`}
       >
         <div className="min-w-0 sm:col-start-2 sm:row-span-2 sm:row-start-1">
-          <p className="flex min-w-0 items-center gap-1.5 text-[14px] font-semibold text-foreground dark:text-ink">
+          <p className="flex min-w-0 items-center gap-1.5 text-[14px] font-semibold text-foreground">
             <span className="min-w-0 truncate">{o.pseudo}</span>
             <span aria-hidden="true">·</span>
             <span className="num font-mono">{o.pubg_id}</span>
@@ -165,12 +165,12 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
           </p>
           {/* Copie bureau de la ligne produit : alignée avec la date/heure
               (col. 1). Sur mobile, la ligne produit du résumé suffit. */}
-          <p className="hidden min-w-0 truncate text-sm leading-[21px] text-muted-foreground dark:text-slate-600 sm:mt-[2px] sm:block">{itemsText}</p>
-          <p className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-muted-foreground dark:text-slate-600 sm:mt-[3px]">
+          <p className="hidden min-w-0 truncate text-sm leading-[21px] text-muted-foreground sm:mt-[2px] sm:block">{itemsText}</p>
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-xs text-muted-foreground sm:mt-[3px]">
             <span className="shrink-0">
               {o.payment_method === "manual" && o.manual_operator
-                ? <>{paymentLabel(o.payment_method, t)} · <span className="font-semibold text-foreground dark:text-ink">{paymentOperatorLabel(o.manual_operator, t)}</span></>
-                : <span className="font-semibold text-foreground dark:text-ink">{paymentLabel(o.payment_method, t)}</span>}
+                ? <>{paymentLabel(o.payment_method, t)} · <span className="font-semibold text-foreground">{paymentOperatorLabel(o.manual_operator, t)}</span></>
+                : <span className="font-semibold text-foreground">{paymentLabel(o.payment_method, t)}</span>}
               {o.payment_method === "manual"
                 ? (o.manual_reference ? <> · {o.manual_reference} <CopyButton value={o.manual_reference} label="référence de transaction" testId={`copy-ref-${o.order_number}`} /></> : null)
                 : (o.payment_method !== "binance" && o.payment_phone ? <> · {o.payment_phone} <CopyButton value={o.payment_phone} label="numéro de paiement" testId={`copy-phone-${o.order_number}`} /></> : null)}
@@ -189,15 +189,15 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
             suppression 44 px. Bureau : 34 px, rayon 8 px, aligné à droite. */}
         <div className="flex flex-wrap items-center gap-2 sm:col-start-3 sm:row-start-2 sm:mt-[10px] sm:justify-end">
           <Select value={o.status} onValueChange={(v) => onStatus(o, v)} disabled={!TRANSITIONS[o.status]?.length}>
-            <SelectTrigger className="mt-2.5 h-11 w-full rounded-[8px] border-ink font-semibold text-xs dark:text-ink sm:mt-0 sm:h-[34px] sm:w-[235px] sm:shrink-0" data-testid={`admin-status-select-${o.order_number}`}><SelectValue /></SelectTrigger>
+            <SelectTrigger className="mt-2.5 h-11 w-full rounded-[8px] border-ink font-semibold text-xs sm:mt-0 sm:h-[34px] sm:w-[235px] sm:shrink-0" data-testid={`admin-status-select-${o.order_number}`}><SelectValue /></SelectTrigger>
             <SelectContent>{STATUSES.filter((s) => s === o.status || TRANSITIONS[o.status]?.includes(s)).map((s) => <SelectItem key={s} value={s}>{t(`order.status.${s}`)}</SelectItem>)}</SelectContent>
           </Select>
           <OrderProofs order={o} className="h-11 flex-1 sm:h-[34px] sm:flex-none" />
           {o.status === "pending_payment" && o.payment_method !== "manual" && (
-            <><Button className="h-11 rounded-[8px] text-xs dark:text-ink sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "completed")} data-testid={`admin-simulate-paid-${o.order_number}`}>{t("admin.forcePaid")}</Button>
-            <Button className="h-11 rounded-[8px] text-xs dark:text-ink sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "failed")} data-testid={`admin-simulate-failed-${o.order_number}`}>{t("admin.forceFailed")}</Button></>
+            <><Button className="h-11 rounded-[8px] text-xs sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "completed")} data-testid={`admin-simulate-paid-${o.order_number}`}>{t("admin.forcePaid")}</Button>
+            <Button className="h-11 rounded-[8px] text-xs sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "failed")} data-testid={`admin-simulate-failed-${o.order_number}`}>{t("admin.forceFailed")}</Button></>
           )}
-          {isSuperAdmin && <Button size="icon" variant="ghost" className="h-11 w-11 shrink-0 rounded-[8px] text-slate-400 hover:text-rose-600 sm:h-[34px] sm:w-[34px]" aria-label={t("admin.delete")} onClick={() => onRemove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
+          {isSuperAdmin && <Button size="icon" variant="ghost" className="h-11 w-11 shrink-0 rounded-[8px] text-muted-foreground hover:text-destructive sm:h-[34px] sm:w-[34px]" aria-label={t("admin.delete")} onClick={() => onRemove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
         </div>
         <FzrFulfillment order={o} mappedIds={mappedIds} mapStatus={mapStatus} mapComponents={mapComponents} readyCount={readyCount} onChanged={onChanged} />
       </div>
@@ -272,7 +272,7 @@ export default function AdminOrders() {
   return (
     <div data-testid="admin-orders">
       {focusedOrder && <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-primary bg-accent p-3" data-testid="notification-order-focus"><span className="text-sm">Commande ouverte depuis la notification</span><Button variant="outline" size="sm" data-testid="admin-orders-show-all" onClick={() => setParams({})}>Toutes les commandes</Button></div>}
-      {focusError && <p role="alert" data-testid="notification-order-error" className="mb-3 text-sm text-rose-600">{focusError}</p>}
+      {focusError && <p role="alert" data-testid="notification-order-error" className="mb-3 text-sm text-destructive">{focusError}</p>}
       <div className="flex flex-wrap gap-2">
         <Input data-testid="admin-orders-search" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder={t("admin.search")} className="h-10 w-full rounded-full sm:w-72" />
         <Select value={filters.status} onValueChange={(v) => setFilters({ ...filters, status: v })}>
@@ -289,7 +289,7 @@ export default function AdminOrders() {
           filtre que par `payment_method`) : la limite est dite, jamais cachée. */}
       <AdminMethodOperatorNote method={filters.method} />
       <div className="mt-4 space-y-2.5">
-        {visibleOrders.length === 0 && <p className="rounded-2xl bg-white p-6 text-slate-500" data-testid="admin-orders-empty">{t("order.none")}</p>}
+        {visibleOrders.length === 0 && <p className="rounded-2xl bg-card p-6 text-muted-foreground" data-testid="admin-orders-empty">{t("order.none")}</p>}
         {visibleOrders.map((o) => (
           <AdminOrderCard
             key={o.id}

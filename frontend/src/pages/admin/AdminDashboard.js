@@ -34,19 +34,19 @@ export default function AdminDashboard() {
         </div>
       </div>
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <div className="rounded-2xl border border-slate-100 bg-white p-5">
-          <h2 className="font-display text-lg font-bold text-foreground dark:text-ink">{t("admin.last14")}</h2>
+        <div className="rounded-2xl border border-[color:var(--rule)] bg-card p-5">
+          <h2 className="font-display text-lg font-bold text-foreground">{t("admin.last14")}</h2>
           <div className="mt-4 h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={stats.daily}><XAxis dataKey="_id" tick={{ fontSize: 10, fill: "var(--color--dark)" }} tickFormatter={(d) => d.slice(5)} /><Tooltip formatter={(v) => formatAr(v, lang)} /><Bar dataKey="revenue" fill="var(--pubg)" stroke="var(--color--dark)" /></BarChart>
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="rounded-2xl border border-slate-100 bg-white p-5">
-          <h2 className="font-display text-lg font-bold text-foreground dark:text-ink">{t("admin.topProducts")}</h2>
+        <div className="rounded-2xl border border-[color:var(--rule)] bg-card p-5">
+          <h2 className="font-display text-lg font-bold text-foreground">{t("admin.topProducts")}</h2>
           <ul className="mt-4 space-y-2">
             {stats.top_products.map((p) => <li key={p._id} className="flex justify-between rounded-xl bg-card px-3 py-2 text-sm"><span className="font-semibold">{p._id}</span><span className="text-muted-foreground">×{p.qty}</span></li>)}
-            {stats.top_products.length === 0 && <li className="text-sm text-muted-foreground dark:text-slate-600">—</li>}
+            {stats.top_products.length === 0 && <li className="text-sm text-muted-foreground">—</li>}
           </ul>
           <div className="mt-4 flex gap-2 text-xs font-semibold">
             <span className="rounded-full bg-card px-3 py-1 text-foreground">MVola {stats.by_method.mvola || 0}</span>
