@@ -8,18 +8,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 
 // Convention couleurs (clair + sombre) : vert = succès, bleu = en cours/info, ambre = attente/action, rouge = erreur, gris = neutre.
 const STATUS_STYLE = {
-  submitted: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
-  processing: "bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300",
-  completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
-  failed: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
-  refunded: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
-  cancelled: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
-  submit_timeout: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
-  error: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
-  creating: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
+  submitted: "bg-[color-mix(in_srgb,var(--brand-blue)_14%,transparent)] text-[color:var(--brand-blue)]",
+  processing: "bg-[color-mix(in_srgb,var(--brand-blue)_14%,transparent)] text-[color:var(--brand-blue)]",
+  completed: "bg-[color-mix(in_srgb,var(--status-done)_14%,transparent)] text-[color:var(--status-done)]",
+  failed: "bg-[color-mix(in_srgb,var(--destructive)_14%,transparent)] text-[color:var(--destructive)]",
+  refunded: "bg-[color-mix(in_srgb,var(--destructive)_14%,transparent)] text-[color:var(--destructive)]",
+  cancelled: "bg-[color-mix(in_srgb,var(--destructive)_14%,transparent)] text-[color:var(--destructive)]",
+  submit_timeout: "bg-[color-mix(in_srgb,var(--status-refund)_14%,transparent)] text-[color:var(--status-refund)]",
+  error: "bg-[color-mix(in_srgb,var(--destructive)_14%,transparent)] text-[color:var(--destructive)]",
+  creating: "bg-muted text-muted-foreground",
 };
-const NEUTRAL = "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
-const TO_SEND = "bg-slate-200 text-slate-600 dark:bg-slate-600/60 dark:text-slate-200";
+const NEUTRAL = "bg-muted text-muted-foreground";
+const TO_SEND = "bg-muted text-muted-foreground";
 
 export const lineRecord = (order, idx) => (idx === 0 ? order.fazercards : order.fazercards_lines?.[String(idx)]);
 export const unitRecord = (order, idx, u) => order.fazercards_components?.[String(idx)]?.[String(u)];
@@ -41,9 +41,9 @@ const StatusBadge = ({ rec, testid, t }) => (
     <span className={`rounded-full px-2 py-0.5 font-semibold ${STATUS_STYLE[rec.provider_status || rec.status] || NEUTRAL}`} data-testid={testid}>
       {rec.provider_order_id ? `✓ ${rec.provider_status || rec.status}` : rec.status}
     </span>
-    {rec.provider_order_id && <span className="font-mono text-slate-500 dark:text-slate-400" data-testid={`${testid}-provider-id`}>{rec.provider_order_id}</span>}
-    {rec.supplier_price_usd_at_order && <span className="text-slate-400 dark:text-slate-500">${rec.supplier_price_usd_at_order}</span>}
-    {rec.last_error && !rec.provider_order_id && <span className="text-rose-600 dark:text-rose-400">{rec.last_error}</span>}
+    {rec.provider_order_id && <span className="font-mono text-muted-foreground" data-testid={`${testid}-provider-id`}>{rec.provider_order_id}</span>}
+    {rec.supplier_price_usd_at_order && <span className="text-muted-foreground">${rec.supplier_price_usd_at_order}</span>}
+    {rec.last_error && !rec.provider_order_id && <span className="text-destructive">{rec.last_error}</span>}
   </>
 );
 
@@ -139,8 +139,8 @@ export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, mapComponents
             const readyTid = legacy ? `fzr-comp-ready-${on}-${idx}-${cidx}` : `${tid}-ready`;
             return (
               <li key={`${q}-${cidx}`} className="flex flex-wrap items-center gap-2" data-testid={tid}>
-                <span className="font-mono text-slate-500 dark:text-slate-400">{last ? "└─" : "├─"}</span>
-                <span className="text-slate-500 dark:text-slate-400">1× {offerName}</span>
+                <span className="font-mono text-muted-foreground">{last ? "└─" : "├─"}</span>
+                <span className="text-muted-foreground">1× {offerName}</span>
                 {rec ? <StatusBadge rec={rec} t={t} testid={statusTid} />
                   : order.status === "paid" ? <span className={`rounded-full px-2 py-0.5 font-semibold ${TO_SEND}`} data-testid={readyTid}>○ {t("admin.fzr.lineToSend")}</span> : null}
               </li>
@@ -148,10 +148,10 @@ export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, mapComponents
           };
           if (comps?.length) {
             return (
-              <li key={idx} className="rounded-lg border-l-2 border-sky-300 bg-white/70 px-2.5 py-1.5 dark:border-sky-500/50 dark:bg-slate-900/30" data-testid={`fzr-line-${on}-${idx}`}>
-                <p className="flex flex-wrap items-center gap-2 font-semibold text-slate-700 dark:text-slate-100">
+              <li key={idx} className="rounded-lg border-l-2 border-[color:var(--brand-blue)] bg-card px-2.5 py-1.5" data-testid={`fzr-line-${on}-${idx}`}>
+                <p className="flex flex-wrap items-center gap-2 font-semibold text-foreground">
                   {item.quantity}× {item.name}
-                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-700 dark:bg-sky-500/15 dark:text-sky-300">{t("admin.fzr.composition")}</span>
+                  <span className="rounded-full bg-[color-mix(in_srgb,var(--brand-blue)_14%,transparent)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[color:var(--brand-blue)]">{t("admin.fzr.composition")}</span>
                 </p>
                 {qty === 1 ? (
                   <ul className="mt-1.5 space-y-1 pl-2">
@@ -160,7 +160,7 @@ export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, mapComponents
                 ) : (
                   Array.from({ length: qty }).map((_, q) => (
                     <div key={q} className="mt-1.5 pl-2" data-testid={`fzr-unit-group-${on}-${idx}-${q}`}>
-                      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">{item.name} · {t("admin.fzr.unit")} {q + 1}</p>
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{item.name} · {t("admin.fzr.unit")} {q + 1}</p>
                       <ul className="mt-0.5 space-y-1 pl-1">
                         {comps.map((c, u) => unitRow(q, u, c.offer_name, u === comps.length - 1, false))}
                       </ul>
@@ -172,8 +172,8 @@ export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, mapComponents
           }
           if (qty > 1 && mappedIds[item.product_id]) {
             return (
-              <li key={idx} className="rounded-lg bg-white/60 px-2.5 py-1.5 dark:bg-slate-900/20" data-testid={`fzr-line-${on}-${idx}`}>
-                <p className="font-semibold text-slate-700 dark:text-slate-100">{item.quantity}× {item.name}</p>
+              <li key={idx} className="rounded-lg bg-card px-2.5 py-1.5" data-testid={`fzr-line-${on}-${idx}`}>
+                <p className="font-semibold text-foreground">{item.quantity}× {item.name}</p>
                 <ul className="mt-1.5 space-y-1 pl-2">
                   {Array.from({ length: qty }).map((_, q) => unitRow(q, null, item.name, q === qty - 1, false))}
                 </ul>
@@ -183,7 +183,7 @@ export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, mapComponents
           const rec = lineRecord(order, idx);
           return (
             <li key={idx} className="flex flex-wrap items-center gap-2 px-0.5" data-testid={`fzr-line-${on}-${idx}`}>
-              <span className="text-slate-600 dark:text-slate-300">{item.quantity}× {item.name}</span>
+              <span className="text-muted-foreground">{item.quantity}× {item.name}</span>
               {rec ? <StatusBadge rec={rec} t={t} testid={`fzr-line-status-${on}-${idx}`} />
                 : order.status === "paid" ? (() => {
                   const b = directBadge(item);
@@ -199,19 +199,19 @@ export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, mapComponents
           <DialogHeader><DialogTitle>{t("admin.fzr.preflightTitle")}</DialogTitle></DialogHeader>
           {report && (
             <div className="space-y-2 text-sm">
-              <p className="flex justify-between gap-4 border-b border-slate-100 py-1 dark:border-slate-700"><span className="text-slate-500">{t("admin.fzr.mgsOrder")}</span><span className="font-semibold">{report.order_number}</span></p>
-              <p className="flex justify-between gap-4 border-b border-slate-100 py-1 dark:border-slate-700"><span className="text-slate-500">{t("admin.fzr.playerId")}</span><span className="font-semibold">{report.player_id}</span></p>
-              <p className="flex justify-between gap-4 border-b border-slate-100 py-1 dark:border-slate-700"><span className="text-slate-500">{t("admin.fzr.playerName")}</span><span className="font-semibold">{report.player_name || "—"}</span></p>
+              <p className="flex justify-between gap-4 border-b border-[color:var(--rule)] py-1"><span className="text-muted-foreground">{t("admin.fzr.mgsOrder")}</span><span className="font-semibold">{report.order_number}</span></p>
+              <p className="flex justify-between gap-4 border-b border-[color:var(--rule)] py-1"><span className="text-muted-foreground">{t("admin.fzr.playerId")}</span><span className="font-semibold">{report.player_id}</span></p>
+              <p className="flex justify-between gap-4 border-b border-[color:var(--rule)] py-1"><span className="text-muted-foreground">{t("admin.fzr.playerName")}</span><span className="font-semibold">{report.player_name || "—"}</span></p>
               {(report.lines || []).map((l, i) => (
-                <div key={i} className="rounded-lg bg-slate-50 p-2 dark:bg-slate-800/60" data-testid={`fzr-preflight-line-${l.index}${l.component_index != null ? `-${l.component_index}` : ""}`}>
-                  <p className="font-semibold">{l.product}{l.component_name ? <span className="text-slate-500"> · {l.component_name}</span> : null}</p>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">{l.offer_name} ({l.offer_id}) · ${l.price_usd}</p>
-                  <p className="break-all text-xs text-slate-500">{t("admin.fzr.idem")} : {l.idempotency_key}</p>
-                  {l.retry && <p className="text-xs text-amber-700 dark:text-amber-400">{t("admin.fzr.preflightRetryNote")}</p>}
+                <div key={i} className="rounded-lg bg-muted p-2" data-testid={`fzr-preflight-line-${l.index}${l.component_index != null ? `-${l.component_index}` : ""}`}>
+                  <p className="font-semibold">{l.product}{l.component_name ? <span className="text-muted-foreground"> · {l.component_name}</span> : null}</p>
+                  <p className="text-xs text-muted-foreground">{l.offer_name} ({l.offer_id}) · ${l.price_usd}</p>
+                  <p className="break-all text-xs text-muted-foreground">{t("admin.fzr.idem")} : {l.idempotency_key}</p>
+                  {l.retry && <p className="text-xs text-[color:var(--status-refund)]">{t("admin.fzr.preflightRetryNote")}</p>}
                 </div>
               ))}
               {(report.skipped || []).map((s, i) => (
-                <p key={i} className="rounded-lg bg-amber-50 p-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" data-testid={`fzr-preflight-skipped-${s.index}`}>{s.product} : {s.reason}</p>
+                <p key={i} className="rounded-lg bg-[color-mix(in_srgb,var(--status-refund)_12%,transparent)] p-2 text-xs text-[color:var(--status-refund)]" data-testid={`fzr-preflight-skipped-${s.index}`}>{s.product} : {s.reason}</p>
               ))}
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" className="rounded-full" onClick={() => setReport(null)} data-testid="fzr-preflight-cancel">{t("admin.fzr.preflightCancel")}</Button>

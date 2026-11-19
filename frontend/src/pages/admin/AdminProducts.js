@@ -36,7 +36,7 @@ function SeasonsPanel({ t }) {
       </form>
       <div className="mt-3 flex flex-wrap gap-2">
         {seasons.map((s) => (
-          <span key={s.id} data-testid={`season-${s.id}`} className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${s.active ? "border-foreground bg-primary text-primary-foreground" : "border-slate-200 text-slate-600"}`}>
+          <span key={s.id} data-testid={`season-${s.id}`} className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${s.active ? "border-foreground bg-primary text-primary-foreground" : "border-[color:var(--rule)] text-muted-foreground"}`}>
             {s.name}{s.active ? ` · ${t("admin.activeSeason")}` : (
               <button type="button" onClick={() => activate(s)} className="underline" data-testid={`season-activate-${s.id}`}>{t("admin.activateSeason")}</button>
             )}
@@ -80,7 +80,7 @@ export default function AdminProducts() {
   };
   const remove = async (p) => { if (!window.confirm(`${t("admin.delete")} ${p.name} ?`)) return; await api.delete(`/admin/products/${p.id}`); load(); };
   const field = (k, label, type = "text") => (
-    <label className="text-sm font-semibold text-slate-700">{label}<Input data-testid={`product-field-${k}`} type={type} value={editing[k] ?? ""} onChange={(e) => setEditing({ ...editing, [k]: e.target.value })} className="mt-1 h-10 rounded-xl" /></label>
+    <label className="text-sm font-semibold text-foreground">{label}<Input data-testid={`product-field-${k}`} type={type} value={editing[k] ?? ""} onChange={(e) => setEditing({ ...editing, [k]: e.target.value })} className="mt-1 h-10 rounded-xl" /></label>
   );
 
   return (
@@ -131,7 +131,7 @@ export default function AdminProducts() {
             </div>
             <div className="flex shrink-0 items-center">
               <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full" aria-label={t("admin.edit")} onClick={() => setEditing({ ...EMPTY, ...p, game_id: p.game_id || "pubg-mobile", requires_mapping: p.requires_mapping ?? false })} data-testid={`admin-edit-product-${p.slug}`}><Pencil className="h-4 w-4" /></Button>
-              <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-slate-400 hover:text-rose-600" aria-label={t("admin.delete")} onClick={() => remove(p)} data-testid={`admin-delete-product-${p.slug}`}><Trash2 className="h-4 w-4" /></Button>
+              <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full text-muted-foreground hover:text-destructive" aria-label={t("admin.delete")} onClick={() => remove(p)} data-testid={`admin-delete-product-${p.slug}`}><Trash2 className="h-4 w-4" /></Button>
             </div>
           </div>
         ))}

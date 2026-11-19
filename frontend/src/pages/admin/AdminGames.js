@@ -121,14 +121,14 @@ export default function AdminGames() {
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {games.map((g) => (
           <div key={g.id} data-testid={`admin-game-${g.slug || g.id}`}
-            className={`flex min-w-0 items-center gap-3 rounded-2xl border bg-white p-3 sm:p-4 ${g.active ? "border-slate-100" : "border-dashed border-slate-300 opacity-60"}`}>
+            className={`flex min-w-0 items-center gap-3 rounded-2xl border bg-card p-3 sm:p-4 ${g.active ? "border-[color:var(--rule)]" : "border-dashed border-[color:var(--rule-strong)] opacity-60"}`}>
             <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground">
               {g.icon_url ? <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy" />
                 : <Gamepad2 className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="break-words font-display text-sm font-bold leading-snug dark:text-ink sm:text-base">{g.name}</p>
-              <p className="mt-0.5 break-words text-xs dark:text-ink">{g.id} · {g.active ? t("admin.active") : t("admin.inactive")}</p>
+              <p className="break-words font-display text-sm font-bold leading-snug sm:text-base">{g.name}</p>
+              <p className="mt-0.5 break-words text-xs">{g.id} · {g.active ? t("admin.active") : t("admin.inactive")}</p>
               <div className="mt-1.5" data-testid={`game-readiness-badge-${g.id}`}><Readiness readiness={g.readiness} compact /></div>
             </div>
             <div className="flex shrink-0 items-center gap-1">
