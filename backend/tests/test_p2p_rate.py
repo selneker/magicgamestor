@@ -142,9 +142,11 @@ def test_filtre_methode_par_defaut_puis_surcharge(monkeypatch):
 
 
 def test_capacite_ecarte_les_annonces_trop_petites_ou_trop_grandes(monkeypatch):
+    from decimal import Decimal
+    assert p2p_rate.ref_amount() == Decimal("100000")  # dépôts habituels 10–45 $
     assert _reasons([_ad("4000")]) == [None]
-    assert _reasons([_ad("4000", high="150000")]) == ["capacity"]
-    assert _reasons([_ad("4000", low="250000")]) == ["capacity"]
+    assert _reasons([_ad("4000", high="90000")]) == ["capacity"]
+    assert _reasons([_ad("4000", low="150000")]) == ["capacity"]
 
     monkeypatch.setenv(p2p_rate.REF_ENV, "50000")
     assert _reasons([_ad("4000")]) == ["capacity"]

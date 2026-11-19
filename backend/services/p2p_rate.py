@@ -25,7 +25,8 @@ FILTRES — uniquement des champs documentés
               `P2P_PAYMENT_METHODS` (défaut `mvola,orange`, sous-chaînes
               insensibles à la casse). Airtel n'est plus retenu par défaut et il
               n'y a **plus de repli** sur toutes les méthodes.
-`capacity`  : `min_fiat` ≤ `P2P_REF_AMOUNT_AR` (défaut 200 000) ≤ `max_fiat`.
+`capacity`  : `min_fiat` ≤ `P2P_REF_AMOUNT_AR` (défaut 100 000, dépôts habituels
+              10–45 $) ≤ `max_fiat`.
 `quality`   : `user_rate` ≥ `P2P_MIN_COMPLETION_PCT` (défaut 90) et
               `user_orders` ≥ `P2P_MIN_ORDERS` (défaut 50) ; champ absent vaut 0,
               donc l'annonce est écartée faute de preuve.
@@ -84,7 +85,7 @@ COMPLETION_ENV = "P2P_MIN_COMPLETION_PCT"
 ORDERS_ENV = "P2P_MIN_ORDERS"
 DEFAULT_MARKET = "binance"
 DEFAULT_METHODS = "mvola,orange"
-DEFAULT_REF_AMOUNT = "200000"
+DEFAULT_REF_AMOUNT = "100000"
 DEFAULT_MIN_COMPLETION = "90"
 DEFAULT_MIN_ORDERS = "50"
 FIAT = "MGA"

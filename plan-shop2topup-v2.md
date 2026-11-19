@@ -557,7 +557,7 @@ FazerCards, aucun produit n'est désactivé.
       (une ligne par annonce ; seul endpoint documentant `min_fiat`/`max_fiat`, `user_id`,
       `user_orders`, `user_rate`). Filtres : une annonce par vendeur (la moins chère),
       `P2P_PAYMENT_METHODS` (défaut `mvola,orange`, **plus de repli** sur toutes les méthodes),
-      `P2P_REF_AMOUNT_AR` (200 000) contenu dans les limites, `P2P_MIN_COMPLETION_PCT` /
+      `P2P_REF_AMOUNT_AR` (100 000) contenu dans les limites, `P2P_MIN_COMPLETION_PCT` /
       `P2P_MIN_ORDERS` (90 / 50). Moins de 3 annonces retenues ⇒ relevé refusé. `settings.p2p_rate`
       porte en plus `n_ads` et `n_rejected` par raison. **Aucun filtre de restriction** : la
       documentation ne publie aucun drapeau. Diagnostic en lecture seule :
