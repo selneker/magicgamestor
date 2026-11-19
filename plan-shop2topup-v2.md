@@ -445,9 +445,13 @@ les statuts **sans se faire brider**.
 **Critères d'acceptation :**
 - [x] même `idempotency_key` réutilisée en cas de retry ⇒ **aucun double achat** (comportement déjà en place,
       `fzr_fulfillment.py:123-134` — la préserver, pas la réinventer)
-- [ ] webhook : signature HMAC-SHA256 vérifiée sur le **RAW BODY**, réponse rapide, traitement ensuite
-      (le motif de `routers/fzr_orders.py:352-360` est repris tel quel) — **signature et normalisation
-      faites** dans l'adaptateur ; la **route** n'est pas créée (hors périmètre de cette session)
+- [x] webhook : signature HMAC-SHA256 vérifiée sur le **RAW BODY**, réponse rapide, traitement ensuite
+      (le motif de `routers/fzr_orders.py:352-360` est repris tel quel) — **signature, normalisation et
+      route faites** : routeur dédié `backend/routers/shop2topup_webhook.py` (`POST
+      /shop2topup/webhook`, `503` sans secret, `401` sur signature fausse, dédoublonnage par
+      `event_id`), inclus dans `server.py`. **À CONFIRMER** après le premier événement réel : nom
+      d'en-tête (`X-Shop2Topup-Signature`), préfixe `sha256=` et forme du corps (`event` / `data`) —
+      aucun des trois n'est écrit dans `RAPPORT-SHOP2TOPUP-API.md`.
 - [x] **limite de requêtes** : la valeur (annoncée 3 req/60 s **dans la doc — à reconfirmer**) est traitée
       comme une **hypothèse à vérifier**, pas comme un fait ; le code applique un **budget** (compteur +
       fenêtre), pas un sleep codé en dur
@@ -462,17 +466,20 @@ les statuts **sans se faire brider**.
 Fait le 19/11/2026 : budget dur (catalogue/création 5000, statut 3/60 s **par commande**, lot 2/60 s),
 une alerte par épisode, `get_orders()` par lots de 50, `reconcile()` plus anciennes d'abord avec journal des
 affamées, `DUPLICATE_ORDER` ⇒ relecture. `POST /orders/batch` est **documenté** (RAPPORT § 4) : le lot est
-utilisé, pas la file d'attente. Reste à faire **par le propriétaire** : la commande de test réelle et le
+utilisé, pas la file d'attente. **T08C (19/11/2026)** : `reconcile()` est branché dans la maintenance
+(`order_maintenance.py`, unités `provider == "shop2topup"` uniquement, erreur journalisée) et la route
+webhook existe (routeur dédié). Reste à faire **par le propriétaire** : la commande de test réelle, le
 premier appel réel de `POST /orders/batch` (le nom du champ d'entrée n'est pas documenté — une seule
-constante `BATCH_REQUEST_KEY` à corriger si besoin).
+constante `BATCH_REQUEST_KEY` à corriger si besoin), et le premier événement webhook réel (en-tête, format
+de signature et corps « à confirmer »).
 
-**Conséquence de la bascule, à traiter avant de la déployer.** La table `GAME_PROVIDER` ne sert pas qu'au
-top-up : la validation d'identité passe par le même résolveur (`neferbyte_adapter.py:220-232`, appelé par
-`routers/fazercards.py:139,167` et `fzr_fulfillment.py:246`). Pour PUBG Mobile, elle arrive donc maintenant
-sur Shop2Topup, dont `validate_identity` exige une offre (`sub_category_id`) absente du préflight : toute
-validation ou tout envoi PUBG répond **409 `missing_offer`** jusqu'à **T16**. C'est pourquoi le Checkpoint B
-ne peut pas être validé par une commande réelle tant que T16 (ou une surcharge explicite du fournisseur
-d'identité) n'est pas fait.
+**Conséquence de la bascule — RÉSOLUE par T16 (19/11/2026).** La table `GAME_PROVIDER` ne sert pas qu'au
+top-up : la validation d'identité passait par le même résolveur (`neferbyte_adapter.py:220-232`, appelé par
+`routers/fazercards.py:139,167` et `fzr_fulfillment.py:246`). Pour PUBG Mobile, elle arrivait donc sur
+Shop2Topup, dont `validate_identity` exige une offre (`sub_category_id`) absente du préflight : toute
+validation ou tout envoi PUBG répondait **409 `missing_offer`**. T16 a séparé les deux résolutions
+(`IDENTITY_PROVIDER = "fazercards"`, `providers/__init__.py:29`) : l'identité ne suit plus la table de top-up.
+Le Checkpoint B reste non atteint pour une autre raison — aucune commande réelle n'a été passée.
 
 **Vérification :** tests unitaires (signature valide/invalide, idempotence, budget respecté) ; **commande de
 test réelle** encadrée par le propriétaire.
@@ -483,9 +490,11 @@ T08b (webhook + budget) si la session déborde.
 > **Checkpoint B** — une commande de test est livrée de bout en bout, et le statut est réconcilié sans
 > dépasser le budget.
 >
-> **Non atteint le 19/11/2026** : le code est en place et couvert par des tests à transport simulé, mais
-> aucune commande réelle n'a été passée (aucun appel fournisseur autorisé dans cette session). Checkpoint B
-> reste à valider par le propriétaire avec une clé Render.
+> **Non atteint le 19/11/2026** : le code est en place et couvert par des tests à transport simulé
+> (T08C a ajouté le branchement de `reconcile()` dans la maintenance, la route webhook et le script
+> `backend/scripts/shop2topup_checkpoint_b.py`), mais **aucune commande réelle n'a été passée** (aucun
+> appel fournisseur autorisé dans cette session). Checkpoint B reste à valider par le propriétaire avec
+> une clé Render : essai à blanc du script, puis `--confirm-spend`, puis vérification du statut réconcilié.
 
 ---
 
@@ -496,18 +505,22 @@ T08b (webhook + budget) si la session déborde.
 rendre vraie la « bascule en une variable ».
 
 **Critères d'acceptation :**
-- [ ] `get_provider(game_id, provider_name=None)` : un nom explicite prime ; un nom **inconnu lève** une
+- [x] `get_provider(game_id, provider_name=None)` : un nom explicite prime ; un nom **inconnu lève** une
       erreur claire (fin du repli silencieux `providers/__init__.py:30-32`)
-- [ ] les 4 appels de `fzr_fulfillment.py` (`:370`, `:444`, `:470`, `:524`) résolvent d'abord
+- [x] les 4 appels de `fzr_fulfillment.py` (`:370`, `:444`, `:470`, `:524`) résolvent d'abord
       `record.get("provider")`, puis la table par jeu (repli documenté pour les records legacy sans champ)
-- [ ] test : une commande dont l'unité porte `provider: "fazercards"` reste réconciliée chez FazerCards même
+- [x] test : une commande dont l'unité porte `provider: "fazercards"` reste réconciliée chez FazerCards même
       si `GAME_PROVIDER` pointe ailleurs
-- [ ] test : une commande **sans** champ `provider` (legacy) reste réconciliée chez FazerCards
-- [ ] surcharge manuelle : `TOPUP_PROVIDER_<GAME>` (ex. `TOPUP_PROVIDER_PUBG_MOBILE=g2bulk`), lue par
+- [x] test : une commande **sans** champ `provider` (legacy) reste réconciliée chez FazerCards
+- [x] surcharge manuelle : `TOPUP_PROVIDER_<GAME>` (ex. `TOPUP_PROVIDER_PUBG_MOBILE=g2bulk`), lue par
       `get_provider()`, **une variable + un redémarrage** — c'est la procédure de bascule du propriétaire
-- [ ] la route `/fazercards/webhook` utilise une instance FazerCards **explicite** (`routers/fzr_orders.py:352`)
-- [ ] `GAME_PROVIDER` par défaut : `pubg-mobile → shop2topup` ; `DEFAULT_PROVIDER` ne désigne plus FazerCards
+- [x] la route `/fazercards/webhook` utilise une instance FazerCards **explicite** (`routers/fzr_orders.py:352`)
+- [x] `GAME_PROVIDER` par défaut : `pubg-mobile → shop2topup` ; `DEFAULT_PROVIDER` ne désigne plus FazerCards
 
+**Fait le 19/11/2026 :** commit `24e1da2` (`feat(shop2topup): résolution fournisseur par commande, identité
+hors bascule (T16)`), 12 fichiers backend, **148 tests réussis / 0 échec** sur les 5 modules demandés.
+`IDENTITY_PROVIDER = "fazercards"` (`providers/__init__.py:29`) : l'identité ne suit pas la table de top-up.
+Reste ouvert : la surcharge `TOPUP_PROVIDER_<GAME>` n'a pas été exercée en production (elle l'est en test).
 **Vérification :** tests unitaires (résolution explicite, record prioritaire, legacy, surcharge env) ;
 `pytest` lancé par le propriétaire.
 **Dépendances :** T08 · **Fichiers :** `backend/services/providers/__init__.py`,
