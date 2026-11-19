@@ -18,7 +18,7 @@ from core.security import PERMISSIONS as DEFAULT_ADMIN_PERMISSIONS
 from core.games import migrate_multigame, migrate_saved_pubg_ids, reconcile_sellable_games, seed_games
 from core.seed import seed_all
 from routers import admin_users, auth, crypto, evo, fazercards, games, fiveone, fzr_orders, products, orders, payments, events, chat, push, loyalty, notifications, reminders, maintenance, shop2topup_webhook
-from services import binance_watcher, captcha, shop2topup_map
+from services import binance_watcher, captcha, shop2topup_cutover, shop2topup_map
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("mgs")
@@ -33,6 +33,8 @@ async def lifespan(_: FastAPI):
     await seed_all()
     # T04 : rattache le manifeste Shop2Topup aux produits existants (idempotent, additif).
     await shop2topup_map.attach_shop2topup_mapping()
+    # T09 : bascule contrôlée par SHOP2TOPUP_CUTOVER (off par défaut, ne lève jamais).
+    await shop2topup_cutover.run_at_startup()
     await orders.backfill_subscription_locks()
     await migrate_users()
     await seed_games()

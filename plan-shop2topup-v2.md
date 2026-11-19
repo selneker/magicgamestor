@@ -562,18 +562,21 @@ FazerCards, aucun produit n'est désactivé.
       porte en plus `n_ads` et `n_rejected` par raison. **Aucun filtre de restriction** : la
       documentation ne publie aucun drapeau. Diagnostic en lecture seule :
       `backend/scripts/p2p_rate_dump.py`. Aucun appel réel n'a été fait.
-- [ ] T09 exécutée **après** le Checkpoint B, jamais avant (A2)
-- [ ] les 8 lots UC sans équivalent passent `active: false` (décision P2 tranchée)
-- [ ] **A3 / P7 tranché** : **aucun produit créé**. Les lots Shop2Topup que MGS ne vend pas (10 UC, 8 100,
+- [x] T09 exécutée **après** le Checkpoint B, jamais avant (A2) — `services/shop2topup_cutover.py`
+- [x] les 8 lots UC sans équivalent passent `active: false` (décision P2 tranchée) — `UNMAPPED_LOTS`,
+      garde bloquante si l'ensemble calculé diffère
+- [x] **A3 / P7 tranché** : **aucun produit créé**. Les lots Shop2Topup que MGS ne vend pas (10 UC, 8 100,
       24 300, 32 400, 40 500) sont **listés** dans le rapport de fin de tâche, avec leur prix public et leur
       état, et rien d'autre
-- [ ] **A3 / vitrine** : le drapeau `popular` est **déplacé** de 30 UC et 1 320 UC (`seed.py:9,11`) vers
+- [x] **A3 / vitrine** : le drapeau `popular` est **déplacé** de 30 UC et 1 320 UC (`seed.py:9,11`) vers
       **325 UC et 660 UC** (mêmes clés, mêmes slugs) ; le nombre de produits mis en avant reste identique
-- [ ] **garde-fou** : `game_has_sellable_catalog()` (`core/games.py:73-85`) doit rester vrai pour
+- [x] **garde-fou** : `game_has_sellable_catalog()` (`core/games.py:73-85`) doit rester vrai pour
       `pubg-mobile` — les 6 lots mappés suffisent, le test le prouve
-- [ ] les produits **non** mappés mais `requires_mapping` ne bloquent pas l'achat des autres
-- [ ] aucun prix existant modifié (AD-6) ; `old_price` conservé
-- [ ] migration idempotente (fonction au démarrage ou script admin), aucun produit supprimé
+- [x] les produits **non** mappés mais `requires_mapping` ne bloquent pas l'achat des autres
+- [ ] aucun prix existant modifié (AD-6) ; `old_price` conservé — **contredit par la consigne T09** : les
+      6 lots du manifeste reçoivent le prix cible (60 UC inchangé à 5 000 Ar) ; `old_price` n'est pas touché.
+      Décision du propriétaire, reportée au rapport de fin de tâche.
+- [x] migration idempotente (fonction au démarrage ou script admin), aucun produit supprimé
 
 **Vérification :** liste `produit × sku × prix × active` relue avec le propriétaire ; contrôle sur la boutique
 publique que les 6 lots restent achetables, que les 8 autres ont disparu, et que la vitrine affiche bien

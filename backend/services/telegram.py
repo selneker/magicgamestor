@@ -43,6 +43,8 @@ DEFAULT_EVENTS = frozenset({
     "p2p_rate_stale",
     "p2p_rate_recovered",
     "margin_below_threshold",
+    "catalogue_cutover_applied",
+    "catalogue_cutover_rolled_back",
     "test",
 })
 
