@@ -1,4 +1,5 @@
-"""PL-006-T07 — tests de l'adaptateur Shop2Topup (catalogue, identité, erreurs).
+"""PL-006-T07/T08 — tests de l'adaptateur Shop2Topup (catalogue, identité, erreurs, commande,
+webhook, budget de requêtes).
 
 Aucun appel réseau : `httpx.MockTransport` répond à la place du fournisseur, et aucune clé réelle
 n'est utilisée (les valeurs ci-dessous sont des sentinelles). `pytest-asyncio` n'est pas une
@@ -304,3 +305,174 @@ def test_webhook_normalise_event_commande_et_statut():
     assert event.status == "completed"
     assert event.event_id is None  # la livraison n'en porte pas : idempotence sur order_id+status
     assert event.raw["timestamp"] == "2026-03-11T14:30:00.000Z"
+
+
+# --------------------------------------------------------------------------- #
+# Bascule et reprise d'une commande déjà connue (T08)
+# --------------------------------------------------------------------------- #
+def test_pubg_mobile_est_servi_par_shop2topup():
+    """Bascule déclarative : PUBG passe à Shop2Topup, sans toucher au domaine."""
+    assert providers.GAME_PROVIDER["pubg-mobile"] == "shop2topup"
+    assert providers.get_provider("pubg-mobile").name == "shop2topup"
+
+
+def test_une_commande_deja_connue_est_relue_et_non_renvoyee():
+    seen = []
+
+    def handler(request):
+        if request.url.path.endswith("/orders/create"):
+            seen.append("create")
+            return _json({"success": False,
+                          "error": {"code": "DUPLICATE_ORDER", "message": "déjà"}}, 409)
+        seen.append("read")
+        return _json({"success": True, "order": {"order_id": "cmd", "status": "completed"}})
+
+    order = _run(_provider(handler).create_order("2", "13", {"player_id": "99"}, "cmd-42-unite-0"))
+
+    # Une seule création tentée, puis une lecture : jamais une seconde commande.
+    assert seen == ["create", "read"]
+    assert order.normalized_status == OrderStatus.COMPLETED
+
+
+def test_commande_deja_connue_mais_illisible_reste_reessayable():
+    """Statut illisible ⇒ indisponibilité, pas un échec : la ligne reste en attente, même clé au retry."""
+
+    def handler(request):
+        if request.url.path.endswith("/orders/create"):
+            return _json({"success": False, "error": {"code": "DUPLICATE_ORDER"}}, 409)
+        return _json({"success": False, "error": {"code": "INTERNAL_ERROR"}}, 500)
+
+    with pytest.raises(ProviderUnavailableError) as exc:
+        _run(_provider(handler).create_order("2", "13", {"player_id": "99"}, "cmd-42-unite-0"))
+
+    assert exc.value.status_code == 502
+
+
+# --------------------------------------------------------------------------- #
+# Budget de requêtes (T08) — limite dure, jamais une attente
+# --------------------------------------------------------------------------- #
+class _Clock:
+    """Horloge figée : la fenêtre glissante se teste sans dormir."""
+
+    def __init__(self, start: float = 1000.0):
+        self.now = start
+
+    def __call__(self) -> float:
+        return self.now
+
+
+def _catch_alerts(monkeypatch):
+    alerts = []
+
+    async def fake_notify(**kwargs):
+        alerts.append(kwargs)
+        return {"status": "sent"}
+
+    monkeypatch.setattr(adapter.notifications, "notify_admin", fake_notify)
+    return alerts
+
+
+def test_budget_de_statut_est_une_limite_par_commande(monkeypatch):
+    calls = []
+    alerts = _catch_alerts(monkeypatch)
+    provider = _provider(lambda request: calls.append(request) or _json(
+        {"success": True, "order": {"order_id": "cmd-a", "status": "completed"}}))
+    provider._status_budgets["cmd-a"] = adapter.RequestBudget(3, clock=_Clock())
+
+    for _ in range(3):
+        _run(provider.get_order("cmd-a"))
+
+    with pytest.raises(ProviderUnavailableError) as exc:
+        _run(provider.get_order("cmd-a"))
+
+    assert exc.value.code == "rate_budget_exceeded"
+    assert len(calls) == 3  # la 4e requête n'est jamais partie
+    assert len(alerts) == 1  # une seule alerte pour tout l'épisode de saturation
+    assert alerts[0]["event"] == "shop2topup_budget_exceeded"
+
+    # Une autre commande a son propre compteur : elle n'est pas punie par celle-ci.
+    _run(provider.get_order("cmd-b"))
+    assert len(calls) == 4
+
+
+def test_budget_de_lot_est_une_limite_dure(monkeypatch):
+    calls = []
+    _catch_alerts(monkeypatch)
+
+    def handler(request):
+        calls.append(json.loads(request.content)[adapter.BATCH_REQUEST_KEY])
+        ids = calls[-1]
+        return _json({"success": True,
+                      "orders": [{"order_id": value, "status": "pending"} for value in ids]})
+
+    provider = _provider(handler)
+    provider._budgets["status_batch"] = adapter.RequestBudget(2, clock=_Clock())
+    units = [{"provider_order_id": f"cmd-{index}",
+              "created_at": f"2026-03-01T00:{index // 60:02d}:{index % 60:02d}+00:00"}
+             for index in range(150)]
+
+    report = _run(provider.reconcile(units))
+
+    assert len(calls) == 2          # 2 lots autorisés, le 3e n'est pas envoyé
+    assert len(report["starved"]) == 50
+    assert len(report["checked"]) == 100
+    assert report["starved"][0] == "cmd-100"  # la plus ancienne des affamées
+
+
+def test_un_lot_est_decoupe_a_cinquante():
+    calls = []
+
+    def handler(request):
+        calls.append(json.loads(request.content)[adapter.BATCH_REQUEST_KEY])
+        return _json({"success": True,
+                      "orders": [{"order_id": value, "status": "pending"} for value in calls[-1]]})
+
+    batch = _run(_provider(handler).get_orders([f"cmd-{index}" for index in range(120)]))
+
+    assert [len(chunk) for chunk in calls] == [50, 50, 20]
+    assert batch.requested == 120
+    assert len(batch.orders) == 120
+
+
+def test_reconciliation_commence_par_les_plus_anciennes(monkeypatch):
+    calls = []
+    _catch_alerts(monkeypatch)
+
+    def handler(request):
+        calls.append(json.loads(request.content)[adapter.BATCH_REQUEST_KEY])
+        return _json({"success": True,
+                      "orders": [{"order_id": value, "status": "completed"} for value in calls[-1]]})
+
+    units = [
+        {"provider_order_id": "recente", "created_at": "2026-03-10T10:00:00Z"},
+        {"provider_order_id": "sans-date"},
+        {"provider_order_id": "ancienne", "created_at": "2026-03-01T10:00:00Z"},
+        {"provider_order_id": ""},  # rien à interroger : écartée, pas affamée
+    ]
+
+    report = _run(_provider(handler).reconcile(units))
+
+    assert calls == [["sans-date", "ancienne", "recente"]]
+    assert report["requested"] == 3
+    assert set(report["checked"]) == {"sans-date", "ancienne", "recente"}
+    assert report["starved"] == []
+
+
+def test_reconciliation_rend_les_commandes_inconnues_du_fournisseur(monkeypatch):
+    _catch_alerts(monkeypatch)
+
+    def handler(request):
+        ids = json.loads(request.content)[adapter.BATCH_REQUEST_KEY]
+        return _json({"success": True,
+                      "orders": [{"order_id": ids[0], "status": "completed"}],
+                      "not_found": ids[1:]})
+
+    report = _run(_provider(handler).reconcile([
+        {"provider_order_id": "connue", "created_at": "2026-03-01T10:00:00Z"},
+        {"provider_order_id": "disparue", "created_at": "2026-03-02T10:00:00Z"},
+    ]))
+
+    assert list(report["checked"]) == ["connue"]
+    assert report["not_found"] == ["disparue"]
+    assert report["starved"] == []
+

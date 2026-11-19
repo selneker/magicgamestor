@@ -14,7 +14,9 @@ from services.providers.errors import (ProviderError, ProviderInsufficientBalanc
                                         ProviderUnknownError, ProviderValidationError)
 
 # Mapping Game -> Provider (configuration, pas de logique métier dans le core).
-GAME_PROVIDER: dict[str, str] = {"pubg-mobile": "fazercards", "free-fire": "fazercards"}
+# BASCULE (T08) : PUBG Mobile passe à Shop2Topup, le fournisseur principal du chantier. Free Fire
+# reste sur FazerCards tant que T12 ne l'a pas basculé — une seule ligne à changer à ce moment-là.
+GAME_PROVIDER: dict[str, str] = {"pubg-mobile": "shop2topup", "free-fire": "fazercards"}
 DEFAULT_PROVIDER = "fazercards"
 
 _INSTANCES: dict[str, Provider] = {}
