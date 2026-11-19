@@ -466,6 +466,14 @@ utilisé, pas la file d'attente. Reste à faire **par le propriétaire** : la co
 premier appel réel de `POST /orders/batch` (le nom du champ d'entrée n'est pas documenté — une seule
 constante `BATCH_REQUEST_KEY` à corriger si besoin).
 
+**Conséquence de la bascule, à traiter avant de la déployer.** La table `GAME_PROVIDER` ne sert pas qu'au
+top-up : la validation d'identité passe par le même résolveur (`neferbyte_adapter.py:220-232`, appelé par
+`routers/fazercards.py:139,167` et `fzr_fulfillment.py:246`). Pour PUBG Mobile, elle arrive donc maintenant
+sur Shop2Topup, dont `validate_identity` exige une offre (`sub_category_id`) absente du préflight : toute
+validation ou tout envoi PUBG répond **409 `missing_offer`** jusqu'à **T16**. C'est pourquoi le Checkpoint B
+ne peut pas être validé par une commande réelle tant que T16 (ou une surcharge explicite du fournisseur
+d'identité) n'est pas fait.
+
 **Vérification :** tests unitaires (signature valide/invalide, idempotence, budget respecté) ; **commande de
 test réelle** encadrée par le propriétaire.
 **Dépendances :** T07 · **Fichiers :** `backend/services/providers/shop2topup_adapter.py`,
