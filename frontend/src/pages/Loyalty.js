@@ -72,7 +72,7 @@ function Rewards({ rewards, onRedeem }) {
         />
       ) : (
         <p
-          className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700"
+          className="rounded-xl border border-[color:var(--status-refund)] bg-[color-mix(in_srgb,var(--status-refund)_12%,transparent)] p-3 text-sm text-[color:var(--status-refund)]"
           data-testid="loyalty-verify-unavailable"
         >
           {t("checkout.verifyProviderUnavailable")}
@@ -178,7 +178,7 @@ export default function Loyalty() {
       <p className="eyebrow">{t("account.title")}</p>
       <h1 className="font-display text-3xl font-bold sm:text-4xl">{t("loyalty.title")}</h1>
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <div className="panel-points p-5"><p className="eyebrow-invert">{t("loyalty.balance")}</p><p className="num mt-1 flex items-center gap-2 text-4xl text-[#C5FE02]" data-testid="loyalty-total"><Coins className="h-6 w-6" aria-hidden="true" />{data.balance.total}<span className="text-base font-semibold text-[#C5FE02]/80">pts</span></p></div>
+        <div className="panel-points p-5"><p className="eyebrow-invert">{t("loyalty.balance")}</p><p className="num mt-1 flex items-center gap-2 text-4xl text-neo" data-testid="loyalty-total"><Coins className="h-6 w-6" aria-hidden="true" />{data.balance.total}<span className="text-base font-semibold text-neo/80">pts</span></p></div>
         <div className="panel p-5"><p className="eyebrow">{t("loyalty.earned")}</p><p className="num mt-1 text-3xl text-foreground" data-testid="loyalty-earned">{data.balance.earned}</p></div>
         <div className="panel p-5"><p className="eyebrow">{t("loyalty.promo")}</p><p className="num mt-1 text-3xl text-foreground" data-testid="loyalty-promo">{data.balance.promo}</p></div>
       </div>
