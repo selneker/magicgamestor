@@ -65,13 +65,13 @@ export function OrderCard({ order }) {
         <div><p className="eyebrow">{t("order.number")}</p><p className="num text-xl">{order.order_number}</p></div>
         <StatusPill status={order.status} />
       </div>
-      <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600" data-testid="order-next-step">{t(`order.next.${order.status}`)}</p>
+      <p className="mt-3 rounded-xl bg-muted px-3 py-2 text-sm text-muted-foreground" data-testid="order-next-step">{t(`order.next.${order.status}`)}</p>
       {order.late_payment && <p className="mt-2 rounded-xl border border-strong px-3 py-2 text-xs" data-testid="order-late-payment">{t("order.latePayment")}</p>}
       <ul className="mt-4 divide-y text-sm">
         {order.items.map((i, idx) => <li key={idx} className="flex justify-between py-2"><span>{i.quantity} × {lang === "en" && i.name_en ? i.name_en : i.name}</span><span className="font-semibold">{formatAr(i.line_total, lang)}</span></li>)}
-        {(order.payment_fee ?? order.verification_fee) > 0 && <li className="flex justify-between py-2 text-slate-500" data-testid="order-verification-fee"><span>{t("checkout.paymentFee")}</span><span className="font-semibold">{formatAr(order.payment_fee ?? order.verification_fee, lang)}</span></li>}
+        {(order.payment_fee ?? order.verification_fee) > 0 && <li className="flex justify-between py-2 text-muted-foreground" data-testid="order-verification-fee"><span>{t("checkout.paymentFee")}</span><span className="font-semibold">{formatAr(order.payment_fee ?? order.verification_fee, lang)}</span></li>}
       </ul>
-      <div className="mt-3 flex flex-wrap justify-between gap-2 border-t pt-3 text-sm text-slate-500">
+      <div className="mt-3 flex flex-wrap justify-between gap-2 border-t pt-3 text-sm text-muted-foreground">
         <span><OrderIdentity order={order} /> · {order.pseudo}</span>
         <span>{paymentLabel(order.payment_method, t)}</span>
         <span>{new Date(order.created_at).toLocaleString(lang === "en" ? "en-GB" : "fr-FR")}</span>
@@ -500,8 +500,7 @@ function OrderTrackSearch() {
         placeholder={t("checkout.pubgId")}
         aria-label={t("checkout.pubgId")}
         inputMode="numeric"
-        className="command-btn h-10 w-full max-w-[260px] bg-[color:var(--cb-bg)] pl-3.5 pr-2.5 text-sm text-[color:var(--cb-strong)] outline-none placeholder:text-[color:var(--cb-placeholder)]"
-        style={{ borderRadius: 20 }}
+        className="command-btn h-10 w-full max-w-[260px] rounded-[20px] bg-[color:var(--cb-bg)] pl-3.5 pr-2.5 text-sm text-[color:var(--cb-strong)] outline-none placeholder:text-[color:var(--cb-placeholder)]"
       />
     </form>
   );
@@ -538,7 +537,7 @@ function OrderTrackSearch() {
         </CommandButton>
       </div>
       {playerField}
-      {error && <p className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700" data-testid="track-error">{error}</p>}
+      {error && <p className="mt-4 rounded-xl bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground" data-testid="track-error">{error}</p>}
       {result}
       {user ? (
         // Historique directement affiché (composant réutilisé, tâche 1) ;
