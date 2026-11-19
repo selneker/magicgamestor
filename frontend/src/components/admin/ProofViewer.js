@@ -216,7 +216,7 @@ export function ProofViewer({ order, startIndex = 0, onClose }) {
     }
   };
 
-  const btn = "inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-[color:hsl(var(--cream))] transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[color:hsl(var(--cream))]";
+  const btn = "inline-flex h-11 w-11 items-center justify-center rounded-full bg-[color:hsl(var(--cream)/.1)] text-[color:hsl(var(--cream))] transition-colors hover:bg-[color:hsl(var(--cream)/.2)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[color:hsl(var(--cream))]";
 
   return (
     <div
@@ -237,7 +237,7 @@ export function ProofViewer({ order, startIndex = 0, onClose }) {
           <button type="button" onClick={() => zoomBy(1.25)} aria-label={t("admin.proofZoomIn")} title={t("admin.proofZoomIn")} data-testid="proof-zoom-in" className={btn}>
             <Plus className="h-4 w-4" aria-hidden="true" />
           </button>
-          <button type="button" onClick={fit} aria-label={t("admin.proofZoomFit")} title={t("admin.proofZoomFit")} data-testid="proof-zoom-fit" className="inline-flex h-11 items-center justify-center rounded-full bg-white/10 px-3 text-xs font-bold text-[color:hsl(var(--cream))] transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[color:hsl(var(--cream))]">
+          <button type="button" onClick={fit} aria-label={t("admin.proofZoomFit")} title={t("admin.proofZoomFit")} data-testid="proof-zoom-fit" className="inline-flex h-11 items-center justify-center rounded-full bg-[color:hsl(var(--cream)/.1)] px-3 text-xs font-bold text-[color:hsl(var(--cream))] transition-colors hover:bg-[color:hsl(var(--cream)/.2)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[color:hsl(var(--cream))]">
             {t("admin.proofZoomFit")}
           </button>
           <button type="button" onClick={onClose} aria-label={t("common.close")} title={t("common.close")} data-testid="proof-viewer-close" className={btn}>
@@ -299,9 +299,9 @@ export function ProofViewer({ order, startIndex = 0, onClose }) {
               aria-label={t("admin.proofGoTo", { n: i + 1 })}
               aria-current={i === index ? "true" : undefined}
               data-testid={`proof-viewer-dot-${i}`}
-              className={`h-11 w-11 rounded-full focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[color:hsl(var(--cream))] ${i === index ? "bg-[color:hsl(var(--cream))]" : "bg-white/20"}`}
+              className={`h-11 w-11 rounded-full focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[color:hsl(var(--cream))] ${i === index ? "bg-[color:hsl(var(--cream))]" : "bg-[color:hsl(var(--cream)/.2)]"}`}
             >
-              <span className={`mx-auto block h-2 w-2 rounded-full ${i === index ? "bg-ink" : "bg-white/70"}`} aria-hidden="true" />
+              <span className={`mx-auto block h-2 w-2 rounded-full ${i === index ? "bg-ink" : "bg-[color:hsl(var(--cream)/.7)]"}`} aria-hidden="true" />
             </button>
           ))}
         </div>
