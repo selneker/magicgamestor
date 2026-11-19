@@ -39,6 +39,7 @@ fusionné dans `main`**, **aucune clé n'a été lue, écrite ni affichée** (ni
 | `17d93ad` | route webhook dédiée | `backend/routers/shop2topup_webhook.py` (nouveau), `backend/server.py`, `backend/tests/test_shop2topup_webhook.py` (nouveau) |
 | `e216dae` | script d'essai Checkpoint B | `backend/scripts/shop2topup_checkpoint_b.py` (nouveau), `backend/tests/test_shop2topup_checkpoint_b.py` (nouveau) |
 | `4c07dd0` | correctif : ne pas sonder les commandes livrées | `backend/services/order_maintenance.py`, `backend/tests/test_shop2topup_maintenance.py` |
+| `9827a2a` | correctif : lecture stricte de la clé + sortie sans réponse brute | `backend/scripts/shop2topup_checkpoint_b.py` |
 | *(ce rapport)* | plan + rapport | `plan-shop2topup-v2.md`, `RAPPORT-PL-006-T08C-V1.md` |
 
 **Points d'entrée dans le code :**
