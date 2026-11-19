@@ -340,6 +340,9 @@ La forme est `{"shop2topup": {"sku": "13", "uc_total": 60, "mode": "direct"}}` ;
 - [ ] un produit sans `supplier_mapping["shop2topup"]` n'est **jamais** touché par la synchro
 - [x] les 6 couples UC de § 2.4 constituent le jeu de départ **proposé** ; prime/évolutif restent hors
       manifeste tant que le propriétaire ne les a pas validés (A3 : aucun ajout de produit dans ce chantier)
+- [x] **T04B (19/11/2026)** : rapprochement hors lots UC en lecture seule
+      (`backend/scripts/shop2topup_orphans.py`) — 8 abonnements `certaine`, 3 packs évolutifs
+      `à valider`, 1 `sans équivalent` ; aucun mapping écrit, aucun produit masqué
 
 **Vérification :** test du backfill sur collection factice + relecture ligne à ligne du manifeste.
 **Dépendances :** T03 · **Fichiers :** `backend/core/shop2topup_mapping.py` (manifeste),
