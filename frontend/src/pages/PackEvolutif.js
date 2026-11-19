@@ -119,7 +119,7 @@ export default function PackEvolutif({ embedded = false, products = null }) {
                 </Button>
               </form>
               {result && !result.eligible && (
-                <p data-testid="evo-not-eligible" className="flex items-start gap-2 rounded-xl bg-rose-50 px-3 py-2.5 text-sm font-semibold text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
+                <p data-testid="evo-not-eligible" className="flex items-start gap-2 rounded-xl bg-destructive px-3 py-2.5 text-sm font-semibold text-destructive-foreground">
                   <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />{result.reason}
                 </p>
               )}
