@@ -537,6 +537,12 @@ sont désactivés (`active: false`), donc **retirés** du catalogue public — p
 FazerCards, aucun produit n'est désactivé.
 
 **Critères d'acceptation :**
+- [x] **préalable T09A (19/11/2026)** : `backend/scripts/shop2topup_margin.py` relève, **par GET seulement**,
+      le prix facturé au revendeur des six SKU du manifeste et le confronte aux prix MGS de
+      `core/seed.py:9-12` (coût = revendeur × taux × (1 + frais/100), marge en Ar et en %, statut
+      `OK`/`PERTE`). Essai à blanc sans réseau par défaut ; `--live` = au plus 3 GET.
+      **Aucun relevé réel n'a été fait** : c'est le propriétaire qui lance `--live` avec son taux et ses
+      frais, avant toute décision de prix.
 - [ ] T09 exécutée **après** le Checkpoint B, jamais avant (A2)
 - [ ] les 8 lots UC sans équivalent passent `active: false` (décision P2 tranchée)
 - [ ] **A3 / P7 tranché** : **aucun produit créé**. Les lots Shop2Topup que MGS ne vend pas (10 UC, 8 100,
