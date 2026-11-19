@@ -63,6 +63,14 @@ STATUS_READS_MAX = 6
 FINAL_STATUSES = (OrderStatus.COMPLETED, OrderStatus.REFUND, OrderStatus.FAILED)
 
 
+def _api_key() -> str:
+    """Clé lue UNIQUEMENT dans l'environnement (`os.environ[...]`), jamais dans un fichier."""
+    try:
+        return (os.environ["SHOP2TOPUP_API_KEY"] or "").strip()
+    except KeyError:
+        return ""
+
+
 def mask_half(value: str | None) -> str:
     """Masque la moitié d'un identifiant (ex. `52328******`) — jamais l'identifiant complet."""
     text = str(value or "")
@@ -110,7 +118,7 @@ def _error_label(exc: Exception) -> str:
 
 
 def _dry_run(player_id: str, zone_id: str | None, probe_batch: bool, out) -> int:
-    key_present = bool((os.environ.get(KEY_ENV) or "").strip())
+    key_present = bool(_api_key())
     out("PL-006-T08C-V1 — Checkpoint B Shop2Topup — ESSAI À BLANC (aucun appel réseau)")
     out(f"jeu                : {GAME_ID}")
     out(f"catégorie API      : {CATEGORY_ID}")
@@ -138,7 +146,7 @@ async def run(*, player_id: str, zone_id: str | None = None, confirm_spend: bool
     out(f"clé d'idempotence  : {IDEMPOTENCY_KEY}")
     out(f"identifiant joueur : {mask_half(player_id)}")
 
-    if not (os.environ.get(KEY_ENV) or "").strip():
+    if not _api_key():
         out(f"{KEY_ENV}=*** absente : arrêt AVANT tout appel fournisseur.")
         return 2
     out(f"{KEY_ENV}=*** (présente, jamais affichée)")
@@ -175,6 +183,7 @@ async def run(*, player_id: str, zone_id: str | None = None, confirm_spend: bool
         if latest.normalized_status in FINAL_STATUSES:
             break
 
+    out("réponses fournisseur non affichées (tout solde serait remplacé par <balance>).")
     out("terminé : aucune écriture en base, aucun fichier créé.")
     return 0
 
