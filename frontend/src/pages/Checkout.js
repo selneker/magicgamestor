@@ -388,7 +388,7 @@ export default function Checkout() {
 function MethodLine({ testId, logo, name, sub, selected, onSelect }) {
   return (
     <button type="button" data-testid={testId} aria-pressed={selected} onClick={onSelect}
-      className={`flex min-h-[54px] w-full items-center gap-3 rounded-[19px] border border-[color:var(--rule-strong)] bg-transparent px-3.5 py-2.5 text-left transition-colors motion-reduce:transition-none ${selected ? "border-[color:var(--color--dark)] bg-black/5" : ""}`}>
+      className={`flex min-h-[54px] w-full items-center gap-3 rounded-[19px] border border-[color:var(--rule-strong)] bg-transparent px-3.5 py-2.5 text-left transition-colors motion-reduce:transition-none ${selected ? "border-[color:var(--color--dark)] bg-foreground/5" : ""}`}>
       {logo
         ? <img src={logo} alt="" aria-hidden="true" className="h-[1.7em] w-[2.6em] shrink-0 rounded-[7px] object-contain" />
         : <span className="flex h-[1.7em] w-[2.6em] shrink-0 items-center justify-center rounded-[7px] bg-muted text-xs font-black text-muted-foreground" aria-hidden="true">{name.slice(0, 1)}</span>}
