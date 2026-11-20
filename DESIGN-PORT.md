@@ -183,3 +183,23 @@ testids et comportement conservés ; utilitaire Tailwind retiré seulement si un
 - **Dialog : shell shadcn CONSERVÉ** (focus trap/comportement) ; titre → `.h-c`, récap → `.kv`, `Input` → `.form-field`, boutons check/continue → `.button-main`, éligible → `.trust-card` teinte néon, non-éligible = couple `--destructive` conservé.
 - Logique d'éligibilité intacte (`check`/`proceed`, `/evo/eligibility`, `/evo/season`, navigation `/commande?pubg_id=`) ; testids `evo-*` conservés.
 - Pas de test dédié ; suite complète **534 verts**.
+
+## Checkout et suivi de commande (dernier, risque élevé) — état
+
+### Fait — `Checkout.js` écran 1 « Commande » (commit dédié, tests 93 verts)
+- `Checkout.js:268` wrapper `mx-auto max-w-[480px]` → `.co-screen` (mg-components:541).
+- `:270` en-tête → `.co-topbar` + `.co-header-title` ; lien sortie → `.link`.
+- `:287` montant → `.co-amount` (`.label`/`.value`/`small`) + `.co-lines`/`.co-line` (`.kv-muted`) ; frais → `.co-remark`.
+- `:304` ID vérifié → `.co-id`/`.co-id__txt` ; coche + pseudo → `.co-proof-ok`.
+- `:329` méthodes → `.pm-list` ; `MethodLine` (`:388`) → `.pm-row`/`.pm-logo`/`.pm-row__txt`/`.pm-row__radio` + `.is--selected` (mg-components:560-577).
+- `:347` remarque → `.co-remark` ; `:356` submit + `:372` captcha-submit → `.co-footer-btn` > `.button-main` (vrais `<button disabled>`).
+- **Conservés :** tous les testids, structure `payment-methods > *` (3), `checkout-player-ok/pseudo/id`, `.disabled`, feuille `CheckoutSheet` (Radix, focus trap, keepMounted captcha), logique `createOrder`/`submitOrder`/captcha.
+- **Invariant de texte préservé :** `formatAr` inclut déjà « Ar » ; le `<small>Ar</small>` supplémentaire de `checkout-amount`/`checkout-fee-line` est conservé tel quel (comportement inchangé). *Défaut préexistant « double Ar » noted en points ouverts, non corrigé (règle : garder le comportement).*
+
+### Restant — analyse des écarts (conversion à poursuivre, logique/testids à préserver)
+- `checkout/IdentityFieldsVerify.js:238-246` `Input` shadcn → `.form-field` ; `:287-289` bouton « Vérifier » `rounded-full bg-foreground` → `.button-main` ; `:273-283` pastilles d'IDs récents `bg-muted rounded-full` → `.chip` ; `:292-329` panneaux statut → classes DS. Test `IdentityFieldsVerify.test.js` verrouille le comportement (chips, verdict, testids) — à garder vert.
+- `checkout/ProofPay.js` (389 l.) : contenu de la feuille preuve → `.sheet__drop`/`.sheet__opt`/`.co-proof-ok`/`.button-main` ; shell `CheckoutSheet` conservé. Test `ProofPay.test.js` à garder vert.
+- `checkout/CancelSheet.js`, `checkout/BinancePay.js`, `store/PaymentFlow.js` (`NetworkPicker`) : lignes/boutons → `.pm-row`/`.button-main`/`.chip`.
+- `checkout/CheckoutSheet.js` : **shell Radix CONSERVÉ** (focus trap, keepMounted, pied fixe PL-CHK-5) ; seul le titre/pied peuvent prendre `.h-c`/`.button-main` sans toucher la structure.
+- `pages/OrderTrack.js` (557 l., suivi) et `pages/OrderHistory.js` (747 l., liste/détail) : timeline/statuts → `.co-steps`/`.co-step`/`.kv-list`/`.kv`, cartes → `.trust-card`, boutons → `.button-main`. Tests `OrderTrack.test.js`/`OrderHistory.test.js` à garder verts.
+- `pages/CheckoutConfirm.js` : confirmation → classes DS (`.co-wait`/`.co-proof-ok`).
