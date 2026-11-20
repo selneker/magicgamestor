@@ -70,33 +70,31 @@ function ButtonMain({ to, label, accent = "light", theme = "light", className = 
 
 function Hero({ shopUrl, games }) {
   const { t } = useLang();
-  // L'eyebrow sert à quelque chose : il liste les jeux réellement
-  // disponibles (« PUBG Mobile · Free Fire · … ») ; repli sur le libellé
-  // statique tant que la boutique n'a aucun jeu.
-  const eyebrow = games.length > 0 ? games.map((g) => g.name).join(" · ") : t("store.heroEyebrow");
+  // PL-DS-V3 — héro du prototype design-system-v3.html (accueil) : panneau
+  // .content-container blanc sur fond encre, titre h-d plein, deux illustrations
+  // (décoratives) et trois CTA « Voir la boutique / Choisir un jeu / Suivre une
+  // commande ». Lottie Rocket/PiggyBank du prototype → icônes sprite (pas de
+  // nouvelle dépendance lottie-web).
   return (
-    <section className="page-hero" data-testid="hero">
-      <div className="container" data-hero-content>
-        <p className="eyebrow" data-hero-fade>{eyebrow}</p>
-        <h1 className="h-d" data-anim-hero style={{ marginTop: ".35em" }} data-testid="hero-title">
-          {t("store.heroA")} <span className="hero-lime">{t("store.heroB")}</span>
-        </h1>
-        <p className="h-s" data-load-stagger style={{ maxWidth: "30em", marginTop: "1.2em" }}>
-          {t("store.heroSub")}
-        </p>
-        <div className="hero-cta-row" data-load-stagger>
-          <ButtonMain to={shopUrl} label={t("store.ctaShop")} theme="dark" accent="violet"
-            cursor={t("store.ctaShop")} testId="hero-cta-shop">
-            {t("store.ctaShop")}
-            <svg className="button-main-inner__arrow" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5873 10L0 8.4127L6.30385 2.13152L0.793651 2.1542V0H10V9.20635H7.8458L7.86848 3.67347L1.5873 10Z" fill="currentColor" /></svg>
-          </ButtonMain>
-          <ButtonMain to="/suivi" label={t("store.ctaTrack")} theme="light" accent="blue" testId="hero-cta-track" />
-          {/* Icônes décoratives (retour propriétaire : « des icônes comme sur
-              Slush, en mouvement ») — ornementales, hors arbre a11y. */}
-          <div className="hero-icons" aria-hidden="true">
-            <span className="hero-icon hero-icon--manette"><Icon name="manette" className="ic-use ic-anim-float" /></span>
-            <span className="hero-icon hero-icon--piece"><Icon name="piece" className="ic-use ic-anim-coin" /></span>
-            <span className="hero-icon hero-icon--fusee"><Icon name="fusee" className="ic-use ic-anim-float" /></span>
+    <section className="section" id="top" data-testid="hero">
+      <div className="container">
+        <div className="content-container padding-vertical-180">
+          <div className="hero-section">
+            <div className="content-wrap-m" data-hero-content>
+              <div className="title-row">
+                <h1 className="h-d u--rel" data-anim-hero data-testid="hero-title">{t("store.heroA")} {t("store.heroB")}</h1>
+                <div className="defi-i-1" data-icon aria-hidden="true"><Icon name="fusee" className="ic-use ic-anim-float" /></div>
+                <div className="defi-i-2" data-icon aria-hidden="true"><Icon name="piece" className="ic-use ic-anim-coin" /></div>
+                <div className="button-row">
+                  <ButtonMain to="/boutique" label={t("store.seeShop")} theme="light" accent="dark" cursor={t("store.seeShop")} testId="hero-cta-shop">{t("store.seeShop")}</ButtonMain>
+                  <ButtonMain to={shopUrl} label={t("store.ctaShop")} theme="light" accent="yellow" cursor={t("store.ctaShop")} testId="hero-cta-choose">
+                    {t("store.ctaShop")}
+                    <svg className="button-main-inner__arrow" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.5873 10L0 8.4127L6.30385 2.13152L0.793651 2.1542V0H10V9.20635H7.8458L7.86848 3.67347L1.5873 10Z" fill="currentColor" /></svg>
+                  </ButtonMain>
+                  <ButtonMain to="/suivi" label={t("store.ctaTrack")} theme="light" accent="yellow" cursor={t("store.ctaTrack")} testId="hero-cta-track">{t("store.ctaTrack")}</ButtonMain>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
