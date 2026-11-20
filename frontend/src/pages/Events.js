@@ -6,6 +6,7 @@ import { api, sessionId } from "@/lib/api";
 import { useLang, localized } from "@/context/LanguageContext";
 import { ErrorState } from "@/components/common/ErrorState";
 import { usePageMeta } from "@/lib/catalog";
+import { Icon } from "@/components/ui/icon";
 
 export default function Events() {
   const { t, lang } = useLang();
@@ -38,55 +39,68 @@ export default function Events() {
     setEvents((list) => list.map((e) => (e.id === ev.id ? { ...e, shares: data.shares } : e)));
   };
 
+  // PL-DS-V3 — page événements du prototype : mgs-head (eyebrow + mgs-title +
+  // mgs-sub), grille mgs-grid--2 de mgs-card (media image réelle ou coloré,
+  // chip, nom, description, pied CTA + like/share). Logique inchangée.
   return (
-    <div className="container section page-top page-bottom" style={{ maxWidth: "78em" }}>
-      <p className="eyebrow">Magic Game Store</p>
-      <h1 className="h-l">{t("events.title")}</h1>
-      <p className="p-m" style={{ marginTop: ".5em" }}>{t("events.subtitle")}</p>
-      {loading ? (
-        <div className="grid gap-6 md:grid-cols-2" style={{ marginTop: "2em" }} data-testid="events-loading">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="review-card">
-              <div className="h-40 w-full rounded-[1em] bg-muted animate-pulse" />
-              <h2 className="mt-4 h-8 w-3/4 rounded bg-muted animate-pulse" />
-              <p className="mt-3 h-4 w-1/2 rounded bg-muted animate-pulse" />
-              <div className="mt-auto pt-4"><div className="h-8 w-1/3 rounded bg-muted animate-pulse" /></div>
-            </div>
-          ))}
-        </div>
-      ) : error ? (
-        <ErrorState title={t("common.error")} description={t("events.error")} retryLabel={t("common.retry")} onRetry={reload} className="mt-10" />
-      ) : events.length === 0 ? (
-        <p className="p-m" style={{ marginTop: "2em" }} data-testid="events-empty">{t("events.empty")}</p>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2" style={{ marginTop: "2em" }}>
-          {events.map((ev) => (
-            <article key={ev.id} id={ev.slug} data-testid={`event-card-${ev.slug}`} className="review-card" style={{ padding: 0, overflow: "hidden", gap: 0 }}>
-              <div className="relative h-52" style={{ borderBottom: ".125em solid var(--color--dark)" }}>
-                {ev.image_url && <img src={ev.image_url} alt={localized(ev, "title", lang)} className="h-full w-full object-cover" loading="lazy" />}
-                {ev.badge && <span className="badge-pop" style={{ position: "absolute", right: ".6em", top: ".6em" }}>{ev.badge}</span>}
-              </div>
-              <div className="flex flex-1 flex-col" style={{ padding: "1.4em" }}>
-                <h2 className="h-c">{localized(ev, "title", lang)}</h2>
-                <p className="p-m" style={{ marginTop: ".6em" }}>{localized(ev, "description", lang)}</p>
-                {ev.price_label && <div className="flex items-end gap-3" style={{ marginTop: "1em", borderTop: "1px solid hsl(0 0% 7% / .12)", paddingTop: "1em" }}><span className="num" style={{ fontSize: "1.8em", fontWeight: 800 }}>{ev.price_label}</span>{ev.old_price_label && <span className="p-m" style={{ textDecoration: "line-through", opacity: .6 }}>{ev.old_price_label}</span>}</div>}
-                {ev.product_slug && (
-                  <Link to={`/produit/${ev.product_slug}`} className="button-main" data-button-theme="dark" data-button-accent="violet" data-testid={`event-cta-${ev.slug}`} style={{ marginTop: "1em", width: "100%" }}>
-                    <span className="button-main-inner full-h">
-                      <span className="button-main-inner__back" data-text={t("events.buy")}></span>
-                      <span className="button-main-inner__front"><span className="button-main-inner__bg"></span><span className="button-main-inner__text"><span>{t("events.buy")}</span></span></span>
-                    </span>
-                  </Link>
-                )}
-                <div className="flex items-center gap-3" style={{ marginTop: "auto", paddingTop: "1em" }}>
-                  <button data-testid={`event-like-${ev.slug}`} onClick={() => like(ev)} aria-pressed={liked.has(ev.id)} className="chip min-h-11"><Heart className={`h-4 w-4 ${liked.has(ev.id) ? "fill-current" : ""}`} strokeWidth={2} />{ev.likes}</button>
-                  <button data-testid={`event-share-${ev.slug}`} onClick={() => share(ev)} className="chip min-h-11"><Share2 className="h-4 w-4" strokeWidth={2} />{ev.shares}</button>
+    <section className="section">
+      <div className="container">
+        <div className="mgs-shell">
+          <div className="mgs-head">
+            <p className="eyebrow">{t("events.eyebrow")}</p>
+            <h1 className="mgs-title">{t("events.title")}</h1>
+            <p className="mgs-sub">{t("events.subtitle")}</p>
+          </div>
+          {loading ? (
+            <div className="mgs-grid mgs-grid--2" data-testid="events-loading">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="mgs-card">
+                  <div className="mgs-card__media u--bg--yellow animate-pulse" style={{ aspectRatio: "16/10" }} />
+                  <div className="h-8 w-3/4 rounded bg-muted animate-pulse" />
+                  <div className="h-4 w-1/2 rounded bg-muted animate-pulse" />
                 </div>
-              </div>
-            </article>
-          ))}
+              ))}
+            </div>
+          ) : error ? (
+            <ErrorState title={t("common.error")} description={t("events.error")} retryLabel={t("common.retry")} onRetry={reload} className="mt-10" />
+          ) : events.length === 0 ? (
+            <p className="mgs-sub" data-testid="events-empty">{t("events.empty")}</p>
+          ) : (
+            <div className="mgs-grid mgs-grid--2">
+              {events.map((ev) => (
+                <article key={ev.id} id={ev.slug} data-testid={`event-card-${ev.slug}`} className="mgs-card">
+                  <div className={`mgs-card__media ${ev.image_url ? "" : "u--bg--yellow"}`} style={{ aspectRatio: "16/10" }}>
+                    {ev.image_url
+                      ? <img src={ev.image_url} alt={localized(ev, "title", lang)} className="h-full w-full object-cover" loading="lazy" />
+                      : <Icon name="manette" className="bold-ic" />}
+                    {ev.badge && <span className="mgs-chip" style={{ position: "absolute", right: ".6em", top: ".6em" }}>{ev.badge}</span>}
+                  </div>
+                  <h2 className="mgs-card__name" style={{ fontSize: "1.2em" }}>{localized(ev, "title", lang)}</h2>
+                  <p className="mgs-card__desc">{localized(ev, "description", lang)}</p>
+                  {ev.price_label && (
+                    <div className="flex items-end gap-3">
+                      <span className="num" style={{ fontSize: "1.8em", fontWeight: 800 }}>{ev.price_label}</span>
+                      {ev.old_price_label && <span className="mgs-card__desc" style={{ textDecoration: "line-through", opacity: .6 }}>{ev.old_price_label}</span>}
+                    </div>
+                  )}
+                  <div className="mgs-card__foot">
+                    {ev.product_slug && (
+                      <Link to={`/produit/${ev.product_slug}`} className="button-main" data-button-theme="dark" data-button-accent="yellow" data-testid={`event-cta-${ev.slug}`}>
+                        <span className="button-main-inner full-h">
+                          <span className="button-main-inner__back" data-text={t("events.buy")}></span>
+                          <span className="button-main-inner__front"><span className="button-main-inner__bg"></span><span className="button-main-inner__text"><span>{t("events.buy")}</span></span></span>
+                        </span>
+                      </Link>
+                    )}
+                    <button data-testid={`event-like-${ev.slug}`} onClick={() => like(ev)} aria-pressed={liked.has(ev.id)} className="mgs-chip min-h-11"><Heart className={`h-4 w-4 ${liked.has(ev.id) ? "fill-current" : ""}`} strokeWidth={2} />{ev.likes}</button>
+                    <button data-testid={`event-share-${ev.slug}`} onClick={() => share(ev)} className="mgs-chip min-h-11"><Share2 className="h-4 w-4" strokeWidth={2} />{ev.shares}</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
+    </section>
   );
 }

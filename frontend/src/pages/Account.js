@@ -66,36 +66,25 @@ function VerifyBanner({ user }) {
 
 // Ligne de réglages : icône → libellé (+ aide) → contrôle final. Rendue en .kv
 // (composant DS de liste divisée) ; le survol garde un feedback (utilitaire conservé).
-function Row({ icon: Icon, label, helper, trailing, onClick, to, testid, danger, accent }) {
+function Row({ icon: Icon, label, helper, trailing, onClick, to, testid, danger }) {
   const Comp = to ? Link : "button";
   const props = to ? { to } : { type: "button", onClick };
-  const iconBg = danger ? "bg-destructive text-destructive-foreground" : accent ? "bg-primary text-primary-foreground" : "bg-foreground text-background";
+  // PL-DS-V3 — rangée de réglages du prototype compte : .mgs-set-row
+  // (icône → libellé + aide → chevron), survol jaune-100, danger rouge.
   return (
-    <Comp
-      {...props}
-      data-testid={testid}
-      className={`kv group w-full text-left transition-colors hover:bg-muted ${danger ? "text-destructive" : ""}`}
-      style={{ alignItems: "center", fontSize: "1em" }}
-    >
-      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${iconBg}`}>
-        <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-semibold leading-tight">{label}</span>
-        {helper && <span className="mt-0.5 block truncate text-[11px] font-normal" style={{ color: "hsl(0 0% 7% / .6)" }}>{helper}</span>}
-      </span>
-      <span className="shrink-0" style={{ color: "hsl(0 0% 7% / .6)" }}>
-        {trailing || <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2} />}
-      </span>
+    <Comp {...props} data-testid={testid} className={`mgs-set-row ${danger ? "is--danger" : ""}`}>
+      <Icon className="h-[1.4em] w-[1.4em]" strokeWidth={2} />
+      <span className="mgs-set-label">{label}{helper && <span className="mgs-set-helper">{helper}</span>}</span>
+      <span className="mgs-set-trail">{trailing || <ChevronRight className="h-4 w-4" strokeWidth={2} />}</span>
     </Comp>
   );
 }
 
 function Section({ title, children, testid }) {
   return (
-    <section style={{ marginTop: "1.5em" }} data-testid={testid}>
-      <h2 className="eyebrow" style={{ padding: "0 .25em .6em" }}>{title}</h2>
-      <div className="kv-list">{children}</div>
+    <section className="mgs-set-section" data-testid={testid}>
+      <h2 className="eyebrow">{title}</h2>
+      <div className="mgs-set">{children}</div>
     </section>
   );
 }
@@ -118,7 +107,7 @@ function PasswordField({ id, label, value, onChange, testid, minLength }) {
 
 function ExpandableBlock({ open, children, testid }) {
   if (!open) return null;
-  return <div style={{ borderTop: "1px solid hsl(0 0% 7% / .12)", background: "hsl(0 0% 7% / .03)", padding: "1em" }} data-testid={testid}>{children}</div>;
+  return <div className="mgs-set-block" data-testid={testid}>{children}</div>;
 }
 
 export default function Account() {
