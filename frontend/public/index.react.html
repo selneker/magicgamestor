@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="theme-color" content="#F4F1E8" />
+        <script>
+            (function () {
+                var theme;
+                try { theme = localStorage.getItem('mgs-theme'); } catch (_) {}
+                var dark = theme === 'dark' || (theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                document.documentElement.classList.toggle('dark', dark);
+                document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+                document.querySelector('meta[name="theme-color"]').content = dark ? '#111111' : '#F4F1E8';
+            })();
+        </script>
+        <style>html,body{background:#F4F1E8;color:#111111}html.dark,html.dark body{background:#111111;color:#F4F1E8}</style>
+        <meta name="description" content="Recharges de jeux mobiles à Madagascar : UC PUBG Mobile, abonnements et packs. Paiement MVola, Orange Money ou USDT, compte joueur vérifié avant paiement." />
+        <meta name="keywords" content="UC PUBG Mobile, acheter UC PUBG, UC PUBG pas cher, recharge PUBG Mobile, PUBG Mobile Madagascar, UC en ariary, acheter UC avec MVola, acheter UC Orange Money, Prime PUBG Mobile, Prime+ PUBG Mobile, abonnement PUBG Mobile, pack évolutif PUBG Mobile, Royal Pass PUBG Mobile, recharge jeux mobiles Madagascar, boutique de jeux en ligne Madagascar, paiement Mobile Money Madagascar, Binance USDT Madagascar, Magic Game Store, magicgame.store, Antananarivo, Madagascar" />
+        <meta name="author" content="Magic Game Store" />
+        <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
+        <meta name="googlebot" content="index,follow,max-snippet:-1,max-image-preview:large,max-video-preview:-1" />
+        <meta name="geo.region" content="MG" />
+        <meta name="geo.placename" content="Madagascar" />
+        <link rel="canonical" href="https://magicgame.store/" />
+        <link rel="alternate" hreflang="fr" href="https://magicgame.store/" />
+        <link rel="alternate" hreflang="x-default" href="https://magicgame.store/" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Magic Game Store" />
+        <meta property="og:url" content="https://magicgame.store/" />
+        <meta property="og:locale" content="fr_FR" />
+        <meta property="og:locale:alternate" content="en_US" />
+        <meta property="og:title" content="Magic Game Store — Recharges de jeux à Madagascar" />
+        <meta property="og:description" content="Recharges de jeux mobiles, paiement MVola, Orange Money ou USDT. Compte joueur vérifié avant paiement." />
+        <meta property="og:image" content="%PUBLIC_URL%/og-image.png?v=1" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Magic Game Store — recharges de jeux mobiles à Madagascar" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Magic Game Store — Recharges de jeux à Madagascar" />
+        <meta name="twitter:description" content="UC PUBG Mobile, Prime et Prime+, paiement MVola, Orange Money ou USDT, compte joueur vérifié avant paiement." />
+        <meta name="twitter:image" content="%PUBLIC_URL%/og-image.png?v=1" />
+        <!-- Données structurées statiques (lues même sans JavaScript) : boutique,
+             site et point de contact. Les données de page (produit, FAQ) sont
+             ajoutées côté client par usePageMeta. -->
+        <script type="application/ld+json" id="mgs-site-jsonld">
+            {
+                "@context": "https://schema.org",
+                "@graph": [
+                    {
+                        "@type": "WebSite",
+                        "@id": "https://magicgame.store/#website",
+                        "url": "https://magicgame.store/",
+                        "name": "Magic Game Store",
+                        "inLanguage": "fr",
+                        "publisher": { "@id": "https://magicgame.store/#store" },
+                        "potentialAction": {
+                            "@type": "SearchAction",
+                            "target": {
+                                "@type": "EntryPoint",
+                                "urlTemplate": "https://magicgame.store/boutique?q={search_term_string}"
+                            },
+                            "query-input": "required name=search_term_string"
+                        }
+                    },
+                    {
+                        "@type": "OnlineStore",
+                        "@id": "https://magicgame.store/#store",
+                        "name": "Magic Game Store",
+                        "alternateName": "MGS",
+                        "url": "https://magicgame.store/",
+                        "logo": "https://magicgame.store/icon-512.png",
+                        "image": "https://magicgame.store/og-image.png",
+                        "description": "Boutique malgache de recharges de jeux mobiles : UC PUBG Mobile, abonnements Prime et Prime+, packs évolutifs. Paiement MVola, Orange Money ou Binance USDT, compte joueur vérifié avant paiement.",
+                        "email": "contact@magicgame.store",
+                        "telephone": "+261383905692",
+                        "currenciesAccepted": "MGA",
+                        "paymentAccepted": "MVola, Orange Money, Binance USDT",
+                        "areaServed": { "@type": "Country", "name": "Madagascar" },
+                        "sameAs": [
+                            "https://web.facebook.com/profile.php?id=61564007603785",
+                            "https://wa.me/261377519833"
+                        ],
+                        "contactPoint": [
+                            {
+                                "@type": "ContactPoint",
+                                "telephone": "+261383905692",
+                                "contactType": "customer service",
+                                "areaServed": "MG",
+                                "availableLanguage": ["fr", "en"]
+                            }
+                        ]
+                    }
+                ]
+            }
+        </script>
+        <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+        <!-- Favicon = logo principal (PL-BRAND-1). ?v=1 pour invalider les copies en cache. -->
+        <link rel="icon" href="%PUBLIC_URL%/favicon.svg?v=1" type="image/svg+xml" />
+        <link rel="icon" href="%PUBLIC_URL%/favicon.ico?v=1" sizes="48x48" />
+        <link rel="apple-touch-icon" href="%PUBLIC_URL%/apple-touch-icon.png?v=1" />
+        <!-- PL-005-FE-03 — polices auto-hébergées (public/fonts/, licence OFL,
+             sous-ensembles latin + latin-ext). Aucun appel à Google Fonts.
+             Preload de la police de TEXTE uniquement (Onest latin). -->
+        <link rel="preload" href="%PUBLIC_URL%/fonts/onest-var.woff2" as="font" type="font/woff2" crossorigin />
+        <!-- @font-face ici (et non dans src/index.css) : CRA transforme chaque
+             url() du CSS en module à résoudre depuis src/ et échoue sur un
+             chemin public ; le <style> du HTML n'est pas transformé. Chemins
+             absolus /fonts/… : corrects avec le routage client. -->
+        <style>
+            @font-face { font-family: "Bricolage Grotesque"; src: url("/fonts/bricolage-grotesque-var-ext.woff2") format("woff2"); font-weight: 400 800; font-style: normal; font-display: swap; unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+            @font-face { font-family: "Bricolage Grotesque"; src: url("/fonts/bricolage-grotesque-var.woff2") format("woff2"); font-weight: 400 800; font-style: normal; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+            @font-face { font-family: "Onest"; src: url("/fonts/onest-var-ext.woff2") format("woff2"); font-weight: 400 800; font-style: normal; font-display: swap; unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+            @font-face { font-family: "Onest"; src: url("/fonts/onest-var.woff2") format("woff2"); font-weight: 400 800; font-style: normal; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+        </style>
+        <!-- PL-005-FE-03 (refonte Slush) — design system de la maquette PL-DS-003
+             copié dans public/ et lié ICI (comme la maquette) : l'ordre
+             design-system → mg-brand → mg-components est celui de la maquette,
+             et des liens publics ne passent pas par css-loader. -->
+        <link rel="stylesheet" href="%PUBLIC_URL%/design-system.css" />
+        <link rel="stylesheet" href="%PUBLIC_URL%/mg-brand.css" />
+        <link rel="stylesheet" href="%PUBLIC_URL%/mg-components.css" />
+        <!-- PL-DS-V3 — couche design du prototype approuvé design-system-v3.html :
+             palette noir/blanc + composants mgs-* + chrome. Chargée en dernier. -->
+        <link rel="stylesheet" href="%PUBLIC_URL%/mgs-v3.css" />
+        <!--
+        manifest.json provides metadata used when your web app is installed on a
+        user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
+        -->
+        <!--
+        Notice the use of %PUBLIC_URL% in the tags above.
+        It will be replaced with the URL of the `public` folder during the build.
+        Only files inside the `public` folder can be referenced from the HTML.
+
+        Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
+        work correctly both with client-side routing and a non-root public URL.
+        Learn how to configure a non-root public URL by running `npm run build`.
+        -->
+        <title>Magic Game Store — Recharges de jeux à Madagascar</title>
+        <!-- Loader de démarrage (PL-BRAND-1) : peint dès le parse HTML, avant le bundle.
+             Formes/durées = prototype validé (loader-prototype.html), intégration seule.
+             Couleurs inline : le CSS de l'app (et ses jetons) n'est pas encore chargé ici. -->
+        <style>
+            #mgs-loader{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:#E9E2D8;
+              transition:opacity .5s ease,visibility .5s}
+            #mgs-loader.is-done{opacity:0;visibility:hidden}
+            .mgs-logo{width:min(34vmin,180px);height:auto;overflow:visible}
+            .mgs-disc{fill:#000;transform-origin:415px 415px;animation:mgs-disc-in .55s cubic-bezier(.2,.9,.3,1) both}
+            .mgs-star{fill:#CBFE01;transform-origin:415px 415px;animation:mgs-star-in .6s cubic-bezier(.2,1.2,.3,1) .35s both,
+              mgs-pulse 1.6s ease-in-out 1.1s infinite}
+            .mgs-bar{position:absolute;bottom:18vh;width:90px;height:3px;background:rgba(0,0,0,.12);border-radius:3px;overflow:hidden}
+            .mgs-bar::after{content:"";display:block;height:100%;width:40%;background:#000;border-radius:3px;animation:mgs-slide 1.1s ease-in-out infinite}
+            .mgs-wake{position:absolute;bottom:calc(18vh - 28px);font:500 13px/1.4 system-ui,sans-serif;color:#0A0A0A}
+            @keyframes mgs-disc-in{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+            @keyframes mgs-star-in{from{transform:scale(0) rotate(-90deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+            @keyframes mgs-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+            @keyframes mgs-slide{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
+            @media (prefers-reduced-motion:reduce){.mgs-disc,.mgs-star,.mgs-bar::after{animation:none}.mgs-star{transform:none}}
+        </style>
+        <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
+    </head>
+    <body>
+        <!-- Loader : une seule fois par session (sessionStorage), disparu quand React a rendu
+             (window.__mgsLoaderReady, appelé par App.js) — 900 ms minimum, 8 s maximum. -->
+        <div id="mgs-loader" role="status" aria-live="polite" aria-busy="true" aria-label="Chargement">
+          <svg class="mgs-logo" viewBox="0 0 830 830" aria-hidden="true">
+            <circle class="mgs-disc" cx="415" cy="415" r="415"/>
+            <path class="mgs-star" d="M415 0A415 415 0 0 0 830 415A415 415 0 0 0 415 830A415 415 0 0 0 0 415A415 415 0 0 0 415 0Z"/>
+          </svg>
+          <div class="mgs-bar"></div>
+          <p class="mgs-wake" id="mgs-loader-wake" hidden></p>
+        </div>
+        <script>
+            (function () {
+                var loader = document.getElementById('mgs-loader');
+                try {
+                    if (sessionStorage.getItem('mgs-loader-seen')) { loader.remove(); return; }
+                    sessionStorage.setItem('mgs-loader-seen', '1');
+                } catch (_) {}
+                var start = Date.now();
+                var finished = false;
+                var wake = document.getElementById('mgs-loader-wake');
+                // Le système de traduction de l'app vit dans le bundle (pas encore chargé) :
+                // langue lue dans localStorage, français par défaut (langue du site).
+                var wakeText = { fr: 'Réveil du serveur…', en: 'Waking the server…' };
+                var lang = 'fr';
+                try { lang = localStorage.getItem('mgs_lang') === 'en' ? 'en' : 'fr'; } catch (_) {}
+                if (wake) wake.textContent = wakeText[lang] || wakeText.fr;
+                function finish() {
+                    if (finished || !loader.parentNode) return;
+                    finished = true;
+                    var wait = Math.max(0, 900 - (Date.now() - start));
+                    setTimeout(function () {
+                        loader.classList.add('is-done');
+                        loader.removeAttribute('aria-busy');
+                        setTimeout(function () { loader.remove(); }, 550);
+                    }, wait);
+                }
+                window.__mgsLoaderReady = finish;
+                setTimeout(finish, 8000); // plafond : l'overlay disparaît quoi qu'il arrive
+                setTimeout(function () { if (!finished && wake) wake.hidden = false; }, 4000);
+            })();
+        </script>
+        <noscript><style>#mgs-loader{display:none}</style>You need to enable JavaScript to run this app.</noscript>
+        <!-- PL-005-FE-03 (refonte Slush) — bundle d'animations de la maquette
+             (vendor/, chargé comme dans 01-accueil.html, AVANT le bundle app) :
+             gsap + ScrollTrigger + CustomEase + SplitText + Lenis. Exposés sur
+             window ; src/lib/slush.js les consomme avec repli sans GSAP. -->
+        <script src="%PUBLIC_URL%/vendor/gsap.min.js"></script>
+        <script src="%PUBLIC_URL%/vendor/ScrollTrigger.min.js"></script>
+        <script src="%PUBLIC_URL%/vendor/CustomEase.min.js"></script>
+        <script src="%PUBLIC_URL%/vendor/SplitText.min.js"></script>
+        <script src="%PUBLIC_URL%/vendor/lenis.min.js"></script>
+        <div id="root"></div>
+        <!--
+      This HTML file is a template.
+      If you open it directly in the browser, you will see an empty page.
+
+      You can add webfonts, meta tags, or analytics to this file.
+      The build step will place the bundled scripts into the <body> tag.
+
+      To begin the development, run `npm start` or `yarn start`.
+      To create a production bundle, use `npm run build` or `yarn build`.
+    -->
+        <script>
+            !(function (t, e) {
+                var o, n, p, r;
+                e.__SV ||
+                    ((window.posthog = e),
+                    (e._i = []),
+                    (e.init = function (i, s, a) {
+                        function g(t, e) {
+                            var o = e.split(".");
+                            2 == o.length && ((t = t[o[0]]), (e = o[1])),
+                                (t[e] = function () {
+                                    t.push(
+                                        [e].concat(
+                                            Array.prototype.slice.call(
+                                                arguments,
+                                                0,
+                                            ),
+                                        ),
+                                    );
+                                });
+                        }
+                        ((p = t.createElement("script")).type =
+                            "text/javascript"),
+                            (p.crossOrigin = "anonymous"),
+                            (p.async = !0),
+                            (p.src =
+                                s.api_host.replace(
+                                    ".i.posthog.com",
+                                    "-assets.i.posthog.com",
+                                ) + "/static/array.js"),
+                            (r =
+                                t.getElementsByTagName(
+                                    "script",
+                                )[0]).parentNode.insertBefore(p, r);
+                        var u = e;
+                        for (
+                            void 0 !== a ? (u = e[a] = []) : (a = "posthog"),
+                                u.people = u.people || [],
+                                u.toString = function (t) {
+                                    var e = "posthog";
+                                    return (
+                                        "posthog" !== a && (e += "." + a),
+                                        t || (e += " (stub)"),
+                                        e
+                                    );
+                                },
+                                u.people.toString = function () {
+                                    return u.toString(1) + ".people (stub)";
+                                },
+                                o =
+                                    "init me ws ys ps bs capture je Di ks register register_once register_for_session unregister unregister_for_session Ps getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty Es $s createPersonProfile Is opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing Ss debug xs getPageViewId captureTraceFeedback captureTraceMetric".split(
+                                        " ",
+                                    ),
+                                n = 0;
+                            n < o.length;
+                            n++
+                        )
+                            g(u, o[n]);
+                        e._i.push([i, s, a]);
+                    }),
+                    (e.__SV = 1));
+            })(document, window.posthog || []);
+            posthog.init("phc_DbsPb39SRc8z3EiQ6Dhj6ikv4H4rTKcht9d4sZSesceP", {
+                api_host: "https://ap.emergent.sh",
+                person_profiles: "identified_only", // or 'always' to create profiles for anonymous users as well,
+                // Le recorder de session (posthog-recorder.js) tournait un setInterval
+                // qui bloquait le thread principal jusqu'a 6,8 s par frame : scroll
+                // saccade sur mobile. Les analytics (pageviews/events) restent actifs.
+                disable_session_recording: true,
+            });
+        </script>
+    </body>
+</html>
