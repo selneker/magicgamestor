@@ -4,7 +4,6 @@ import { Heart, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { api, sessionId } from "@/lib/api";
 import { useLang, localized } from "@/context/LanguageContext";
-import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/common/ErrorState";
 import { usePageMeta } from "@/lib/catalog";
 
@@ -40,15 +39,15 @@ export default function Events() {
   };
 
   return (
-    <div className="pb-24 pt-6">
+    <div className="container section page-top page-bottom" style={{ maxWidth: "78em" }}>
       <p className="eyebrow">Magic Game Store</p>
-      <h1 className="font-display text-3xl font-black uppercase tracking-tight sm:text-4xl">{t("events.title")}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{t("events.subtitle")}</p>
+      <h1 className="h-l">{t("events.title")}</h1>
+      <p className="p-m" style={{ marginTop: ".5em" }}>{t("events.subtitle")}</p>
       {loading ? (
-        <div className="mt-10 grid gap-6 md:grid-cols-2" data-testid="events-loading">
+        <div className="grid gap-6 md:grid-cols-2" style={{ marginTop: "2em" }} data-testid="events-loading">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="card-lift flex flex-col overflow-hidden border border-foreground bg-card rounded-lg p-6">
-              <div className="h-40 w-full rounded-t-lg bg-muted animate-pulse" />
+            <div key={i} className="review-card">
+              <div className="h-40 w-full rounded-[1em] bg-muted animate-pulse" />
               <h2 className="mt-4 h-8 w-3/4 rounded bg-muted animate-pulse" />
               <p className="mt-3 h-4 w-1/2 rounded bg-muted animate-pulse" />
               <div className="mt-auto pt-4"><div className="h-8 w-1/3 rounded bg-muted animate-pulse" /></div>
@@ -58,23 +57,30 @@ export default function Events() {
       ) : error ? (
         <ErrorState title={t("common.error")} description={t("events.error")} retryLabel={t("common.retry")} onRetry={reload} className="mt-10" />
       ) : events.length === 0 ? (
-        <p className="mt-10 text-muted-foreground" data-testid="events-empty">{t("events.empty")}</p>
+        <p className="p-m" style={{ marginTop: "2em" }} data-testid="events-empty">{t("events.empty")}</p>
       ) : (
-        <div className="mt-8 grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2" style={{ marginTop: "2em" }}>
           {events.map((ev) => (
-            <article key={ev.id} id={ev.slug} data-testid={`event-card-${ev.slug}`} className="card-lift flex flex-col overflow-hidden border border-foreground bg-card">
-              <div className="relative h-52 border-b border-foreground">
+            <article key={ev.id} id={ev.slug} data-testid={`event-card-${ev.slug}`} className="review-card" style={{ padding: 0, overflow: "hidden", gap: 0 }}>
+              <div className="relative h-52" style={{ borderBottom: ".125em solid var(--color--dark)" }}>
                 {ev.image_url && <img src={ev.image_url} alt={localized(ev, "title", lang)} className="h-full w-full object-cover" loading="lazy" />}
-                {ev.badge && <span className="absolute right-0 top-0 bg-primary px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-primary-foreground">{ev.badge}</span>}
+                {ev.badge && <span className="badge-pop" style={{ position: "absolute", right: ".6em", top: ".6em" }}>{ev.badge}</span>}
               </div>
-              <div className="flex flex-1 flex-col p-6">
-                <h2 className="font-display text-2xl font-black uppercase leading-[0.95] tracking-tight">{localized(ev, "title", lang)}</h2>
-                <p className="mt-3 text-sm text-muted-foreground">{localized(ev, "description", lang)}</p>
-                {ev.price_label && <div className="mt-5 flex items-end gap-3 border-t border-foreground pt-4"><span className="num text-3xl">{ev.price_label}</span>{ev.old_price_label && <span className="pb-1 text-sm text-muted-foreground line-through">{ev.old_price_label}</span>}</div>}
-                {ev.product_slug && <Button asChild className="mt-5 h-12 w-full" data-testid={`event-cta-${ev.slug}`}><Link to={`/produit/${ev.product_slug}`}>{t("events.buy")}</Link></Button>}
-                <div className="mt-auto flex items-center gap-5 pt-5 text-[11px] font-black uppercase tracking-[0.1em] text-muted-foreground">
-                  <button data-testid={`event-like-${ev.slug}`} onClick={() => like(ev)} className={`inline-flex items-center gap-1.5 transition-colors ${liked.has(ev.id) ? "text-foreground" : "hover:text-foreground"}`}><Heart className={`h-4 w-4 ${liked.has(ev.id) ? "fill-current" : ""}`} strokeWidth={2} />{ev.likes}</button>
-                  <button data-testid={`event-share-${ev.slug}`} onClick={() => share(ev)} className="inline-flex items-center gap-1.5 hover:text-foreground"><Share2 className="h-4 w-4" strokeWidth={2} />{ev.shares}</button>
+              <div className="flex flex-1 flex-col" style={{ padding: "1.4em" }}>
+                <h2 className="h-c">{localized(ev, "title", lang)}</h2>
+                <p className="p-m" style={{ marginTop: ".6em" }}>{localized(ev, "description", lang)}</p>
+                {ev.price_label && <div className="flex items-end gap-3" style={{ marginTop: "1em", borderTop: "1px solid hsl(0 0% 7% / .12)", paddingTop: "1em" }}><span className="num" style={{ fontSize: "1.8em", fontWeight: 800 }}>{ev.price_label}</span>{ev.old_price_label && <span className="p-m" style={{ textDecoration: "line-through", opacity: .6 }}>{ev.old_price_label}</span>}</div>}
+                {ev.product_slug && (
+                  <Link to={`/produit/${ev.product_slug}`} className="button-main" data-button-theme="dark" data-button-accent="violet" data-testid={`event-cta-${ev.slug}`} style={{ marginTop: "1em", width: "100%" }}>
+                    <span className="button-main-inner full-h">
+                      <span className="button-main-inner__back" data-text={t("events.buy")}></span>
+                      <span className="button-main-inner__front"><span className="button-main-inner__bg"></span><span className="button-main-inner__text"><span>{t("events.buy")}</span></span></span>
+                    </span>
+                  </Link>
+                )}
+                <div className="flex items-center gap-3" style={{ marginTop: "auto", paddingTop: "1em" }}>
+                  <button data-testid={`event-like-${ev.slug}`} onClick={() => like(ev)} aria-pressed={liked.has(ev.id)} className="chip min-h-11"><Heart className={`h-4 w-4 ${liked.has(ev.id) ? "fill-current" : ""}`} strokeWidth={2} />{ev.likes}</button>
+                  <button data-testid={`event-share-${ev.slug}`} onClick={() => share(ev)} className="chip min-h-11"><Share2 className="h-4 w-4" strokeWidth={2} />{ev.shares}</button>
                 </div>
               </div>
             </article>

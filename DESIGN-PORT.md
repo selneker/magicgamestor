@@ -134,3 +134,14 @@ testids et comportement conservés ; utilitaire Tailwind retiré seulement si un
 - **Point ouvert :** `.buy-bar`/`.cart-pill` de la maquette non ajoutés — le panier React existant
   (`CartDrawer` + badge nav) est conservé (règle « garder la logique panier ») ; pas de duplication.
 - Cible tactile ≥44 px (AGENTS.md n°8) : `.game-tab` (~31 px) conserve `min-h-11` (utilitaire non remplacé par le DS).
+
+## Events — écarts avec la référence (classes DS `mg-components.css` / `design-system.css`)
+
+- `Events.js:43` wrapper `pb-24 pt-6` → `.container.section.page-top.page-bottom`.
+- `Events.js:45` `h1 font-display text-3xl…` → `.h-l` ; `:46` `p text-sm text-muted-foreground` → `.p-m`.
+- `Events.js:50,65` cartes `card-lift border-foreground bg-card rounded-lg` → `.review-card` (bordure encre .125em, radius 1.4em, mg-components:493).
+- `Events.js:68` badge `bg-primary text-primary-foreground` → `.badge-pop` (mg-components:287).
+- `Events.js:71` `h2 font-display text-2xl` → `.h-c` ; `:72` description → `.p-m` ; `:73` prix `.num`.
+- `Events.js:74` CTA `Button` shadcn → `.button-main` (anatomie 5 spans, `data-button-theme="dark"`).
+- `Events.js:76-77` like/share → `.chip` + `min-h-11` (cible tactile).
+- Pas de test Events dédié ; testids `event-card-*`/`event-cta-*`/`event-like-*`/`event-share-*`/`events-empty`/`events-loading` conservés.
