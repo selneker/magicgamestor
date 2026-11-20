@@ -145,3 +145,15 @@ testids et comportement conservés ; utilitaire Tailwind retiré seulement si un
 - `Events.js:74` CTA `Button` shadcn → `.button-main` (anatomie 5 spans, `data-button-theme="dark"`).
 - `Events.js:76-77` like/share → `.chip` + `min-h-11` (cible tactile).
 - Pas de test Events dédié ; testids `event-card-*`/`event-cta-*`/`event-like-*`/`event-share-*`/`events-empty`/`events-loading` conservés.
+
+## Auth (AuthPage + AuthExtras) — écarts avec la référence (risque élevé, tests verrouillés)
+
+- `AuthPage.js:78` welcome `text-xs uppercase…` → `.eyebrow` ; `:79` `h1 font-display text-[26px]` → `.h-c` ; `:80` subtitle → `.p-m`.
+- `AuthPage.js:81` carte `rounded-[2rem] border --rule bg-card` → `.review-card`.
+- `AuthPage.js:82` bouton Google `Button` shadcn → `.button-main` (`data-button-theme="light"`, logo Google conservé).
+- `AuthPage.js:88-93` `Input` shadcn → `<input className="form-field">` (testids `name-input`/`email-input`/`password-input` conservés ; le setter de valeur des tests fonctionne sur `<input>` natif).
+- `AuthPage.js:105` lien oublié → `.link` ; `:119` `switch-auth-mode` → `.link`.
+- `AuthPage.js:115` submit `Button` → `.button-main` (**vrai `<button type="submit" disabled>`** : `.disabled` verrouillé par les tests, conservé ; `disabled:opacity-50` gardé pour le feedback).
+- `AuthExtras.js` Shell + Forgot/Reset/Verify : mêmes classes (`.h-c`/`.p-m`/`.review-card`/`.form-field`/`.button-main`/`.link`) ; helper `SubmitButton` DS.
+- **Conservés (verrouillés par les tests) :** `Checkbox` Radix (`data-state` checked/unchecked), `CaptchaWidget` (`captcha-widget`/`-label`/`-failed`/`-retry`), tous les testids, logique captcha/submit/erreur française.
+- Tests Auth **14/14 verts sans modification** ; suite complète 534 verts.
