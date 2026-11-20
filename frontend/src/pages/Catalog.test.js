@@ -136,3 +136,47 @@ test("PUBG Mobile : libellés UC inchangés (« Packs UC », « Prix par UC »)"
     delete global.IS_REACT_ACT_ENVIRONMENT;
   }
 });
+
+// PL-DS-002-V1 — bascule fournisseur : le catalogue ne publie plus que 6 lots UC
+// (60/325/660/1800/3850/16200), « populaire » sur 325 et 660, prix jusqu'à 871 000 Ar,
+// Prime/Prime+/Evo masqués. Verrou : aucun onglet ni section vide, grille 6 cartes, grands prix espacés.
+test("bascule fournisseur : 6 lots UC, 2 populaires, aucun onglet/section Prime/Prime+/Évo vide", async () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  global.mockQuery = "game=pubg-mobile";
+  // Le jeu ne publie plus que le type UC (Prime/Prime+/Évo retirés de product_types côté backend).
+  mockGames = [{ id: "pubg-mobile", name: "PUBG Mobile", slug: "pubg-mobile", currency_label: "UC", product_types: [{ key: "uc", label: "UC" }] }];
+  const lots = [
+    { id: "uc-60", slug: "uc-60", name: "60 UC", type: "uc", uc_amount: 60, price: 900, game_id: "pubg-mobile" },
+    { id: "uc-325", slug: "uc-325", name: "325 UC", type: "uc", uc_amount: 325, price: 4500, popular: true, game_id: "pubg-mobile" },
+    { id: "uc-660", slug: "uc-660", name: "660 UC", type: "uc", uc_amount: 660, price: 8900, popular: true, game_id: "pubg-mobile" },
+    { id: "uc-1800", slug: "uc-1800", name: "1800 UC", type: "uc", uc_amount: 1800, price: 24000, game_id: "pubg-mobile" },
+    { id: "uc-3850", slug: "uc-3850", name: "3850 UC", type: "uc", uc_amount: 3850, price: 51000, game_id: "pubg-mobile" },
+    { id: "uc-16200", slug: "uc-16200", name: "16200 UC", type: "uc", uc_amount: 16200, price: 871000, game_id: "pubg-mobile" },
+  ];
+  api.get.mockResolvedValue({ data: lots });
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  try {
+    await act(async () => { root.render(<Catalog />); });
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 30)); });
+    // Onglets : « Tous » + « UC » uniquement — ni Prime, ni Prime+, ni Évolutif.
+    const tabs = [...container.querySelectorAll('[data-testid^="type-tab-"]')].map((n) => n.dataset.testid);
+    expect(tabs).toEqual(["type-tab-all", "type-tab-uc"]);
+    // Sections : Populaire (325/660) + Packs UC présentes ; Prime et Évolutif absents (jamais de titre vide).
+    expect(container.querySelector("#popular-title")).toBeTruthy();
+    expect(container.querySelector("#packs-uc-title")).toBeTruthy();
+    expect(container.querySelector("#prime")).toBeNull();
+    expect(container.querySelector("#packs-evolutifs")).toBeNull();
+    // Compte de résultats : 6 lots.
+    expect(container.querySelector('[data-testid="results-count"]').textContent).toContain("6");
+  } finally {
+    await act(async () => root.unmount());
+    delete global.mockQuery;
+    delete global.IS_REACT_ACT_ENVIRONMENT;
+  }
+});
+test("bascule fournisseur : grand prix espacé (871 000 Ar, jamais 871000)", () => {
+  const { formatAr } = jest.requireActual("@/lib/api");
+  expect(formatAr(871000, "fr")).toBe("871 000 Ar");
+  expect(formatAr(871000, "fr")).not.toContain("871000");
+});
