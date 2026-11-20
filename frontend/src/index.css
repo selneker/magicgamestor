@@ -153,8 +153,8 @@
            Fixes dans les deux thèmes (couleurs de marque, pas de surface).
            Les 9 déjà couvertes par les jetons --brand-* sont listées en alias
            explicite pour que le design système les lise sous --color--*. */
-        --color--dark: #111111;        /* = --brand-ink */
-        --color--light: #F4F1E8;       /* = --brand-cream */
+        --color--dark: #000000;        /* PL-DS-V3 : noir/blanc purs du prototype design-system-v3 (les jetons marque --brand-ink/cream restent crème/encre, verrouillés) */
+        --color--light: #FFFFFF;       /* PL-DS-V3 : surface blanche du prototype */
         --color--blue-100: #dceeff;    /* = --brand-glacier */
         --color--blue-700: #4da2ff;    /* = --brand-blue */
         --color--purple-800: #5c4ade;  /* = --brand-violet */
@@ -465,17 +465,19 @@ html.dark body[data-page="home"] {
     --panel: 45 35% 93%;
     --panel-ink: 0 0% 7%;
     --panel-muted: 60 3% 32%;
-    /* Carte produit (tokens MGS-FE-CARDS) : valeurs claires de la maquette. */
-    --card-surface: hsl(var(--cream));
-    --card-ink: #111111;
-    --card-ink-muted: hsl(0 0% 7% / .7);
-    --card-border: hsl(0 0% 7% / .35);
-    --card-pill-bg: #FFFFFF;
-    --card-cta-bg: #111111;
-    --card-cta-fg: #D4FF00;
-    --card-badge-bg: #D4FF00;
-    --card-shadow: #111111;
-    --card-focus: #111111;
+    /* Carte produit — PL-DS-V3 : alignée sur mgs-pcard du prototype (surface
+       blanche, encre noire, bordure dure, badge jaune-100, CTA noir/blanc).
+       Classes inchangées (verrouillées ProductCard.test) ; valeurs seules. */
+    --card-surface: var(--color--light);
+    --card-ink: var(--color--dark);
+    --card-ink-muted: hsl(0 0% 0% / .6);
+    --card-border: var(--color--dark);
+    --card-pill-bg: var(--color--light);
+    --card-cta-bg: var(--color--dark);
+    --card-cta-fg: var(--color--light);
+    --card-badge-bg: var(--color--yellow-100);
+    --card-shadow: var(--color--dark);
+    --card-focus: var(--color--dark);
 }
 
 /* ── Correctifs retour utilisateur (marges + titres) ─────────────────────── */
@@ -503,16 +505,10 @@ html.dark body[data-page="home"] {
 /* Desktop : le hero garde le 7.5em de mg-components.css qui dégage la
    nav pilule FIXE (≥ 992 px) — aucune surcharge ici. */
 
-/* 2. Titres géants jamais rognés : `.h-d`/`.h-l` sont en em fixes (12.5em /
-   10em, puis 8em ≤767, 6.5/6.2em ≤479) — à 390 px un mot de 9 à 11 lettres
-   (« RECHARGEZ », « DISPONIBLES ») dépassait la largeur de l'écran et un
-   mot ne se coupe pas. Taille fluide bornée par la maquette : les em de la
-   maquette au-delà de ~1000 px, un plafond en vw en dessous calibré pour
-   que le MOT LE PLUS LONG des titres actuels tienne toujours
-   (avance majuscule ≈ 0.7em/char, .h-d 9 lettres, .h-l 11 lettres,
-   réserve de 60 px pour les marges du container). */
-.h-d { font-size: min(12.5em, 13.2vw); }
-.h-l { font-size: min(10em, 10.8vw); }
+/* 2. PL-DS-V3 — échelle display du prototype design-system-v3.html :
+   .h-d 8em / .h-l 6.5em (≤767 : 4.5/3.8em ; ≤479 : 3/2.6em), gouvernée par
+   mgs-v3.css (bloc 14). L'ancien plafond min(12.5em,13.2vw) coupait
+   « RECHARGEZ » mid-mot (SplitText data-anim-hero + Bricolage large). */
 
 /* .page-top (mg-components.css:723, 6.5em) est fait pour la nav pilule FIXE
    de la maquette (≥ 992 px). < 992 px la pilule est maintenant FIXE elle

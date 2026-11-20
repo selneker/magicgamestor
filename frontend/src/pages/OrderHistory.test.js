@@ -92,25 +92,23 @@ async function mount(ui) {
 
 describe("Badge de statut (liste + détail)", () => {
   test.each([
-    ["delivered", "text-[color:var(--status-done)]", "border-[color:color-mix(in_srgb,var(--status-done)_35%,transparent)]"],
-    ["paid", "text-[color:var(--status-progress)]", "border-[color:color-mix(in_srgb,var(--status-progress)_35%,transparent)]"],
-    ["pending_payment", "text-[color:var(--muted-foreground)]", "border-[color:var(--rule-strong)]"],
-    ["cancelled", "text-[color:var(--badge-cancel-text)]", "border-[color:var(--badge-cancel-border)]"],
-    ["refunded", "text-[color:var(--status-refund)]", "border-[color:color-mix(in_srgb,var(--status-refund)_35%,transparent)]"],
-  ])("badge %s : bordure + couleur de la famille, fond transparent", async (status, textClass, borderClass) => {
+    ["delivered", "done"],
+    ["paid", "progress"],
+    ["pending_payment", "pending"],
+    ["cancelled", "cancel"],
+    ["refunded", "refund"],
+  ])("badge %s : pastille .mgs-status de la famille (prototype)", async (status, family) => {
     const { container } = await mount(<OrderStatusBadge status={status} />);
     const badge = container.querySelector(`[data-testid="order-badge-${status}"]`);
-    expect(badge.className).toContain("bg-transparent");
-    expect(badge.className).toContain("rounded-[7px]");
-    expect(badge.className).toContain(textClass);
-    expect(badge.className).toContain(borderClass);
+    expect(badge.className).toContain("mgs-status");
+    expect(badge.className).toContain(`mgs-status--${family}`);
     expect(badge.textContent).toBe(require("@/i18n/translations").translations.fr.order.status[status]);
   });
 
   test("statut inconnu → famille « en attente » (gris), jamais un fond plein", async () => {
     const { container } = await mount(<OrderStatusBadge status="statut_inconnu" />);
     const badge = container.querySelector('[data-testid="order-badge-statut_inconnu"]');
-    expect(badge.className).toContain("text-[color:var(--muted-foreground)]");
+    expect(badge.className).toContain("mgs-status--pending");
   });
 });
 
@@ -133,16 +131,14 @@ describe("Liste /commandes", () => {
 
   // PL-005-FE-02 (tâche 4) — badge SUR la ligne du titre (alignement haut) ;
   // (tâche 3) — variante desktop 3 colonnes souples (mobile lg:hidden).
-  test("liste : badge aligné haut sur la ligne du titre + colonnes desktop 3 zones", async () => {
+  test("liste : carte .mgs-order (main / méthode / right) + badge de statut", async () => {
     mockMe = [mkOrder({ id: "ord-a", order_number: "MGS-A1", status: "delivered" })];
     const { container } = await mount(<OrderHistory />);
     const card = container.querySelector('[data-testid="order-history-card-MGS-A1"]');
-    const mobile = card.querySelector("div.lg\\:hidden > div");
-    expect(mobile.className).toContain("items-start");
-    const wide = card.querySelector("div.hidden.lg\\:grid");
-    expect(wide).not.toBeNull();
-    expect(wide.className).toContain("lg:grid-cols-[minmax(0,1fr)_140px_170px]");
-    expect(wide.className).toContain("lg:gap-5");
+    expect(card.className).toContain("mgs-order");
+    expect(card.querySelector(".mgs-order__main")).not.toBeNull();
+    expect(card.querySelector(".mgs-order__right")).not.toBeNull();
+    expect(card.querySelector('[data-testid="order-badge-delivered"]')).not.toBeNull();
   });
 
   // PL-005-FE-02 (tâche 2) — filtre local du bouton de recherche : numéro,
@@ -183,8 +179,7 @@ describe("Liste /commandes", () => {
     mockMe = [mkOrder({ id: "ord-a", order_number: "MGS-A1" })];
     const { container } = await mount(<OrderHistory />);
     const pill = container.querySelector('[data-testid="order-help-MGS-A1"]');
-    expect(pill.className).toContain("rounded-[8px]");
-    expect(pill.className).not.toContain("rounded-full");
+    expect(pill.className).toContain("mgs-chip");
     await act(async () => pill.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(mockNavigate).toHaveBeenCalledWith("/chat", { state: { order_id: "ord-a" } }); // PL-005-BE-01 : point d'entrée unique
   });
@@ -232,7 +227,7 @@ describe("Détail /commandes/:id", () => {
     mockOrderGet = mkOrder({ status: "paid" });
     const paid = await mount(<OrderDetail />);
     expect(paid.container.querySelector('[data-testid="order-hero-check"]')).toBeNull();
-    expect(paid.container.querySelector('[data-testid="order-hero-status"]').className).toContain("text-[color:var(--status-progress)]");
+    expect(paid.container.querySelector('[data-testid="order-hero-status"]').className).toContain("mgs-status--progress");
   });
 
   // PL-005-FE-02 (tâche 11) — le bouton Chat n'est plus dans la carte :
@@ -245,8 +240,7 @@ describe("Détail /commandes/:id", () => {
     expect(bar).not.toBeNull();
     expect(bar.textContent).toContain("Reprendre le paiement");
     const chat = bar.querySelector('[data-testid="order-chat-button"]');
-    expect(chat.className).toContain("rounded-[999px]");
-    expect(chat.className).toContain("bg-[color:var(--brand-lime)]");
+    expect(chat.className).toContain("button-main");
     expect(chat.textContent).toContain("Chat");
     expect(container.querySelector('[data-testid="order-detail-product"]').textContent).toContain("1 × 660 UC");
     expect(container.querySelector('[data-testid="order-detail-identity"]').textContent).toContain("52328390220");
@@ -402,7 +396,7 @@ describe("Détail /commandes/:id", () => {
     mockOrderGet = mkOrder({ status: "cancelled" });
     const c = await mount(<OrderDetail />);
     const hero = c.container.querySelector('[data-testid="order-hero-status"]');
-    expect(hero.className).toContain("text-[color:var(--badge-cancel-text)]");
+    expect(hero.className).toContain("mgs-status--cancel");
     expect(hero.className).not.toContain("border-");
     expect(hero.className).not.toContain("text-[color:var(--destructive)]");
     expect(hero.textContent).toContain("Annulée");
@@ -410,7 +404,7 @@ describe("Détail /commandes/:id", () => {
     mockOrderGet = mkOrder({ status: "failed" });
     const f = await mount(<OrderDetail />);
     expect(f.container.querySelector('[data-testid="order-hero-status"]').className)
-      .toContain("text-[color:var(--destructive)]");
+      .toContain("mgs-status--cancel");
   });
 
   // PL-005-FE-02 (tâche 5) — copier le numéro du détail porte l'ID de

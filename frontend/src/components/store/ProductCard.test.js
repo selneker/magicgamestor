@@ -171,57 +171,42 @@ test("Produit Populaire : le badge « Populaire » (flamme) reste affiche", asyn
     expect(badge).not.toBeNull();
     expect(badge.textContent).toContain("catalog.popular");
     expect(badge.querySelector("svg")).not.toBeNull();
-    // Fond neon + texte encre : deux surfaces fixes, qui ne suivent pas le theme.
-    expect(badge.className).toContain("bg-[color:var(--card-badge-bg)]");
-    expect(badge.className).toContain("text-ink");
+    // PL-DS-V3 : badge du prototype .mgs-pcard__badge (jaune-100 + encre, bordure encre via CSS).
+    expect(badge.className).toContain("mgs-pcard__badge");
   } finally { await unmountCard(container, root); }
 });
 
-// La pastille de prix suit le theme AVEC la carte (MGS-FE-CARDS-20261104-02
-// étape 2) : son texte vient du jeton `--card-ink` (crème en sombre), plus
-// jamais de `text-ink` fixe — la surface et le texte changent ENSEMBLE.
-test("Carte disponible : la pastille utilise le jeton --card-ink (pas de texte fixe)", async () => {
+// PL-DS-V3 : la pastille de prix du prototype .mgs-pill (surface blanche, encre,
+// bordure encre) — le prix complet reste lisible, jamais coupé.
+test("Carte disponible : la pastille de prix est .mgs-pill (prototype)", async () => {
   const { container, root } = await mountCard(PUBG);
   try {
     const prix = [...container.querySelectorAll("span")].find((s) => s.textContent.trim() === "900 Ar");
     expect(prix).toBeTruthy();
-    const pastille = prix.closest("div[class*='card-pill-bg']");
+    const pastille = prix.closest(".mgs-pill");
     expect(pastille).toBeTruthy();
-    expect(pastille.className).toContain("text-[color:var(--card-ink)]");
-    expect(pastille.className).not.toContain("text-ink");
-    expect(pastille.className).not.toContain("text-foreground");
-    expect(pastille.className).toContain("border-[color:var(--card-border)]");
-    expect(pastille.className).not.toContain("text-ink");
-    expect(pastille.className).not.toContain("text-foreground");
-    // MGS-FE-CARDS-20261104-03 : bordure fine (1px), plus de border-2.
-    expect(pastille.className).not.toContain("border-2");
+    expect(pastille.className).toContain("mgs-pill");
+    expect(prix.className).toContain("mgs-pill__price");
   } finally { await unmountCard(container, root); }
 });
 
-// MGS-FE-CARDS-20261104-03 : la carte elle-même porte une bordure fine
-// (« border »), pas une bordure épaisse (« border-2 »).
-test("L'article porte une bordure fine (border) et pas border-2", async () => {
+// PL-DS-V3 : la carte elle-même est .mgs-pcard (bordure encre .125em via CSS du prototype).
+test("L'article est la carte .mgs-pcard du prototype", async () => {
   const { container, root } = await mountCard(PUBG);
   try {
     const article = container.querySelector("article");
     expect(article).toBeTruthy();
-    expect(article.className).toContain("border");
-    expect(article.className).toContain("border-[color:var(--card-border)]");
-    expect(article.className).not.toContain("border-2");
+    expect(article.className).toContain("mgs-pcard");
   } finally { await unmountCard(container, root); }
 });
 
-// Étape 2 : le bouton rond d'achat et l'anneau de focus passent par les jetons
-// de la carte (néon + icône noire en sombre, encre + icône néon en clair).
-test("CTA et focus de la carte passent par les jetons --card-cta-* / --card-focus", async () => {
+// PL-DS-V3 : le bouton rond d'achat est .mgs-pill__add (encre + icône blanche, sans bordure).
+test("CTA de la carte : bouton rond .mgs-pill__add du prototype", async () => {
   const { container, root } = await mountCard(PUBG);
   try {
     const addBtn = byLabel(container, "product.addToCart : 60 UC");
-    expect(addBtn.className).toContain("bg-[color:var(--card-cta-bg)]");
-    // Modèle : le bouton rond n'a PAS de bordure (même couleur que le fond).
+    expect(addBtn.className).toContain("mgs-pill__add");
     expect(addBtn.className).not.toContain("border-2");
-    expect(addBtn.className).toContain("text-[color:var(--card-cta-fg)]");
-    expect(addBtn.className).toContain("outline-[color:var(--card-focus)]");
   } finally { await unmountCard(container, root); }
 });
 
@@ -273,14 +258,13 @@ test("La remise est hors de la pastille : badge + ancien prix barré au-dessus",
     expect(badge).toBeTruthy();
     expect(badge.textContent).toContain("-17%");
     // Le badge n'est PAS dans la pastille de prix.
-    expect(badge.closest("div[class*='card-pill-bg']")).toBeNull();
-    // Sur la même ligne : l'ancien prix, barré.
+    expect(badge.closest(".mgs-pill")).toBeNull();
+    // Sur la même ligne : l'ancien prix, barré (<s> du prototype .mgs-pcard__old).
     const ligne = badge.parentElement;
-    const ancien = [...ligne.querySelectorAll("span")].find((s) => s.textContent === "3000 Ar");
+    const ancien = [...ligne.querySelectorAll("s")].find((s) => s.textContent === "3000 Ar");
     expect(ancien).toBeTruthy();
     expect(ancien.className).toContain("line-through");
-    // La pastille n'a « mt-auto » que s'il n'y a pas de ligne de remise.
-    const pastille = badge.closest("article").querySelector("div[class*='card-pill-bg']");
+    const pastille = badge.closest("article").querySelector(".mgs-pill");
     expect(pastille).toBeTruthy();
     expect(pastille.className).not.toContain("mt-auto");
   } finally { await unmountCard(container, root); }
@@ -289,11 +273,11 @@ test("La remise est hors de la pastille : badge + ancien prix barré au-dessus",
 test("Sans remise : le bloc du bas garde « mt-auto » (collé en bas)", async () => {
   const { container, root } = await mountCard(PUBG);
   try {
-    const pastille = container.querySelector("div[class*='card-pill-bg']");
+    const pastille = container.querySelector(".mgs-pill");
     expect(pastille).toBeTruthy();
-    // MGS-FE-CARDS-20261104-02B : le mt-auto + le 12 px du modèle vivent sur
-    // le bloc du bas (wrapper), plus sur la pastille elle-même.
+    // PL-DS-V3 : le bloc du bas .mgs-pcard__bottom porte mt-auto + pt-3.
     const bloc = pastille.parentElement;
+    expect(bloc.className).toContain("mgs-pcard__bottom");
     expect(bloc.className).toContain("mt-auto");
     expect(bloc.className).toContain("pt-3");
     expect(pastille.className).not.toContain("mt-auto");
@@ -301,23 +285,21 @@ test("Sans remise : le bloc du bas garde « mt-auto » (collé en bas)", async (
   } finally { await unmountCard(container, root); }
 });
 
-// --- MGS-FE-CARDS-20261104-02B : alignement sur le modèle visuel ---
+// --- PL-DS-V3 : alignement sur la structure du prototype design-system-v3.html ---
 
-test("Alignement modèle : unité 11px/leading-none, vedette mt-2, cœur 16px", async () => {
+test("Alignement prototype : vedette .mgs-pcard__figure, unité .mgs-pcard__unit, cœur 16px", async () => {
   const { container, root } = await mountCard(FF);
   try {
     const figP = [...container.querySelectorAll("p")].find((p) => p.querySelector("span.shrink-0"));
-    expect(figP.className).toContain("mt-2");
+    expect(figP.className).toContain("mgs-pcard__figure");
     const unite = figP.querySelector("span.min-w-0");
-    expect(unite.className).toContain("text-[11px]");
-    expect(unite.className).toContain("leading-none");
-    expect(unite.className).not.toContain("text-sm");
+    expect(unite.className).toContain("mgs-pcard__unit");
     const heart = container.querySelector("button[aria-pressed]");
     expect(heart.querySelector("svg").getAttribute("class")).toContain("h-4 w-4");
   } finally { await unmountCard(container, root); }
 });
 
-test("Alignement modèle : la pastille d'un pack sans montant porte « + »", async () => {
+test("Alignement prototype : la pastille d'un pack sans montant porte « + »", async () => {
   const PACK = { id: "pack-frag", slug: "pack-frag", name: "Fragments matériaux", type: "material", price: 5000, game_id: "pubg-mobile", purchasable: true };
   const { container, root } = await mountCard(PACK);
   try {
@@ -326,14 +308,11 @@ test("Alignement modèle : la pastille d'un pack sans montant porte « + »", as
   } finally { await unmountCard(container, root); }
 });
 
-test("Alignement modèle : badge « Populaire » bordure encre fixe, padding 9px, 0,08em", async () => {
+test("Alignement prototype : badge « Populaire » .mgs-pcard__badge (bordure encre via CSS)", async () => {
   const { container, root } = await mountCard(PUBG_POP);
   try {
     const badge = container.querySelector('[data-testid^="card-context-"]');
-    expect(badge.className).toContain("border-ink");
-    expect(badge.className).not.toContain("card-border");
-    expect(badge.className).toContain("px-[9px]");
-    expect(badge.className).toContain("tracking-[0.08em]");
+    expect(badge.className).toContain("mgs-pcard__badge");
   } finally { await unmountCard(container, root); }
 });
 
@@ -359,7 +338,8 @@ test("Carte pack : étiquette de catégorie + titre vedette, sans hauteur minima
     const label = [...container.querySelectorAll("p")].find((p) => p.textContent === "card.category.pack");
     expect(label).toBeTruthy();
     expect(label.className).toContain("uppercase");
-    expect(label.className).toContain("text-[color:var(--card-ink-muted)]");
+    // PL-DS-V3 : étiquette .mgs-pcard__cat (discrète via CSS du prototype).
+    expect(label.className).toContain("mgs-pcard__cat");
     const h2 = container.querySelector("h3");
     expect(h2.textContent).toContain("Fragments matériaux");
     expect(h2.className).toContain("line-clamp-2");
@@ -401,15 +381,12 @@ test("Zones tactiles 44 px : cœur et bouton rond étendus par pseudo-élément"
   } finally { await unmountCard(container, root); }
 });
 
-test("Container query : l'article porte mgs-card et le prix mgs-card-price", async () => {
+test("Structure prototype : l'article porte mgs-pcard et le prix mgs-pill__price", async () => {
   const { container, root } = await mountCard(PUBG);
   try {
     const article = container.querySelector("article");
-    expect(article.className).toContain("mgs-card");
+    expect(article.className).toContain("mgs-pcard");
     const prix = [...container.querySelectorAll("span")].find((s) => s.textContent.trim() === "900 Ar");
-    expect(prix.className).toContain("mgs-card-price");
-    expect(prix.className).toContain("text-base");
-    expect(prix.className).toContain("sm:text-2xl");
-    expect(prix.className).not.toContain("clamp");
+    expect(prix.className).toContain("mgs-pill__price");
   } finally { await unmountCard(container, root); }
 });

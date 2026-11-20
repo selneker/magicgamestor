@@ -6,6 +6,7 @@ import { useLang } from "@/context/LanguageContext";
 import { useGames } from "@/context/GameContext";
 import { ProductCard } from "@/components/store/ProductCard";
 import { GameLogo, BackToTop } from "@/pages/Home";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,7 +15,7 @@ import PackEvolutif from "@/pages/PackEvolutif";
 import { usePageMeta, currencyOf } from "@/lib/catalog";
 import { useFavorites } from "@/lib/favorites";
 
-const tab = (active) => `game-tab${active ? " is--active" : ""} min-h-11 min-w-11 inline-flex items-center`;
+const tab = (active) => `mgs-tab${active ? " is--active" : ""} min-h-11 min-w-11 inline-flex items-center`;
 
 function ProductSection({ id, title, products, popularIds, bestUnitId }) {
   if (!products?.length) return null;
@@ -29,32 +30,54 @@ function ProductSection({ id, title, products, popularIds, bestUnitId }) {
 }
 
 // `/boutique` without `?game=` always shows this picker; only backend-authorized games are listed.
-const PICKER_THEMES = ["violet", "glacier", "purple", "blue", "green", "yellow"];
+const GAME_MEDIA = ["yellow", "orange", "blue", "green", "violet", "purple"];
 function GamePicker({ games, onPick }) {
   const { t } = useLang();
   usePageMeta(t("seo.catalogTitle"), t("seo.gamesDescription"));
+  // PL-DS-V3 — sélecteur de jeu du prototype boutique : fil d'Ariane, mgs-head
+  // (mgs-title « Choisissez votre jeu »), grille mgs-grid--2 de cartes mgs-game
+  // (media coloré u--bg--*, icône, nom, description, chips de types, CTA).
   return (
-    <div className="container page-top page-bottom" data-testid="game-picker">
-      <div className="section-head" style={{ flexDirection: "column", alignItems: "flex-start", gap: ".4em" }}>
-        <p className="eyebrow">{t("games.eyebrow")}</p>
-        <h1 className="h-l">{t("games.pickTitle")}</h1>
-        <p className="p-m">{t("games.pickSubtitle")}</p>
+    <section className="section">
+      <div className="container">
+        <div className="mgs-shell" data-testid="game-picker">
+          <div className="mgs-crumb">
+            <Link to="/">{t("games.crumbHome")}</Link>
+            <svg className="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+            <span>{t("nav.shop")}</span>
+          </div>
+          <div className="mgs-head">
+            <p className="eyebrow">{t("games.eyebrow")}</p>
+            <h1 className="mgs-title">{t("games.pickTitle")}</h1>
+            <p className="mgs-sub">{t("games.pickSubtitle")}</p>
+          </div>
+          <div className="mgs-grid mgs-grid--2" data-testid="game-picker-grid">
+            {games.map((g, i) => (
+              <div key={g.id} className="mgs-game" role="button" tabIndex={0} data-testid={`game-pick-${g.slug || g.id}`}
+                aria-label={`${t("games.viewOffers")} — ${g.name}`} onClick={() => onPick(g)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(g); } }}>
+                <div className={`mgs-game__media u--bg--${GAME_MEDIA[i % GAME_MEDIA.length]}`}>
+                  {g.icon_url
+                    ? <img src={g.icon_url} alt="" className="h-[3.4em] w-[3.4em] object-contain" loading="lazy" />
+                    : <Icon name="manette" className="bold-ic" />}
+                </div>
+                <div className="mgs-game__body">
+                  <h2 className="mgs-game__name">{g.name}</h2>
+                  {g.description && <p className="mgs-game__desc">{g.description}</p>}
+                  {(g.product_types || []).length > 0 && (
+                    <div className="mgs-chips">{g.product_types.slice(0, 3).map((pt) => <span key={pt.key} className="mgs-chip">{pt.label}</span>)}</div>
+                  )}
+                  <span className="button-main" data-button-theme="dark" data-button-accent="yellow" aria-hidden="true">
+                    <span className="button-main-inner full-h"><span className="button-main-inner__back" data-text={t("games.viewOffers")}></span><span className="button-main-inner__front"><span className="button-main-inner__bg"></span><span className="button-main-inner__text"><span>{t("games.viewOffers")}</span></span></span></span>
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {games.length === 0 && <p className="mgs-sub" data-testid="game-picker-empty">{t("games.empty")}</p>}
+        </div>
       </div>
-      <div className="packs-grid" data-testid="game-picker-grid">
-        {games.map((g, i) => (
-          <button key={g.id} type="button" onClick={() => onPick(g)} data-testid={`game-pick-${g.slug || g.id}`}
-            className="two-col-grid__visual" data-box-theme={PICKER_THEMES[i % PICKER_THEMES.length]} style={{ minHeight: "12em", textAlign: "left" }}>
-            <svg className="mg-shape" viewBox="0 0 200 200" aria-hidden="true"><rect x="20" y="20" width="160" height="160" rx="46" transform="rotate(8 100 100)" fill="currentColor" /></svg>
-            <GameLogo game={g} className="ic-use h-[4em] w-[4em] rounded-[1em]" />
-            <span style={{ position: "relative", zIndex: 1 }}>
-              <strong className="h-c" style={{ display: "block" }}>{g.name}</strong>
-              {g.description && <span className="p-m">{g.description}</span>}
-            </span>
-          </button>
-        ))}
-      </div>
-      {games.length === 0 && <p className="p-m" data-testid="game-picker-empty">{t("games.empty")}</p>}
-    </div>
+    </section>
   );
 }
 
@@ -210,7 +233,7 @@ export default function Catalog() {
     <div className="container section page-top page-bottom" style={{ maxWidth: "78em" }}>
       {currentGame && <GameBanner game={currentGame} games={games} onSwitch={(g) => { selectGame(g.id); setParams({ game: g.id }, { replace: true }); }} />}
 
-      <div className="game-tabs" role="tablist" aria-label={t("catalog.all")} data-testid="type-tabs" style={{ marginBottom: "1.2em" }}>
+      <div className="mgs-tabs" role="tablist" aria-label={t("catalog.all")} data-testid="type-tabs" style={{ marginBottom: "1.2em" }}>
         <button role="tab" aria-selected={!type} data-testid="type-tab-all" onClick={() => update({ type: "" })} className={tab(!type)}>{t("catalog.all")}</button>
         {types.map((pt) => (
           <button key={pt.key} role="tab" aria-selected={activeTypes.includes(pt.key)} data-testid={`type-tab-${pt.key}`} onClick={() => update({ type: pt.key })} className={tab(activeTypes.length === 1 && activeTypes[0] === pt.key)}>
