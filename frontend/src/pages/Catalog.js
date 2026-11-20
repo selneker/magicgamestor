@@ -15,7 +15,7 @@ import PackEvolutif from "@/pages/PackEvolutif";
 import { usePageMeta, currencyOf } from "@/lib/catalog";
 import { useFavorites } from "@/lib/favorites";
 
-const tab = (active) => `game-tab${active ? " is--active" : ""} min-h-11 min-w-11 inline-flex items-center`;
+const tab = (active) => `mgs-tab${active ? " is--active" : ""} min-h-11 min-w-11 inline-flex items-center`;
 
 function ProductSection({ id, title, products, popularIds, bestUnitId }) {
   if (!products?.length) return null;
@@ -233,7 +233,7 @@ export default function Catalog() {
     <div className="container section page-top page-bottom" style={{ maxWidth: "78em" }}>
       {currentGame && <GameBanner game={currentGame} games={games} onSwitch={(g) => { selectGame(g.id); setParams({ game: g.id }, { replace: true }); }} />}
 
-      <div className="game-tabs" role="tablist" aria-label={t("catalog.all")} data-testid="type-tabs" style={{ marginBottom: "1.2em" }}>
+      <div className="mgs-tabs" role="tablist" aria-label={t("catalog.all")} data-testid="type-tabs" style={{ marginBottom: "1.2em" }}>
         <button role="tab" aria-selected={!type} data-testid="type-tab-all" onClick={() => update({ type: "" })} className={tab(!type)}>{t("catalog.all")}</button>
         {types.map((pt) => (
           <button key={pt.key} role="tab" aria-selected={activeTypes.includes(pt.key)} data-testid={`type-tab-${pt.key}`} onClick={() => update({ type: pt.key })} className={tab(activeTypes.length === 1 && activeTypes[0] === pt.key)}>
