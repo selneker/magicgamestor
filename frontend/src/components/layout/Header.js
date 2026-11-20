@@ -39,13 +39,11 @@ function LoyaltyChip() {
       to="/compte/points"
       data-testid="header-loyalty-chip"
       aria-label={`${total} points fidélité`}
-      className="inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--rule-strong)] bg-foreground px-2.5 text-background transition-transform hover:-translate-y-0.5 active:scale-[0.96] md:h-10 md:px-3"
+      className="nav-points-pill"
     >
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[color:var(--brand-ink)] md:h-5 md:w-5">
-        <Icon name="jeton-vert" className="h-3 w-3" data-icon-reveal />
-      </span>
-      <span className="num leading-none text-background text-[15px] font-bold md:text-[16px]" data-testid="header-loyalty-value">{total}</span>
-      <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-background/70 leading-none">pts</span>
+      <Icon name="jeton-vert" className="bold-ic" data-icon-reveal />
+      <span className="pts-n" data-testid="header-loyalty-value">{total}</span>
+      <span>pts</span>
     </Link>
   );
 }
@@ -183,9 +181,9 @@ function AccountAction({ avatar = false }) {
 // desktop et la nav mobile considèrent les mêmes pages comme actives.
 const NAV_MATCHES = [
   { to: "/boutique", match: (p) => p === "/" || p.startsWith("/boutique") || p.startsWith("/produit") || p.startsWith("/pack-evolutif") },
-  { to: "/evenements", match: (p) => p.startsWith("/evenements") },
-  { to: "/suivi", match: (p) => p.startsWith("/suivi") || p.startsWith("/commande") || p.startsWith("/compte") },
+  { to: "/suivi", match: (p) => p.startsWith("/suivi") || p.startsWith("/commande") },
   { to: "/chat", match: (p) => p.startsWith("/chat") || p.startsWith("/support") },
+  { to: "/compte", match: (p) => p.startsWith("/compte") },
 ];
 
 // Pilule de nav (maquette .button-main, thème « light ») : face avant crème
@@ -315,18 +313,18 @@ export function Header() {
             <div className="nav-inner-right">
               <ul className="nav-inner-list" role="list">
                 {[
-                  { to: "/boutique", label: t("nav.shop"), accent: "violet", id: "desktop-nav-shop" },
-                  { to: "/evenements", label: t("nav.eventsFull"), accent: "blue", id: "desktop-nav-events" },
+                  { to: "/boutique", label: t("nav.shop"), accent: "yellow", id: "desktop-nav-shop" },
                   { to: "/suivi", label: t("nav.orders"), accent: "green", id: "desktop-nav-orders" },
-                  { to: "/chat", label: t("nav.messages"), accent: "yellow", id: "desktop-nav-support" },
+                  { to: "/chat", label: t("nav.support"), accent: "violet", id: "desktop-nav-support" },
+                  { to: "/compte", label: t("nav.account"), accent: "orange", id: "desktop-nav-account" },
                 ].map(({ to, label, accent, id }, i) => (
                   <DesktopNavButton key={to} to={to} label={label} accent={accent} active={NAV_MATCHES[i].match(pathname)} testId={id} />
                 ))}
               </ul>
-              <DesktopMenu isAdmin={isAdmin} burgerRef={burgerRef} />
-              <div className="ml-1 flex shrink-0 items-center gap-1">
+              <div className="nav-desktop-actions">
                 <LoyaltyChip />
                 <span className="[&_button]:pointer-events-auto"><CartButton /></span>
+                {isAdmin && <DesktopMenu isAdmin={isAdmin} burgerRef={burgerRef} />}
               </div>
             </div>
           </nav>

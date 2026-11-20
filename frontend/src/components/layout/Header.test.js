@@ -183,7 +183,7 @@ test("PL-005-FE-03 : pilule desktop — 4 entrées, mêmes routes, entrée activ
     const nav = container.querySelector('[data-testid="desktop-nav"]');
     expect(nav).not.toBeNull();
     const entries = [...nav.querySelectorAll('[data-testid^="desktop-nav-"]')].map((a) => a.getAttribute("data-to"));
-    expect(entries).toEqual(["/boutique", "/evenements", "/suivi", "/chat"]);
+    expect(entries).toEqual(["/boutique", "/suivi", "/chat", "/compte"]);
     const active = nav.querySelector('[aria-current="page"]');
     expect(active).not.toBeNull();
     expect(active.getAttribute("data-to")).toBe("/boutique");
