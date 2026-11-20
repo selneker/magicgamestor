@@ -109,7 +109,7 @@ test("Champs inexploitables : clic et Entree ne declenchent aucune requete", asy
     const btn = btnOf(container);
     expect(btn.disabled).toBe(false);
     expect(btn.getAttribute("aria-disabled")).toBe("true");
-    expect(btn.className).toContain("bg-muted");
+    expect(btn.className).toContain("is--inert");
     expect(btn.className).not.toContain("opacity-50");
 
     await act(async () => {
@@ -703,8 +703,7 @@ test("PL-UX-4 : la pastille d'ID est SOBRE — sans bordure, fond neutre, chiffr
     expect(pill.className).not.toContain("border");
     // …le dessin est le petit badge neutre (même fond que le bouton « Vérifier »).
     const badge = pill.querySelector("span");
-    expect(badge.className).toContain("bg-muted");
-    expect(badge.className).toContain("text-xs");
+    expect(badge.className).toContain("mgs-chip");
     expect(badge.className).toContain("num"); // chiffres tabulaires
     // La zone tactile reste de 44 px (hauteur du bouton), le dessin non.
     expect(pill.className).toContain("h-11");

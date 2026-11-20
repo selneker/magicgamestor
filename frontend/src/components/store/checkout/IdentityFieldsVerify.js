@@ -187,22 +187,8 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
     setValues((v) => ({ ...(v || {}), [primaryKey]: id }));
   };
 
-  // Etat actif : fond encre + texte creme. Etat inactif : fond attenue +
-  // avant-plan du theme, sans aucun effet au survol ni a l'appui.
-  // Sur la ligne des suggestions, le bouton garde sa largeur naturelle
-  // (`shrink-0`) : les pastilles occupent la place restante.
-  const base = checkout
-    ? (showSuggestions
-      ? "inline-flex h-12 min-w-fit shrink-0 items-center justify-center gap-2 rounded-full px-4 text-sm font-bold transition-opacity"
-      : "mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-bold transition-opacity")
-    : (showSuggestions
-      ? "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-opacity"
-      : "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-opacity");
-  const skin = !complete
-    ? "bg-muted text-foreground cursor-not-allowed"
-    : busy
-      ? "bg-foreground text-background cursor-not-allowed"
-      : "bg-foreground text-background hover:opacity-90";
+  // PL-DS-V3 — bouton « Vérifier » du prototype : .button-main.mgs-co-verify ;
+  // l'état inerte (champs inexploitables) porte .is--inert + aria-disabled.
 
   // Libelle d'un champ : `label` de la config admin du jeu (`label_en` en
   // anglais) ; SANS label déclaré, repli contractuel §1 — « ID joueur »
@@ -242,7 +228,7 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
             onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
             aria-invalid={!!errors[f.key] && !!(values || {})[f.key]} aria-describedby={errors[f.key] ? `identity-err-${f.key}` : undefined}
             minLength={f.min_length || undefined} maxLength={f.max_length || MAX_FIELD_FALLBACK} autoComplete="off"
-            className="mt-1 h-12 rounded-[12px] num"
+            className="mgs-co-id-input num mt-1"
           />
           {errors[f.key] && (values || {})[f.key] && <p id={`identity-err-${f.key}`} className="mt-1 text-xs font-semibold text-destructive" data-testid={`identity-field-error-${f.key}`}>{fieldMessage(errors[f.key], f)}</p>}
         </div>
@@ -279,13 +265,16 @@ export const IdentityFieldsVerify = ({ spec = [], gameId, values, setValues, onV
                   data-testid={`identity-recent-id-${i}`}
                   className="inline-flex h-11 min-w-[44px] shrink-0 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-foreground"
                 >
-                  <span className="num max-w-[9rem] truncate rounded-full bg-muted px-3 py-1.5 text-xs font-semibold leading-none text-foreground">{id}</span>
+                  <span className="mgs-chip num max-w-[9rem] truncate">{id}</span>
                 </button>
               ))}
             </div>
           )}
-          <button type="button" data-testid="identity-verify-btn" onClick={verify} aria-disabled={inert} aria-busy={busy} className={`${base} ${skin}`}>
-            {state.status === "loading" ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" data-testid="identity-verify-loading" />{t("checkout.verifying")}</>) : t("checkout.verify")}
+          <button type="button" data-testid="identity-verify-btn" onClick={verify} aria-disabled={inert} aria-busy={busy} className={`button-main mgs-co-verify${inert ? " is--inert" : ""}`}>
+            <span className="button-main-inner full-h">
+              <span className="button-main-inner__back" data-text={state.status === "loading" ? t("checkout.verifying") : t("checkout.verify")}></span>
+              <span className="button-main-inner__front"><span className="button-main-inner__bg"></span><span className="button-main-inner__text"><span>{state.status === "loading" ? (<><Loader2 className="h-3.5 w-3.5 animate-spin" data-testid="identity-verify-loading" />{t("checkout.verifying")}</>) : t("checkout.verify")}</span></span></span>
+            </span>
           </button>
         </div>
       )}

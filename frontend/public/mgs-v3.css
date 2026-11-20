@@ -588,6 +588,7 @@ body[data-page="connexion"] .main-w{padding-bottom:0}
 .mgs-co-id-input{flex:1;min-width:0;border:.125em solid var(--color--dark);border-radius:.7em;padding:.7em .9em;font:inherit;background:var(--color--light);color:var(--color--dark)}
 .mgs-co-verify{border:.125em solid var(--color--dark);border-radius:.7em;padding:.7em 1em;font-weight:700;background:var(--color--light);color:var(--color--dark);white-space:nowrap;cursor:pointer;transition:.2s}
 .mgs-co-verify:hover{background:var(--color--yellow-700)}
+.mgs-co-verify.is--inert{opacity:.55;cursor:not-allowed}
 .mgs-co-id-status{font-size:.8em;font-weight:700;margin:.5em 0 0}
 .mgs-co-id-status.is--ok{color:var(--color--green-700)}
 .mgs-co-id-status.is--err{color:var(--color--orange-700)}
