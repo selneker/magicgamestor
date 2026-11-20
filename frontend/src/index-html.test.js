@@ -16,8 +16,13 @@ describe("public/index.html", () => {
         expect(html).not.toMatch(/assets\.emergent\.sh/);
     });
 
-    it("conserve le bootstrap de thème et les ressources publiques", () => {
-        expect(html).toMatch(/mgs-theme/);
-        expect(html).toMatch(/%PUBLIC_URL%\/manifest\.json/);
+    // PL-DS-V3 (mode prototype statique, choix propriétaire « option B ») :
+    // public/index.html est littéralement design-system-v3.html. Le garde-fou
+    // vérifie que le prototype est servi intact (pages mgs-*, animations
+    // Lottie, template Slush « Defi ») au lieu du bootstrap React remplacé.
+    it("sert le prototype design-system-v3 intact (mode statique)", () => {
+        expect(html).toMatch(/mgs-page/);
+        expect(html).toMatch(/data-lottie/);
+        expect(html).toMatch(/Slush/);
     });
 });
