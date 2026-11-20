@@ -62,16 +62,16 @@ export default function PackEvolutif({ embedded = false, products = null }) {
   };
 
   return (
-    <div className={embedded ? "" : "container section page-top page-bottom"} data-testid="evo-page">
+    <div className={embedded ? "" : "container section mgs-shell"} data-testid="evo-page">
       {!embedded && <>
-      <div className="section-head" style={{ alignItems: "flex-end" }}>
+      <div className="mgs-head">
         <div>
           <p className="eyebrow">PUBG Mobile</p>
-          <h1 className="h-l">{t("evo.title")}</h1>
-          <p className="p-m" style={{ marginTop: ".5em", maxWidth: "34em" }}>{t("evo.subtitle")}</p>
+          <h1 className="mgs-title">{t("evo.title")}</h1>
+          <p className="mgs-sub" style={{ maxWidth: "34em" }}>{t("evo.subtitle")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <span data-testid="evo-season-badge" className="chip">
+          <span data-testid="evo-season-badge" className="mgs-chip">
             <CalendarRange className="h-3.5 w-3.5" strokeWidth={2} />
             {seasonInfo?.season ? `${t("evo.season")} : ${seasonInfo.season.name}` : t("evo.noSeason")}
           </span>
@@ -86,7 +86,7 @@ export default function PackEvolutif({ embedded = false, products = null }) {
       <div className="packs-grid" style={{ marginTop: "1em", gridTemplateColumns: "repeat(auto-fit, minmax(16em, 1fr))" }} data-testid="evo-grid">
         {displayedOffers === null && Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-52" />)}
         {displayedOffers?.map((p) => (
-          <article key={p.id} data-testid={`evo-offer-${p.slug}`} className="trust-card">
+          <article key={p.id} data-testid={`evo-offer-${p.slug}`} className="mgs-card">
             <div>
               <p className="eyebrow">{t(`evo.limit.${p.evo_limit || "season"}`)}</p>
               <h2 className="h-c" style={{ marginTop: ".2em" }}>{lang === "en" && p.name_en ? p.name_en : p.name}</h2>
