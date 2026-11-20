@@ -108,7 +108,7 @@ def rate_limit(monkeypatch):
 def client_with_real_fazercards(monkeypatch) -> TestClient:
     """Routeur réel + VRAI client FazerCards (transport simulé) : chaîne complète 422 -> réponse."""
     monkeypatch.setattr(fzr_router.providers, "get_provider",
-                        lambda game_id=None: FazerCardsProvider())
+                        lambda game_id=None, provider_name=None: FazerCardsProvider())
     app = FastAPI()
     app.include_router(fzr_router.router)
     return TestClient(app)
@@ -274,7 +274,7 @@ def test_preflight_422_bloque_sans_envoi_ni_trace(monkeypatch, preflight_env):
     state = preflight_env                       # fixture importée du module de contrat HTTP
     state["game"] = FF_GAME
     monkeypatch.setattr(fzr_fulfillment.providers, "get_provider",
-                        lambda game_id=None: FazerCardsProvider())
+                        lambda game_id=None, provider_name=None: FazerCardsProvider())
     fake_db(monkeypatch, FF_GAME)
     calls = mock_fazercards(monkeypatch, lambda _r: httpx.Response(422, json={"ok": False}))
 

@@ -81,7 +81,8 @@ def make_client(monkeypatch):
 
         monkeypatch.setattr(fazercards.db, "games", SimpleNamespace(find_one=fake_find_one))
         monkeypatch.setattr(fazercards, "check", fake_check)
-        monkeypatch.setattr(fazercards.providers, "get_provider", lambda game_id=None: provider)
+        monkeypatch.setattr(fazercards.providers, "get_provider",
+                            lambda game_id=None, provider_name=None: provider)
         app = FastAPI()
         app.include_router(fazercards.router)
         return TestClient(app)
@@ -378,7 +379,8 @@ def _real_server_client(monkeypatch, game: dict, provider, rate_limit_exc: HTTPE
 
     monkeypatch.setattr(fazercards.db, "games", SimpleNamespace(find_one=fake_find_one))
     monkeypatch.setattr(fazercards, "check", fake_check)
-    monkeypatch.setattr(fazercards.providers, "get_provider", lambda game_id=None: provider)
+    monkeypatch.setattr(fazercards.providers, "get_provider",
+                        lambda game_id=None, provider_name=None: provider)
     return TestClient(server_module.app)
 
 

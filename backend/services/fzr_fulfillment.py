@@ -32,6 +32,18 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _provider_name(order: dict, record: dict | None = None) -> str | None:
+    """Nom du fournisseur d'UNE unité (T16).
+
+    - l'unité porte `provider` → il prime : une commande partie ne change jamais de fournisseur ;
+    - unité legacy SANS champ → FazerCards, seul fournisseur avant T16 ;
+    - `record` absent (nouvel envoi) → la table par jeu (et sa surcharge) décide.
+    """
+    if record is not None:
+        return record.get("provider") or "fazercards"
+    return None if order.get("game_id") else "fazercards"
+
+
 def _identity_fields(order: dict) -> dict:
     """Champs d'identité transmis au provider, pilotés par la donnée (jamais hardcodés PUBG).
     Priorité au snapshot d'identité (fields dynamiques) ; repli legacy sur pubg_id."""
@@ -306,7 +318,9 @@ async def preflight(order_id: str) -> dict:
     # seule une identité réellement vérifiée est tracée dans la commande, jamais avant.
     await _record_verification(order_id, identity_provider, validation)
     report = {
-        "order_number": order["order_number"], "provider": "fazercards", "player_id": order["pubg_id"],
+        "order_number": order["order_number"],
+        "provider": providers.get_provider(order.get("game_id"), _provider_name(order)).name,
+        "player_id": order["pubg_id"],
         "identity_fields": validated_fields,
         "player_name": validation.player_name, "mgs_total": order["total"],
         "lines": lines, "skipped": skipped, "ready_count": len(lines),
@@ -343,11 +357,13 @@ async def _fulfill_unit(order: dict, line: dict, actor: str) -> dict:
     q = line.get("quantity_index", 0)
     unit = {"line_index": idx, "component_index": cidx, "quantity_index": q}
     existing = unit_record(order, unit)
+    # Fournisseur de CETTE unité (T16) : celui déjà écrit dans le record, sinon la table par jeu.
+    provider = providers.get_provider(order.get("game_id"), _provider_name(order, existing))
     # Champs transmis = EXACTEMENT ceux validés par le préflight (jamais reconstruits ici).
     fields_payload = (line.get("identity_fields") or _identity_fields(order)
                       or {line["field_key"]: order["pubg_id"]})
     record = {
-        "provider": "fazercards", "status": "creating", "provider_order_id": None, "provider_status": None,
+        "provider": provider.name, "status": "creating", "provider_order_id": None, "provider_status": None,
         "line_index": idx, "component_index": cidx, "quantity_index": q, "product_name": line["product"],
         "component_name": line.get("component_name"),
         "category_id": line["category_id"], "offer_id": line["offer_id"], "offer_name": line["offer_name"],
@@ -367,7 +383,6 @@ async def _fulfill_unit(order: dict, line: dict, actor: str) -> dict:
             {"$set": {path: record, "updated_at": _now()}})
     if claim.modified_count != 1:
         raise HTTPException(status_code=409, detail="Un envoi fournisseur est déjà en cours pour cette unité.")
-    provider = providers.get_provider(order.get("game_id"))
     try:
         provider_order = await provider.create_order(
             line["category_id"], line["offer_id"], fields_payload, line["idempotency_key"])
@@ -441,8 +456,9 @@ async def refresh_status(order_id: str, actor: str) -> dict:
     targets = [(u, r) for u, r in targets if r and r.get("provider_order_id")]
     if not targets:
         raise HTTPException(status_code=404, detail="Aucune commande fournisseur pour cette commande.")
-    prov = providers.get_provider(order.get("game_id"))
     for u, rec in targets:
+        # Chaque unité peut venir d'un fournisseur différent (T16) : résolution par unité.
+        prov = providers.get_provider(order.get("game_id"), _provider_name(order, rec))
         provider_order = await prov.get_order(rec["provider_order_id"])
         provider_status = provider_order.status or rec.get("provider_status") or "processing"
         await _update_record(order_id, u["path"], {"provider_status": provider_status})
@@ -467,9 +483,9 @@ async def _sync_mgs_status(order_id: str, actor: str):
     units, skipped = await _all_units(order)
     if not units or skipped:
         return
-    prov = providers.get_provider(order.get("game_id"))
     records = [unit_record(order, u) for u in units]
-    if not all(r and prov.normalize_status(r.get("provider_status")) == OrderStatus.COMPLETED for r in records):
+    if not all(r and providers.get_provider(order.get("game_id"), _provider_name(order, r))
+               .normalize_status(r.get("provider_status")) == OrderStatus.COMPLETED for r in records):
         return
     res = await db.orders.update_one(
         {"id": order_id, "status": "paid"},
@@ -521,7 +537,8 @@ async def apply_webhook_event(event: dict) -> dict:
         return {"ok": True, "ignored": True}
     if event.get("event") == "order.status_changed" and data.get("status"):
         provider_status = str(data["status"])
-        prov = providers.get_provider(order.get("game_id"))
+        # Le webhook est celui de FAZERCARDS : instance explicite, jamais la table par jeu (T16).
+        prov = providers.get_provider(order.get("game_id"), "fazercards")
         await _update_record(order["id"], target["path"], {"provider_status": provider_status})
         if prov.normalize_status(provider_status) in PROVIDER_ALERT_NORMALIZED:
             await audit("fzr.provider_failed", "webhook:fazercards", order["id"], {"provider_status": provider_status, "line": target["line_index"], "component": target["component_index"]})

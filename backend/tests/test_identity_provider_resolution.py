@@ -90,15 +90,44 @@ def test_games_without_neferbyte_config_resolve_to_fazercards(game):
     assert isinstance(provider, IdentityProvider)
 
 
+def test_pubg_identity_does_not_follow_the_topup_switch():
+    """T16 : PUBG Mobile est LIVRÉ par Shop2Topup, mais son identité reste vérifiée par FazerCards.
+
+    Le préflight n'envoie pas l'offre qu'exige `validate_identity` de Shop2Topup : suivre la table
+    de top-up rendrait la validation PUBG indisponible du seul fait de la bascule.
+    """
+    assert get_provider("pubg-mobile").name == "shop2topup"
+    provider = resolve_identity_provider(PUBG_GAME)
+    assert provider.name == "fazercards"
+    assert isinstance(provider, Provider)
+    assert isinstance(provider, IdentityProvider)
+
+
 def test_resolution_without_game_document_defaults_to_fazercards():
     assert resolve_identity_provider(None).name == "fazercards"
 
 
-def test_topup_resolution_is_unchanged():
-    # `get_provider()` reste le résolveur de TOP-UP : aucune table modifiée par BE-3.
-    assert GAME_PROVIDER == {"pubg-mobile": "fazercards", "free-fire": "fazercards"}
+def test_topup_resolution_follows_the_table():
+    # Bascule T08 : PUBG Mobile livré par Shop2Topup ; Free Fire reste sur FazerCards (T12) ;
+    # un jeu inconnu retombe sur le fournisseur par défaut (T16 : Shop2Topup, plus FazerCards).
+    assert GAME_PROVIDER == {"pubg-mobile": "shop2topup", "free-fire": "fazercards"}
+    assert get_provider("pubg-mobile").name == "shop2topup"
+    assert get_provider("free-fire").name == "fazercards"
+    assert get_provider("future-game").name == "shop2topup"
+
+
+def test_explicit_provider_name_wins_over_the_table():
+    """T16 : le nom porté par la commande prime sur la table (retrait de FazerCards sans perte)."""
+    assert get_provider("pubg-mobile", "fazercards").name == "fazercards"
+    assert get_provider("free-fire", "shop2topup").name == "shop2topup"
+
+
+def test_owner_env_override_wins_over_the_table(monkeypatch):
+    """T16 : `TOPUP_PROVIDER_<GAME>` est la bascule « une variable + un redémarrage »."""
+    monkeypatch.setenv("TOPUP_PROVIDER_PUBG_MOBILE", "fazercards")
     assert get_provider("pubg-mobile").name == "fazercards"
-    assert get_provider("future-game").name == "fazercards"
+    # Un jeu non surchargé garde la table.
+    assert get_provider("free-fire").name == "fazercards"
 
 
 # --------------------------------------------------------------------------- #

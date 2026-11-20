@@ -100,6 +100,8 @@ class FakeProducts:
         if not found:
             return SimpleNamespace(modified_count=0)
         found[0].update(update.get("$set") or {})
+        for key in update.get("$unset") or {}:
+            found[0].pop(key, None)
         return SimpleNamespace(modified_count=1)
 
 
@@ -380,6 +382,18 @@ def test_public_payload_never_names_the_supplier():
         assert forbidden not in text
 
 
+def test_public_view_hides_supplier_mapping():
+    """T06 : le rattachement fournisseur (ids de SKU) ne sort jamais d'une réponse publique."""
+    from routers.products import _public
+
+    product = {"id": "p1", "slug": "60-uc", "name": "60 UC", "price": 5000, "type": "uc",
+               "supplier_mapping": {"shop2topup": {"sku": "13", "uc_total": 60,
+                                                   "mode": "direct"}}}
+    assert "supplier_mapping" not in _public(product)
+    # La vue admin le garde : c'est elle qui alimente la page Fournisseur.
+    assert _public(product, admin=True)["supplier_mapping"] == product["supplier_mapping"]
+
+
 # --------------------------------------------------------------------------- #
 # F — garde 409 à la création de commande, sans aucune écriture
 # --------------------------------------------------------------------------- #
@@ -525,3 +539,164 @@ def test_internal_stock_sweep_requires_the_cron_token(monkeypatch):
     with pytest.raises(HTTPException) as disabled:
         require_cron_token(request({}))
     assert disabled.value.status_code == 503
+
+
+# --------------------------------------------------------------------------- #
+# T05 — une rupture CONFIRMÉE par relevé n'expire jamais sur durée
+# --------------------------------------------------------------------------- #
+CONFIRMED_OUT = {"supplier_available": False, "supplier_available_confirmed": True}
+# Phrases de synchro (T06) : aucune n'appelle un writer, c'est la règle 2.
+UNCONCLUDED_READINGS = ("relevé échoué", "disponibilité inconnue")
+
+
+def test_confirmed_out_of_stock_never_expires_on_duration(monkeypatch):
+    """Règle 1 : quel que soit son âge, une rupture lue `OutOfStock` reste active."""
+    monkeypatch.delenv("STOCK_STALE_MINUTES", raising=False)
+    now = _now()
+    for age in (timedelta(minutes=60), timedelta(minutes=61), DAY, 365 * DAY):
+        product = {**CONFIRMED_OUT, "supplier_checked_at": _iso(now - age)}
+        assert stock.supplier_state(product, now) is False
+        assert stock.purchasable(product, now) is False
+        assert stock.unavailable_reason(product, now) == "supplier_out_of_stock"
+
+
+def test_confirmed_out_of_stock_ignores_the_expiry_sweep(patched_stock, monkeypatch):
+    """Le balayage cron ne doit pas lever ce qu'il n'a pas confirmé lui-même."""
+    monkeypatch.delenv("STOCK_STALE_MINUTES", raising=False)
+    now = _now()
+    patched_stock.products.docs = [
+        {"id": "p1", "name": "60 UC", "supplier_checked_at": _iso(now - 30 * DAY),
+         **CONFIRMED_OUT},
+    ]
+    assert _run(stock.expire_stale_states(now)) == {"stock_expired": 0, "stock_restored": 0}
+    assert patched_stock.products.docs[0]["supplier_available"] is False
+    patched_stock.restored.assert_not_awaited()  # pas de faux « retour en stock »
+
+
+def test_in_stock_reading_lifts_confirmed_out_of_stock(patched_stock, monkeypatch):
+    """Seul un relevé réussi (`InStock`) lève la rupture, et une seule fois."""
+    monkeypatch.delenv("STOCK_SYNC_ENABLED", raising=False)
+    monkeypatch.delenv("STOCK_STALE_MINUTES", raising=False)
+    now = _now()
+    patched_stock.products.docs = [
+        {"id": "p1", "name": "60 UC", "supplier_checked_at": _iso(now - DAY), **CONFIRMED_OUT},
+    ]
+    assert _run(stock.mark_supplier_available({"id": "p1", "name": "60 UC"},
+                                              source=stock.CONFIRMED_STOCK_SOURCE)) is True
+    doc = patched_stock.products.docs[0]
+    assert "supplier_available" not in doc          # état effacé, pas « True »
+    assert "supplier_checked_at" not in doc
+    assert "supplier_available_confirmed" not in doc
+    assert stock.purchasable(doc) is True
+    assert patched_stock.audit.await_args.args[0] == "product.supplier_available"
+    patched_stock.restored.assert_awaited_once_with("60 UC", "p1")
+
+    # Deuxième `InStock` : plus rien à lever, donc aucune écriture et aucune alerte.
+    assert _run(stock.mark_supplier_available({"id": "p1"})) is False
+    patched_stock.restored.assert_awaited_once()
+
+
+@pytest.mark.parametrize("reading", UNCONCLUDED_READINGS)
+def test_unconcluded_reading_leaves_the_rupture_in_place(patched_stock, monkeypatch, reading):
+    """Règle 2 : un relevé échoué ou non conclu n'écrit RIEN — même après le balayage.
+
+    `reading` ne sert qu'à nommer les deux cas : dans les deux, la synchro n'appelle aucun
+    writer, et ce test verrouille la conséquence (aucun état touché, aucune alerte).
+    """
+    monkeypatch.delenv("STOCK_STALE_MINUTES", raising=False)
+    now = _now()
+    patched_stock.products.docs = [
+        {"id": "p1", "name": "60 UC", "supplier_checked_at": _iso(now - 10 * DAY),
+         **CONFIRMED_OUT},
+    ]
+    before = dict(patched_stock.products.docs[0])
+    assert _run(stock.expire_stale_states(now)) == {"stock_expired": 0, "stock_restored": 0}
+    assert patched_stock.products.docs[0] == before
+    assert stock.purchasable(before, now) is False
+    patched_stock.unavailable.assert_not_awaited()
+    patched_stock.restored.assert_not_awaited()
+
+
+def test_delivery_out_of_stock_still_expires_after_60_minutes(patched_stock, monkeypatch):
+    """Règle 3 : une rupture déduite garde l'expiration existante."""
+    monkeypatch.delenv("STOCK_SYNC_ENABLED", raising=False)
+    monkeypatch.delenv("STOCK_STALE_MINUTES", raising=False)
+    patched_stock.products.docs = [{"id": "p1", "name": "60 UC"}]
+    assert _run(stock.mark_supplier_unavailable({"id": "p1", "name": "60 UC"},
+                                                source="delivery")) is True
+    doc = patched_stock.products.docs[0]
+    assert doc["supplier_available"] is False
+    assert doc["supplier_available_confirmed"] is False
+    assert stock.purchasable(doc) is False
+    assert stock.purchasable(doc, _now() + timedelta(minutes=61)) is True
+
+
+def test_confirmed_rupture_is_not_downgraded_by_a_delivery_failure(patched_stock, monkeypatch):
+    monkeypatch.delenv("STOCK_SYNC_ENABLED", raising=False)
+    patched_stock.products.docs = [
+        {"id": "p1", "name": "60 UC", "supplier_checked_at": _iso(_now()), **CONFIRMED_OUT},
+    ]
+    assert _run(stock.mark_supplier_unavailable({"id": "p1"}, source="delivery")) is False
+    assert patched_stock.products.docs[0]["supplier_available_confirmed"] is True
+    patched_stock.unavailable.assert_not_awaited()
+
+
+def test_presumption_is_upgraded_to_a_confirmation_once(patched_stock, monkeypatch):
+    """Une rupture déduite puis lue `OutOfStock` devient définitive, sans ré-alerter."""
+    monkeypatch.delenv("STOCK_SYNC_ENABLED", raising=False)
+    patched_stock.products.docs = [{"id": "p1", "name": "60 UC"}]
+    assert _run(stock.mark_supplier_unavailable({"id": "p1"}, source="delivery")) is True
+    assert patched_stock.products.docs[0]["supplier_available_confirmed"] is False
+    # Relevé réussi `OutOfStock` sur une présomption : elle est confirmée, sans seconde alerte.
+    assert _run(stock.mark_supplier_unavailable(
+        {"id": "p1"}, source=stock.CONFIRMED_STOCK_SOURCE)) is False
+    assert patched_stock.products.docs[0]["supplier_available_confirmed"] is True
+    assert stock.purchasable(patched_stock.products.docs[0],
+                             _now() + 365 * DAY) is False   # plus jamais d'expiration
+    patched_stock.unavailable.assert_awaited_once()
+
+
+def test_lifting_is_cut_off_by_the_sync_flag(patched_stock, monkeypatch):
+    """Drapeau à false : la synchro est coupée dans les deux sens, la rupture ne se lève pas."""
+    monkeypatch.setenv("STOCK_SYNC_ENABLED", "false")
+    patched_stock.products.docs = [
+        {"id": "p1", "name": "60 UC", "supplier_checked_at": _iso(_now()), **CONFIRMED_OUT},
+    ]
+    assert _run(stock.mark_supplier_available({"id": "p1"})) is False
+    assert patched_stock.products.docs[0]["supplier_available"] is False
+    patched_stock.restored.assert_not_awaited()
+
+
+def test_admin_lifting_ignores_the_sync_flag(patched_stock, monkeypatch):
+    """`force=True` (route admin) : une rupture constatée doit rester levable même synchro coupée."""
+    monkeypatch.setenv("STOCK_SYNC_ENABLED", "false")
+    patched_stock.products.docs = [
+        {"id": "p1", "name": "60 UC", "supplier_checked_at": _iso(_now()), **CONFIRMED_OUT},
+    ]
+    assert _run(stock.mark_supplier_available({"id": "p1", "name": "60 UC"},
+                                              actor="admin-1", force=True)) is True
+    doc = patched_stock.products.docs[0]
+    assert "supplier_available" not in doc
+    assert stock.purchasable(doc) is True
+    patched_stock.restored.assert_awaited_once_with("60 UC", "p1")
+    # Le forçage admin ne touche jamais le forçage manuel, qui reste prioritaire.
+    assert "manual_unavailable" not in doc
+
+
+def test_repeated_constat_refreshes_the_timestamp_without_alerting(patched_stock, monkeypatch):
+    """Le rafraîchissement à chaque passage est ce qui empêche une rupture qui dure d'expirer."""
+    monkeypatch.delenv("STOCK_SYNC_ENABLED", raising=False)
+    monkeypatch.delenv("STOCK_STALE_MINUTES", raising=False)
+    patched_stock.products.docs = [{"id": "p1", "name": "60 UC"}]
+    assert _run(stock.mark_supplier_unavailable({"id": "p1"}, source="delivery")) is True
+    first = patched_stock.products.docs[0]["supplier_checked_at"]
+
+    # 58 min plus tard, un nouveau constat : la date est rafraîchie, la rupture reste active.
+    later = _now() + timedelta(minutes=58)
+    with patch.object(stock, "_now", lambda: later):
+        assert _run(stock.mark_supplier_unavailable({"id": "p1"}, source="delivery")) is False
+    doc = patched_stock.products.docs[0]
+    assert doc["supplier_checked_at"] != first
+    assert stock.purchasable(doc, later + timedelta(minutes=5)) is False
+    patched_stock.unavailable.assert_awaited_once()   # une seule alerte pour l'épisode
+

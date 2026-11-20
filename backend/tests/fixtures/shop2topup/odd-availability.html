@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fixture — cas limites de disponibilité</title>
+</head>
+<body>
+<!--
+  FIXTURE SYNTHÉTIQUE — cas limites de `availability`, à ne pas confondre avec
+  les deux fixtures réelles (pubg-mobile.html, free-fire-mena-direct-topup.html).
+
+  Elle couvre ce que la page réelle du 18/11 n'exerce pas :
+   - un bloc JSON-LD INVALIDE (doit être ignoré, les suivants restent lus) ;
+   - `SoldOut`, `LimitedAvailability`, `PreOrder` -> NON conclu (ni True ni False) ;
+   - `availability` absente -> NON conclu ;
+   - `availability` en liste : une seule valeur -> conclu ; valeurs contradictoires -> NON conclu ;
+   - `Product.offers` sous forme de LISTE d'offres, et non d'AggregateOffer.
+
+  Aucune de ces valeurs n'est inventée pour autant : ce sont toutes des valeurs
+  schema.org / du vocabulaire du fournisseur. Les SKU sont fictifs (négatifs).
+-->
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "Product", "name": "tronqué", "sku": "broken",
+</script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "Fixture — cas limites",
+  "sku": "fixture",
+  "offers": [
+    {
+      "@type": "Offer",
+      "name": "InStock simple",
+      "sku": "-1",
+      "price": "1.00",
+      "priceCurrency": "USD",
+      "availability": "https://schema.org/InStock"
+    },
+    {
+      "@type": "Offer",
+      "name": "OutOfStock simple",
+      "sku": "-2",
+      "price": "2.00",
+      "priceCurrency": "USD",
+      "availability": "https://schema.org/OutOfStock"
+    },
+    {
+      "@type": "Offer",
+      "name": "SoldOut",
+      "sku": "-3",
+      "price": "3.00",
+      "priceCurrency": "USD",
+      "availability": "https://schema.org/SoldOut"
+    },
+    {
+      "@type": "Offer",
+      "name": "LimitedAvailability",
+      "sku": "-4",
+      "price": "4.00",
+      "priceCurrency": "USD",
+      "availability": "https://schema.org/LimitedAvailability"
+    },
+    {
+      "@type": "Offer",
+      "name": "PreOrder",
+      "sku": "-5",
+      "price": "5.00",
+      "priceCurrency": "USD",
+      "availability": "https://schema.org/PreOrder"
+    },
+    {
+      "@type": "Offer",
+      "name": "availability absente",
+      "sku": "-6",
+      "price": "6.00",
+      "priceCurrency": "USD"
+    },
+    {
+      "@type": "Offer",
+      "name": "availability en liste, une valeur",
+      "sku": "-7",
+      "price": "7.00",
+      "priceCurrency": "USD",
+      "availability": ["https://schema.org/InStock"]
+    },
+    {
+      "@type": "Offer",
+      "name": "availability en liste, contradictoire",
+      "sku": "-8",
+      "price": "8.00",
+      "priceCurrency": "USD",
+      "availability": ["https://schema.org/InStock", "https://schema.org/OutOfStock"]
+    },
+    {
+      "@type": "Offer",
+      "name": "schema.org en http, casse différente",
+      "sku": "-9",
+      "price": "9.00",
+      "priceCurrency": "USD",
+      "availability": "http://schema.org/OUTOFSTOCK"
+    },
+    {
+      "@type": "Offer",
+      "name": "sku absent",
+      "price": "10.00",
+      "priceCurrency": "USD",
+      "availability": "https://schema.org/InStock"
+    }
+  ]
+}
+</script>
+</body>
+</html>

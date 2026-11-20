@@ -60,6 +60,18 @@ def _error_response(exc: HTTPException, game_id: str) -> JSONResponse:
     })
 
 
+def _validation_http_error(exc: providers.ProviderValidationError) -> HTTPException:
+    """Une validation fournisseur refusée n'est JAMAIS une erreur serveur (T16).
+
+    Quel que soit le fournisseur, le refus sort en 4xx avec son `code` machine : Shop2Topup lève
+    409 (`missing_offer`, `missing_player_id`), un refus sans statut explicite devient 422.
+    """
+    status = exc.status_code if 400 <= exc.status_code < 500 else 422
+    error = HTTPException(status_code=status, detail=exc.message)
+    error.code = exc.code or "invalid_id"
+    return error
+
+
 class PubgValidateIn(BaseModel):
     """Identifiant PUBG Mobile : TEXTE de 1 à 60 caractères (norme PL-003-BE-11).
 
@@ -137,7 +149,10 @@ async def validate_identity(body: IdentityValidateIn, request: Request):
         # Le vérificateur d'identité est une donnée du jeu (`identity_verifier`) : Neferbyte s'il
         # est configuré, FazerCards sinon. Le contrat de réponse ci-dessous ne change pas.
         provider = providers.resolve_identity_provider(game)
-        result = await provider.validate_identity(body.game_id, checked[0])
+        try:
+            result = await provider.validate_identity(body.game_id, checked[0])
+        except providers.ProviderValidationError as exc:
+            raise _validation_http_error(exc) from None
         if not result.valid:
             # Message neutre par jeu : PUBG Mobile garde son libellé historique.
             if body.game_id == "pubg-mobile":
@@ -164,8 +179,11 @@ async def validate_pubg_id(body: PubgValidateIn, request: Request):
     # conserve le comportement historique (FazerCards) plutôt que d'inventer un 404.
     game = await db.games.find_one({"id": PUBG_GAME_ID}, IDENTITY_GAME_PROJECTION) \
         or {"id": PUBG_GAME_ID}
-    result = await providers.resolve_identity_provider(game).validate_identity(
-        PUBG_GAME_ID, {"player_id": body.player_id})
+    try:
+        result = await providers.resolve_identity_provider(game).validate_identity(
+            PUBG_GAME_ID, {"player_id": body.player_id})
+    except providers.ProviderValidationError as exc:
+        return _error_response(_validation_http_error(exc), PUBG_GAME_ID)
     if not result.valid:
         return {"valid": False, "message": "ID PUBG Mobile invalide"}
     return {"valid": True, "player_name": result.player_name, "region": result.region}

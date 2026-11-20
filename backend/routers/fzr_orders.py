@@ -179,6 +179,7 @@ async def fzr_mappings(game: str | None = None):
                                                           "active": 1, "game_id": 1, "requires_mapping": 1,
                                                           "fazercards_mapping": 1, "supplier_available": 1,
                                                           "supplier_checked_at": 1, "manual_unavailable": 1,
+                                                          "supplier_available_confirmed": 1,
                                                           "absent_from_supplier_list": 1,
                                                           "supplier_list_checked_at": 1}).sort("sort_order", 1)]
     # PL-STOCK-2 : compteurs de remboursements en UNE requête pour toute la liste.
@@ -347,9 +348,10 @@ def verify_fzr_signature(raw: bytes, signature: str | None) -> bool:
     """Signature HMAC-SHA256 sur le RAW BODY — déléguée à l'adapter FazerCards.
 
     Le webhook est GLOBAL au fournisseur, pas à un jeu : le provider est résolu sans jeu
-    (aucun jeu, PUBG Mobile compris, n'est présumé être celui du webhook).
+    (aucun jeu, PUBG Mobile compris, n'est présumé être celui du webhook) et NOMMÉ explicitement :
+    c'est un événement FazerCards, jamais celui du fournisseur de top-up courant (T16).
     """
-    return providers.get_provider(None).verify_webhook_signature(raw, signature)
+    return providers.get_provider(None, "fazercards").verify_webhook_signature(raw, signature)
 
 
 @router.post("/fazercards/webhook")
