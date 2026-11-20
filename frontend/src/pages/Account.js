@@ -10,8 +10,6 @@ import {
   Globe,
   IdCard,
   Languages,
-  LockKeyhole,
-  LogOut,
   MailCheck,
   MessageCircle,
   Moon,
@@ -26,7 +24,6 @@ import { toast } from "sonner";
 import { api, errorMessage } from "@/lib/api";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
-import { BackButton } from "@/components/common/BackButton";
 import { PubgPlayerCard } from "@/components/PubgPlayerCard";
 import { GameIdentities } from "@/components/GameIdentities";
 
@@ -160,32 +157,32 @@ export default function Account() {
   const nextTheme = theme === "dark" ? "light" : theme === "light" ? "system" : "dark";
 
   return (
-    <div className="container page-top mx-auto max-w-xl pb-[calc(7rem+env(safe-area-inset-bottom))] md:pb-16" data-testid="account-page">
-      {/* HEADER — centered profile card matching the mobile reference. */}
-      <div className="flex items-center justify-between">
-        <BackButton to="/" testId="account-back" />
-        <span className="w-10 shrink-0" aria-hidden="true" />
-      </div>
-
-      <section className="mt-2 flex flex-col items-center text-center" data-testid="account-profile-header">
-        <div className="relative" data-testid="account-avatar">
-          {user.picture ? (
-            <img src={user.picture} alt="" className="h-24 w-24 rounded-full object-cover" style={{ border: ".125em solid var(--color--dark)" }} />
-          ) : (
-            <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary font-display text-3xl font-black text-primary-foreground" style={{ border: ".125em solid var(--color--dark)" }}>
-              {(user.name || user.email)[0].toUpperCase()}
+    <section className="section">
+      <div className="container">
+        <div className="mgs-shell" data-testid="account-page">
+          {/* En-tête du prototype compte : mgs-head + panneau avatar/nom/déconnexion. */}
+          <div className="mgs-head">
+            <p className="eyebrow">{t("account.eyebrow")}</p>
+            <h1 className="mgs-title">{t("account.title")}</h1>
+            <p className="mgs-sub">{t("account.subtitle")}</p>
+          </div>
+          <div className="mgs-panel mgs-row" style={{ gap: "1.25em", marginBottom: "2em" }} data-testid="account-profile-header">
+            <span className="mgs-avatar" data-testid="account-avatar">
+              {user.picture ? <img src={user.picture} alt="" className="h-full w-full rounded-full object-cover" /> : (user.name || user.email)[0].toUpperCase()}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontWeight: 800, fontSize: "1.4em", margin: 0 }} data-testid="account-name">{user.name || user.email.split("@")[0]}</p>
+              <p className="mgs-muted" style={{ margin: ".15em 0 0" }} data-testid="account-email">{user.email} · {t("account.memberSince")} {new Date(user.created_at).toLocaleDateString(lang === "en" ? "en-GB" : "fr-FR")}</p>
             </div>
-          )}
-          <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-background" style={{ border: ".125em solid var(--color--dark)" }} aria-label={t("profile.avatarLocked")}>
-            <LockKeyhole className="h-3 w-3" strokeWidth={2.5} />
-          </span>
-        </div>
-        <h1 className="h-c" style={{ marginTop: ".6em" }} data-testid="account-name">{user.name || user.email.split("@")[0]}</h1>
-        <p className="p-m" style={{ marginTop: ".2em" }} data-testid="account-email">{user.email}</p>
-        <p className="eyebrow" style={{ marginTop: ".5em" }}>{t("account.memberSince")} {new Date(user.created_at).toLocaleDateString(lang === "en" ? "en-GB" : "fr-FR")}</p>
-      </section>
+            <BtnMain type="button" theme="light" onClick={logout} testid="account-logout" label={t("nav.logout")} className="h-11 flex-none">{t("nav.logout")}</BtnMain>
+          </div>
+          <div className="mgs-grid mgs-grid--3" style={{ marginBottom: "2em" }}>
+            <Link to="/compte/points" className="mgs-stat" style={{ background: "var(--color--yellow-700)", color: "var(--color--dark)" }} data-testid="stat-points"><span className="mgs-stat__n">{pointsLoading ? "…" : points ?? "—"}</span><span className="mgs-stat__l">{t("loyalty.title")}</span></Link>
+            <Link to="/suivi" className="mgs-stat" style={{ color: "var(--color--dark)" }} data-testid="stat-orders"><span className="mgs-stat__n">↗</span><span className="mgs-stat__l">{t("profile.myOrders")}</span></Link>
+            <div className="mgs-stat"><span className="mgs-stat__n">{(user.saved_pubg_ids || []).length}</span><span className="mgs-stat__l">{t("account.pubgIds")}</span></div>
+          </div>
 
-      <VerifyBanner user={user} />
+          <VerifyBanner user={user} />
 
       {/* QUICK ACCESS */}
       <Section title={t("profile.quickAccess")} testid="account-quick-access">
@@ -278,19 +275,8 @@ export default function Account() {
         <Row icon={FileText} label={t("profile.terms")} to="/terms" testid="row-terms" />
       </Section>
 
-      {/* SIGN OUT */}
-      <BtnMain
-        type="button"
-        theme="light"
-        accent="dark"
-        onClick={logout}
-        className="h-12 w-full text-destructive"
-        style={{ marginTop: "1.5em" }}
-        testid="account-logout"
-        label={t("nav.logout")}
-      >
-        <LogOut className="mr-2 h-4 w-4" />{t("nav.logout")}
-      </BtnMain>
-    </div>
+        </div>
+      </div>
+    </section>
   );
 }
