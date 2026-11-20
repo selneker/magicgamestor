@@ -110,3 +110,27 @@ aucun onglet/titre/section vide.
 Arbre laissé propre (tout commité sur `feat/design-system-pages`). Aucun fichier backend modifié, aucune
 dépendance ajoutée, aucun secret lu. Les non-suivis admis (`graphify-out/`, `design-system-v2.html`,
 `design-system-v3.html`) sont conservés tels quels.
+
+---
+
+# PL-DS-003-V1 — conversion littérale vers le design system (décision propriétaire)
+
+Les pages encore en utilitaires Tailwind passent aux classes/variables/composants littéraux du DS
+(`public/design-system.css` + `mg-brand.css` + `mg-components.css`), comme `Home.js`/`SlushChrome.js`.
+Ordre : Catalog · Events · Auth · Account · PackEvolutif · Checkout/suivi. Logique, routes, appels API,
+testids et comportement conservés ; utilitaire Tailwind retiré seulement si une classe DS le remplace exactement.
+
+## Catalog (page jeu) — écarts avec la référence (`maquettes/02-page-jeu.html`, `mg-components.css`)
+
+- `Catalog.js:17` helper `tab()` = `rounded-full border bg-primary…` → `.game-tab` + `.is--active` (mg-components:386).
+- `Catalog.js:23` titre section `font-display text-2xl…` → `.section-head` > `h2.h-l` (mg-components:821, 404).
+- `Catalog.js:24,255,260` grilles Tailwind `grid-cols-1…xl:grid-cols-4` → `.packs-grid` (mg-components:358).
+- `Catalog.js:36-55` `GamePicker` `pb-24 pt-6` + `card-lift rounded-[16px]` → `.page-top/.page-bottom` + `.packs-grid` / `.two-col-grid__visual`.
+- `Catalog.js:62-80` `GameBanner` `grid rounded-[16px] bg-card` → `.game-hero` > `.game-hero__meta` > `h1.h-l` + `p.p-m` + `.game-hero__stats` > `.chip` (mg-components:399-408).
+- `Catalog.js:210` wrapper `pb-24 pt-6` → `.container.section.page-top.page-bottom` (maquette:1009).
+- `Catalog.js:214-224` tablist Tailwind → `.game-tabs` role=tablist (mg-components:384).
+- `Catalog.js:229` recherche `Input h-11 rounded-full` → `.form-field` (design-system:2570).
+- `Catalog.js:265` état vide `rounded-[16px] border-dashed` → carte DS.
+- **Point ouvert :** `.buy-bar`/`.cart-pill` de la maquette non ajoutés — le panier React existant
+  (`CartDrawer` + badge nav) est conservé (règle « garder la logique panier ») ; pas de duplication.
+- Cible tactile ≥44 px (AGENTS.md n°8) : `.game-tab` (~31 px) conserve `min-h-11` (utilitaire non remplacé par le DS).
