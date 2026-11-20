@@ -1,8 +1,9 @@
 """T09 — bascule contrôlée du catalogue : aucun Mongo réel, aucun réseau.
 
 La collection `products` est un faux en mémoire construit à partir de `core.seed.build_products()`
-(14 lots UC + 8 Prime), avec le `supplier_mapping` des 6 lots du manifeste tel que le pose T04.
-Les prix, la visibilité (`active`) et le badge sont comparés avant/après.
+(14 lots UC + 8 Prime) et des 4 packs évolutifs que `seed_products` insère séparément, avec le
+`supplier_mapping` des 6 lots du manifeste tel que le pose T04. Les prix, la visibilité (`active`)
+et le badge sont comparés avant/après.
 """
 import asyncio
 import copy
@@ -17,7 +18,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core import games  # noqa: E402
-from core.seed import build_products  # noqa: E402
+from core.seed import EVO_PACKS, build_products  # noqa: E402
 from core.shop2topup_mapping import SHOP2TOPUP_MANIFEST  # noqa: E402
 from services import shop2topup_cutover as cutover  # noqa: E402
 from services import telegram  # noqa: E402
@@ -55,6 +56,7 @@ class FakeCollection:
     def __init__(self, docs=None):
         self.docs = copy.deepcopy(list(docs or []))
         self.writes = []
+        self.queries = []  # parallèle à `writes` : le filtre de chaque mise à jour
         self.finds = 0
 
     @staticmethod
@@ -73,6 +75,7 @@ class FakeCollection:
 
     async def update_one(self, query, update, upsert=False):
         self.writes.append(copy.deepcopy(update))
+        self.queries.append(copy.deepcopy(query))
         target = next((d for d in self.docs if self._match(d, query)), None)
         if target is None:
             if not upsert:
@@ -87,8 +90,18 @@ class FakeCollection:
 
 
 def _products():
-    """État réel attendu après T04 : 14 lots UC, 6 mappés Shop2Topup."""
+    """État réel attendu après T04 : 14 lots UC (6 mappés), 8 Prime et 4 packs évolutifs."""
     docs = build_products()
+    # `core/seed.py:99-105` : les packs évolutifs sont insérés par `seed_products`, pas par
+    # `build_products`. Ils n'ont pas de `requires_mapping` et sont actifs.
+    for i, (slug, name, name_en, desc_fr, desc_en, price, limit) in enumerate(EVO_PACKS):
+        docs.append({
+            "id": f"evo-{i}", "slug": slug, "type": "evo", "name": name, "name_en": name_en,
+            "uc_amount": None, "duration_months": None, "price": price, "old_price": None,
+            "popular": False, "badge": None, "evo_limit": limit,
+            "description_fr": desc_fr, "description_en": desc_en,
+            "active": True, "sort_order": 200 + i, "game_id": "pubg-mobile",
+        })
     manifest = {row["product_slug"]: row for row in SHOP2TOPUP_MANIFEST}
     for doc in docs:
         row = manifest.get(doc["slug"])
@@ -127,6 +140,19 @@ def _call(mode_value, products=None, settings=None, moment=NOW, env=None):
 
 def _events(result):
     return [call.kwargs["event"] for call in result.notify.await_args_list]
+
+
+def _report_of(result):
+    """Le rapport publié dans `settings.cutover_report` (le doc `cutover` peut le précéder)."""
+    return next(doc["report"] for doc in result.db.settings.docs
+                if doc.get("key") == "cutover_report")
+
+
+def _writes_by_slug(result, products):
+    """Champs `$set` de chaque écriture produit, indexés par slug."""
+    by_id = {doc.get("id"): doc.get("slug") for doc in products}
+    return {by_id.get(query.get("id")): update.get("$set", {})
+            for query, update in zip(result.db.products.queries, result.db.products.writes)}
 
 
 # --------------------------------------------------------------------------- #
@@ -201,7 +227,7 @@ def test_apply_modifie_exactement_les_lots_prevoirs_et_rien_d_autre():
 
     state = result.db.settings.docs[0]
     assert state["key"] == "cutover" and state["applied_at"] == NOW.isoformat()
-    assert len(state["snapshot"]) == 14
+    assert len(state["snapshot"]) == 26  # 14 lots UC + 12 produits hors lots UC
     assert _events(result) == ["catalogue_cutover_applied"]
 
 
@@ -240,6 +266,105 @@ def test_apply_rejoue_est_refuse():
 
 
 # --------------------------------------------------------------------------- #
+# Produits hors lots UC (T04B) : masqués, jamais repricés
+# --------------------------------------------------------------------------- #
+def test_apply_masque_les_douze_produits_hors_lots_uc_sans_toucher_au_reste():
+    before = _products()
+    result = _call("apply", products=before)
+    docs = _by_slug(result.db.products)
+    was = {doc["slug"]: doc for doc in before}
+
+    assert len(cutover.ORPHAN_SLUGS) == 12
+    for slug in cutover.ORPHAN_SLUGS:
+        assert docs[slug]["active"] is False
+        assert docs[slug]["price"] == was[slug]["price"]
+        assert docs[slug]["popular"] == was[slug]["popular"]
+        assert docs[slug]["badge"] == was[slug]["badge"]
+        assert docs[slug]["old_price"] == was[slug]["old_price"]
+        assert docs[slug]["name"] == was[slug]["name"]
+
+    writes = _writes_by_slug(result, before)
+    hidden = {slug: fields for slug, fields in writes.items() if slug in cutover.ORPHAN_SLUGS}
+    assert len(hidden) == 12
+    assert all(fields == {"active": False} for fields in hidden.values())
+
+
+def test_produit_hors_lot_absent_ou_deja_inactif_n_est_pas_une_erreur():
+    products = [doc for doc in _products() if doc["slug"] != "evo-fragments-mythique"]
+    for doc in products:
+        if doc["slug"] == "prime-6m":
+            doc["active"] = False
+
+    result = _call("apply", products=products)
+    report = _report_of(result)
+    rows = {row["slug"]: row for row in report["products"]}
+
+    assert result.counters == {"cutover": "applied"}
+    assert report["ok"] is True and report["errors"] == []
+    assert rows["evo-fragments-mythique"]["note"] == "absent de la base"
+    assert rows["prime-6m"]["note"] == "déjà masqué"
+    assert not {"prime-6m", "evo-fragments-mythique"} & set(_writes_by_slug(result, products))
+
+
+def test_produit_actif_inconnu_bloque_apply_sans_ecriture():
+    extra = {"id": "x", "slug": "royal-pass-a19", "type": "pass", "game_id": "pubg-mobile",
+             "uc_amount": None, "active": True, "price": 12000, "popular": False, "badge": None}
+    result = _call("apply", products=_products() + [extra])
+    report = _report_of(result)
+
+    assert result.counters == {"cutover": "blocked"}
+    assert result.db.products.writes == [] and result.notify.await_args_list == []
+    assert report["mode"] == "apply-blocked" and report["writes"] == []
+    assert any("royal-pass-a19" in error for error in report["errors"])
+    assert "royal-pass-a19" in {row["slug"] for row in report["products"]}
+
+
+def test_pack_evo_inactif_avec_requires_mapping_n_est_pas_touche():
+    inactive = {"id": "new-1", "slug": "evo-weekly-deal-1", "type": "evo",
+                "game_id": "pubg-mobile", "uc_amount": None, "active": False,
+                "requires_mapping": True, "price": 5900, "popular": False, "badge": None}
+    products = _products() + [inactive]
+    result = _call("apply", products=products)
+
+    assert result.counters == {"cutover": "applied"}
+    assert "evo-weekly-deal-1" not in _writes_by_slug(result, products)
+    assert _by_slug(result.db.products)["evo-weekly-deal-1"] == inactive
+
+
+def test_free_fire_et_les_autres_jeux_ne_sont_jamais_touches():
+    other = {"id": "ff-1", "slug": "free-fire-prime-1m", "type": "prime",
+             "game_id": "free-fire", "uc_amount": None, "active": True, "price": 9000,
+             "popular": False, "badge": None}
+    products = _products() + [other]
+    result = _call("apply", products=products)
+    table = _report_of(result)["products"]
+
+    assert result.counters == {"cutover": "applied"}
+    assert _by_slug(result.db.products)["free-fire-prime-1m"] == other
+    assert "free-fire-prime-1m" not in _writes_by_slug(result, products)
+    assert "free-fire-prime-1m" not in {row["slug"] for row in table}
+
+
+def test_dry_run_publie_le_tableau_complet_sans_rien_ecrire():
+    result = _call("dry-run")
+    report = _report_of(result)
+    rows = {row["slug"]: row for row in report["products"]}
+
+    assert result.db.products.writes == []
+    assert len(report["products"]) == 26
+    assert rows["325-uc"]["action"] == "prix"
+    assert rows["325-uc"]["price_before"] == 21000 and rows["325-uc"]["price_after"] == 22000
+    assert rows["660-uc"]["action"] == "prix"
+    assert rows["30-uc"]["action"] == "masqué, badge"
+    assert rows["1320-uc"]["action"] == "masqué, badge"
+    assert rows["90-uc"]["action"] == "masqué"
+    assert rows["prime-1m"]["action"] == "masqué"
+    assert rows["prime-1m"]["active_before"] is True and rows["prime-1m"]["active_after"] is False
+    assert rows["60-uc"]["action"] == "inchangé"
+    assert rows["60-uc"]["price_after"] == 5000
+
+
+# --------------------------------------------------------------------------- #
 # rollback et robustesse
 # --------------------------------------------------------------------------- #
 def test_rollback_restaure_a_l_identique_puis_autorise_un_nouvel_apply():
@@ -248,7 +373,7 @@ def test_rollback_restaure_a_l_identique_puis_autorise_un_nouvel_apply():
     rolled = _call("rollback", products=applied.db.products.docs,
                    settings=applied.db.settings.docs)
 
-    assert rolled.counters == {"cutover": "rolled_back", "restored": 14}
+    assert rolled.counters == {"cutover": "rolled_back", "restored": 26}
     assert rolled.db.products.docs == before
     state = rolled.db.settings.docs[0]
     assert "snapshot" not in state and state["rolled_back_at"] == NOW.isoformat()

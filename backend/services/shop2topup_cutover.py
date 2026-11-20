@@ -25,8 +25,22 @@ CE QUE `apply` FAIT, POUR PUBG MOBILE SEULEMENT
    (`UNMAPPED_LOTS`) et les 6 lots mappés doivent être exactement le manifeste : sinon
    **rien n'est écrit**, le rapport explique l'écart. `active` est le seul mécanisme de
    visibilité du catalogue (`routers/products.py:86`).
-3. Déplace le badge « populaire » de 30 UC et 1 320 UC vers 325 UC et 660 UC (A3) : le
+3. Masque de la même façon les **12 produits PUBG hors lots UC** (`ORPHAN_PRODUCTS`), identifiés
+   par leur slug ET leur type : Prime, Prime+ et les 4 packs évolutifs. Le rapport T04B
+   (`PL-006-T04B-V1`) a établi qu'ils encaisseraient puis ne seraient jamais livrés
+   (`services/fzr_fulfillment.py:184-191`). Un produit absent ou déjà inactif n'est pas une
+   erreur : le rapport le note. Ni prix, ni `old_price`, ni badge, ni `popular` ne sont touchés —
+   seul `active` passe à faux.
+4. Déplace le badge « populaire » de 30 UC et 1 320 UC vers 325 UC et 660 UC (A3) : le
    drapeau `popular` et le libellé `badge` sont écrits ensemble, comme dans `core/seed.py:50-51`.
+
+GARDE
+=====
+Tout produit PUBG **actif** sans `supplier_mapping.shop2topup` doit être l'un des 8 lots UC
+prévus ou l'un des 12 produits ci-dessus. Tout autre produit actif — ajouté depuis le panneau
+admin, par exemple — bloque `apply` **sans rien écrire**, avec son slug dans le rapport. Les
+packs évolutifs inactifs (`requires_mapping: true`, `core/seed.py:107-114`) ne sont donc jamais
+touchés.
 
 SÉCURITÉ D'ÉCRITURE
 ===================
@@ -35,14 +49,14 @@ SÉCURITÉ D'ÉCRITURE
 - Chaque produit touché reçoit **un seul `$set` absolu** (jamais un delta) : un `apply`
   interrompu se rejoue et converge vers le même état ; `applied_at` n'est écrit qu'après la
   dernière mise à jour.
-- Ordre documenté : snapshot → prix (6 lots mappés) → visibilité (8 lots) → badge (4 lots) →
-  `applied_at`.
+- Ordre documenté : snapshot → prix (6 lots mappés) → visibilité (8 lots UC + 12 produits hors
+  lots UC) → badge (4 lots) → `applied_at`.
 - Toute erreur est journalisée et rendue en compteur : le démarrage du serveur n'échoue
   jamais à cause de la bascule.
 
-Aucun produit n'est créé ni supprimé. Les produits hors lots UC (Prime, packs évolutifs)
-sont seulement listés dans le rapport, avec leur fournisseur, pour la décision du
-propriétaire avant la coupure de FazerCards.
+Aucun produit n'est créé ni supprimé. Les produits hors lots UC (Prime, packs évolutifs) sont
+masqués par `apply` (point 3) ; `dry-run` publie leur ligne dans le tableau complet
+(`report["products"]` : prix, visibilité et badge avant/après, action).
 """
 from __future__ import annotations
 
@@ -68,6 +82,16 @@ TARGET_PRICES = {60: 5000, 325: 22000, 660: 44000,
                  1800: 109000, 3850: 217000, 16200: 871000}
 # Les 8 lots UC sans équivalent Shop2Topup (calculés, jamais supposés).
 UNMAPPED_LOTS = frozenset({30, 90, 120, 180, 415, 720, 985, 1320})
+# Les 12 produits PUBG hors lots UC (T04B) : masqués à la bascule, jamais repricés.
+# Identifiés par slug ET type, jamais par position.
+ORPHAN_PRODUCTS = frozenset({
+    ("prime-1m", "prime"), ("prime-3m", "prime"), ("prime-6m", "prime"), ("prime-12m", "prime"),
+    ("prime-plus-1m", "prime_plus"), ("prime-plus-3m", "prime_plus"),
+    ("prime-plus-6m", "prime_plus"), ("prime-plus-12m", "prime_plus"),
+    ("evo-fragments-materiaux", "evo"), ("evo-premier-achat", "evo"),
+    ("evo-embleme-mythique", "evo"), ("evo-fragments-mythique", "evo"),
+})
+ORPHAN_SLUGS = frozenset(slug for slug, _kind in ORPHAN_PRODUCTS)
 POPULAR_OFF = frozenset({30, 1320})
 POPULAR_ON = frozenset({325, 660})
 SNAPSHOT_FIELDS = ("price", "active", "popular", "badge")
@@ -174,11 +198,114 @@ def _lot_rows(products: list[dict]) -> tuple[list[dict], list[dict], list[dict],
 
 
 def _orphans(products: list[dict]) -> list[dict]:
-    """Produits PUBG actifs hors lots UC : listés, jamais modifiés."""
+    """Produits PUBG actifs hors lots UC au moment du calcul : listés avec leur fournisseur.
+
+    C'est l'état d'**avant** : `apply` masque ceux de `ORPHAN_PRODUCTS` (point 3).
+    """
     return [{"slug": p.get("slug"), "name": p.get("name"), "type": p.get("type"),
              "price": p.get("price"), "supplier": _supplier(p)}
             for p in products
             if p.get("uc_amount") is None and p.get("active")]
+
+
+def _hidden_rows(products: list[dict]) -> tuple[list[dict], list[dict], list[str], dict[str, str]]:
+    """Masquage des 12 produits hors lots UC : `active: false`, rien d'autre.
+
+    Rend (écritures, produits touchés, erreurs, notes par slug). Un produit absent ou déjà
+    inactif n'est pas une erreur : la note le dit, et rien n'est écrit pour lui.
+    """
+    errors: list[str] = []
+    notes: dict[str, str] = {}
+    writes, touched = [], []
+    grouped: dict[str, list[dict]] = {}
+    for product in products:
+        if product.get("slug") in ORPHAN_SLUGS:
+            grouped.setdefault(str(product.get("slug")), []).append(product)
+    for slug, kind in sorted(ORPHAN_PRODUCTS):
+        items = grouped.get(slug) or []
+        if not items:
+            notes[slug] = "absent de la base"
+            continue
+        if len(items) > 1:
+            errors.append(f"{slug} présent {len(items)} fois")
+            continue
+        product = items[0]
+        if product.get("type") != kind:
+            errors.append(f"{slug} : type {product.get('type')!r} inattendu (attendu {kind!r})")
+            continue
+        if not product.get("active"):
+            notes[slug] = "déjà masqué"
+            continue
+        writes.append({"id": product.get("id"), "slug": slug, "fields": {"active": False}})
+        touched.append(product)
+    return writes, touched, errors, notes
+
+
+def _guard_active(products: list[dict]) -> list[str]:
+    """Produits PUBG actifs que la bascule ne connaît pas : `apply` est bloqué tant qu'il en reste."""
+    allowed_uc = {row["uc_total"] for row in SHOP2TOPUP_MANIFEST} | set(UNMAPPED_LOTS)
+    unknown = []
+    for product in products:
+        if not product.get("active"):
+            continue
+        if (product.get("supplier_mapping") or {}).get(SHOP2TOPUP_KEY):
+            continue
+        uc = product.get("uc_amount")
+        if uc is not None and int(uc) in allowed_uc:
+            continue
+        if (product.get("slug"), product.get("type")) in ORPHAN_PRODUCTS:
+            continue
+        unknown.append(str(product.get("slug")))
+    return sorted(unknown)
+
+
+def _order(product: dict) -> tuple:
+    """Lots UC d'abord, par total croissant ; puis les autres, par slug."""
+    uc = product.get("uc_amount")
+    return (uc is None, int(uc or 0), str(product.get("slug") or ""))
+
+
+def _actions(fields: dict) -> list[str]:
+    actions = []
+    if "price" in fields:
+        actions.append("prix")
+    if fields.get("active") is False:
+        actions.append("masqué")
+    if "popular" in fields or "badge" in fields:
+        actions.append("badge")
+    return actions
+
+
+def _table(products: list[dict], writes: list[dict], notes: dict[str, str]) -> list[dict]:
+    """Tableau complet des produits PUBG : avant/après et action (aucune écriture)."""
+    planned = {write["id"]: write["fields"] for write in writes}
+    rows = []
+    for product in sorted(products, key=_order):
+        fields = planned.get(product.get("id")) or {}
+        actions = _actions(fields)
+        rows.append({
+            "slug": product.get("slug"), "type": product.get("type"),
+            "uc": product.get("uc_amount"),
+            "price_before": product.get("price"),
+            "price_after": fields.get("price", product.get("price")),
+            "active_before": bool(product.get("active")),
+            "active_after": bool(fields.get("active", product.get("active"))),
+            "badge_before": product.get("badge"),
+            "badge_after": fields.get("badge", product.get("badge")),
+            "action": ", ".join(actions) or "inchangé", "actions": actions,
+            "note": notes.get(str(product.get("slug")), ""),
+        })
+    present = {str(product.get("slug")) for product in products}
+    for slug, kind in sorted(ORPHAN_PRODUCTS):
+        if slug in present:
+            continue
+        rows.append({"slug": slug, "type": kind, "uc": None,
+                     "price_before": None, "price_after": None,
+                     "active_before": None, "active_after": None,
+                     "badge_before": None, "badge_after": None,
+                     "action": "inchangé", "actions": [],
+                     "note": notes.get(slug) or "absent de la base"})
+    return rows
 
 
 async def _products() -> list[dict]:
@@ -189,10 +316,18 @@ async def build_plan() -> dict:
     """Lit les produits et rend le plan complet (aucune écriture)."""
     products = await _products()
     rows, writes, touched, errors = _lot_rows(products)
+    hidden_writes, hidden_touched, hidden_errors, notes = _hidden_rows(products)
+    errors += hidden_errors
+    unknown = _guard_active(products)
+    if unknown:
+        errors.append(f"produits actifs non prévus: {unknown}")
+    writes += hidden_writes
+    touched += hidden_touched
     snapshot = [{"id": p.get("id"), "slug": p.get("slug"),
                  **{field: p.get(field) for field in SNAPSHOT_FIELDS}} for p in touched]
-    return {"ok": not errors, "errors": errors, "lots": rows, "writes": writes,
-            "snapshot": snapshot, "orphans": _orphans(products)}
+    return {"ok": not errors, "errors": errors, "lots": rows,
+            "products": _table(products, writes, notes),
+            "writes": writes, "snapshot": snapshot, "orphans": _orphans(products)}
 
 
 async def _doc(key: str) -> dict:
@@ -227,6 +362,7 @@ async def dry_run(moment: datetime) -> dict:
         logger.error("bascule en essai à blanc : garde en échec %s", plan["errors"])
     await _report({"mode": "dry-run", "at": _iso(moment), "ok": plan["ok"],
                    "errors": plan["errors"], "lots": plan["lots"],
+                   "products": plan["products"],
                    "writes": plan["writes"], "orphans": plan["orphans"]})
     return {"cutover": "dry-run"}
 
@@ -244,6 +380,7 @@ async def apply(moment: datetime) -> dict:
         logger.error("bascule refusée, aucun produit écrit : %s", plan["errors"])
         await _report({"mode": "apply-blocked", "at": _iso(moment), "ok": False,
                        "errors": plan["errors"], "lots": plan["lots"],
+                       "products": plan["products"],
                        "writes": [], "orphans": plan["orphans"]})
         return {"cutover": "blocked"}
 
@@ -281,12 +418,17 @@ async def apply(moment: datetime) -> dict:
     await db.settings.update_one({"key": CUTOVER_KEY},
                                  {"$set": {"applied_at": _iso(moment)}}, upsert=True)
     _log_rows(plan["lots"])
+    prices = sum(1 for write in plan["writes"] if "price" in write["fields"])
+    masked = sum(1 for write in plan["writes"] if write["fields"].get("active") is False)
+    badges = sum(1 for write in plan["writes"] if "popular" in write["fields"])
     await _report({"mode": "apply", "at": _iso(moment), "ok": True, "errors": [],
-                   "lots": plan["lots"], "writes": plan["writes"],
+                   "lots": plan["lots"], "products": plan["products"],
+                   "writes": plan["writes"],
                    "orphans": plan["orphans"], "applied": True})
     await _notify("catalogue_cutover_applied", "Bascule catalogue appliquée",
-                  f"{len(plan['writes'])} produit(s) mis à jour : 6 prix, 8 lots masqués, "
-                  "badge « populaire » sur 325 et 660 UC. Détail : settings.cutover_report.")
+                  f"{len(plan['writes'])} produit(s) mis à jour : {prices} prix, "
+                  f"{masked} masqués (lots UC et produits hors lots UC), {badges} badges. "
+                  "Détail : settings.cutover_report.")
     return {"cutover": "applied"}
 
 

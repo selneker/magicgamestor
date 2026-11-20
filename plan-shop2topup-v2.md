@@ -580,12 +580,24 @@ FazerCards, aucun produit n'est désactivé.
       6 lots du manifeste reçoivent le prix cible (60 UC inchangé à 5 000 Ar) ; `old_price` n'est pas touché.
       Décision du propriétaire, reportée au rapport de fin de tâche.
 - [x] migration idempotente (fonction au démarrage ou script admin), aucun produit supprimé
+- [x] **T09D (20/11/2026)** : `apply` masque aussi les **12 produits PUBG hors lots UC**
+      (`ORPHAN_PRODUCTS`, identifiés par slug ET type). Le rapport T04B a établi que, sans cela, ils
+      encaisseraient puis ne seraient jamais livrés (`services/fzr_fulfillment.py:184-191`). Ni prix,
+      ni `old_price`, ni badge, ni `popular` ne sont touchés. Un produit absent ou déjà inactif est
+      noté dans le rapport, pas une erreur. Tout **autre** produit PUBG actif sans
+      `supplier_mapping.shop2topup` bloque `apply` sans rien écrire, avec son slug dans le rapport ;
+      `dry-run` publie le tableau complet dans `settings.cutover_report.products` (prix, visibilité et
+      badge avant/après, action). Free Fire et les autres jeux ne sont jamais lus.
 
 **Vérification :** liste `produit × sku × prix × active` relue avec le propriétaire ; contrôle sur la boutique
 publique que les 6 lots restent achetables, que les 8 autres ont disparu, et que la vitrine affiche bien
 325 UC et 660 UC en mis en avant.
 **Dépendances :** T04, Checkpoint B · **Fichiers :** migration idempotente
 (`backend/core/…` ou script admin), données produits · **Taille :** M
+
+**Suite — T17 (non fait) : livraison par `supplier_mapping`, après la bascule.**
+- [ ] `_units_for_line` (`backend/services/fzr_fulfillment.py:184-191`) ne lit que `fazercards_mapping` :
+      un produit mappé Shop2Topup seul n'est pas livrable. T17 fera lire `supplier_mapping["shop2topup"]`.
 
 ---
 
