@@ -157,3 +157,16 @@ testids et comportement conservés ; utilitaire Tailwind retiré seulement si un
 - `AuthExtras.js` Shell + Forgot/Reset/Verify : mêmes classes (`.h-c`/`.p-m`/`.review-card`/`.form-field`/`.button-main`/`.link`) ; helper `SubmitButton` DS.
 - **Conservés (verrouillés par les tests) :** `Checkbox` Radix (`data-state` checked/unchecked), `CaptchaWidget` (`captcha-widget`/`-label`/`-failed`/`-retry`), tous les testids, logique captcha/submit/erreur française.
 - Tests Auth **14/14 verts sans modification** ; suite complète 534 verts.
+
+## Account — écarts avec la référence (`compte` du prototype → vocabulaire DS React)
+
+- `Account.js` wrapper `mx-auto max-w-xl` → `.container.page-top` (centré, place de la nav).
+- En-tête profil : nom `font-display text-xl` → `.h-c` ; email → `.p-m` ; `memberSince` → `.eyebrow` ; avatar bordure encre `.125em`.
+- `Section` : carte divisée `divide-y rounded-[22px] border bg-card` → `.kv-list` (mg-components:615) ; titre `.eyebrow`.
+- `Row` : ligne de réglages → `.kv` (mg-components:616, `align-items:center`) ; cercle d'icône + jetons conservés ; `hover:bg-muted` gardé (feedback non remplacé par le DS).
+- `PasswordField` + champs profil/suppression : `Input` shadcn → `<input className="form-field">`.
+- Boutons (save, change-password submit/cancel, delete submit/cancel, logout, resend) : `Button` shadcn → `.button-main` (helper `BtnMain`, vrais `<button>` avec `disabled`/`type`/`testid` conservés).
+- Préférences (langue/thème) trailing badges → `.chip`.
+- `VerifyBanner` → `.trust-card` (teinte néon `color-mix`).
+- **Points ouverts :** le DS n'a pas de variante « destructive » de `.button-main` → bouton suppression en `dark` (garde « SUPPRIMER » conservée) ; la ligne de réglages riche (icône + aide + chevron) est un `.kv` adapté, motif proche du `mgs-list-item` de la référence (le DS React n'a pas de classe dédiée).
+- Pas de test Account dédié ; suite complète **534 verts**.
