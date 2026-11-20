@@ -100,80 +100,54 @@ export function ProductCard({ product, index = 0, badge }) {
     toggleFavorite(product.id);
   };
 
+  // PL-DS-V3 — structure EXACTE de la carte du prototype design-system-v3.html :
+  // .mgs-pcard > __link + __top (badge flamme + cœur favori) + __figure
+  // (montant vedette + unité) + __bottom (remise puis .mgs-pill prix + « + » /
+  // .mgs-stepper). Logique quantité, testids, aria-labels inchangés ; zones
+  // tactiles 44 px conservées par pseudo-élément.
   return (
-    <article data-testid={`product-card-${product.slug}`} className={`product-card group relative flex min-w-0 h-full mgs-card flex-col rounded-[28px] border border-[color:var(--card-border)] bg-[color:var(--card-surface)] p-3 sm:p-5 shadow-none transition duration-200 ease-out hover:shadow-[4px_4px_0_var(--card-shadow)] hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${available ? "" : "grayscale"}`}>
-      <Link to={`/produit/${product.slug}`} className="absolute inset-0 z-0 rounded-[28px] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[color:var(--card-focus)]" aria-label={product.name || product.slug || t("product.fallbackLabel")} />
-      <div className="relative z-10 flex h-full flex-col text-[color:var(--card-ink)]">
-        <div className="flex items-start justify-between gap-1.5 sm:gap-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-3">
-            {showPopular && (
-              <span data-testid={`card-context-${product.slug}`} className="inline-flex items-center gap-1.5 rounded-full border border-ink bg-[color:var(--card-badge-bg)] px-[9px] py-1 font-body text-[10px] font-bold uppercase leading-none tracking-[0.08em] text-ink text-[color:var(--neo-text)]"><Icon name={contextIcon} className="h-3 w-3" />{contextLabel}</span>
-            )}
+    <article data-testid={`product-card-${product.slug}`} className={`mgs-pcard h-full ${available ? "" : "is--unavailable grayscale"}`}>
+      <Link to={`/produit/${product.slug}`} className="mgs-pcard__link" aria-label={product.name || product.slug || t("product.fallbackLabel")} />
+      <div className="mgs-pcard__top">
+        {showPopular ? (
+          <span data-testid={`card-context-${product.slug}`} className="mgs-pcard__badge"><Icon name={contextIcon} className="bold-ic" />{contextLabel}</span>
+        ) : <span aria-hidden="true" />}
+        <button type="button" aria-label={`${favorites.includes(product.id) ? t("product.removeFavorite") : t("product.addFavorite")} : ${product.name || product.slug}`} aria-pressed={favorites.includes(product.id)} onClick={handleToggleFavorite} className="mgs-pcard__fav relative before:absolute before:-inset-1.5 before:content-['']"><Icon name="heart" className="bold-ic h-4 w-4" /></button>
+      </div>
+
+      {hasFigure ? (
+        <>
+          <h3 className="sr-only">{product.name || product.slug}</h3>
+          <p className="mgs-pcard__figure"><span className={`mgs-pcard__amount shrink-0 ${figureLength >= 5 ? "is--long" : ""}`}>{figure}</span><span className="mgs-pcard__unit min-w-0 truncate">{unit}</span></p>
+        </>
+      ) : (
+        <>
+          <p className="mgs-pcard__cat uppercase">{t(categoryKey)}</p>
+          <h3 className="mgs-pcard__title line-clamp-2 [text-wrap:balance]">{product.name || product.slug}</h3>
+        </>
+      )}
+
+      <div className="mgs-pcard__bottom mt-auto pt-3">
+        {showDiscountLine ? (
+          <div className="mgs-pcard__old">
+            <span data-testid={`card-discount-${product.slug}`} className="mgs-pcard__badge mgs-pcard__badge--disc">-{discount}%</span>
+            <s className="line-through">{formatAr(oldPrice, lang)}</s>
           </div>
-          <button type="button" aria-label={`${favorites.includes(product.id) ? t("product.removeFavorite") : t("product.addFavorite")} : ${product.name || product.slug}`} aria-pressed={favorites.includes(product.id)} onClick={handleToggleFavorite} className={`relative before:absolute before:-inset-1.5 before:content-[''] grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full border border-ink bg-ink text-white transition duration-150 hover:scale-105 hover:bg-red-500 active:scale-95 aria-[pressed=true]:bg-red-500 aria-[pressed=true]:[&_svg]:fill-white ${focus}`}><Icon name="heart" className="h-4 w-4" /></button>
-        </div>
-
-        {hasFigure ? (
-          // Carte monnaie : UNE seule vedette — le montant. Le nom du produit
-          // reste accessible aux lecteurs d'écran uniquement (MGS-FE-CARDS-20261104-02).
-          <>
-            <h3 className="sr-only">{product.name || product.slug}</h3>
-            <p className={"mt-2 flex min-w-0 items-baseline gap-1 font-display font-extrabold tracking-tighter " + (figureLength >= 5 ? "text-2xl min-[400px]:text-3xl sm:text-4xl" : figureLength >= 4 ? "text-3xl min-[400px]:text-4xl sm:text-5xl" : "text-4xl min-[400px]:text-5xl sm:text-6xl")}>
-              {/* Le montant ne doit JAMAIS être coupé : c'est la vedette. */}
-              <span className="shrink-0 leading-none">{figure}</span>
-              {/* Unité : 11 px / interligne 1 comme le modèle — sans leading-none
-                  elle hérite du 40 px du text-4xl et gonfle le bloc vedette. */}
-              <span className={"min-w-0 truncate font-bold uppercase leading-none tracking-[-0.01em] text-[color:var(--card-ink-muted)] text-[11px] " + (unit.length > 4 ? "sm:text-base" : "sm:text-xl")}>{unit}</span>
-            </p>
-          </>
-        ) : (
-          // Carte pack (sans montant) : le titre est la vedette, précédé d'une
-          // étiquette de catégorie discrète. Aucune hauteur minimale.
-          <>
-            <p className="mt-3 font-body text-[10px] font-bold uppercase leading-3 tracking-[0.08em] text-[color:var(--card-ink-muted)] sm:text-xs">{t(categoryKey)}</p>
-            <h3 className="mt-1 line-clamp-2 break-words font-display text-[18px] font-extrabold leading-5 tracking-[-0.02em] [text-wrap:balance] sm:text-[20px] sm:leading-6">{product.name || product.slug}</h3>
-          </>
-        )}
-
-        {/* Bloc du bas (MGS-FE-CARDS-20261104-02B) : comme le `.mc-bottom` du
-            modèle — mt-auto + 12 px au-dessus, remise puis pastille. */}
-        <div className="mt-auto pt-3">
-          {showDiscountLine ? (
-            <div className="flex items-center gap-2 pb-1.5">
-              <span data-testid={`card-discount-${product.slug}`} className="shrink-0 rounded-full border border-ink bg-neo px-2 py-0.5 font-body text-[11px] font-bold leading-4 text-ink">-{discount}%</span>
-              <span className="min-w-0 font-body text-xs font-semibold line-through text-[color:var(--card-ink-muted)]">{formatAr(oldPrice, lang)}</span>
-            </div>
-          ) : null}
-
-        {/* La pastille de prix peint un fond blanc FIXE (`--card-pill-bg`) : son
-            texte doit donc etre une encre fixe (`text-ink`), sinon il suit le
-            theme et tombe a 1,12:1 sur le blanc en mode sombre. */}
-        <div className={`cart-cta-row flex h-[48px] min-w-0 items-center justify-between gap-1 rounded-[9999px] border border-[color:var(--card-border)] sm:h-[54px] sm:gap-2 ${qty > 0 ? "bg-ink p-1" : available ? "bg-[color:var(--card-pill-bg)] py-1 pl-3 pr-0.5 text-[color:var(--card-ink)]" : "border-dashed bg-transparent px-2 sm:px-3"}`}>
+        ) : null}
+        <div className={`mgs-pill ${qty > 0 ? "is--incart" : ""}`}>
           {!available ? (
-            <span className="font-body text-sm font-bold uppercase tracking-wide">{t("product.unavailable")}</span>
-          ) : qty > 0 ? (
-            <>
-              <button type="button" aria-label={`${qty === 1 ? t("cart.removeFromCart") : t("cart.removeOneFromCart")} : ${product.name || product.slug}`} onClick={handleDecrease} className={`icon-btn-3d grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
-                <Icon name={qty === 1 ? "trash" : "minus"} />
-              </button>
-              {/* Annotation propriétaire : le chiffre SEUL (1, 2, …) — le
-                  mot « au panier » reste pour les lecteurs d'écran. */}
-              <span className="min-w-0 text-center font-body text-sm font-bold leading-tight text-neo" aria-live="polite"><span className="font-display text-2xl font-extrabold">{qty}</span><span className="sr-only"> {t("product.inCartShort")}</span></span>
-              <button type="button" aria-label={`${t("product.addOne")} : ${product.name || product.slug}`} disabled={qty >= max} onClick={handleIncrease} className={`icon-btn-3d grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-neo text-ink transition hover:scale-105 active:scale-95 disabled:opacity-40 ${focus}`}>
-                <Icon name="plus" />
-              </button>
-            </>
+            <span className="mgs-pill__price whitespace-nowrap">{t("product.unavailable")}</span>
           ) : (
             <>
-              {/* Le prix ne doit JAMAIS être coupé : whitespace-nowrap, pas de truncate.
-                  mgs-card-price : 14px en container query sous 170px de carte (index.css). */}
-              <div className="flex min-w-0 flex-1 items-center gap-1"><span className="mgs-card-price min-w-0 whitespace-nowrap font-display font-extrabold leading-none tracking-normal text-base sm:text-2xl">{formatAr(product.price, lang)}</span></div>
-              <button type="button" aria-label={`${t("product.addToCart")} : ${product.name || product.slug}`} onClick={handleAdd} className={`icon-btn-3d relative before:absolute before:-inset-0.5 before:content-[''] grid aspect-square h-11 w-11 shrink-0 place-items-center !rounded-full bg-[color:var(--card-cta-bg)] text-[color:var(--card-cta-fg)] transition duration-150 hover:scale-105 active:scale-95 ${focus}`}>
-                <Icon name={actionIconName} />
-              </button>
+              <span className="mgs-pill__price whitespace-nowrap">{formatAr(product.price, lang)}</span>
+              <button type="button" aria-label={`${t("product.addToCart")} : ${product.name || product.slug}`} onClick={handleAdd} className="mgs-pill__add relative before:absolute before:-inset-0.5 before:content-['']"><Icon name={actionIconName} className="bold-ic" /></button>
+              <div className="mgs-stepper">
+                <button type="button" aria-label={`${qty === 1 ? t("cart.removeFromCart") : t("cart.removeOneFromCart")} : ${product.name || product.slug}`} onClick={handleDecrease} className="mgs-stepper__btn"><Icon name={qty === 1 ? "trash" : "minus"} className="bold-ic" /></button>
+                <span className="mgs-stepper__qty" aria-live="polite">{qty}<span className="sr-only"> {t("product.inCartShort")}</span></span>
+                <button type="button" aria-label={`${t("product.addOne")} : ${product.name || product.slug}`} disabled={qty >= max} onClick={handleIncrease} className="mgs-stepper__btn"><Icon name="plus" className="bold-ic" /></button>
+              </div>
             </>
           )}
-        </div>
         </div>
       </div>
     </article>
