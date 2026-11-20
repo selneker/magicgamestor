@@ -8,9 +8,10 @@ import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { BackButton } from "@/components/common/BackButton";
 import { CaptchaWidget, isCaptchaError, useCaptcha } from "@/components/common/CaptchaWidget";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 
+// PL-DS-003-V1 — présentation portée sur les classes littérales du design system
+// (.h-c, .p-m, .eyebrow, .review-card, .form-field, .button-main, .link). Logique,
+// captcha, testids et comportement inchangés (AuthExtras.test.js reste vert).
 function Shell({ title, subtitle, testId, back, children }) {
   const navigate = useNavigate();
   // PL-CHK-4 — mode focalisé (mot de passe oublié) : en-tête minimal, flèche
@@ -25,10 +26,22 @@ function Shell({ title, subtitle, testId, back, children }) {
         </header>
       )}
       <p className="eyebrow">Magic Game Store</p>
-      <h1 className="font-display text-[26px] font-bold leading-tight text-foreground">{title}</h1>
-      {subtitle && <p className="mt-1 text-muted-foreground">{subtitle}</p>}
-      <div className="mt-5 rounded-[2rem] border border-[color:var(--rule)] bg-card p-5">{children}</div>
+      <h1 className="h-c">{title}</h1>
+      {subtitle && <p className="p-m" style={{ marginTop: ".3em" }}>{subtitle}</p>}
+      <div className="review-card" style={{ marginTop: "1.2em", padding: "1.4em", gap: 0 }}>{children}</div>
     </div>
+  );
+}
+
+// Face animée d'un bouton de soumission DS (vrai <button> : .disabled conservé).
+function SubmitButton({ testId, label, busy, disabled }) {
+  return (
+    <button type="submit" disabled={disabled} className="button-main h-11 w-full disabled:opacity-50" data-button-theme="dark" data-button-accent="violet" data-testid={testId}>
+      <span className="button-main-inner full-h">
+        <span className="button-main-inner__back" data-text={label}></span>
+        <span className="button-main-inner__front"><span className="button-main-inner__bg"></span><span className="button-main-inner__text"><span>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : label}</span></span></span>
+      </span>
+    </button>
   );
 }
 
@@ -50,14 +63,14 @@ export function ForgotPassword() {
   };
   return (
     <Shell title={t("auth.forgotTitle")} subtitle={t("auth.forgotSub")} testId="forgot-password-page" back>
-      {sent ? <p className="text-sm" data-testid="forgot-sent">{t("auth.forgotSent")}</p> : (
+      {sent ? <p className="p-m" data-testid="forgot-sent">{t("auth.forgotSent")}</p> : (
         <form onSubmit={submit} className="space-y-4">
-          <div><label htmlFor="fp-email" className="text-sm font-medium">{t("auth.email")}</label><Input id="fp-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 h-11 rounded-xl" data-testid="forgot-email-input" /></div>
+          <div><label htmlFor="fp-email" className="text-sm font-medium">{t("auth.email")}</label><input id="fp-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="form-field mt-1 w-full" data-testid="forgot-email-input" /></div>
           {captcha.enabled && <CaptchaWidget key={captchaKey} ref={captcha.ref} onVerify={captcha.onVerify} onError={captcha.onError} />}
-          <Button type="submit" disabled={busy || (captcha.enabled && !captcha.ready)} className="h-11 w-full rounded-full font-semibold" data-testid="forgot-submit">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.forgotCta")}</Button>
+          <SubmitButton testId="forgot-submit" label={t("auth.forgotCta")} busy={busy} disabled={busy || (captcha.enabled && !captcha.ready)} />
         </form>
       )}
-      <p className="mt-4 text-center text-sm text-muted-foreground"><Link to="/connexion" className="font-semibold text-foreground" data-testid="back-to-login">{t("auth.login")}</Link></p>
+      <p className="p-m" style={{ marginTop: "1em", textAlign: "center" }}><Link to="/connexion" className="link" style={{ fontWeight: 700 }} data-testid="back-to-login">{t("auth.login")}</Link></p>
     </Shell>
   );
 }
@@ -79,9 +92,9 @@ export function ResetPassword() {
   return (
     <Shell title={t("auth.resetTitle")} subtitle={t("auth.resetSub")} testId="reset-password-page">
       <form onSubmit={submit} className="space-y-4">
-        <div><label htmlFor="rp-pass" className="text-sm font-medium">{t("auth.newPassword")}</label><Input id="rp-pass" type="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="mt-1 h-11 rounded-xl" data-testid="reset-password-input" /></div>
-        <div><label htmlFor="rp-confirm" className="text-sm font-medium">{t("auth.confirmPassword")}</label><Input id="rp-confirm" type="password" required minLength={8} value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} className="mt-1 h-11 rounded-xl" data-testid="reset-confirm-input" /></div>
-        <Button type="submit" disabled={busy} className="h-11 w-full rounded-full font-semibold" data-testid="reset-submit">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.resetCta")}</Button>
+        <div><label htmlFor="rp-pass" className="text-sm font-medium">{t("auth.newPassword")}</label><input id="rp-pass" type="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="form-field mt-1 w-full" data-testid="reset-password-input" /></div>
+        <div><label htmlFor="rp-confirm" className="text-sm font-medium">{t("auth.confirmPassword")}</label><input id="rp-confirm" type="password" required minLength={8} value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} className="form-field mt-1 w-full" data-testid="reset-confirm-input" /></div>
+        <SubmitButton testId="reset-submit" label={t("auth.resetCta")} busy={busy} disabled={busy} />
       </form>
     </Shell>
   );
@@ -98,10 +111,15 @@ export function VerifyEmail() {
   return (
     <Shell title={t("auth.verifyTitle")} testId="verify-email-page">
       <div className="text-center">
-        {state === "busy" && <Loader2 className="mx-auto h-10 w-10 animate-spin text-muted-foreground" />}
-        {state === "ok" && <><CheckCircle2 className="mx-auto h-14 w-14 text-[color:var(--status-done)]" /><p className="mt-4 text-sm" data-testid="verify-success">{t("auth.verifyOk")}</p></>}
-        {state === "error" && <><XCircle className="mx-auto h-14 w-14 text-destructive" /><p className="mt-4 text-sm" data-testid="verify-error">{t("auth.verifyError")}</p></>}
-        <Button asChild className="mt-6 h-11 w-full rounded-full font-semibold" data-testid="verify-continue"><Link to="/compte">{t("account.title")}</Link></Button>
+        {state === "busy" && <Loader2 className="mx-auto h-10 w-10 animate-spin" style={{ color: "hsl(0 0% 7% / .6)" }} />}
+        {state === "ok" && <><CheckCircle2 className="mx-auto h-14 w-14 text-[color:var(--status-done)]" /><p className="p-m" style={{ marginTop: "1em" }} data-testid="verify-success">{t("auth.verifyOk")}</p></>}
+        {state === "error" && <><XCircle className="mx-auto h-14 w-14 text-destructive" /><p className="p-m" style={{ marginTop: "1em" }} data-testid="verify-error">{t("auth.verifyError")}</p></>}
+        <Link to="/compte" className="button-main h-11 w-full" data-button-theme="dark" data-button-accent="violet" data-testid="verify-continue" style={{ marginTop: "1.5em" }}>
+          <span className="button-main-inner full-h">
+            <span className="button-main-inner__back" data-text={t("account.title")}></span>
+            <span className="button-main-inner__front"><span className="button-main-inner__bg"></span><span className="button-main-inner__text"><span>{t("account.title")}</span></span></span>
+          </span>
+        </Link>
       </div>
     </Shell>
   );

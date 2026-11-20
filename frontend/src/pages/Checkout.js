@@ -13,7 +13,6 @@ import { CaptchaWidget, isCaptchaError, useCaptcha } from "@/components/common/C
 import { CheckoutSheet } from "@/components/store/checkout/CheckoutSheet";
 import { IdentityFieldsVerify } from "@/components/store/checkout/IdentityFieldsVerify";
 import { PAYMENT_LOGOS, NetworkPicker, paymentFee } from "@/components/store/PaymentFlow";
-import { Button } from "@/components/common/Button";
 
 // PL-CHK-4 — écran 1 « Commande » (maquette Binance, 3 étapes réelles, aucun
 // stepper). L'écran tient dans 360×640 sans défilement, bouton principal fixé
@@ -249,14 +248,16 @@ export default function Checkout() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto flex min-h-[100svh] max-w-[480px] flex-col" data-testid="checkout-form">
-        <header className="flex h-[52px] flex-none items-center px-1">
+      <div className="co-screen" data-testid="checkout-form">
+        <header className="co-topbar">
           <BackButton onClick={back} testId="checkout-back" />
         </header>
         <div className="flex flex-1 items-center justify-center py-24 text-center" data-testid="checkout-empty">
           <div>
-            <p className="text-muted-foreground">{t("cart.empty")}</p>
-            <Button type="button" onClick={back} className="mt-4 rounded-full" data-testid="checkout-browse">{t("cart.browse")}</Button>
+            <p className="p-m">{t("cart.empty")}</p>
+            <button type="button" onClick={back} className="button-main h-11" data-button-theme="dark" data-button-accent="violet" data-testid="checkout-browse" style={{ marginTop: "1em" }}>
+              <span className="button-main-inner full-h"><span className="button-main-inner__back" data-text={t("cart.browse")}></span><span className="button-main-inner__front"><span className="button-main-inner__bg"></span><span className="button-main-inner__text"><span>{t("cart.browse")}</span></span></span></span>
+            </button>
           </div>
         </div>
       </div>
@@ -264,48 +265,50 @@ export default function Checkout() {
   }
 
   return (
-    // Colonne 480 px (desktop) ; mobile : plein écran, CTA collé en bas.
-    <div className="mx-auto flex min-h-[100svh] w-full max-w-[480px] flex-col lg:min-h-0" data-testid="checkout-form">
+    // PL-DS-003-V1 — écran 1 porté sur les classes littérales du DS (.co-screen,
+    // .co-topbar, .co-amount, .co-id, .pm-list/.pm-row, .co-remark, .co-footer-btn,
+    // .button-main). Logique, testids et feuille captcha inchangés.
+    <div className="co-screen" data-testid="checkout-form">
       {/* En-tête minimal (mode focalisé) : retour + nom du jeu. */}
-      <header className="flex h-[52px] flex-none items-center gap-2 px-1">
+      <header className="co-topbar">
         <BackButton onClick={back} testId="checkout-back" />
-        <h1 className="min-w-0 flex-1 truncate text-[16px] font-extrabold leading-tight" data-testid="checkout-title">{game?.name || t("checkout.title")}</h1>
+        <h1 className="co-header-title min-w-0 flex-1 truncate" data-testid="checkout-title">{game?.name || t("checkout.title")}</h1>
         {/* PL-005-FE-02 (tâche 13) — sortie rapide PC vers la page des
             commandes /suivi (le span vide, équilibre de l'en-tête, est
             remplacé). Mobile : la flèche suffit. */}
         <Link
           to="/suivi"
           data-testid="checkout-exit"
-          className="hidden min-h-[44px] flex-none items-center text-xs font-semibold text-muted-foreground underline decoration-dotted underline-offset-[3px] lg:inline-flex"
+          className="link hidden min-h-[44px] flex-none items-center lg:inline-flex"
+          style={{ fontSize: ".8em" }}
         >
           {t("order.viewTrack")}
         </Link>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col px-1 pb-2">
+      <div className="flex min-h-0 flex-1 flex-col">
         {/* Montant en grand. */}
-        <div className="border-b border-[color:var(--rule)] pb-3 pt-1" data-testid="checkout-amount-block">
-          <p className="text-xs text-muted-foreground">{t("checkout.youPay")}</p>
-          <p className="my-0.5 font-display text-[32px] font-extrabold leading-tight tracking-[-0.01em]" data-testid="checkout-amount">{formatAr(total, lang)} <span className="text-[15px] font-bold text-muted-foreground">Ar</span></p>
-          <div className="flex items-center justify-between text-[13px] text-muted-foreground">
-            <span>{t("checkout.youReceive")}</span>
-            <b className="text-foreground" data-testid="checkout-receive">{receiveText}</b>
+        <div className="co-amount" data-testid="checkout-amount-block">
+          <p className="label">{t("checkout.youPay")}</p>
+          <p className="value" data-testid="checkout-amount">{formatAr(total, lang)} <small>Ar</small></p>
+          <div className="co-lines" style={{ marginBottom: 0 }}>
+            <div className="co-line"><span className="kv-muted">{t("checkout.youReceive")}</span><strong data-testid="checkout-receive">{receiveText}</strong></div>
           </div>
-          {fee > 0 && <p className="mt-1 text-xs text-muted-foreground" data-testid="checkout-fee-line">{t("checkout.paymentFee")} : {formatAr(fee, lang)} Ar</p>}
+          {fee > 0 && <p className="co-remark" style={{ marginBottom: 0, marginTop: ".5em" }} data-testid="checkout-fee-line">{t("checkout.paymentFee")} : {formatAr(fee, lang)} Ar</p>}
         </div>
 
         {/* ID joueur : ID et pseudo sur DEUX lignes séparées, coche + pseudo,
             lien « Changer ». Tant que ce n'est pas vérifié : vérification
             générique (IdentityFieldsVerify, tous jeux). */}
-        <div className="pt-3">
-          <p className="mb-1.5 text-xs text-muted-foreground">{t("checkout.playerIdLabel")}</p>
+        <div style={{ paddingTop: ".4em" }}>
+          <p className="co-remark" style={{ marginBottom: ".5em" }}>{t("checkout.playerIdLabel")}</p>
           {verified && !editingId ? (
             <div data-testid="checkout-player-verified">
-              <div className="flex h-[46px] items-center justify-between rounded-[14px] border border-[color:var(--rule)] bg-card px-3.5">
-                <span className="num truncate text-[15px] font-bold" data-testid="checkout-player-id">{shownId}</span>
-                <button type="button" onClick={() => setEditingId(true)} className="shrink-0 text-xs font-bold text-foreground" data-testid="checkout-change-id">{t("checkout.change")}</button>
+              <div className="co-id">
+                <span className="co-id__txt"><strong className="num" data-testid="checkout-player-id">{shownId}</strong></span>
+                <button type="button" onClick={() => setEditingId(true)} data-testid="checkout-change-id">{t("checkout.change")}</button>
               </div>
-              <p className="mt-1.5 flex items-center gap-2 text-[13px] font-bold text-foreground" data-testid="checkout-player-ok">
+              <p className="co-proof-ok" data-testid="checkout-player-ok">
                 <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden="true"><Check className="h-3 w-3" strokeWidth={3} /></span>
                 <span className="min-w-0 truncate" data-testid="checkout-player-pseudo">{verified.name || "—"}</span>
               </p>
@@ -324,9 +327,9 @@ export default function Checkout() {
         </div>
 
         {/* Mode de paiement : lignes séparées (jamais de méthode désactivée). */}
-        <div className="pt-3">
-          <p className="mb-1.5 text-xs text-muted-foreground">{t("checkout.payment")}</p>
-          <div className="flex flex-col gap-1.5" data-testid="payment-methods">
+        <div style={{ paddingTop: ".4em" }}>
+          <p className="co-remark" style={{ marginBottom: ".5em" }}>{t("checkout.payment")}</p>
+          <div className="pm-list" data-testid="payment-methods">
             {mvolaActive && <MethodLine testId="method-mvola" logo={PAYMENT_LOGOS.mvola} name="MVola" sub={t("checkout.methodManualSub")} selected={method === "mvola"} onSelect={() => setMethod("mvola")} />}
             {orangeActive && <MethodLine testId="method-orange" logo={PAYMENT_LOGOS.orange} name="Orange Money" sub={t("checkout.methodManualSub")} selected={method === "orange"} onSelect={() => setMethod("orange")} />}
             {binanceActive && (
@@ -344,7 +347,7 @@ export default function Checkout() {
 
         {/* Remarque courte — UNE seule, selon la méthode choisie. */}
         {method && (
-          <p className="mt-auto flex gap-2 pb-1 pt-3 text-[12.5px] leading-[1.45] text-muted-foreground" data-testid="checkout-remark">
+          <p className="co-remark mt-auto flex gap-2" style={{ paddingTop: ".8em" }} data-testid="checkout-remark">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>{t(method === "mvola" ? "checkout.remarkMvola" : method === "orange" ? "checkout.remarkOrange" : "checkout.remarkBinance")}</span>
           </p>
@@ -353,9 +356,14 @@ export default function Checkout() {
 
       {/* Bouton principal fixé en bas (mobile) ; ≥1024 px : flux normal. */}
       <div className="sticky bottom-0 z-10 flex-none bg-[color:hsl(var(--background))] px-1 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 lg:static lg:z-auto lg:bg-transparent lg:pb-2">
-        <Button type="button" onClick={onPlaceOrder} disabled={!canSubmit || busy} data-testid="checkout-submit" className="h-[52px] w-full rounded-full text-[15px] font-extrabold">
-          {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.creating")}</> : t("checkout.placeOrder")}
-        </Button>
+        <div className="co-footer-btn" style={{ marginTop: 0 }}>
+          <button type="button" onClick={onPlaceOrder} disabled={!canSubmit || busy} data-testid="checkout-submit" className="button-main h-[52px] w-full disabled:opacity-50" data-button-theme="dark" data-button-accent="violet">
+            <span className="button-main-inner full-h">
+              <span className="button-main-inner__back" data-text={t("checkout.placeOrder")}></span>
+              <span className="button-main-inner__front"><span className="button-main-inner__bg"></span><span className="button-main-inner__text"><span>{busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.creating")}</> : t("checkout.placeOrder")}</span></span></span>
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Feuille « Vérification de sécurité » (écran 9) — coquille partagée
@@ -369,12 +377,15 @@ export default function Checkout() {
           onOpenChange={(v) => { pendingSubmit.current = false; setCaptchaOpen(v); }}
           title={t("checkout.captchaSheetTitle")}
           footer={
-            <Button type="button" onClick={() => submitOrder()} disabled={!captcha.ready || busy} data-testid="captcha-sheet-submit" className="h-[52px] flex-1 rounded-full text-[15px] font-extrabold lg:h-[46px]">
-              {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.creating")}</> : t("checkout.placeOrder")}
-            </Button>
+            <button type="button" onClick={() => submitOrder()} disabled={!captcha.ready || busy} data-testid="captcha-sheet-submit" className="button-main h-[52px] flex-1 disabled:opacity-50 lg:h-[46px]" data-button-theme="dark" data-button-accent="violet">
+              <span className="button-main-inner full-h">
+                <span className="button-main-inner__back" data-text={t("checkout.placeOrder")}></span>
+                <span className="button-main-inner__front"><span className="button-main-inner__bg"></span><span className="button-main-inner__text"><span>{busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{t("checkout.creating")}</> : t("checkout.placeOrder")}</span></span></span>
+              </span>
+            </button>
           }
         >
-          <p className="pb-2 text-[13px] leading-snug text-muted-foreground">{t("checkout.captchaSheetSub")}</p>
+          <p className="co-remark" style={{ paddingBottom: ".5em" }}>{t("checkout.captchaSheetSub")}</p>
           <CaptchaWidget key={captchaKey} ref={captcha.ref} onVerify={handleCaptchaVerify} onInteractive={(needed) => { if (needed) setCaptchaOpen(true); }} />
         </CheckoutSheet>
       )}
@@ -388,15 +399,15 @@ export default function Checkout() {
 function MethodLine({ testId, logo, name, sub, selected, onSelect }) {
   return (
     <button type="button" data-testid={testId} aria-pressed={selected} onClick={onSelect}
-      className={`flex min-h-[54px] w-full items-center gap-3 rounded-[19px] border border-[color:var(--rule-strong)] bg-transparent px-3.5 py-2.5 text-left transition-colors motion-reduce:transition-none ${selected ? "border-[color:var(--color--dark)] bg-foreground/5" : ""}`}>
+      className={`pm-row${selected ? " is--selected" : ""}`}>
       {logo
-        ? <img src={logo} alt="" aria-hidden="true" className="h-[1.7em] w-[2.6em] shrink-0 rounded-[7px] object-contain" />
-        : <span className="flex h-[1.7em] w-[2.6em] shrink-0 items-center justify-center rounded-[7px] bg-muted text-xs font-black text-muted-foreground" aria-hidden="true">{name.slice(0, 1)}</span>}
-      <span className="min-w-0 flex-1">
-        <span className="block text-[14px] font-bold leading-tight">{name}</span>
-        <span className="mt-0.5 block text-[11px] text-muted-foreground">{sub}</span>
+        ? <img src={logo} alt="" aria-hidden="true" className="pm-logo" style={{ objectFit: "contain" }} />
+        : <span className="pm-logo" style={{ background: "hsl(0 0% 7% / .08)", color: "hsl(0 0% 7% / .6)" }} aria-hidden="true">{name.slice(0, 1)}</span>}
+      <span className="pm-row__txt" style={{ flex: 1 }}>
+        <strong style={{ fontSize: ".9em" }}>{name}</strong>
+        <small>{sub}</small>
       </span>
-      <span className={`h-[1.2em] w-[1.2em] shrink-0 rounded-full border-2 ${selected ? "border-[color:var(--color--dark)] bg-[radial-gradient(var(--color--dark)_45%,transparent_50%)]" : "border-[color:var(--rule-strong)]"}`} aria-hidden="true" />
+      <span className="pm-row__radio" aria-hidden="true" />
     </button>
   );
 }
