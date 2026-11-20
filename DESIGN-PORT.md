@@ -170,3 +170,16 @@ testids et comportement conservés ; utilitaire Tailwind retiré seulement si un
 - `VerifyBanner` → `.trust-card` (teinte néon `color-mix`).
 - **Points ouverts :** le DS n'a pas de variante « destructive » de `.button-main` → bouton suppression en `dark` (garde « SUPPRIMER » conservée) ; la ligne de réglages riche (icône + aide + chevron) est un `.kv` adapté, motif proche du `mgs-list-item` de la référence (le DS React n'a pas de classe dédiée).
 - Pas de test Account dédié ; suite complète **534 verts**.
+
+## PackEvolutif — écarts avec la référence (classes DS)
+
+- `PackEvolutif.js` wrapper `pb-24 pt-6` → `.container.section.page-top.page-bottom` (mode `embedded` : inchangé).
+- En-tête : `h1 font-display text-3xl` → `.h-l` ; subtitle → `.p-m` ; `.section-head`.
+- Badge saison `border bg-card` → `.chip`.
+- `evo-grid` `grid-cols` → `.packs-grid` (`auto-fit minmax(16em,1fr)`).
+- Carte offre `border bg-card p-6` → `.trust-card` ; `h2` → `.h-c` ; description → `.p-m` ; prix `.num`.
+- Boutons buy/soon `Button` → `.button-main` (helper `BtnMain`, `disabled`/`testid` conservés).
+- `evo-hint` `border bg-muted/40` → `.trust-card`.
+- **Dialog : shell shadcn CONSERVÉ** (focus trap/comportement) ; titre → `.h-c`, récap → `.kv`, `Input` → `.form-field`, boutons check/continue → `.button-main`, éligible → `.trust-card` teinte néon, non-éligible = couple `--destructive` conservé.
+- Logique d'éligibilité intacte (`check`/`proceed`, `/evo/eligibility`, `/evo/season`, navigation `/commande?pubg_id=`) ; testids `evo-*` conservés.
+- Pas de test dédié ; suite complète **534 verts**.
