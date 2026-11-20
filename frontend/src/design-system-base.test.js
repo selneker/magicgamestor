@@ -58,15 +58,18 @@ test("PL-005-FE-03 : les accents de marque sont identiques dans les deux thèmes
   }
 });
 
-test("PL-DS-V3 : polices embarquées inline (aucun appel Google Fonts, @font-face woff2)", () => {
+test("PL-005-FE-03 : polices auto-hébergées (aucun appel Google Fonts, @font-face woff2)", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
-  // Mode prototype statique (design-system-v3.html) : les polices sont
-  // embarquées en data URI dans le HTML — aucun appel Google Fonts, aucun
-  // fichier /fonts/ externe. L'intention « auto-hébergées » est préservée.
   expect(html).not.toContain("fonts.googleapis.com");
   expect(html).not.toContain("fonts.gstatic.com");
-  expect(html.match(/@font-face/g).length).toBe(4); // Onest + Bricolage × (latin + latin-ext)
-  expect(html).toMatch(/woff2/); // polices woff2 embarquées
+  const fontCss = (html.match(/<style>[\s\S]*?<\/style>/g) || []).find((b) => b.includes("fonts/")) || "";
+  expect(fontCss.match(/@font-face/g).length).toBe(4); // Onest + Bricolage × (latin + latin-ext)
+  expect(fontCss).toContain('url("/fonts/onest-var.woff2")');
+  expect(fontCss).toContain('url("/fonts/bricolage-grotesque-var.woff2")');
+  expect(fontCss.match(/font-display:\s*swap/g).length).toBe(4);
+  // Preload de la police de TEXTE uniquement (Onest latin) — pas les autres.
+  expect(html.match(/rel="preload"[^>]*as="font"/g).length).toBe(1);
+  expect(html).toContain('href="%PUBLIC_URL%/fonts/onest-var.woff2"');
   expect(css).not.toContain("fonts.googleapis");
   expect(css).not.toContain("fonts.gstatic");
 });

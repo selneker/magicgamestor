@@ -123,17 +123,6 @@ let webpackConfig = {
         ],
       };
 
-      // PL-DS-V3 — mode prototype statique : public/index.html est le prototype
-      // design-system-v3.html (JS/CSS inline). La minification HTML de CRA
-      // (minifyJS/minifyCSS/collapseWhitespace) casserait le JS inline ; on la
-      // désactive pour servir le prototype exactement, sans aucune différence.
-      webpackConfig.plugins.forEach((plugin) => {
-        if (plugin && plugin.constructor && plugin.constructor.name === "HtmlWebpackPlugin") {
-          plugin.options.minify = false;
-          if (plugin.userOptions) plugin.userOptions.minify = false;
-        }
-      });
-
       // Add health check plugin to webpack if enabled
       if (config.enableHealthCheck && healthPluginInstance) {
         webpackConfig.plugins.push(healthPluginInstance);
