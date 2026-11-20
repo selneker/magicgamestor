@@ -60,7 +60,7 @@ export function OrderIdentity({ order }) {
 export function OrderCard({ order }) {
   const { t, lang } = useLang();
   return (
-    <article data-testid={`order-card-${order.order_number}`} className="border border-foreground bg-card p-6">
+    <article data-testid={`order-card-${order.order_number}`} className="mgs-panel p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><p className="eyebrow">{t("order.number")}</p><p className="num text-xl">{order.order_number}</p></div>
         <StatusPill status={order.status} />
@@ -234,7 +234,7 @@ export function OrderResume({ orderId }) {
   // page des commandes /suivi, à côté de « Annuler la commande ». Mobile : la
   // flèche de retour (BackButton, même composant que le détail) suffit.
   const header = (right) => (
-    <header className="flex h-[52px] flex-none items-center justify-between gap-2 px-1">
+    <header className="mgs-co-top">
       <BackButton onClick={back} testId="order-back" />
       <div className="flex flex-none items-center gap-3">
         <Link to="/suivi" data-testid="order-exit-suivi"
@@ -250,7 +250,7 @@ export function OrderResume({ orderId }) {
     // 403 (commande d'un autre client) ou 404 (introuvable) : message générique,
     // JAMAIS de détail — la seule sortie est le retour à l'accueil.
     return (
-      <div className="mx-auto flex min-h-[100svh] w-full max-w-[480px] flex-col" data-testid="order-resume">
+      <div className="mgs-shell mgs-co-shell" data-testid="order-resume">
         {header(null)}
         <div className="flex flex-1 flex-col items-center justify-center px-4 py-10 text-center" data-testid="order-not-available">
           <p className="font-display text-2xl font-bold">{t("order.notAvailable")}</p>
@@ -277,7 +277,7 @@ export function OrderResume({ orderId }) {
   const payTotal = formatAr((order.subtotal ?? order.total) + (order.payment_fee ?? 0), lang);
 
   return (
-    <div className="mx-auto flex min-h-[100svh] w-full max-w-[480px] flex-col lg:min-h-0" data-testid="order-resume">
+    <div className="mgs-shell mgs-co-shell" data-testid="order-resume">
       {header(pending && (
         <button type="button" onClick={() => setCancelOpen(true)} data-testid="order-cancel-open"
           className="min-h-[44px] text-xs text-muted-foreground underline decoration-dotted underline-offset-[3px]">
@@ -366,9 +366,9 @@ export function OrderResume({ orderId }) {
       {/* Boutons fixés en bas (mobile) ; ≥1024 px : flux normal. */}
       {manual && op && (
         <div className="sticky bottom-0 z-10 flex-none bg-[color:hsl(var(--background))] px-1 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 lg:static lg:z-auto lg:bg-transparent lg:pb-2">
-          <Button type="button" onClick={() => setProofOpen(true)} data-testid="send-proof-button" className="h-[52px] w-full rounded-full text-[15px] font-extrabold">
-            {t("checkout.sendProof")}
-          </Button>
+          <button type="button" onClick={() => setProofOpen(true)} data-testid="send-proof-button" className="button-main mgs-co-proof h-[52px] w-full" data-button-theme="dark" data-button-accent="green">
+            <span className="button-main-inner full-h"><span className="button-main-inner__back" data-text={t("checkout.sendProof")}></span><span className="button-main-inner__front"><span className="button-main-inner__bg"></span><span className="button-main-inner__text"><span>{t("checkout.sendProof")}</span></span></span></span>
+          </button>
         </div>
       )}
       {manual && !op && (
@@ -521,20 +521,20 @@ function OrderTrackSearch() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-[480px] px-4 pb-24 pt-4 lg:max-w-[760px]" data-testid="suivi-page">
-      {/* En-tête : titre à gauche, bouton de recherche à droite (maquette
-          écran 3). Client connecté : le bouton est un affaire de bureau
-          (écran 1 mobile n'en montre pas) ; visiteur : il est la fonction
-          principale de la page, visible partout. */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <h1 className="font-display text-[19px] font-semibold">{user ? t("account.orders") : t("order.track")}</h1>
-        <CommandButton
-          className={user ? "hidden lg:inline-flex" : ""}
-          onSearch={onSearch}
-          placeholder={t("order.searchPlaceholder")}
-        >
-          {t("order.find")}
-        </CommandButton>
+    <div className="mgs-shell mgs-cmd-list" data-testid="suivi-page">
+      {/* En-tête du prototype : eyebrow + titre + recherche. */}
+      <div className="mgs-head">
+        <p className="eyebrow">{t("games.eyebrow")}</p>
+        <div className="mgs-between" style={{ alignItems: "flex-end", gap: "1em" }}>
+          <h1 className="mgs-title" style={{ fontSize: "2.2em", margin: 0 }}>{user ? t("account.orders") : t("order.track")}</h1>
+          <CommandButton
+            className={user ? "hidden lg:inline-flex" : ""}
+            onSearch={onSearch}
+            placeholder={t("order.searchPlaceholder")}
+          >
+            {t("order.find")}
+          </CommandButton>
+        </div>
       </div>
       {playerField}
       {error && <p className="mt-4 rounded-xl bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground" data-testid="track-error">{error}</p>}
@@ -544,7 +544,7 @@ function OrderTrackSearch() {
         // le filtre de recherche est passé en prop.
         <OrderHistory query={query.trim()} onResult={onHistoryResult} />
       ) : (
-        <div className="mt-6 rounded-[18px] border bg-card p-5 text-center" data-testid="suivi-guest">
+        <div className="mgs-panel mt-6 p-5 text-center" data-testid="suivi-guest">
           <p className="text-sm text-muted-foreground" data-testid="suivi-guest-note">{t("order.loginToSee")}</p>
           <Button asChild className="mt-3 h-11 rounded-full px-6 font-semibold" data-testid="suivi-login">
             <Link to="/connexion">{t("auth.login")}</Link>
