@@ -3373,7 +3373,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       var minus=pill.querySelector('[data-act="minus"]');if(minus)minus.innerHTML=(q===1)?'<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/></svg>':'<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M5 12h14"/></svg>';
       return;}
     var fav=e.target.closest(".mgs-pcard__fav");
-    if(fav){fav.setAttribute("aria-pressed",fav.getAttribute("aria-pressed")==="true"?"false":"true");return;}
+    if(fav){var fc=fav.closest(".mgs-pcard");toggleFav(fc&&fc.dataset.pid,fav);return;}
   });
   /* COMPTE : toggles langue/thème (démo) */
   doc.addEventListener("click",function(e){
@@ -3635,6 +3635,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       pill.classList.toggle("is--incart", q > 0);
     });
   }
+  var FAV_KEY = "mgs_favorites";
+  function getFavs() { try { var a = JSON.parse(localStorage.getItem(FAV_KEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function toggleFav(pid, btn) { if (!pid) return; var a = getFavs(); var i = a.indexOf(pid); if (i >= 0) a.splice(i, 1); else a.push(pid); try { localStorage.setItem(FAV_KEY, JSON.stringify(a)); } catch (e) { } syncFavs(); }
+  function syncFavs() { var a = getFavs(); $$(".mgs-pcard").forEach(function (c) { var b = $(".mgs-pcard__fav", c); if (!b) return; var on = c.dataset.pid && a.indexOf(c.dataset.pid) >= 0; b.setAttribute("aria-pressed", on ? "true" : "false"); }); }
   function openCart() { renderCart(); var d = $(".mgs-cart-drawer"), o = $(".mgs-cart-overlay"); if (!d) return; d.hidden = false; o.hidden = false; void d.offsetWidth; d.classList.add("is--open"); o.classList.add("is--open"); }
   function closeCart() { var d = $(".mgs-cart-drawer"), o = $(".mgs-cart-overlay"); if (!d) return; d.classList.remove("is--open"); o.classList.remove("is--open"); setTimeout(function () { d.hidden = true; o.hidden = true; }, 450); }
   function produitItem() {
@@ -3679,7 +3683,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       frag.appendChild(card);
     });
     $$(".mgs-pcard", grid).forEach(function (c) { c.remove(); });
-    grid.appendChild(frag); syncPillsFromCart();
+    grid.appendChild(frag); syncPillsFromCart(); syncFavs();
   }
   function loadCatalogFor(gameName, gameSlug) {
     return loadGames().then(function () {
@@ -3693,7 +3697,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function coShow(n) { $$(".mgs-co-screen").forEach(function (sc) { sc.hidden = (+sc.dataset.co !== n); }); }
   var RECENT_KEY = "mgs_recent_ids";
   function getRecent() { try { var a = JSON.parse(localStorage.getItem(RECENT_KEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
-  function addRecent(id) { if (!id) return; var a = getRecent().filter(function (x) { return x !== id; }); a.push(id); while (a.length > 4) a.shift(); try { localStorage.setItem(RECENT_KEY, JSON.stringify(a)); } catch (e) { } renderRecent(); }
+  function addRecent(id) { id = String(id || "").slice(0, 60); if (!id) return; var a = getRecent().filter(function (x) { return x !== id; }); a.push(id); while (a.length > 10) a.shift(); try { localStorage.setItem(RECENT_KEY, JSON.stringify(a)); } catch (e) { } renderRecent(); }
   function renderRecent() {
     var box = $(".mgs-co-recent"); if (!box) return; var a = getRecent();
     if (!a.length) { box.hidden = true; box.innerHTML = ""; return; }
@@ -4063,7 +4067,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- boot ---------- */
   function boot() {
-    renderCart(); renderRecent(); loadPayCfg();
+    renderCart(); renderRecent(); loadPayCfg(); syncFavs();
     manualHintTexts = $$(".mgs-co-hint").map(function (h) { return h.textContent; });
     if (window.MGS_CRYPTO) {
       window.MGS_CRYPTO.useTransport(function (method, path, body) {
