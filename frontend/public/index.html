@@ -2580,6 +2580,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
 <div class="mgs-co-top"><button type="button" class="mgs-co-back" aria-label="Retour"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button><span class="mgs-co-countdown">Payer sous <b class="mgs-co-timer">15:00</b></span></div>
 <p class="mgs-co-step-t">Transférer via <span class="mgs-co-mname">MVola</span></p>
 <div class="mgs-co-merchant"><div><span>Vous payez</span><b class="mgs-co-total2">0 Ar</b></div><div><span>Nom du marchand</span><b>···</b></div><div><span>Numéro</span><b>···</b></div></div>
+<div class="mgs-co-merchant mgs-co-binance" hidden></div>
 <p class="mgs-co-hint">Nom et numéro réels servis par le backend.</p>
 <div class="mgs-divider"></div>
 <p class="mgs-co-hint">Appuyez sur le bouton pour envoyer la preuve de paiement.</p>
@@ -3436,86 +3437,607 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 <div class="mgs-human-popup" hidden role="dialog" aria-label="Vérification de sécurité">
   <div class="mgs-human-head"><p>Vérification de sécurité</p><button type="button" class="mgs-human-close" aria-label="Fermer"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
   <p class="mgs-human-sub">Confirmez que vous êtes humain pour passer la commande.</p>
-  <div class="mgs-human-widget"><label class="mgs-human-check"><input type="checkbox" class="mgs-human-cb"><span class="mgs-human-box"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span></label>
+  <div class="mgs-human-widget"><div class="mgs-human-turnstile" hidden></div><label class="mgs-human-check"><input type="checkbox" class="mgs-human-cb"><span class="mgs-human-box"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span></label>
     <span class="mgs-human-label">Vérifiez que vous êtes humain.</span>
     <span class="mgs-human-brand"><svg viewBox="0 0 24 24" class="mgs-human-cloud" aria-hidden="true"><path d="M17.5 19a4.5 4.5 0 0 0 .42-8.98 6 6 0 0 0-11.7 1.6A3.5 3.5 0 0 0 6.5 19z" fill="#F6821F" stroke="none"/></svg><small>CLOUDFLARE<br><a href="#" onclick="return false">Confidentialité</a> · <a href="#" onclick="return false">Aide</a></small></span></div>
   <div class="mgs-human-foot"><button type="button" class="mgs-human-cancel">Fermer</button><button type="button" class="button-main w-inline-block mgs-human-confirm" data-button-theme="dark" data-button-accent="green" disabled><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Passer la commande"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Passer la commande</span></span></span></span></button></div>
 </div>
 
+<script src="mgs-logic-captcha.js"></script>
+<script src="mgs-logic-crypto.js"></script>
 <script>
-(function(){
-  var doc=document;
-  var TRASH='<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
-  var cart=[];
-  function fmt(n){return String(n).replace(/\B(?=(\d{3})+(?!\d))/g," ")+" Ar";}
-  function parsePrice(t){return parseInt(String(t).replace(/[^\d]/g,""),10)||0;}
-  function cartBadges(){var n=cart.reduce(function(a,x){return a+x.qty;},0);doc.querySelectorAll('[aria-label*="Panier :"] .nav-action-badge').forEach(function(b){b.textContent=String(n);b.style.display=n?"":"none";});}
-  function renderCart(){
-    var items=doc.querySelector(".mgs-cart-items"),empty=doc.querySelector(".mgs-cart-empty");
-    doc.querySelector(".mgs-cart-game-n").textContent=(cart.length?cart[0].game:"—").toUpperCase();
-    if(!cart.length){items.innerHTML="";empty.hidden=false;}
-    else{empty.hidden=true;items.innerHTML=cart.map(function(x,i){return '<div class="mgs-cart-item" data-i="'+i+'"><div class="mgs-cart-item__info"><p class="mgs-cart-item__name">'+x.name+'</p><p class="mgs-cart-item__price">'+fmt(x.price)+'</p></div><div class="mgs-cart-item__qty"><button type="button" data-q="minus" aria-label="Moins">−</button><span>'+x.qty+'</span><button type="button" data-q="plus" aria-label="Plus">+</button></div><button type="button" class="mgs-cart-item__del" aria-label="Retirer">'+TRASH+'</button></div>';}).join("");}
-    doc.querySelector(".mgs-cart-total-n").textContent=fmt(cart.reduce(function(a,x){return a+x.price*x.qty;},0));
-    doc.querySelector(".mgs-cart-checkout").disabled=!cart.length;cartBadges();
+/* Magic Game Store — runtime fonctionnel (prototype design-system-v3).
+   Ne modifie AUCUN style / markup / animation existant : peuple les structures
+   existantes avec les données réelles du backend et câble les boutons.
+   Le script template (nav + GSAP/Lenis + stepper visuel + cmdDetail/cmdFilter +
+   reçu) est CONSERVÉ ; ce runtime remplace uniquement la fausse logique panier/
+   checkout et ajoute auth/compte/points/support/pack/events/catalogue/commandes. */
+(function () {
+  "use strict";
+  var doc = document, body = doc.body;
+  var BACKEND = (window.MGS_BACKEND_URL || "https://magicgamestore-api-v2.onrender.com").replace(/\/+$/, "");
+  var API = BACKEND + "/api";
+  var $ = function (s, r) { return (r || doc).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || doc).querySelectorAll(s)); };
+  function stop(e) { e.preventDefault(); e.stopImmediatePropagation(); }
+
+  /* ---------- i18n (chaînes injectées par le runtime uniquement) ---------- */
+  var LANG = localStorage.getItem("mgs_lang") || "fr";
+  var T = {
+    fr: {
+      "toast.added": "Ajouté au panier", "toast.login": "Connecté", "toast.logout": "Déconnecté",
+      "toast.register": "Compte créé — vérifiez votre email", "toast.saved": "Enregistré",
+      "toast.pwchanged": "Mot de passe modifié", "toast.deleted": "Compte supprimé",
+      "toast.redeem": "Récompense échangée", "toast.sent": "Message envoyé", "toast.forgot": "Email de réinitialisation envoyé",
+      "toast.google": "Redirection vers Google…", "err.network": "Serveur injoignable. Réessayez.",
+      "err.generic": "Une erreur est survenue", "err.login": "Email ou mot de passe incorrect",
+      "err.auth": "Connectez-vous pour continuer", "checkout.empty": "Votre panier est vide",
+      "checkout.needId": "Entrez votre ID joueur.", "checkout.needVerify": "Vérifiez votre ID joueur d'abord.",
+      "checkout.needMethod": "Choisissez un mode de paiement.", "checkout.verifying": "Vérification…",
+      "checkout.invalidId": "ID joueur introuvable. Vérifiez le numéro.",
+      "checkout.noCatalog": "Catalogue en cours d'activation côté serveur. Réessayez bientôt.",
+      "checkout.binanceOff": "Binance est indisponible actuellement (paiement manuel uniquement).",
+      "checkout.captchaAgain": "Vérification anti-robot requise — réessayez.",
+      "checkout.binanceAmount": "Montant exact", "checkout.binanceNetwork": "Réseau", "checkout.binanceAddress": "Adresse", "checkout.binanceMemo": "Mémo",
+      "checkout.binanceNoProof": "Le paiement est détecté automatiquement. Aucune preuve à envoyer.",
+      "checkout.binanceDetected": "Paiement détecté — confirmation en cours…",
+      "checkout.binanceFailed": "Paiement refusé. Vous pouvez réessayer.",
+      "checkout.binanceConfirmed": "Paiement confirmé",
+      "checkout.creating": "Création de la commande…", "checkout.uploading": "Envoi de la preuve…",
+      "checkout.proofOk": "Preuve envoyée · vérification en cours", "checkout.needProof": "Choisissez une image de preuve (JPEG/PNG).",
+      "checkout.expired": "Délai expiré", "orders.empty": "Aucune commande pour le moment.",
+      "orders.login": "Connectez-vous pour voir vos commandes.", "pack.eligible": "Compte éligible",
+      "pack.notEligible": "Compte non éligible", "pack.needId": "Entrez votre ID joueur PUBG.",
+      "pack.checking": "Vérification…", "support.needMsg": "Écrivez un message.", "support.login": "Connectez-vous pour discuter.",
+      "support.chatOpen": "Chat ouvert — écrivez ci-dessous", "support.waPending": "Numéro WhatsApp support à confirmer.", "pack.noSeason": "Aucune offre évolutive active.", "status.done": "Livrée", "status.cancel": "Annulée",
+      "status.pending": "À payer", "status.verify": "Vérification", "status.progress": "En cours",
+      "method.mvola": "MVola", "method.orange": "Orange Money", "method.binance": "USDT",
+      "confirm.delete": "Supprimer définitivement votre compte ? Cette action est irréversible.",
+      "auth.name": "Entrez votre nom", "auth.emailFirst": "Entrez votre email d'abord", "auth.pwPrompt": "Mot de passe"
+    },
+    en: {
+      "toast.added": "Added to cart", "toast.login": "Signed in", "toast.logout": "Signed out",
+      "toast.register": "Account created — check your email", "toast.saved": "Saved",
+      "toast.pwchanged": "Password changed", "toast.deleted": "Account deleted",
+      "toast.redeem": "Reward redeemed", "toast.sent": "Message sent", "toast.forgot": "Reset email sent",
+      "toast.google": "Redirecting to Google…", "err.network": "Server unreachable. Try again.",
+      "err.generic": "Something went wrong", "err.login": "Wrong email or password",
+      "err.auth": "Sign in to continue", "checkout.empty": "Your cart is empty",
+      "checkout.needId": "Enter your player ID.", "checkout.needVerify": "Verify your player ID first.",
+      "checkout.needMethod": "Choose a payment method.", "checkout.verifying": "Verifying…",
+      "checkout.invalidId": "Player ID not found. Check the number.",
+      "checkout.noCatalog": "Catalog is being activated server-side. Try again soon.",
+      "checkout.binanceOff": "Binance is currently unavailable (manual payment only).",
+      "checkout.captchaAgain": "Anti-bot verification required — try again.",
+      "checkout.binanceAmount": "Exact amount", "checkout.binanceNetwork": "Network", "checkout.binanceAddress": "Address", "checkout.binanceMemo": "Memo",
+      "checkout.binanceNoProof": "Payment is detected automatically. No proof to send.",
+      "checkout.binanceDetected": "Payment detected — confirming…",
+      "checkout.binanceFailed": "Payment failed. You can try again.",
+      "checkout.binanceConfirmed": "Payment confirmed",
+      "checkout.creating": "Creating order…", "checkout.uploading": "Uploading proof…",
+      "checkout.proofOk": "Proof sent · verification in progress", "checkout.needProof": "Choose a proof image (JPEG/PNG).",
+      "checkout.expired": "Time expired", "orders.empty": "No orders yet.",
+      "orders.login": "Sign in to see your orders.", "pack.eligible": "Eligible account",
+      "pack.notEligible": "Not eligible", "pack.needId": "Enter your PUBG player ID.",
+      "pack.checking": "Checking…", "support.needMsg": "Write a message.", "support.login": "Sign in to chat.",
+      "support.chatOpen": "Chat opened — write below", "support.waPending": "Support WhatsApp number to be confirmed.", "pack.noSeason": "No active evolutionary offer.", "status.done": "Delivered", "status.cancel": "Cancelled",
+      "status.pending": "To pay", "status.verify": "Verifying", "status.progress": "In progress",
+      "method.mvola": "MVola", "method.orange": "Orange Money", "method.binance": "USDT",
+      "confirm.delete": "Permanently delete your account? This cannot be undone.",
+      "auth.name": "Enter your name", "auth.emailFirst": "Enter your email first", "auth.pwPrompt": "Password"
+    }
+  };
+  function t(k, v) { var s = (T[LANG] && T[LANG][k]) || T.fr[k] || k; if (v) Object.keys(v).forEach(function (key) { s = s.split("{" + key + "}").join(v[key]); }); return s; }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function ar(n) { n = Math.round(Number(n) || 0); return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " Ar"; }
+  function parsePrice(s) { return parseInt(String(s).replace(/[^\d]/g, ""), 10) || 0; }
+
+  /* ---------- toast (feedback fonctionnel minimal, tokens existants) ---------- */
+  var toastWrap = null;
+  function toast(msg, kind) {
+    if (!toastWrap) { toastWrap = doc.createElement("div"); toastWrap.setAttribute("aria-live", "polite"); toastWrap.style.cssText = "position:fixed;left:50%;bottom:1.2em;transform:translateX(-50%);z-index:4000;display:flex;flex-direction:column;gap:.5em;align-items:center;pointer-events:none;max-width:calc(100% - 2em)"; body.appendChild(toastWrap); }
+    var el = doc.createElement("div"); el.textContent = msg;
+    var bg = kind === "err" ? "var(--color--orange-700,#FF7900)" : "var(--color--dark,#111)";
+    el.style.cssText = "background:" + bg + ";color:var(--color--light,#F4F1E8);border:.125em solid var(--color--dark,#111);border-radius:100em;padding:.6em 1.2em;font-weight:700;font-size:.9em;box-shadow:.25em .25em 0 var(--color--dark,#111);opacity:0;transition:opacity .25s,transform .25s;transform:translateY(.5em);text-align:center";
+    toastWrap.appendChild(el);
+    requestAnimationFrame(function () { el.style.opacity = "1"; el.style.transform = "translateY(0)"; });
+    setTimeout(function () { el.style.opacity = "0"; el.style.transform = "translateY(.5em)"; setTimeout(function () { el.remove(); }, 300); }, 3200);
   }
-  function pillKey(card){var name=((card.querySelector(".mgs-pcard__amount")||{}).textContent||"")+" "+((card.querySelector(".mgs-pcard__unit")||{}).textContent||"");var game=(doc.querySelector(".mgs-cat-game")||{}).textContent||"Jeu";return {key:game+"|"+name.trim(),name:name.trim(),game:game};}
-  function syncPill(pill){var card=pill.closest(".mgs-pcard");if(!card)return;var qty=parseInt(pill.dataset.qty||"0",10);var info=pillKey(card);var price=parsePrice((card.querySelector(".mgs-pill__price")||{}).textContent||"0");var it=cart.find(function(x){return x.key===info.key;});
-    if(qty<=0){cart=cart.filter(function(x){return x.key!==info.key;});}else if(it){it.qty=qty;}else{cart.push({key:info.key,name:info.name,game:info.game,price:price,qty:qty});}renderCart();}
-  function syncPillsFromCart(){var game=(doc.querySelector(".mgs-cat-game")||{}).textContent||"Jeu";doc.querySelectorAll(".mgs-pcard").forEach(function(card){var info=pillKey(card);if(info.game!==game)return;var it=cart.find(function(x){return x.key===info.key;});var pill=card.querySelector(".mgs-pill");if(!pill)return;var q=it?it.qty:0;pill.dataset.qty=String(q);var qe=pill.querySelector(".mgs-stepper__qty");if(qe)qe.textContent=String(q||1);pill.classList.toggle("is--incart",q>0);});}
-  doc.addEventListener("click",function(e){var pill=e.target.closest(".mgs-pill");if(pill&&(e.target.closest(".mgs-pill__add")||e.target.closest(".mgs-stepper__btn"))){syncPill(pill);}});
-  function openCart(){renderCart();var d=doc.querySelector(".mgs-cart-drawer"),o=doc.querySelector(".mgs-cart-overlay");d.hidden=false;o.hidden=false;void d.offsetWidth;d.classList.add("is--open");o.classList.add("is--open");}
-  function closeCart(){var d=doc.querySelector(".mgs-cart-drawer"),o=doc.querySelector(".mgs-cart-overlay");d.classList.remove("is--open");o.classList.remove("is--open");setTimeout(function(){d.hidden=true;o.hidden=true;},450);}
-  /* ===== CHECKOUT ===== */
-  var co={verified:false,pid:"",method:"",total:0,items:"",game:"",num:"",timer:null};
-  function coShow(n){doc.querySelectorAll(".mgs-co-screen").forEach(function(sc){sc.hidden=(+sc.dataset.co!==n);});}
-  var RECENT_KEY="mgs_recent_ids",RECENT_MAX=4;
-  function getRecent(){try{var a=JSON.parse(localStorage.getItem(RECENT_KEY));return Array.isArray(a)?a:[];}catch(e){return[];}}
-  function saveRecent(a){try{localStorage.setItem(RECENT_KEY,JSON.stringify(a));}catch(e){}}
-  function addRecent(id){if(!id)return;var a=getRecent().filter(function(x){return x!==id;});a.push(id);while(a.length>RECENT_MAX){a.shift();}saveRecent(a);renderRecent();}
-  function renderRecent(){var box=doc.querySelector(".mgs-co-recent");if(!box)return;var a=getRecent();if(!a.length){box.hidden=true;box.innerHTML="";return;}box.hidden=false;var ic='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';function paint(arr){box.innerHTML='<span class="mgs-co-recent-label">Récents</span>'+arr.map(function(id){return '<button type="button" class="mgs-co-recent-chip" data-id="'+id+'" aria-label="Utiliser l\'ID '+id+'">'+ic+'<span>'+id+'</span></button>';}).join("");}paint(a);while(a.length>1&&box.scrollWidth>box.clientWidth+1){a=a.slice(1);paint(a);}}
-  window.mgsRenderRecent=renderRecent;
-  function coOpen(){if(!cart.length)return;co.total=cart.reduce(function(a,x){return a+x.price*x.qty;},0);co.items=cart.map(function(x){return x.qty+" × "+x.name;}).join(", ");co.game=cart[0].game;co.verified=false;co.method="";co.pid="";
-    doc.querySelector(".mgs-co-game").textContent=co.game;doc.querySelector(".mgs-co-total").textContent=fmt(co.total);doc.querySelector(".mgs-co-items").textContent=co.items;
-    doc.querySelector(".mgs-co-id-input").value="";var st=doc.querySelector(".mgs-co-id-status");st.hidden=true;st.textContent="";
-    doc.querySelectorAll(".mgs-co-method").forEach(function(m){m.classList.remove("is--active");});doc.querySelectorAll('input[name="comethod"]').forEach(function(r){r.checked=false;});
-    coShow(1);window.mgsShowPage("commande");window.scrollTo(0,0);}
-  function openHuman(){doc.querySelector(".mgs-human-overlay").hidden=false;doc.querySelector(".mgs-human-popup").hidden=false;doc.querySelector(".mgs-human-cb").checked=false;doc.querySelector(".mgs-human-confirm").disabled=true;}
-  function closeHuman(){doc.querySelector(".mgs-human-overlay").hidden=true;doc.querySelector(".mgs-human-popup").hidden=true;}
-  function stopTimer(){if(co.timer){clearInterval(co.timer);co.timer=null;}}
-  function startTimer(sec){stopTimer();var el=doc.querySelector(".mgs-co-countdown");function tick(){if(sec<0){stopTimer();el.textContent="Délai expiré";return;}var m=Math.floor(sec/60),s=sec%60;el.textContent="Payer sous "+m+":"+(s<10?"0":"")+s;sec--;}tick();co.timer=setInterval(tick,1000);}
-  function coPay(){doc.querySelector(".mgs-co-mname").textContent=co.method;doc.querySelector(".mgs-co-total2").textContent=fmt(co.total);coShow(2);startTimer(900);window.scrollTo(0,0);}
-  function coProof(){stopTimer();co.num="MGS-2026-"+Math.floor(1000+Math.random()*9000);
-    doc.querySelector(".mgs-co-r-product").textContent=co.items;doc.querySelector(".mgs-co-r-pid").textContent=co.pid;doc.querySelector(".mgs-co-r-method").textContent=co.method;doc.querySelector(".mgs-co-r-total").textContent=fmt(co.total);doc.querySelector(".mgs-co-r-num").textContent=co.num;coShow(3);window.scrollTo(0,0);}
-  function coFinish(){var list=doc.querySelector(".mgs-order-list");var now=new Date();var mois=["jan","fév","mar","avr","mai","jun","jul","aoû","sep","oct","nov","déc"];var date=now.getDate()+" "+mois[now.getMonth()]+" "+now.getFullYear();var tm=("0"+now.getHours()).slice(-2)+":"+("0"+now.getMinutes()).slice(-2);
-    var card=doc.createElement("div");card.className="mgs-order";card.setAttribute("role","button");card.tabIndex=0;
-    card.dataset.order=co.num;card.dataset.product=co.items;card.dataset.pid=co.pid;card.dataset.total=fmt(co.total);card.dataset.method=co.method;card.dataset.status="progress";card.dataset.statuslabel="En cours";card.dataset.date=date;card.dataset.time=tm;card.dataset.filter="progress";
-    card.innerHTML='<div class="mgs-order__main"><p class="mgs-order__title">'+co.items+'</p><p class="mgs-order__meta"><span class="mgs-mono">'+co.num+'</span><span>· '+date+' · '+tm+'</span><span class="mgs-order__method">· '+co.method+'</span></p></div><div class="mgs-order__right"><p class="mgs-order__price">'+fmt(co.total)+'</p><span class="mgs-status mgs-status--progress">En cours</span></div>';
-    list.insertBefore(card,list.firstChild);cart=[];renderCart();syncPillsFromCart();window.mgsShowPage("commandes");card.click();}
-  doc.addEventListener("change",function(e){if(e.target.classList.contains("mgs-human-cb")){doc.querySelector(".mgs-human-confirm").disabled=!e.target.checked;}});
-  doc.addEventListener("click",function(e){
-    if(e.target.closest(".nav-cart-btn")||e.target.closest('[aria-label*="Panier :"]')){e.preventDefault();openCart();return;}
-    if(e.target.closest(".mgs-cart-close")||e.target.classList.contains("mgs-cart-overlay")){closeCart();return;}
-    var q=e.target.closest(".mgs-cart-item__qty button");if(q){var it=q.closest(".mgs-cart-item");var i=+it.dataset.i;cart[i].qty+=(q.dataset.q==="plus"?1:-1);if(cart[i].qty<=0)cart.splice(i,1);renderCart();syncPillsFromCart();return;}
-    var del=e.target.closest(".mgs-cart-item__del");if(del){cart.splice(+del.closest(".mgs-cart-item").dataset.i,1);renderCart();syncPillsFromCart();return;}
-    if(e.target.closest(".mgs-cart-checkout")){if(cart.length){closeCart();coOpen();}return;}
-    if(e.target.closest(".mgs-cart-shop")){closeCart();return;}
-    var rc=e.target.closest(".mgs-co-recent-chip");if(rc){var ri=doc.querySelector(".mgs-co-id-input");ri.value=rc.dataset.id;doc.querySelector(".mgs-co-verify").click();return;}     if(e.target.closest(".mgs-co-verify")){var inp=doc.querySelector(".mgs-co-id-input");var v=inp.value.trim();var st=doc.querySelector(".mgs-co-id-status");st.hidden=false;
-      if(!v){st.className="mgs-co-id-status is--err";st.textContent="Entrez votre ID joueur.";return;}
-      co.verified=true;co.pid=v;addRecent(v);st.className="mgs-co-id-status is--ok";st.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg><span>Surazy_Player</span>';return;}
-    var m=e.target.closest(".mgs-co-method");if(m){doc.querySelectorAll(".mgs-co-method").forEach(function(x){x.classList.remove("is--active");});m.classList.add("is--active");m.querySelector("input").checked=true;co.method=m.querySelector("input").value;return;}
-    if(e.target.closest(".mgs-co-submit")){var st=doc.querySelector(".mgs-co-id-status");
-      if(!co.verified){st.hidden=false;st.className="mgs-co-id-status is--err";st.textContent="Vérifiez votre ID joueur d'abord.";return;}
-      if(!co.method){return;}openHuman();return;}
-    if(e.target.closest(".mgs-co-back")){window.mgsShowPage("boutique");return;}
-    if(e.target.closest(".mgs-co-back2")){stopTimer();coShow(1);return;}
-    if(e.target.closest(".mgs-co-proof")){coProof();return;}
-    if(e.target.closest(".mgs-co-cancel")){stopTimer();coShow(1);return;}
-    if(e.target.closest(".mgs-co-done")){coFinish();return;}
-    if(e.target.closest(".mgs-human-close")||e.target.closest(".mgs-human-cancel")||e.target.classList.contains("mgs-human-overlay")){closeHuman();return;}
-    if(e.target.closest(".mgs-human-confirm")){if(doc.querySelector(".mgs-human-cb").checked){closeHuman();coPay();}return;}
-    var rb=e.target.closest(".mgs-receipt-btn");if(rb){rb.classList.add("is--downloading");setTimeout(function(){rb.classList.remove("is--downloading");},650);}
-  });
-  if(localStorage.getItem(RECENT_KEY)===null){saveRecent(["5123456789","2208105694","4012345678"]);}renderRecent();window.addEventListener("resize",renderRecent);renderCart();
+
+  /* ---------- API (fetch + cookies + refresh 401 une fois) ---------- */
+  function req(path, opts, retry) {
+    opts = opts || {}; var headers = opts.headers || {}; var isForm = opts.body instanceof FormData;
+    if (!isForm && opts.body != null && typeof opts.body !== "string") { opts.body = JSON.stringify(opts.body); headers["Content-Type"] = "application/json"; }
+    return fetch(API + path, { method: opts.method || "GET", headers: headers, body: opts.body, credentials: "include" }).then(function (r) {
+      if (r.status === 401 && !retry && path !== "/auth/refresh" && path !== "/auth/login") {
+        return fetch(API + "/auth/refresh", { method: "POST", credentials: "include" }).then(function (rr) { if (rr.ok) return req(path, opts, true); return parse(r); });
+      }
+      return parse(r);
+    });
+    function parse(r) {
+      var ct = r.headers.get("content-type") || "";
+      var p = ct.indexOf("json") >= 0 ? r.json().catch(function () { return null; }) : r.text();
+      return p.then(function (data) { if (!r.ok) { var e = new Error((data && (data.detail || data.message)) || ("HTTP " + r.status)); e.status = r.status; e.data = data; throw e; } return data; });
+    }
+  }
+  function errMsg(e) {
+    if (!e) return t("err.generic");
+    if (e.status === 401) return t("err.auth");
+    if (e.message && /Failed to fetch|NetworkError|load failed/i.test(e.message)) return t("err.network");
+    return (e.data && (e.data.detail || e.data.message)) || e.message || t("err.generic");
+  }
+
+  /* ---------- session ---------- */
+  var me = null, payCfg = null, gamesCache = null;
+  function loadSession() { return req("/auth/me").then(function (u) { me = u; return u; }).catch(function () { me = null; return null; }); }
+  function loadPayCfg() { return req("/payments/config").then(function (c) { payCfg = c; return c; }).catch(function () { return null; }); }
+  function loadGames() { if (gamesCache) return Promise.resolve(gamesCache); return req("/games").then(function (g) { gamesCache = g || []; return gamesCache; }).catch(function () { gamesCache = []; return gamesCache; }); }
+  function gameByName(name) { return (gamesCache || []).filter(function (x) { return (x.name || "").toLowerCase() === String(name || "").toLowerCase(); })[0] || null; }
+  function gameIdFromSlug(slug) { var map = { pubg: "pubg-mobile", freefire: "free-fire", mlbb: "mobile-legends", codm: "codm" }; var g = (gamesCache || []).filter(function (x) { return x.slug === slug || x.id === map[slug]; })[0]; return g ? g.id : (map[slug] || slug); }
+  function primaryField(g) { if (g && g.identity_fields && g.identity_fields.length) return (g.identity_fields.filter(function (f) { return f.primary; })[0] || g.identity_fields[0]).key; return "pubg_id"; }
+
+  /* ---------- panier persistant ---------- */
+  var CART_KEY = "mgs_cart_v3"; var cart = [];
+  try { var c0 = JSON.parse(localStorage.getItem(CART_KEY)); if (Array.isArray(c0)) cart = c0; } catch (e) { }
+  function saveCart() { try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) { } }
+  function cartCount() { return cart.reduce(function (a, x) { return a + (x.qty || 0); }, 0); }
+  function cartTotal() { return cart.reduce(function (a, x) { return a + (x.price || 0) * (x.qty || 0); }, 0); }
+  function cartBadges() {
+    var n = cartCount();
+    $$('[aria-label*="Panier"]').forEach(function (h) { var b = $(".nav-action-badge", h); if (!b) return; b.textContent = String(n); b.style.display = n ? "" : "none"; h.setAttribute("aria-label", "Panier : " + n + " article" + (n > 1 ? "s" : "")); });
+  }
+  var TRASH = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+  function renderCart() {
+    var items = $(".mgs-cart-items"), empty = $(".mgs-cart-empty"); if (!items) return;
+    var gn = $(".mgs-cart-game-n"); if (gn) gn.textContent = (cart.length ? (cart[0].game_name || cart[0].game || "—") : "—").toUpperCase();
+    if (!cart.length) { items.innerHTML = ""; if (empty) empty.hidden = false; }
+    else { if (empty) empty.hidden = true; items.innerHTML = cart.map(function (x, i) { return '<div class="mgs-cart-item" data-i="' + i + '"><div class="mgs-cart-item__info"><p class="mgs-cart-item__name">' + esc(x.name) + '</p><p class="mgs-cart-item__price">' + ar(x.price) + '</p></div><div class="mgs-cart-item__qty"><button type="button" data-q="minus" aria-label="Moins">−</button><span>' + x.qty + '</span><button type="button" data-q="plus" aria-label="Plus">+</button></div><button type="button" class="mgs-cart-item__del" aria-label="Retirer">' + TRASH + '</button></div>'; }).join(""); }
+    var tn = $(".mgs-cart-total-n"); if (tn) tn.textContent = ar(cartTotal());
+    var cb = $(".mgs-cart-checkout"); if (cb) cb.disabled = !cart.length;
+    cartBadges(); saveCart();
+  }
+  function addToCart(item) {
+    var key = item.key || (item.game_id + "|" + (item.product_id || item.name));
+    var it = cart.filter(function (x) { return x.key === key; })[0];
+    if (it) it.qty += (item.qty || 1);
+    else cart.push({ key: key, product_id: item.product_id || null, slug: item.slug || "", name: item.name, name_en: item.name_en || item.name, price: item.price || 0, uc_amount: item.uc_amount || "", unit: item.unit || "", type: item.type || "", game_id: item.game_id || "", game_name: item.game_name || "", image_url: item.image_url || "", qty: item.qty || 1 });
+    renderCart(); syncPillsFromCart(); toast(t("toast.added"));
+  }
+  function pillInfo(card) {
+    var amount = ($(".mgs-pcard__amount", card) || {}).textContent || ""; var unit = ($(".mgs-pcard__unit", card) || {}).textContent || "";
+    var name = (amount + " " + unit).trim(); var game = ($(".mgs-cat-game") || {}).textContent || "Jeu";
+    return { key: card.dataset.pid ? (card.dataset.game + "|" + card.dataset.pid) : (game + "|" + name), product_id: card.dataset.pid || null, slug: card.dataset.slug || "", name: card.dataset.name || name, name_en: card.dataset.nameEn || card.dataset.name || name, price: parsePrice(($(".mgs-pill__price", card) || {}).textContent || "0"), uc_amount: amount, unit: unit, type: card.dataset.type || "", game_id: card.dataset.game || "", game_name: game, image_url: card.dataset.img || "" };
+  }
+  /* lit dataset.qty POSÉ par le stepper visuel du script template (phase bubble, après lui) */
+  function syncPill(pill) {
+    var card = pill.closest(".mgs-pcard"); if (!card) return;
+    var qty = parseInt(pill.dataset.qty || "0", 10); var info = pillInfo(card);
+    var it = cart.filter(function (x) { return x.key === info.key; })[0];
+    if (qty <= 0) cart = cart.filter(function (x) { return x.key !== info.key; });
+    else if (it) it.qty = qty;
+    else { info.qty = qty; cart.push(info); }
+    renderCart();
+  }
+  function syncPillsFromCart() {
+    $$(".mgs-pcard").forEach(function (card) {
+      var info = pillInfo(card); var it = cart.filter(function (x) { return x.key === info.key; })[0];
+      var pill = $(".mgs-pill", card); if (!pill) return; var q = it ? it.qty : 0;
+      pill.dataset.qty = String(q); var qe = $(".mgs-stepper__qty", pill); if (qe) qe.textContent = String(q || 1);
+      pill.classList.toggle("is--incart", q > 0);
+    });
+  }
+  function openCart() { renderCart(); var d = $(".mgs-cart-drawer"), o = $(".mgs-cart-overlay"); if (!d) return; d.hidden = false; o.hidden = false; void d.offsetWidth; d.classList.add("is--open"); o.classList.add("is--open"); }
+  function closeCart() { var d = $(".mgs-cart-drawer"), o = $(".mgs-cart-overlay"); if (!d) return; d.classList.remove("is--open"); o.classList.remove("is--open"); setTimeout(function () { d.hidden = true; o.hidden = true; }, 450); }
+  function produitItem() {
+    var p = $(".mgs-page[data-page=produit]"); if (!p) return null;
+    var name = ($("h1", p) || {}).textContent || "Produit";
+    var price = parsePrice(($(".mgs-price", p) || {}).textContent || "0");
+    var game = ($(".mgs-eyebrow", p) || {}).textContent || ""; game = game.split("·")[0].trim();
+    return { key: "produit|" + name, product_id: null, name: name.trim(), price: price, game_name: game, qty: 1 };
+  }
+
+  /* ---------- catalogue (données réelles -> gabarit .mgs-pcard existant) ---------- */
+  function renderCatalog(products, game) {
+    var grid = $(".mgs-boutique-catalog .mgs-grid") || $(".mgs-boutique-catalog"); var tpl = $(".mgs-boutique-catalog .mgs-pcard");
+    if (!grid || !tpl) return;
+    if (!products || !products.length) return; /* backend vide -> conserve le design statique */
+    var frag = doc.createDocumentFragment();
+    products.forEach(function (p) {
+      var card = tpl.cloneNode(true);
+      var amount = p.uc_amount != null ? String(p.uc_amount) : (p.name || "");
+      var am = $(".mgs-pcard__amount", card); if (am) { am.textContent = amount; am.classList.toggle("is--long", amount.length > 3); }
+      var un = $(".mgs-pcard__unit", card); if (un) un.textContent = p.uc_amount != null ? (p.type === "prime" || p.type === "prime_plus" ? "" : "UC") : "";
+      var nm = $(".mgs-pcard__name", card); if (nm) nm.textContent = p.name || "";
+      var pr = $(".mgs-pill__price", card); if (pr) pr.textContent = ar(p.price);
+      var old = $(".mgs-pill__old", card); if (old) { if (p.old_price) { old.textContent = ar(p.old_price); old.hidden = false; } else old.hidden = true; }
+      var img = $(".mgs-pcard__media img", card); if (img && p.image_url) img.src = p.image_url;
+      card.dataset.pid = p.id || ""; card.dataset.slug = p.slug || ""; card.dataset.game = p.game_id || (game && game.id) || "";
+      card.dataset.name = (LANG === "en" && p.name_en) ? p.name_en : (p.name || ""); card.dataset.nameEn = p.name_en || p.name || "";
+      card.dataset.type = p.type || ""; card.dataset.img = p.image_url || "";
+      var pill = $(".mgs-pill", card); if (pill) { pill.dataset.qty = "0"; pill.classList.remove("is--incart"); var qe = $(".mgs-stepper__qty", pill); if (qe) qe.textContent = "1"; }
+      frag.appendChild(card);
+    });
+    $$(".mgs-pcard", grid).forEach(function (c) { c.remove(); });
+    grid.appendChild(frag); syncPillsFromCart();
+  }
+  function loadCatalogFor(gameName, gameSlug) {
+    return loadGames().then(function () {
+      var g = gameByName(gameName); var gid = g ? g.id : gameIdFromSlug(gameSlug);
+      return req("/products?game=" + encodeURIComponent(gid)).catch(function () { return []; }).then(function (products) { renderCatalog(products || [], { id: gid, name: gameName }); });
+    });
+  }
+
+  /* ---------- checkout ---------- */
+  var co = { verified: false, pid: "", pseudo: "", method: "", total: 0, items: "", game: "", game_id: "", order: null, timer: null, poll: null };
+  function coShow(n) { $$(".mgs-co-screen").forEach(function (sc) { sc.hidden = (+sc.dataset.co !== n); }); }
+  var RECENT_KEY = "mgs_recent_ids";
+  function getRecent() { try { var a = JSON.parse(localStorage.getItem(RECENT_KEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function addRecent(id) { if (!id) return; var a = getRecent().filter(function (x) { return x !== id; }); a.push(id); while (a.length > 4) a.shift(); try { localStorage.setItem(RECENT_KEY, JSON.stringify(a)); } catch (e) { } renderRecent(); }
+  function renderRecent() {
+    var box = $(".mgs-co-recent"); if (!box) return; var a = getRecent();
+    if (!a.length) { box.hidden = true; box.innerHTML = ""; return; }
+    box.hidden = false;
+    var ic = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    box.innerHTML = '<span class="mgs-co-recent-label">Récents</span>' + a.map(function (id) { return '<button type="button" class="mgs-co-recent-chip" data-id="' + esc(id) + '">' + ic + '<span>' + esc(id) + '</span></button>'; }).join("");
+  }
+  window.mgsRenderRecent = renderRecent;
+  var cryptoCfg = null; var manualHintTexts = null;
+  function coOpen() {
+    if (!cart.length) { toast(t("checkout.empty"), "err"); return; }
+    if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; }
+    co.total = cartTotal(); co.items = cart.map(function (x) { return x.qty + " × " + x.name; }).join(", ");
+    co.game = cart[0].game_name || cart[0].game || ""; co.game_id = cart[0].game_id || "";
+    co.verified = false; co.method = ""; co.pid = ""; co.pseudo = ""; co.order = null; co.network = ""; co.payment = null;
+    var bl = $('.mgs-co-method input[value="Binance"]'); if (bl) { var blbl = bl.closest(".mgs-co-method"); if (blbl) blbl.style.display = (cryptoCfg && cryptoCfg.available) ? "" : "none"; }
+    var cg = $(".mgs-co-game"); if (cg) cg.textContent = co.game;
+    var ct = $(".mgs-co-total"); if (ct) ct.textContent = ar(co.total);
+    var ci = $(".mgs-co-items"); if (ci) ci.textContent = co.items;
+    var inp = $(".mgs-co-id-input"); if (inp) inp.value = "";
+    var st = $(".mgs-co-id-status"); if (st) { st.hidden = true; st.textContent = ""; }
+    $$(".mgs-co-method").forEach(function (m) { m.classList.remove("is--active"); });
+    $$('input[name="comethod"]').forEach(function (r) { r.checked = false; });
+    coShow(1); window.mgsShowPage("commande"); window.scrollTo(0, 0);
+  }
+  function coStatus(cls, html) { var st = $(".mgs-co-id-status"); if (!st) return; st.hidden = false; st.className = "mgs-co-id-status " + cls; st.innerHTML = html; }
+  var CK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+  function verifyId() {
+    var inp = $(".mgs-co-id-input"); var v = (inp && inp.value || "").trim();
+    if (!v) { coStatus("is--err", esc(t("checkout.needId"))); return; }
+    coStatus("", esc(t("checkout.verifying")));
+    var gid = co.game_id || "pubg-mobile"; var g = (gamesCache || []).filter(function (x) { return x.id === gid; })[0];
+    var fields = {}; fields[primaryField(g)] = v;
+    req("/fazercards/validate-id", { method: "POST", body: { game_id: gid, fields: fields } }).then(function (r) {
+      if (r && r.valid) { co.verified = true; co.pid = v; co.pseudo = r.player_name || ""; addRecent(v); coStatus("is--ok", CK + "<span>" + esc(r.player_name || v) + (r.region ? " · " + esc(r.region) : "") + "</span>"); }
+      else { co.verified = false; coStatus("is--err", esc(t("checkout.invalidId"))); }
+    }).catch(function (e) { co.verified = false; coStatus("is--err", esc(errMsg(e))); });
+  }
+  function openHuman(always) {
+    var o = $(".mgs-human-overlay"), p = $(".mgs-human-popup"); if (o) o.hidden = false; if (p) p.hidden = false;
+    var cf = $(".mgs-human-confirm"); var cap = window.MGS_CAPTCHA;
+    var check = $(".mgs-human-check"), label = $(".mgs-human-label"), brand = $(".mgs-human-brand"), tsBox = $(".mgs-human-turnstile");
+    if (cap && cap.enabled()) {
+      if (check) check.style.display = "none"; if (label) label.style.display = "none"; if (brand) brand.style.display = "none";
+      if (tsBox) tsBox.hidden = false;
+      if (cf) cf.disabled = !cap.getToken();
+      cap.render(tsBox, {
+        appearance: always ? "always" : "interaction-only",
+        onToken: function (tok) { if (cf) cf.disabled = !tok; },
+        onExpire: function () { if (cf) cf.disabled = true; },
+        onInteractive: function (needed) { if (needed) { if (o) o.hidden = false; if (p) p.hidden = false; } }
+      });
+    } else {
+      if (check) check.style.display = ""; if (label) label.style.display = ""; if (brand) brand.style.display = "";
+      if (tsBox) tsBox.hidden = true;
+      var cb = $(".mgs-human-cb"); if (cb) cb.checked = false; if (cf) cf.disabled = true;
+    }
+  }
+  function closeHuman() { var o = $(".mgs-human-overlay"), p = $(".mgs-human-popup"); if (o) o.hidden = true; if (p) p.hidden = true; }
+  function stopTimer() { if (co.timer) { clearInterval(co.timer); co.timer = null; } }
+  function startTimer(sec) { stopTimer(); var el = $(".mgs-co-countdown") || $(".mgs-co-timer"); function tick() { if (sec < 0) { stopTimer(); if (el) el.textContent = t("checkout.expired"); return; } var m = Math.floor(sec / 60), s = sec % 60; if (el) el.textContent = m + ":" + (s < 10 ? "0" : "") + s; sec--; } tick(); co.timer = setInterval(tick, 1000); }
+  function methodLabel(m) { return m === "MVola" ? t("method.mvola") : m === "Orange Money" ? t("method.orange") : m === "Binance" ? t("method.binance") : m; }
+  function createOrder() {
+    if (!co.verified) { coStatus("is--err", esc(t("checkout.needVerify"))); return; }
+    if (!co.method) { toast(t("checkout.needMethod"), "err"); return; }
+    var isBinance = co.method === "Binance";
+    if (isBinance && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.binanceOff"), "err"); return; }
+    if (cart.some(function (x) { return !x.product_id; })) { coStatus("is--err", esc(t("checkout.noCatalog"))); toast(t("checkout.noCatalog"), "err"); return; }
+    if (!me) { toast(t("err.auth"), "err"); closeHuman(); window.mgsShowPage("connexion"); return; }
+    var g = (gamesCache || []).filter(function (x) { return x.id === co.game_id; })[0];
+    var idf = {}; idf[primaryField(g)] = co.pid;
+    var capTok = (window.MGS_CAPTCHA && window.MGS_CAPTCHA.getToken()) || "";
+    var payload = { pubg_id: co.pid, identity_fields: idf, pseudo: co.pseudo || co.pid, items: cart.map(function (x) { return { product_id: x.product_id, quantity: x.qty }; }), payment_method: isBinance ? "binance" : "manual", email: me.email || null, game_id: co.game_id || "pubg-mobile", identity_id: null };
+    if (!isBinance) { payload.manual_operator = co.method === "MVola" ? "mvola" : "orange"; payload.manual_reference = null; }
+    if (capTok) payload.captcha_token = capTok;
+    var btn = $(".mgs-human-confirm"); if (btn) btn.disabled = true;
+    toast(t("checkout.creating"));
+    req("/orders", { method: "POST", body: payload }).then(function (order) { co.order = order; closeHuman(); if (isBinance) initiateBinance(order); else coPay(); }).catch(function (e) {
+      if (btn) btn.disabled = false;
+      if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.isCaptchaError(e)) { window.MGS_CAPTCHA.reset(); toast(t("checkout.captchaAgain"), "err"); openHuman(true); return; }
+      toast(errMsg(e), "err"); coStatus("is--err", esc(errMsg(e)));
+    });
+  }
+  function coPay() {
+    var mn = $(".mgs-co-mname"); if (mn) mn.textContent = methodLabel(co.method);
+    var merch = $(".mgs-co-merchant"); var bin = $(".mgs-co-binance");
+    if (merch) merch.hidden = false; if (bin) bin.hidden = true;
+    var t2 = $(".mgs-co-total2"); if (t2) t2.textContent = ar(co.total);
+    if (merch && payCfg && payCfg.providers) { var prov = co.method === "MVola" ? payCfg.providers.mvola : payCfg.providers.orange; var bs = $$("b", merch); if (bs[1] && prov) bs[1].textContent = prov.name || "—"; if (bs[2] && prov) bs[2].textContent = prov.merchant || "—"; }
+    var proof = $(".mgs-co-proof"); if (proof) proof.style.display = "";
+    var hints = $$(".mgs-co-hint"); if (manualHintTexts) hints.forEach(function (h, i) { if (manualHintTexts[i] != null) h.textContent = manualHintTexts[i]; h.style.display = ""; });
+    coShow(2);
+    var mins = (payCfg && payCfg.timeout_minutes) || 15; var deadline = co.order && co.order.payment_deadline_at;
+    var sec = deadline ? Math.max(0, Math.floor((new Date(deadline) - new Date()) / 1000)) : mins * 60;
+    startTimer(sec); window.scrollTo(0, 0);
+  }
+  function initiateBinance(order) {
+    var net = co.network || (cryptoCfg && cryptoCfg.networks && cryptoCfg.networks[0] && cryptoCfg.networks[0].key) || "TRC20";
+    window.MGS_CRYPTO.initiate(order.id, net).then(function (r) {
+      if (r.ok && r.payment) { coPayBinance(r.payment); return; }
+      if (r.code === "already_open") { window.MGS_CRYPTO.statusOf(order.id).then(function (s) { if (s.payment) coPayBinance(s.payment); else { toast(t("checkout.binanceOff"), "err"); coShow(1); } }); return; }
+      toast(r.detail || t("checkout.binanceOff"), "err"); coShow(1);
+    });
+  }
+  function coPayBinance(p) {
+    co.payment = p;
+    var mn = $(".mgs-co-mname"); if (mn) mn.textContent = "Binance USDT";
+    var merch = $(".mgs-co-merchant"); var bin = $(".mgs-co-binance");
+    if (merch) merch.hidden = true;
+    if (bin) {
+      var netLabel = p.network; ((cryptoCfg && cryptoCfg.networks) || []).forEach(function (n) { if (n.key === p.network && n.label) netLabel = n.label; });
+      var rows = '<div><span>' + esc(t("checkout.binanceAmount")) + '</span><b>' + esc(p.amountUsdt) + ' ' + esc(p.currency) + '</b></div>'
+        + '<div><span>' + esc(t("checkout.binanceNetwork")) + '</span><b>' + esc(netLabel) + '</b></div>'
+        + '<div><span>' + esc(t("checkout.binanceAddress")) + '</span><b>' + esc(p.address) + '</b></div>';
+      if (p.memo) rows += '<div><span>' + esc(t("checkout.binanceMemo")) + '</span><b>' + esc(p.memo) + '</b></div>';
+      bin.innerHTML = rows; bin.hidden = false;
+    }
+    var proof = $(".mgs-co-proof"); if (proof) proof.style.display = "none";
+    var hints = $$(".mgs-co-hint"); if (hints[0]) { hints[0].textContent = t("checkout.binanceNoProof"); hints[0].style.display = ""; } if (hints[1]) hints[1].style.display = "none";
+    coShow(2);
+    var deadline = co.order && co.order.payment_deadline_at;
+    var sec = deadline ? Math.max(0, Math.floor((new Date(deadline) - new Date()) / 1000)) : ((cryptoCfg && cryptoCfg.expiryMinutes) || 30) * 60;
+    startTimer(sec);
+    if (co.cryptoPoll) co.cryptoPoll.stop();
+    co.cryptoPoll = window.MGS_CRYPTO.poll(co.order.id, function (u) {
+      if (u.payment) { co.payment = u.payment; if (u.payment.status === "DETECTED") { var h = $(".mgs-co-hint"); if (h) h.textContent = t("checkout.binanceDetected"); } }
+      if (u.done) { stopTimer(); coReceiptBinance(); }
+      else if (u.failed) { stopTimer(); toast(t("checkout.binanceFailed"), "err"); coShow(1); }
+    }, { deadlineAt: deadline, onExpired: function () { stopTimer(); var el = $(".mgs-co-timer"); if (el) el.textContent = t("checkout.expired"); toast(t("checkout.expired"), "err"); } });
+    window.scrollTo(0, 0);
+  }
+  function coReceiptBinance() {
+    var o = co.order || {}; var set = function (sel, val) { var e = $(sel); if (e) e.textContent = val; };
+    set(".mgs-co-r-product", co.items); set(".mgs-co-r-pid", co.pid); set(".mgs-co-r-method", "Binance USDT");
+    set(".mgs-co-r-total", ar(o.total != null ? o.total : co.total)); set(".mgs-co-r-num", o.number || "—");
+    $$(".mgs-co-recap div").forEach(function (d) { var span = $("span", d); if (span && /Pseudo/i.test(span.textContent)) { var b = $("b", d); if (b) b.textContent = co.pseudo || "—"; } });
+    var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = t("checkout.binanceConfirmed");
+    var wt = $(".mgs-co-wait-t"); if (wt) wt.textContent = t("checkout.binanceConfirmed");
+    coShow(3); window.scrollTo(0, 0);
+  }
+  var proofInput = null;
+  function ensureProofInput() { if (proofInput) return proofInput; proofInput = doc.createElement("input"); proofInput.type = "file"; proofInput.accept = "image/jpeg,image/png"; proofInput.multiple = true; proofInput.style.display = "none"; body.appendChild(proofInput); proofInput.addEventListener("change", function () { if (proofInput.files && proofInput.files.length) uploadProof(proofInput.files); }); return proofInput; }
+  function uploadProof(files) {
+    if (!co.order) return; var fd = new FormData(); var n = 0;
+    for (var i = 0; i < files.length && n < 3; i++) { var f = files[i]; if (/image\/(jpeg|png)/.test(f.type) && f.size <= 8 * 1024 * 1024) { fd.append("files", f); n++; } }
+    if (!n) { toast(t("checkout.needProof"), "err"); return; }
+    toast(t("checkout.uploading"));
+    req("/orders/" + co.order.id + "/proof", { method: "POST", body: fd }).then(function (r) { if (r && r.id) co.order = r; stopTimer(); coReceipt(); pollOrder(); }).catch(function (e) { toast(errMsg(e), "err"); });
+  }
+  function coReceipt() {
+    var o = co.order || {}; var set = function (sel, val) { var e = $(sel); if (e) e.textContent = val; };
+    set(".mgs-co-r-product", co.items); set(".mgs-co-r-pid", co.pid); set(".mgs-co-r-method", methodLabel(co.method));
+    set(".mgs-co-r-total", ar(o.total != null ? o.total : co.total)); set(".mgs-co-r-num", o.number || "—");
+    $$(".mgs-co-recap div").forEach(function (d) { var span = $("span", d); if (span && /Pseudo/i.test(span.textContent)) { var b = $("b", d); if (b) b.textContent = co.pseudo || "—"; } });
+    var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = t("checkout.proofOk");
+    coShow(3); window.scrollTo(0, 0);
+  }
+  function statusBucket(s) { s = String(s || "").toLowerCase(); if (s === "delivered" || s === "done" || s === "completed") return "done"; if (s === "cancelled" || s === "canceled" || s === "expired" || s === "failed" || s === "refunded") return "cancel"; return "progress"; }
+  function statusLabel(s) { var b = statusBucket(s); if (b === "done") return t("status.done"); if (b === "cancel") return t("status.cancel"); var sl = String(s || "").toLowerCase(); if (sl === "pending_payment") return t("status.pending"); if (sl === "awaiting_verification") return t("status.verify"); return t("status.progress"); }
+  function pollOrder() {
+    if (co.poll) clearInterval(co.poll); if (!co.order) return; var tries = 0;
+    co.poll = setInterval(function () { tries++; if (tries > 60) { clearInterval(co.poll); co.poll = null; return; } req("/orders/" + co.order.id).then(function (o) { co.order = o; var b = statusBucket(o.status); var badge = $(".mgs-co-wait-badge"); var wt = $(".mgs-co-wait-t"); if (b === "done") { if (badge) badge.textContent = t("status.done"); if (wt) wt.textContent = t("status.done"); clearInterval(co.poll); co.poll = null; } else if (b === "cancel") { if (badge) badge.textContent = t("status.cancel"); if (wt) wt.textContent = t("status.cancel"); clearInterval(co.poll); co.poll = null; } }).catch(function () { }); }, 5000);
+  }
+  function coFinish() {
+    if (co.poll) { clearInterval(co.poll); co.poll = null; } if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } stopTimer();
+    var num = co.order && co.order.number; cart = []; renderCart(); syncPillsFromCart();
+    loadOrders().then(function () { window.mgsShowPage("commandes"); if (num) { var card = $('.mgs-order[data-order="' + num + '"]'); if (card) card.click(); } });
+  }
+
+  /* ---------- commandes (liste réelle -> gabarit .mgs-order ; détail/filtre/reçu = script template) ---------- */
+  var MOIS = ["jan", "fév", "mar", "avr", "mai", "jun", "jul", "aoû", "sep", "oct", "nov", "déc"];
+  function fmtDate(iso) { var d = new Date(iso); if (isNaN(d)) return { date: "—", time: "" }; return { date: d.getDate() + " " + MOIS[d.getMonth()] + " " + d.getFullYear(), time: ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2) }; }
+  function orderProductLabel(o) { var names = (o.items || []).map(function (it) { return it.name || it.product_name || (it.uc_amount ? it.uc_amount + " UC" : it.product_id); }).join(", "); var gn = o.game_name || ((gamesCache || []).filter(function (g) { return g.id === o.game_id; })[0] || {}).name || ""; return (gn ? gn + " — " : "") + (names || "—"); }
+  function orderMethodLabel(o) { if (o.payment_method === "binance" || o.payment_method === "crypto") return t("method.binance"); if (o.manual_operator === "orange" || o.payment_method === "orange") return t("method.orange"); return t("method.mvola"); }
+  var STATUS_IC = { progress: '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>', done: '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>', cancel: '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>' };
+  var COPY_IC = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+  function renderOrders(orders) {
+    var list = $(".mgs-order-list"); if (!list) return; var empty = $(".mgs-cmd-empty");
+    if (!orders || !orders.length) { list.innerHTML = ""; if (empty) { empty.hidden = false; var p = $("p", empty); if (p) p.textContent = me ? t("orders.empty") : t("orders.login"); } return; }
+    if (empty) empty.hidden = true;
+    list.innerHTML = orders.map(function (o) {
+      var b = statusBucket(o.status); var d = fmtDate(o.created_at); var product = orderProductLabel(o); var total = ar(o.total); var method = orderMethodLabel(o); var label = statusLabel(o.status); var filter = b === "progress" ? "progress" : "done";
+      return '<div class="mgs-order" role="button" tabindex="0" data-order="' + esc(o.number) + '" data-product="' + esc(product) + '" data-pid="' + esc(o.pubg_id || "") + '" data-total="' + esc(total) + '" data-method="' + esc(method) + '" data-status="' + b + '" data-statuslabel="' + esc(label) + '" data-date="' + esc(d.date) + '" data-time="' + esc(d.time) + '" data-filter="' + filter + '" data-id="' + esc(o.id) + '"><div class="mgs-order__main"><p class="mgs-order__title">' + esc(product) + '</p><p class="mgs-order__meta"><span class="mgs-mono">' + esc(o.number) + '</span><button type="button" class="mgs-order__copy" aria-label="Copier le numéro">' + COPY_IC + '</button><span>· ' + esc(d.date) + ' · ' + esc(d.time) + '</span><span class="mgs-order__method">· ' + esc(method) + '</span></p></div><div class="mgs-order__right"><p class="mgs-order__price">' + esc(total) + '</p><span class="mgs-status mgs-status--' + b + '">' + STATUS_IC[b] + esc(label) + '</span></div></div>';
+    }).join("");
+  }
+  function loadOrders() {
+    if (!me) { renderOrders([]); return Promise.resolve([]); }
+    return req("/orders/me").then(function (orders) { orders = Array.isArray(orders) ? orders : (orders && orders.orders) || []; orders.sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); }); renderOrders(orders); return orders; }).catch(function (e) { toast(errMsg(e), "err"); return []; });
+  }
+
+  /* ---------- compte ---------- */
+  function updatePointsPill(pts) { $$(".pts-n").forEach(function (e) { e.textContent = String(pts); }); $$('[aria-label*="Points fidélité"]').forEach(function (e) { var b = $(".nav-action-badge", e); if (b) b.textContent = String(pts); e.setAttribute("aria-label", "Points fidélité : " + pts); }); }
+  function renderAccount() {
+    if (!me) { window.mgsShowPage("connexion"); return; }
+    var name = me.name || me.email || "—"; var av = $(".mgs-avatar"); if (av) av.textContent = (name.trim().slice(0, 2) || "MG").toUpperCase();
+    var head = $(".mgs-page[data-page=compte] .mgs-panel.mgs-row");
+    if (head) { var nm = $("div p", head); if (nm) nm.textContent = name; var sub = $(".mgs-muted", head); if (sub) sub.textContent = (me.email || "") + (me.created_at ? " · membre depuis " + fmtDate(me.created_at).date : ""); }
+    var an = $("#acc-name"); if (an) an.value = me.name || ""; var ap = $("#acc-phone"); if (ap) ap.value = me.phone || ""; var ai = $("#acc-ids"); if (ai) ai.value = (me.saved_pubg_ids || []).join(", ");
+    req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; var pts = bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0)); var sn = $(".mgs-page[data-page=compte] .mgs-stat__n"); if (sn) sn.textContent = String(pts); updatePointsPill(pts); }).catch(function () { });
+    req("/orders/me").then(function (o) { o = Array.isArray(o) ? o : (o && o.orders) || []; var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = String(o.length); }).catch(function () { });
+  }
+  function saveProfile() { var name = ($("#acc-name") || {}).value || ""; var phone = ($("#acc-phone") || {}).value || ""; var ids = (($("#acc-ids") || {}).value || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean); req("/auth/me", { method: "PATCH", body: { name: name, phone: phone, saved_pubg_ids: ids } }).then(function (u) { me = u || me; toast(t("toast.saved")); renderAccount(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+  function changePassword() { var cur = ($("#pw-cur") || {}).value || ""; var next = ($("#pw-next") || {}).value || ""; if (!cur || !next) { toast(t("err.generic"), "err"); return; } req("/auth/change-password", { method: "POST", body: { current_password: cur, new_password: next } }).then(function () { toast(t("toast.pwchanged")); $("#pw-cur").value = ""; $("#pw-next").value = ""; }).catch(function (e) { toast(errMsg(e), "err"); }); }
+  function deleteAccount() { if (!window.confirm(t("confirm.delete"))) return; var pw = window.prompt(t("auth.pwPrompt")); if (pw == null) return; req("/auth/me/delete", { method: "POST", body: { password: pw, confirmation: "DELETE" } }).then(function () { me = null; toast(t("toast.deleted")); window.mgsShowPage("connexion"); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+  function logout() { req("/auth/logout", { method: "POST" }).catch(function () { }).then(function () { me = null; toast(t("toast.logout")); renderCart(); window.mgsShowPage("accueil"); }); }
+
+  /* ---------- connexion / inscription ---------- */
+  var authMode = "login";
+  function setAuthMode(mode) {
+    authMode = mode; var tabs = $$(".mgs-page[data-page=connexion] .mgs-tab");
+    tabs.forEach(function (tb, i) { tb.classList.toggle("is--active", (i === 0) === (mode === "login")); });
+    var title = $(".mgs-page[data-page=connexion] .mgs-title"); if (title) title.textContent = mode === "login" ? (LANG === "en" ? "Sign in" : "Connexion") : (LANG === "en" ? "Sign up" : "Inscription");
+    var btn = $('.mgs-page[data-page=connexion] a[data-nav="compte"] .button-main-inner__text span'); if (btn) btn.textContent = mode === "login" ? (LANG === "en" ? "Sign in" : "Se connecter") : (LANG === "en" ? "Create account" : "Créer le compte");
+    var nameField = $("#reg-name-field");
+    if (mode === "register" && !nameField) { var em = $("#em"); if (em && em.closest(".mgs-field")) { nameField = doc.createElement("div"); nameField.className = "mgs-field"; nameField.id = "reg-name-field"; nameField.innerHTML = '<label for="reg-name">' + (LANG === "en" ? "Name" : "Nom") + '</label><input id="reg-name" type="text" class="mgs-input" placeholder="' + (LANG === "en" ? "Your name" : "Votre nom") + '">'; em.closest(".mgs-field").parentNode.insertBefore(nameField, em.closest(".mgs-field")); } }
+    else if (mode === "login" && nameField) { nameField.remove(); }
+  }
+  function doAuth() {
+    var email = ($("#em") || {}).value || ""; var pw = ($("#pw") || {}).value || "";
+    if (!email || !pw) { toast(t("err.generic"), "err"); return; }
+    if (authMode === "register") {
+      var name = ($("#reg-name") || {}).value || ""; if (!name) { toast(t("auth.name"), "err"); return; }
+      req("/auth/register", { method: "POST", body: { email: email, password: pw, name: name, captcha_token: null } }).then(function () { toast(t("toast.register")); return req("/auth/login", { method: "POST", body: { email: email, password: pw, remember: true, captcha_token: null } }); }).then(function () { return loadSession(); }).then(function () { toast(t("toast.login")); window.mgsShowPage("compte"); }).catch(function (e) { toast(errMsg(e), "err"); });
+    } else {
+      var remember = !!($('.mgs-page[data-page=connexion] input[type="checkbox"]') || {}).checked;
+      req("/auth/login", { method: "POST", body: { email: email, password: pw, remember: remember, captcha_token: null } }).then(function () { return loadSession(); }).then(function () { toast(t("toast.login")); window.mgsShowPage("compte"); }).catch(function (e) { toast(e.status === 401 ? t("err.login") : errMsg(e), "err"); });
+    }
+  }
+  function googleLogin() { toast(t("toast.google")); window.location.href = API + "/auth/google/start"; }
+  function forgotPassword() { var email = ($("#em") || {}).value || ""; if (!email) { toast(t("auth.emailFirst"), "err"); return; } req("/auth/forgot-password", { method: "POST", body: { email: email, captcha_token: null } }).then(function () { toast(t("toast.forgot")); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+
+  /* ---------- points ---------- */
+  function renderPoints() {
+    if (!me) { window.mgsShowPage("connexion"); return; }
+    req("/loyalty/me").then(function (l) {
+      var bal = (l && l.balance) || {}; var ledger = (l && l.ledger) || [];
+      var avail = bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0));
+      var earned = bal.earned != null ? bal.earned : 0;
+      var used = ledger.reduce(function (a, e) { var d = e.amount != null ? e.amount : (e.delta || 0); return a + (d < 0 ? -d : 0); }, 0);
+      var stats = $$(".mgs-page[data-page=points] .mgs-stat__n"); if (stats[0]) stats[0].textContent = String(avail); if (stats[1]) stats[1].textContent = String(earned); if (stats[2]) stats[2].textContent = String(used); updatePointsPill(avail);
+      var hist = $(".mgs-page[data-page=points] .mgs-panel .mgs-kv");
+      if (hist && ledger.length) { var panel = hist.closest(".mgs-panel"); panel.innerHTML = ledger.slice(0, 12).map(function (e) { var delta = e.amount != null ? e.amount : (e.delta || e.points || 0); var sign = delta >= 0 ? "+" : "−"; var col = delta >= 0 ? "var(--color--green-700)" : "inherit"; return '<div class="mgs-kv"><span>' + esc(e.reason || e.label || e.type || "—") + '</span><span style="color:' + col + '">' + sign + Math.abs(delta) + ' pts</span></div>'; }).join(""); }
+    }).catch(function () { });
+    req("/loyalty/rewards").then(function (rewards) {
+      rewards = Array.isArray(rewards) ? rewards : []; var box = $(".mgs-page[data-page=points] .mgs-list"); if (!box || !rewards.length) return;
+      box.innerHTML = rewards.map(function (r) { var cost = r.cost_points != null ? r.cost_points : (r.cost || 0); return '<div class="mgs-list-item" data-reward="' + esc(r.id) + '"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg><div style="flex:1"><p style="font-weight:700;margin:0">' + esc(r.name || r.label || "—") + '</p><p class="mgs-muted" style="font-size:.8em;margin:.1em 0 0">' + cost + ' points</p></div><a href="#" class="button-main w-inline-block mgs-redeem" data-button-theme="dark" data-button-accent="yellow" data-reward="' + esc(r.id) + '"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Échanger"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Échanger</span></span></span></span></a></div>'; }).join("");
+    }).catch(function () { });
+  }
+  function redeem(rewardId) { var pid = (me && me.saved_pubg_ids && me.saved_pubg_ids[0]) || window.prompt("ID joueur PUBG / PUBG player ID") || ""; if (!pid) return; req("/loyalty/redeem", { method: "POST", body: { reward_id: rewardId, pubg_id: pid } }).then(function () { toast(t("toast.redeem")); renderPoints(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+
+  /* ---------- pack évolutif ---------- */
+  function packVerify() {
+    var inp = $("#eid"); var v = (inp && inp.value || "").trim(); var statusRow = $(".mgs-page[data-page=pack] .mgs-status");
+    if (!v) { toast(t("pack.needId"), "err"); return; }
+    if (statusRow) { statusRow.className = "mgs-status"; statusRow.textContent = t("pack.checking"); }
+    req("/evo/season").then(function (s) { var productId = (s && s.season && s.season.product_id) || ""; if (!productId) { if (statusRow) { statusRow.className = "mgs-status mgs-status--cancel"; statusRow.textContent = t("pack.noSeason"); } return null; } return req("/evo/eligibility?pubg_id=" + encodeURIComponent(v) + "&product_id=" + encodeURIComponent(productId)); }).then(function (r) { if (!r) return; var ok = r.eligible === true || r.eligible === "true"; if (statusRow) { statusRow.className = "mgs-status " + (ok ? "mgs-status--done" : "mgs-status--cancel"); statusRow.innerHTML = (ok ? CK : "") + esc(ok ? t("pack.eligible") : (r.reason || t("pack.notEligible"))); } }).catch(function (e) { if (statusRow) { statusRow.className = "mgs-status mgs-status--cancel"; statusRow.textContent = errMsg(e); } });
+  }
+
+  /* ---------- événements ---------- */
+  function renderEvents() {
+    req("/events").then(function (events) {
+      events = Array.isArray(events) ? events : []; var grid = $(".mgs-page[data-page=evenements] .mgs-grid"); if (!grid || !events.length) return; var tpl = $(".mgs-card", grid); if (!tpl) return;
+      var themes = ["yellow", "green", "orange", "blue", "violet"];
+      grid.innerHTML = events.map(function (ev, i) {
+        var card = tpl.cloneNode(true); var title = (LANG === "en" && ev.title_en) ? ev.title_en : (ev.title_fr || ev.title || ""); var desc = (LANG === "en" && ev.description_en) ? ev.description_en : (ev.description_fr || ev.description || "");
+        var nm = $(".mgs-card__name", card); if (nm) nm.textContent = title; var de = $(".mgs-card__desc", card); if (de) de.textContent = desc;
+        var media = $(".mgs-card__media", card); if (media) { media.className = "mgs-card__media u--bg--" + themes[i % themes.length]; if (ev.image_url) media.innerHTML = '<img src="' + esc(ev.image_url) + '" alt="' + esc(title) + '" style="width:100%;height:100%;object-fit:cover">'; }
+        var chip = $(".mgs-chip", card); if (chip) chip.textContent = ev.starts_at ? fmtDate(ev.starts_at).date : (ev.slug || "");
+        return card.outerHTML;
+      }).join("");
+    }).catch(function () { });
+  }
+
+  /* ---------- support / chat ---------- */
+  var chatCid = null;
+  function supportSend() {
+    var subj = $("#sj"); var msg = $("#ms"); var text = (msg && msg.value || "").trim();
+    if (!text) { toast(t("support.needMsg"), "err"); return; }
+    if (!me) { toast(t("support.login"), "err"); window.mgsShowPage("connexion"); return; }
+    var full = (subj && subj.value ? subj.value.trim() + "\n" : "") + text;
+    var p = chatCid ? Promise.resolve(chatCid) : req("/chat/conversations", { method: "POST", body: {} }).then(function (c) { chatCid = c.id || (c.conversation && c.conversation.id); return chatCid; });
+    p.then(function (cid) { return req("/chat/conversations/" + cid + "/messages", { method: "POST", body: { text: full } }); }).then(function () { toast(t("toast.sent")); if (msg) msg.value = ""; if (subj) subj.value = ""; }).catch(function (e) { toast(errMsg(e), "err"); });
+  }
+  function openChat() { if (!me) { toast(t("support.login"), "err"); window.mgsShowPage("connexion"); return; } req("/chat/conversations", { method: "POST", body: {} }).then(function (c) { chatCid = c.id || (c.conversation && c.conversation.id); toast(t("support.chatOpen")); var msg = $("#ms"); if (msg) msg.focus(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+
+  /* ---------- routage : observe body[data-page] (découplé du script template) ---------- */
+  var loaders = {
+    boutique: function () { loadGames(); },
+    commandes: function () { loadOrders(); },
+    compte: function () { renderAccount(); },
+    points: function () { renderPoints(); },
+    evenements: function () { renderEvents(); },
+    pack: function () { req("/evo/season").catch(function () { }); },
+    connexion: function () { setAuthMode(authMode); },
+    accueil: function () { loadGames(); renderEvents(); }
+  };
+  var lastPage = null;
+  function route(page) { if (page === lastPage) return; lastPage = page; if (loaders[page]) { try { loaders[page](); } catch (e) { } } }
+  var obs = new MutationObserver(function () { route(body.getAttribute("data-page")); });
+  obs.observe(body, { attributes: true, attributeFilter: ["data-page"] });
+
+  /* ---------- clics : capture, stoppe le script template sur les actions prises en charge ---------- */
+  doc.addEventListener("click", function (e) {
+    var el = e.target;
+    /* panier (drawer) */
+    if ((el.closest(".nav-cart-btn") || el.closest('[aria-label*="Panier"]')) && !el.closest(".mgs-cart-drawer")) { stop(e); openCart(); return; }
+    if (el.closest(".mgs-cart-close") || el.classList.contains("mgs-cart-overlay")) { stop(e); closeCart(); return; }
+    var q = el.closest(".mgs-cart-item__qty button"); if (q) { stop(e); var it = q.closest(".mgs-cart-item"); var i = +it.dataset.i; cart[i].qty += (q.dataset.q === "plus" ? 1 : -1); if (cart[i].qty <= 0) cart.splice(i, 1); renderCart(); syncPillsFromCart(); return; }
+    var del = el.closest(".mgs-cart-item__del"); if (del) { stop(e); cart.splice(+del.closest(".mgs-cart-item").dataset.i, 1); renderCart(); syncPillsFromCart(); return; }
+    if (el.closest(".mgs-cart-checkout")) { stop(e); if (cart.length) { closeCart(); coOpen(); } return; }
+    if (el.closest(".mgs-cart-shop")) { stop(e); closeCart(); return; }
+    /* choix jeu -> charge le vrai catalogue (NE stoppe PAS : le script template affiche le catalogue) */
+    var g = el.closest(".mgs-game"); if (g) { loadCatalogFor(g.dataset.gamename, g.dataset.game); return; }
+    /* fiche produit */
+    if (el.closest(".mgs-page[data-page=produit]")) { var ptxt = (el.closest(".button-main") || {}).textContent || ""; if (/Ajouter au panier|Add to cart/i.test(ptxt)) { stop(e); var pi = produitItem(); if (pi) addToCart(pi); return; } if (/Acheter|Buy/i.test(ptxt)) { stop(e); var pi2 = produitItem(); if (pi2) addToCart(pi2); coOpen(); return; } }
+    /* checkout */
+    var rc = el.closest(".mgs-co-recent-chip"); if (rc) { stop(e); var ri = $(".mgs-co-id-input"); if (ri) ri.value = rc.dataset.id; verifyId(); return; }
+    if (el.closest(".mgs-co-verify")) { stop(e); verifyId(); return; }
+    var m = el.closest(".mgs-co-method"); if (m) { stop(e); $$(".mgs-co-method").forEach(function (x) { x.classList.remove("is--active"); }); m.classList.add("is--active"); var r = $("input", m); if (r) r.checked = true; co.method = r ? r.value : ""; if (co.method === "Binance") co.network = (cryptoCfg && cryptoCfg.networks && cryptoCfg.networks[0] && cryptoCfg.networks[0].key) || ""; return; }
+    if (el.closest(".mgs-co-submit")) { stop(e); if (!co.verified) { coStatus("is--err", esc(t("checkout.needVerify"))); return; } if (!co.method) { toast(t("checkout.needMethod"), "err"); return; } if (co.method === "Binance" && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.binanceOff"), "err"); return; } openHuman(); return; }
+    if (el.closest(".mgs-co-back")) { stop(e); window.mgsShowPage("boutique"); return; }
+    if (el.closest(".mgs-co-back2")) { stop(e); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } coShow(1); return; }
+    if (el.closest(".mgs-co-proof")) { stop(e); ensureProofInput().click(); return; }
+    if (el.closest(".mgs-co-cancel")) { stop(e); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } if (co.order) req("/orders/" + co.order.id + "/cancel", { method: "POST", body: { reason: "customer_cancel" } }).catch(function () { }); coShow(1); return; }
+    if (el.closest(".mgs-co-done")) { stop(e); coFinish(); return; }
+    if (el.closest(".mgs-human-close") || el.closest(".mgs-human-cancel") || el.classList.contains("mgs-human-overlay")) { stop(e); closeHuman(); return; }
+    if (el.closest(".mgs-human-confirm")) { stop(e); var capOn = window.MGS_CAPTCHA && window.MGS_CAPTCHA.enabled(); if (capOn) { if (window.MGS_CAPTCHA.getToken()) createOrder(); } else if (($(".mgs-human-cb") || {}).checked) createOrder(); return; }
+    /* compte */
+    if (el.closest(".mgs-page[data-page=compte]")) { var ctxt = (el.closest(".button-main") || {}).textContent || ""; if (/Déconnexion|Sign out/i.test(ctxt)) { stop(e); logout(); return; } if (/Enregistrer|Save/i.test(ctxt)) { stop(e); saveProfile(); return; } if (/Changer le mot de passe|Change password/i.test(ctxt)) { stop(e); changePassword(); return; } if (/Supprimer le compte|Delete account/i.test(ctxt)) { stop(e); deleteAccount(); return; } }
+    /* connexion */
+    if (el.closest(".mgs-page[data-page=connexion]")) { if (/Google/i.test((el.closest(".button-main") || {}).textContent || "")) { stop(e); googleLogin(); return; } if (/Mot de passe oublié|Forgot/i.test(el.textContent || "")) { stop(e); forgotPassword(); return; } var cb = el.closest('a[data-nav="compte"]'); if (cb) { stop(e); doAuth(); return; } var tab = el.closest(".mgs-tab"); if (tab) { stop(e); var idx = $$(".mgs-page[data-page=connexion] .mgs-tab").indexOf(tab); setAuthMode(idx === 0 ? "login" : "register"); return; } }
+    /* points */
+    var rd = el.closest(".mgs-redeem"); if (rd) { stop(e); redeem(rd.dataset.reward); return; }
+    /* pack */
+    if (el.closest(".mgs-page[data-page=pack]") && /Vérifier|Verify/i.test((el.closest(".button-main") || {}).textContent || "")) { stop(e); packVerify(); return; }
+    /* support */
+    if (el.closest(".mgs-page[data-page=support]")) { var panel = el.closest(".mgs-panel"); if (panel && /Chat en direct|Live chat/i.test(panel.textContent || "")) { stop(e); openChat(); return; } if (panel && /WhatsApp/i.test(panel.textContent || "")) { stop(e); toast(t("support.waPending")); return; } if (panel && /Email/i.test(panel.textContent || "")) { stop(e); window.location.href = "mailto:support@magicgame.store"; return; } if (/Envoyer|Send/i.test((el.closest(".button-main") || {}).textContent || "")) { stop(e); supportSend(); return; } }
+    /* langue (toggle compte) — stoppe le flip démo du script template */
+    var tg = el.closest(".mgs-tag-toggle"); if (tg && /^(FR|EN)$/.test(tg.textContent.trim())) { stop(e); setLang(LANG === "fr" ? "en" : "fr"); tg.textContent = LANG.toUpperCase(); return; }
+  }, true);
+
+  doc.addEventListener("change", function (e) { if (e.target.classList.contains("mgs-human-cb")) { var cf = $(".mgs-human-confirm"); if (cf) cf.disabled = !e.target.checked; } });
+
+  function setLang(l) { LANG = l; try { localStorage.setItem("mgs_lang", l); } catch (e) { } doc.documentElement.lang = l; if (lastPage) { var p = lastPage; lastPage = null; route(p); } renderCart(); }
+
+  /* ---------- boot ---------- */
+  function boot() {
+    renderCart(); renderRecent(); loadPayCfg();
+    manualHintTexts = $$(".mgs-co-hint").map(function (h) { return h.textContent; });
+    if (window.MGS_CRYPTO) {
+      window.MGS_CRYPTO.useTransport(function (method, path, body) {
+        return req(path, { method: method, body: body != null ? body : undefined }).then(function (data) { return { status: 200, data: data }; }, function (e) { if (e && e.status) return { status: e.status, data: e.data || null }; throw e; });
+      });
+      window.MGS_CRYPTO.loadConfig().then(function (c) { cryptoCfg = c; });
+    }
+    /* synchro panier en Bubble, APRÈS le stepper visuel du script template (qui pose dataset.qty) */
+    doc.addEventListener("click", function (e) { var pill = e.target.closest(".mgs-pill"); if (pill && (e.target.closest(".mgs-pill__add") || e.target.closest(".mgs-stepper__btn"))) syncPill(pill); });
+    loadSession().then(function () {
+      cartBadges();
+      if (me) req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; updatePointsPill(bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0))); }).catch(function () { });
+      route(body.getAttribute("data-page") || "accueil");
+    });
+    window.addEventListener("resize", renderRecent);
+  }
+  if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", boot); else boot();
 })();
 </script>
 </body>
