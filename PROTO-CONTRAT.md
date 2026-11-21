@@ -54,11 +54,17 @@ Rend le widget **dans le conteneur fourni** (le module ne crée que la balise
 | `containerElement` | `Element` | conteneur fourni par la page (le module n'en crée aucun) |
 | `onToken(token)` | `(string) => void` | jeton obtenu, ou `""` à l'expiration / erreur |
 | `onExpire()` | `() => void` | jeton expiré ou erreur Cloudflare : re-solliciter |
+| `onInteractive(isInteractive)` | `(boolean) => void` | `true` quand Cloudflare demande une interaction, `false` quand elle se termine (`before/after-interactive-callback`, `CaptchaWidget.js:126-127`). L'appelant ouvre sa feuille « Vérification de sécurité » sur `true` et la referme sur `false` (`Checkout.js:326`) |
 | `appearance` | `"interaction-only" \| "always"` | `interaction-only` par défaut ; passer `always` quand l'API a répondu `captcha_required` (`CaptchaWidget.js:110-114`) |
 
 Codes : `"ready"` (widget posé), `"disabled"` (pas de clé — ne rien afficher),
 `"no_container"` (conteneur absent), `"load_failed"` (CDN injoignable : la balise
 est retirée, un nouvel appel retente), `"render_failed"`.
+
+**Langue / thème :** le widget lit la langue (`mgs_lang`) et le thème (`dark`)
+**au moment de `render()`**. Contrairement à `main` qui re-rend automatiquement
+quand `lang`/`visible` changent (`CaptchaWidget.js:138`), un changement de langue
+ou de thème **exige de rappeler `MGS_CAPTCHA.render()`** sur le même conteneur.
 
 ### `MGS_CAPTCHA.getToken()` → `string`
 
@@ -172,11 +178,18 @@ Sinon le backend répond 400 / 409.
 indexée par l'identifiant de **commande**, pas par celui du paiement.
 
 ```js
-{ ok, code, status, orderStatus, payment }
+{ ok, code, status, orderStatus, orderDeadline, payment }
 ```
 
 Codes : `"ok"`, `"network_error"`, `"order_not_found"`, `"forbidden"`,
 `"http_<status>"`.
+
+`orderDeadline` = `payment_deadline_at` de la commande (`PaymentCountdown.js:15`)
+**quand le backend le renvoie**. La projection actuelle de `/crypto/{id}/status`
+ne contient que `status` (`backend/routers/crypto.py:50`) : `orderDeadline` vaut
+donc `""` tant que le backend ne l'expose pas. L'appelant passe alors l'échéance
+de la commande (issue de `POST /orders` / `GET /orders/{id}`) à `poll` via
+`opts.deadlineAt`.
 
 ### `MGS_CRYPTO.poll(orderId, onUpdate, opts)` → `{ orderId, stop }`
 
@@ -184,15 +197,23 @@ Sonde `statusOf` toutes les **8000 ms** (`BinancePay.js:11`) et appelle
 `onUpdate` à chaque réponse :
 
 ```js
-{ ok, code, status, orderStatus, payment, done, failed, attempt }
+{ ok, code, status, orderStatus, orderDeadline, payment, done, failed, expired, attempt }
 ```
 
 - `done` : `payment.status === "CONFIRMED"` → **arrêt** ;
 - `failed` : `payment.status === "FAILED"` → **arrêt** ;
-- paiement absent **et** `orderStatus !== "pending_payment"` → **arrêt** ;
-- une erreur réseau **ne** coupe pas le sondage (`BinancePay.js:33`).
+- `expired` : l'échéance de la commande est atteinte → **arrêt** + `opts.onExpired()`
+  (`PaymentCountdown.js:33`). L'échéance vient de `opts.deadlineAt` (ou, à défaut,
+  de `orderDeadline` renvoyé par `statusOf`) ;
+- paiement absent **et** `orderStatus !== "pending_payment"` → **arrêt**. C'est
+  **plus prudent que `main`** (`BinancePay.js:38-41` ne stoppe que sur
+  CONFIRMED/FAILED et continue jusqu'au démontage) : on ne sonde pas une commande
+  annulée/expirée sans paiement ;
+- une erreur réseau **ne** coupe pas le sondage (`BinancePay.js:40`).
 
-`opts` : `intervalMs` (défaut 8000), `maxAttempts` (défaut 0 = illimité).
+`opts` : `intervalMs` (défaut 8000), `maxAttempts` (défaut 0 = illimité),
+`deadlineAt` (ISO `payment_deadline_at` de la commande), `onExpired()` (appelé une
+fois à l'expiration, avant l'arrêt).
 
 ### `MGS_CRYPTO.stop()` → `{ ok, code }`
 
@@ -249,6 +270,6 @@ Aucune preuve n'est demandée pour Binance : la détection est automatique
 
 `cd frontend && node scripts/proto-logic.test.mjs`
 
-20 tests, sans réseau ni navigateur : les modules sont chargés dans un contexte
+29 tests, sans réseau ni navigateur : les modules sont chargés dans un contexte
 `node:vm` avec un DOM factice (captcha) et un transport simulé (crypto). Le
 script sort en code 1 au premier échec et affiche `N passed, M failed`.
