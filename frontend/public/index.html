@@ -4085,6 +4085,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   /* ---------- clics : capture, stoppe le script template sur les actions prises en charge ---------- */
   doc.addEventListener("click", function (e) {
     var el = e.target;
+    /* favori : toggleFav vit dans notre IIFE, le handler du template ne le voit pas (ReferenceError) */
+    var fv = el.closest(".mgs-pcard__fav"); if (fv) { var fc = fv.closest(".mgs-pcard"); stop(e); toggleFav(fc && fc.dataset.pid); return; }
     /* fiche produit : tout clic sur la carte (hors pilule/favori) ouvre la fiche remplie avec le produit.
        Le <a> plein cadre est en z-index:0, donc sous __figure/__bottom : lui seul était inatteignable. */
     var pc = el.closest(".mgs-pcard");

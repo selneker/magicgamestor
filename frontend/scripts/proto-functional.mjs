@@ -299,6 +299,20 @@ test("liens internes du template (#jeux, #securite, #support) naviguent", async 
   await page.waitForFunction(() => location.pathname === "/support", null, { timeout: 8000 });
 });
 
+test("favoris : bascule + persistance localStorage", async (page) => {
+  await boot(page);
+  await page.evaluate(() => window.mgsShowPage("boutique"));
+  await page.locator('.mgs-game[data-gamename="PUBG Mobile"]').first().click();
+  await page.waitForSelector('.mgs-pcard[data-pid="p1"]', { timeout: 15000 });
+  const fav = page.locator('.mgs-pcard[data-pid="p1"] .mgs-pcard__fav');
+  await fav.click();
+  await page.waitForFunction(() => { try { return JSON.parse(localStorage.getItem("mgs_favorites") || "[]").indexOf("p1") >= 0; } catch { return false; } }, null, { timeout: 8000 });
+  assert.equal(await fav.getAttribute("aria-pressed"), "true");
+  await fav.click();
+  await page.waitForFunction(() => { try { return JSON.parse(localStorage.getItem("mgs_favorites") || "[]").indexOf("p1") < 0; } catch { return false; } }, null, { timeout: 8000 });
+  assert.equal(await fav.getAttribute("aria-pressed"), "false");
+});
+
 test("fiche produit : remplie depuis la carte cliquée + ajout au panier", async (page, state) => {
   state.loggedIn = true;
   await boot(page);
