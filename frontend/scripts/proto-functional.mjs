@@ -281,6 +281,41 @@ test("URL <-> page : l'URL suit la page affichée, et inversement", async (page)
   await page.waitForFunction(() => location.pathname === "/support", null, { timeout: 8000 });
 });
 
+test("liens internes du template (#jeux, #securite, #support) naviguent", async (page, state) => {
+  state.loggedIn = true; /* commandes est protégée */
+  await boot(page);
+  await page.locator('a[href="#jeux"]').first().click();
+  await pageIs(page, "boutique");
+  await page.waitForFunction(() => location.pathname === "/boutique", null, { timeout: 8000 });
+  await page.evaluate(() => window.mgsShowPage("accueil")); /* #securite est sur l'accueil */
+  const secu = page.locator('a[href="#securite"]').first(); /* masqué sous 991 px (design) */
+  if (await secu.isVisible()) {
+    await secu.click();
+    await pageIs(page, "commandes");
+    await page.waitForFunction(() => location.pathname === "/commandes", null, { timeout: 8000 });
+  }
+  await page.locator("a.p-m.text-link[href=\"#support\"]").first().click(); /* FAQ du pied de page */
+  await pageIs(page, "support");
+  await page.waitForFunction(() => location.pathname === "/support", null, { timeout: 8000 });
+});
+
+test("fiche produit : remplie depuis la carte cliquée + ajout au panier", async (page, state) => {
+  state.loggedIn = true;
+  await boot(page);
+  await page.evaluate(() => window.mgsShowPage("boutique"));
+  await page.locator('.mgs-game[data-gamename="PUBG Mobile"]').first().click();
+  await page.waitForSelector('.mgs-pcard[data-pid="p2"]', { timeout: 15000 });
+  await page.locator('.mgs-pcard[data-pid="p2"] .mgs-pcard__figure').click();
+  await pageIs(page, "produit");
+  await page.waitForFunction(() => document.querySelector('.mgs-page[data-page="produit"] h1').textContent === "1800 UC", null, { timeout: 8000 });
+  assert.equal((await txt(page, '.mgs-page[data-page="produit"] .mgs-price')).replace(/\s+/g, " ").trim(), "32 000 Ar");
+  await page.locator('.mgs-page[data-page=produit] a.button-main', { hasText: "Ajouter au panier" }).click();
+  assert.equal(await cartLen(page), 1);
+  const item = await page.evaluate(() => JSON.parse(localStorage.getItem("mgs_cart_v3"))[0]);
+  assert.equal(item.product_id, "p2");
+  assert.equal(item.price, 32000);
+});
+
 /* ---------- runner : chaque test à chaque viewport ---------- */
 async function main() {
   if (!fs.existsSync(BUILD)) { console.error("[erreur] build/index.html absent : lancez `yarn build` d'abord."); process.exit(2); }
