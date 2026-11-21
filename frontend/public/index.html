@@ -3493,7 +3493,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       "status.pending": "À payer", "status.verify": "Vérification", "status.progress": "En cours",
       "method.mvola": "MVola", "method.orange": "Orange Money", "method.binance": "USDT",
       "confirm.delete": "Supprimer définitivement votre compte ? Cette action est irréversible.",
-      "auth.name": "Entrez votre nom", "auth.emailFirst": "Entrez votre email d'abord", "auth.pwPrompt": "Mot de passe"
+      "auth.name": "Entrez votre nom", "auth.emailFirst": "Entrez votre email d'abord", "auth.pwPrompt": "Mot de passe",
+      "auth.emailBad": "Adresse email invalide", "auth.pwShort": "Mot de passe trop court ({n} caractères min.)",
+      "auth.emailTaken": "Cet email est déjà inscrit", "auth.blocked": "Ce compte est bloqué. Contactez le support.",
+      "auth.tooMany": "Trop de tentatives. Réessayez dans 15 minutes."
     },
     en: {
       "toast.added": "Added to cart", "toast.login": "Signed in", "toast.logout": "Signed out",
@@ -3524,7 +3527,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       "status.pending": "To pay", "status.verify": "Verifying", "status.progress": "In progress",
       "method.mvola": "MVola", "method.orange": "Orange Money", "method.binance": "USDT",
       "confirm.delete": "Permanently delete your account? This cannot be undone.",
-      "auth.name": "Enter your name", "auth.emailFirst": "Enter your email first", "auth.pwPrompt": "Password"
+      "auth.name": "Enter your name", "auth.emailFirst": "Enter your email first", "auth.pwPrompt": "Password",
+      "auth.emailBad": "Invalid email address", "auth.pwShort": "Password too short ({n} characters min.)",
+      "auth.emailTaken": "This email is already registered", "auth.blocked": "This account is blocked. Contact support.",
+      "auth.tooMany": "Too many attempts. Try again in 15 minutes."
     }
   };
   function t(k, v) { var s = (T[LANG] && T[LANG][k]) || T.fr[k] || k; if (v) Object.keys(v).forEach(function (key) { s = s.split("{" + key + "}").join(v[key]); }); return s; }
@@ -3917,18 +3923,26 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     else if (mode === "login" && nameField) { nameField.remove(); }
   }
   function doAuth() {
+    if (authBusy) return;
     var email = ($("#em") || {}).value || ""; var pw = ($("#pw") || {}).value || "";
     if (!email || !pw) { toast(t("err.generic"), "err"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast(t("auth.emailBad"), "err"); return; }
+    var min = authMode === "register" ? 8 : 6;
+    if (pw.length < min) { toast(t("auth.pwShort", { n: min }), "err"); return; }
+    if (authMode === "register" && !($("#reg-name") || {}).value) { toast(t("auth.name"), "err"); return; }
+    authBusy = true;
+    var finish = function () { authBusy = false; };
+    var go = function () { loadSession().then(function () { syncAuthChrome(); toast(t("toast.login")); var to = authReturnTo || "compte"; authReturnTo = null; window.mgsShowPage(to); }).catch(finish); };
     if (authMode === "register") {
-      var name = ($("#reg-name") || {}).value || ""; if (!name) { toast(t("auth.name"), "err"); return; }
-      req("/auth/register", { method: "POST", body: { email: email, password: pw, name: name, captcha_token: null } }).then(function () { toast(t("toast.register")); return req("/auth/login", { method: "POST", body: { email: email, password: pw, remember: true, captcha_token: null } }); }).then(function () { return loadSession(); }).then(function () { toast(t("toast.login")); window.mgsShowPage("compte"); }).catch(function (e) { toast(errMsg(e), "err"); });
+      var name = $("#reg-name").value;
+      req("/auth/register", { method: "POST", body: { email: email, password: pw, name: name, captcha_token: captchaToken() } }).then(function () { toast(t("toast.register")); return req("/auth/login", { method: "POST", body: { email: email, password: pw, remember: true, captcha_token: captchaToken() } }); }).then(go).catch(function (e) { finish(); toast(authErr(e), "err"); });
     } else {
       var remember = !!($('.mgs-page[data-page=connexion] input[type="checkbox"]') || {}).checked;
-      req("/auth/login", { method: "POST", body: { email: email, password: pw, remember: remember, captcha_token: null } }).then(function () { return loadSession(); }).then(function () { toast(t("toast.login")); window.mgsShowPage("compte"); }).catch(function (e) { toast(e.status === 401 ? t("err.login") : errMsg(e), "err"); });
+      req("/auth/login", { method: "POST", body: { email: email, password: pw, remember: remember, captcha_token: captchaToken() } }).then(go).catch(function (e) { finish(); toast(authErr(e), "err"); });
     }
   }
-  function googleLogin() { toast(t("toast.google")); window.location.href = API + "/auth/google/start"; }
-  function forgotPassword() { var email = ($("#em") || {}).value || ""; if (!email) { toast(t("auth.emailFirst"), "err"); return; } req("/auth/forgot-password", { method: "POST", body: { email: email, captcha_token: null } }).then(function () { toast(t("toast.forgot")); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+  function googleLogin() { toast(t("toast.google")); window.location.href = API + "/auth/google/start?return_to=" + encodeURIComponent(body.getAttribute("data-page") || "accueil"); }
+  function forgotPassword() { var email = ($("#em") || {}).value || ""; if (!email) { toast(t("auth.emailFirst"), "err"); return; } req("/auth/forgot-password", { method: "POST", body: { email: email, captcha_token: captchaToken() } }).then(function () { toast(t("toast.forgot")); }).catch(function (e) { toast(authErr(e), "err"); }); }
 
   /* ---------- points ---------- */
   function renderPoints() {
@@ -3992,7 +4006,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     points: function () { renderPoints(); },
     evenements: function () { renderEvents(); },
     pack: function () { req("/evo/season").catch(function () { }); },
-    connexion: function () { setAuthMode(authMode); },
+    connexion: function () { if (me) { var to = authReturnTo || "compte"; authReturnTo = null; window.mgsShowPage(to); return; } setAuthMode(authMode); },
     accueil: function () { loadGames(); renderEvents(); }
   };
   var lastPage = null;
