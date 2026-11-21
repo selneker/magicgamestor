@@ -3485,7 +3485,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       "checkout.binanceConfirmed": "Paiement confirmé",
       "checkout.creating": "Création de la commande…", "checkout.uploading": "Envoi de la preuve…",
       "checkout.proofOk": "Preuve envoyée · vérification en cours", "checkout.needProof": "Choisissez une image de preuve (JPEG/PNG).",
-      "checkout.expired": "Délai expiré", "orders.empty": "Aucune commande pour le moment.",
+      "checkout.expired": "Délai expiré", "orders.empty": "Aucune commande pour le moment.", "catalog.emptyGame": "Ce jeu n'a pas encore de catalogue disponible.",
       "orders.login": "Connectez-vous pour voir vos commandes.", "pack.eligible": "Compte éligible",
       "pack.notEligible": "Compte non éligible", "pack.needId": "Entrez votre ID joueur PUBG.",
       "pack.checking": "Vérification…", "support.needMsg": "Écrivez un message.", "support.login": "Connectez-vous pour discuter.",
@@ -3516,7 +3516,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       "checkout.binanceConfirmed": "Payment confirmed",
       "checkout.creating": "Creating order…", "checkout.uploading": "Uploading proof…",
       "checkout.proofOk": "Proof sent · verification in progress", "checkout.needProof": "Choose a proof image (JPEG/PNG).",
-      "checkout.expired": "Time expired", "orders.empty": "No orders yet.",
+      "checkout.expired": "Time expired", "orders.empty": "No orders yet.", "catalog.emptyGame": "This game has no catalog available yet.",
       "orders.login": "Sign in to see your orders.", "pack.eligible": "Eligible account",
       "pack.notEligible": "Not eligible", "pack.needId": "Enter your PUBG player ID.",
       "pack.checking": "Checking…", "support.needMsg": "Write a message.", "support.login": "Sign in to chat.",
@@ -3638,16 +3638,28 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- catalogue (données réelles -> gabarit .mgs-pcard existant) ---------- */
   function renderCatalog(products, game) {
-    var grid = $(".mgs-boutique-catalog .mgs-grid") || $(".mgs-boutique-catalog"); var tpl = $(".mgs-boutique-catalog .mgs-pcard");
-    if (!grid || !tpl) return;
-    if (!products || !products.length) return; /* backend vide -> conserve le design statique */
+    var grid = $(".mgs-boutique-catalog .mgs-grid") || $(".mgs-boutique-catalog");
+    if (!grid) return;
+    var tpl = $(".mgs-boutique-catalog .mgs-pcard");
+    if (!tpl && window.__mgsCatalogTpl) { grid.appendChild(window.__mgsCatalogTpl); tpl = window.__mgsCatalogTpl; }
+    if (tpl) window.__mgsCatalogTpl = tpl;
+    if (!tpl) return;
+    if (!products || !products.length) {
+      /* backend vide ou en erreur : grille vidée + état vide, jamais de fausses cartes */
+      $$(".mgs-pcard", grid).forEach(function (c) { c.remove(); });
+      var ex = $(".mgs-empty", grid);
+      if (!ex) { ex = doc.createElement("div"); ex.className = "mgs-empty"; ex.setAttribute("role", "status"); ex.innerHTML = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><p style="margin:0;font-weight:600"></p>'; grid.appendChild(ex); }
+      var ep = $("p", ex); if (ep) ep.textContent = t("catalog.emptyGame");
+      return;
+    }
+    var exOk = $(".mgs-empty", grid); if (exOk) exOk.remove();
     var frag = doc.createDocumentFragment();
     products.forEach(function (p) {
       var card = tpl.cloneNode(true);
       var amount = p.uc_amount != null ? String(p.uc_amount) : (p.name || "");
       var am = $(".mgs-pcard__amount", card); if (am) { am.textContent = amount; am.classList.toggle("is--long", amount.length > 3); }
       var un = $(".mgs-pcard__unit", card); if (un) un.textContent = p.uc_amount != null ? (p.type === "prime" || p.type === "prime_plus" ? "" : "UC") : "";
-      var nm = $(".mgs-pcard__name", card); if (nm) nm.textContent = p.name || "";
+      var nm = $(".mgs-pcard__title", card); if (nm) nm.textContent = p.name || "";
       var pr = $(".mgs-pill__price", card); if (pr) pr.textContent = ar(p.price);
       var old = $(".mgs-pill__old", card); if (old) { if (p.old_price) { old.textContent = ar(p.old_price); old.hidden = false; } else old.hidden = true; }
       var img = $(".mgs-pcard__media img", card); if (img && p.image_url) img.src = p.image_url;
