@@ -3540,6 +3540,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function t(k, v) { var s = (T[LANG] && T[LANG][k]) || T.fr[k] || k; if (v) Object.keys(v).forEach(function (key) { s = s.split("{" + key + "}").join(v[key]); }); return s; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function ar(n) { n = Math.round(Number(n) || 0); return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " Ar"; }
+  function arNum(n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, " "); }
   function parsePrice(s) { return parseInt(String(s).replace(/[^\d]/g, ""), 10) || 0; }
 
   /* ---------- toast (feedback fonctionnel minimal, tokens existants) ---------- */
@@ -3645,7 +3646,24 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function syncFavs() { var a = getFavs(); $$(".mgs-pcard").forEach(function (c) { var b = $(".mgs-pcard__fav", c); if (!b) return; var on = c.dataset.pid && a.indexOf(c.dataset.pid) >= 0; b.setAttribute("aria-pressed", on ? "true" : "false"); }); }
   function openCart() { renderCart(); var d = $(".mgs-cart-drawer"), o = $(".mgs-cart-overlay"); if (!d) return; d.hidden = false; o.hidden = false; void d.offsetWidth; d.classList.add("is--open"); o.classList.add("is--open"); }
   function closeCart() { var d = $(".mgs-cart-drawer"), o = $(".mgs-cart-overlay"); if (!d) return; d.classList.remove("is--open"); o.classList.remove("is--open"); setTimeout(function () { d.hidden = true; o.hidden = true; }, 450); }
+  var produitCurrent = null;
+  function renderProduit(card) {
+    var p = $(".mgs-page[data-page=produit]"); if (!p || !card) return;
+    var name = card.dataset.name || "Produit";
+    var price = parsePrice(($(".mgs-pill__price", card) || {}).textContent || "0");
+    var gname = ($(".mgs-cat-game") || {}).textContent || "";
+    var crumb = $(".mgs-crumb span", p); if (crumb) crumb.textContent = name;
+    var tt = $("h1", p); if (tt) tt.textContent = name;
+    var pr = $(".mgs-price", p); if (pr) pr.innerHTML = arNum(price) + " <small>Ar</small>";
+    var bb = $(".mgs-buybar .mgs-price", p); if (bb) bb.innerHTML = arNum(price) + " <small>Ar</small>";
+    var eb = $(".mgs-eyebrow", p); if (eb) eb.textContent = (gname ? gname + " · " : "") + (LANG === "en" ? "direct top-up" : "recharge directe");
+    var media = $(".mgs-card__media", p); if (media && card.dataset.img) media.innerHTML = '<img src="' + esc(card.dataset.img) + '" alt="' + esc(name) + '" style="width:100%;height:100%;object-fit:cover">';
+    var st = $(".mgs-status--done", p); if (st) st.style.display = "none"; /* badge « pseudo vérifié » démo : rien n'est vérifié ici */
+    var pid = $("#pid", p); if (pid) pid.value = (me && me.saved_pubg_ids && me.saved_pubg_ids[0]) || "";
+    produitCurrent = { key: "produit|" + name, product_id: card.dataset.pid || null, name: name, price: price, game_name: gname, qty: 1 };
+  }
   function produitItem() {
+    if (produitCurrent) return produitCurrent;
     var p = $(".mgs-page[data-page=produit]"); if (!p) return null;
     var name = ($("h1", p) || {}).textContent || "Produit";
     var price = parsePrice(($(".mgs-price", p) || {}).textContent || "0");
@@ -3959,7 +3977,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (authMode === "register" && !($("#reg-name") || {}).value) { toast(t("auth.name"), "err"); return; }
     authBusy = true;
     var finish = function () { authBusy = false; };
-    var go = function () { loadSession().then(function () { syncAuthChrome(); toast(t("toast.login")); var to = authReturnTo || "compte"; authReturnTo = null; window.mgsShowPage(to); }).catch(finish); };
+    var go = function () { loadSession().then(function () { syncAuthChrome(); toast(t("toast.login")); var to = authReturnTo || "accueil"; authReturnTo = null; window.mgsShowPage(to); }).catch(finish); };
     if (authMode === "register") {
       var name = $("#reg-name").value;
       req("/auth/register", { method: "POST", body: { email: email, password: pw, name: name, captcha_token: captchaToken() } }).then(function () { toast(t("toast.register")); return req("/auth/login", { method: "POST", body: { email: email, password: pw, remember: true, captcha_token: captchaToken() } }); }).then(go).catch(function (e) { finish(); toast(authErr(e), "err"); });
@@ -4044,12 +4062,39 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   };
   var lastPage = null;
   function route(page) { if (page === lastPage) return; lastPage = page; if (loaders[page]) { try { loaders[page](); } catch (e) { } } }
-  var obs = new MutationObserver(function () { route(body.getAttribute("data-page")); });
+  /* ---------- URL <-> page (l'URL reflète la page affichée, et inversement) ---------- */
+  function mgsPageFromUrl() {
+    var p = String(location.pathname || "/").replace(/^\/+|\/+$/g, "");
+    if (p && doc.querySelector('.mgs-page[data-page="' + p + '"]')) return p;
+    var h = String(location.hash || "").replace(/^#/, "");
+    var H = { top: "accueil", jeux: "boutique", recharger: "evenements", securite: "commandes", commandes: "commandes", support: "support" };
+    return H[h] || "accueil";
+  }
+  function mgsSyncUrl(id, replace) {
+    try {
+      var want = id === "accueil" ? "/" : "/" + id;
+      if (location.pathname === want) return;
+      if (replace) history.replaceState({ mgs: id }, "", want + location.search);
+      else history.pushState({ mgs: id }, "", want + location.search);
+    } catch (e) { }
+  }
+  var obs = new MutationObserver(function () { var p = body.getAttribute("data-page"); mgsSyncUrl(p); route(p); });
   obs.observe(body, { attributes: true, attributeFilter: ["data-page"] });
+  window.addEventListener("popstate", function () { var p = mgsPageFromUrl(); if (p !== body.getAttribute("data-page")) window.mgsShowPage(p); });
 
   /* ---------- clics : capture, stoppe le script template sur les actions prises en charge ---------- */
   doc.addEventListener("click", function (e) {
     var el = e.target;
+    /* favori : toggleFav vit dans notre IIFE, le handler du template ne le voit pas (ReferenceError) */
+    var fv = el.closest(".mgs-pcard__fav"); if (fv) { var fc = fv.closest(".mgs-pcard"); stop(e); toggleFav(fc && fc.dataset.pid); return; }
+    /* fiche produit : tout clic sur la carte (hors pilule/favori) ouvre la fiche remplie avec le produit.
+       Le <a> plein cadre est en z-index:0, donc sous __figure/__bottom : lui seul était inatteignable. */
+    var pc = el.closest(".mgs-pcard");
+    if (pc && !el.closest(".mgs-pill") && !el.closest(".mgs-pcard__fav")) { stop(e); renderProduit(pc); window.mgsShowPage("produit"); return; }
+    /* liens internes du template (#jeux, #securite, #support, #top…) : le sélecteur du script
+       template (a[data-nav], .nav-inner-li a, …) ne les couvrait pas — ces boutons ne faisaient rien */
+    var la = el.closest('a[href^="#"]');
+    if (la) { var hh = la.getAttribute("href"); var HM = { "#top": "accueil", "#jeux": "boutique", "#recharger": "evenements", "#securite": "commandes", "#commandes": "commandes", "#support": "support", "#produit": "produit", "#compte": "compte", "#boutique": "boutique", "#points": "points", "#connexion": "connexion", "#evenements": "evenements", "#pack": "pack" }; if (HM[hh]) { stop(e); window.mgsShowPage(HM[hh]); return; } }
     /* panier (drawer) */
     if ((el.closest(".nav-cart-btn") || el.closest('[aria-label*="Panier"]')) && !el.closest(".mgs-cart-drawer")) { stop(e); openCart(); return; }
     if (el.closest(".mgs-cart-close") || el.classList.contains("mgs-cart-overlay")) { stop(e); closeCart(); return; }
@@ -4108,6 +4153,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     loadSession().then(function () {
       cartBadges();
       syncAuthChrome();
+      var fromUrl = mgsPageFromUrl();
+      if (fromUrl !== (body.getAttribute("data-page") || "accueil")) window.mgsShowPage(fromUrl);
+      else mgsSyncUrl(fromUrl, true);
       if (window.mgsSetNav) mgsSetNav(body.getAttribute("data-page") || "accueil");
       if (me) req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; updatePointsPill(bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0))); }).catch(function () { });
       route(body.getAttribute("data-page") || "accueil");

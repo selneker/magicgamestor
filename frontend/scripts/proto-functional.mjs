@@ -235,14 +235,34 @@ test("money path Binance (initiate -> écran USDT -> poll CONFIRMED -> reçu)", 
   assert.equal(await cartLen(page), 0);
 });
 
-test("auth : connexion -> compte + points", async (page, state) => {
+test("paiement : annulation -> POST /orders/:id/cancel", async (page, state) => {
+  state.loggedIn = true;
+  await boot(page);
+  await addFirstProduct(page);
+  await openCheckout(page);
+  await verifyAndSubmit(page, "MVola");
+  await pageIs(page, "commande");
+  await page.waitForFunction(() => !document.querySelector('.mgs-co-screen[data-co="2"]').hidden, null, { timeout: 12000 });
+  const id = state.orders[0].id;
+  const resp = page.waitForResponse((r) => new RegExp("/api/orders/" + id + "/cancel$").test(r.url()), { timeout: 10000 });
+  await page.locator(".mgs-co-cancel").click();
+  const r = await resp;
+  assert.equal(r.request().postDataJSON().reason, "other");
+  assert.equal(r.status(), 200);
+});
+
+test("auth : connexion -> accueil + compte + points", async (page, state) => {
   state.loggedIn = false;
   await boot(page);
   await page.evaluate(() => window.mgsShowPage("connexion"));
   await pageIs(page, "connexion");
+  await page.waitForFunction(() => location.pathname === "/connexion", null, { timeout: 8000 });
   await page.locator("#em").fill("test@mg.store");
   await page.locator("#pw").fill("password123");
   await page.locator('.mgs-page[data-page="connexion"] a[data-nav="compte"]').click();
+  await pageIs(page, "accueil"); /* la connexion ramène à l'accueil */
+  await page.waitForFunction(() => location.pathname === "/", null, { timeout: 8000 });
+  await page.evaluate(() => window.mgsShowPage("compte"));
   await pageIs(page, "compte");
   await page.waitForFunction(() => document.querySelector("#acc-name") && document.querySelector("#acc-name").value === "Test Player", null, { timeout: 12000 });
   await page.evaluate(() => window.mgsShowPage("points"));
@@ -256,8 +276,80 @@ test("garde invité : points/compte -> connexion", async (page, state) => {
   await boot(page);
   await page.evaluate(() => window.mgsShowPage("points"));
   await pageIs(page, "connexion");
+  await page.waitForFunction(() => location.pathname === "/connexion", null, { timeout: 8000 });
   await page.evaluate(() => window.mgsShowPage("compte"));
   await pageIs(page, "connexion");
+});
+
+test("URL <-> page : l'URL suit la page affichée, et inversement", async (page) => {
+  await boot(page);
+  await page.evaluate(() => window.mgsShowPage("boutique"));
+  await page.waitForFunction(() => location.pathname === "/boutique", null, { timeout: 8000 });
+  await page.evaluate(() => window.mgsShowPage("evenements"));
+  await page.waitForFunction(() => location.pathname === "/evenements", null, { timeout: 8000 });
+  await page.evaluate(() => window.mgsShowPage("accueil"));
+  await page.waitForFunction(() => location.pathname === "/", null, { timeout: 8000 });
+  await page.goBack(); /* retour arrière -> page précédente */
+  await pageIs(page, "evenements");
+  await page.goto(new URL("/support", page.url()).href, { waitUntil: "load", timeout: 30000 }); /* ouverture directe */
+  await boot(page);
+  await pageIs(page, "support");
+  await page.waitForFunction(() => location.pathname === "/support", null, { timeout: 8000 });
+});
+
+test("liens internes du template (hero, FAQ, colonnes du pied de page) naviguent", async (page, state) => {
+  state.loggedIn = true; /* commandes est protégée */
+  await boot(page);
+  await page.locator('a[href="#jeux"]').first().click();
+  await pageIs(page, "boutique");
+  await page.waitForFunction(() => location.pathname === "/boutique", null, { timeout: 8000 });
+  await page.evaluate(() => window.mgsShowPage("accueil")); /* #securite est sur l'accueil */
+  const secu = page.locator('a[href="#securite"]').first(); /* masqué sous 991 px (design) */
+  if (await secu.isVisible()) {
+    await secu.click();
+    await pageIs(page, "commandes");
+    await page.waitForFunction(() => location.pathname === "/commandes", null, { timeout: 8000 });
+  }
+  await page.locator("a.p-m.text-link[href=\"#support\"]").first().click(); /* FAQ du pied de page */
+  await pageIs(page, "support");
+  await page.waitForFunction(() => location.pathname === "/support", null, { timeout: 8000 });
+  /* colonnes du pied de page : chaque lien amène à sa page (le pied de page est présent partout) */
+  for (const [href, cible] of [["#boutique", "boutique"], ["#commandes", "commandes"], ["#compte", "compte"], ["#top", "accueil"]]) {
+    await page.locator(`a[href="${href}"]`).filter({ visible: true }).first().click();
+    await pageIs(page, cible);
+    await page.waitForFunction((u) => location.pathname === u, cible === "accueil" ? "/" : "/" + cible, { timeout: 8000 });
+  }
+});
+
+test("favoris : bascule + persistance localStorage", async (page) => {
+  await boot(page);
+  await page.evaluate(() => window.mgsShowPage("boutique"));
+  await page.locator('.mgs-game[data-gamename="PUBG Mobile"]').first().click();
+  await page.waitForSelector('.mgs-pcard[data-pid="p1"]', { timeout: 15000 });
+  const fav = page.locator('.mgs-pcard[data-pid="p1"] .mgs-pcard__fav');
+  await fav.click();
+  await page.waitForFunction(() => { try { return JSON.parse(localStorage.getItem("mgs_favorites") || "[]").indexOf("p1") >= 0; } catch { return false; } }, null, { timeout: 8000 });
+  assert.equal(await fav.getAttribute("aria-pressed"), "true");
+  await fav.click();
+  await page.waitForFunction(() => { try { return JSON.parse(localStorage.getItem("mgs_favorites") || "[]").indexOf("p1") < 0; } catch { return false; } }, null, { timeout: 8000 });
+  assert.equal(await fav.getAttribute("aria-pressed"), "false");
+});
+
+test("fiche produit : remplie depuis la carte cliquée + ajout au panier", async (page, state) => {
+  state.loggedIn = true;
+  await boot(page);
+  await page.evaluate(() => window.mgsShowPage("boutique"));
+  await page.locator('.mgs-game[data-gamename="PUBG Mobile"]').first().click();
+  await page.waitForSelector('.mgs-pcard[data-pid="p2"]', { timeout: 15000 });
+  await page.locator('.mgs-pcard[data-pid="p2"] .mgs-pcard__figure').click();
+  await pageIs(page, "produit");
+  await page.waitForFunction(() => document.querySelector('.mgs-page[data-page="produit"] h1').textContent === "1800 UC", null, { timeout: 8000 });
+  assert.equal((await txt(page, '.mgs-page[data-page="produit"] .mgs-price')).replace(/\s+/g, " ").trim(), "32 000 Ar");
+  await page.locator('.mgs-page[data-page=produit] a.button-main', { hasText: "Ajouter au panier" }).click();
+  assert.equal(await cartLen(page), 1);
+  const item = await page.evaluate(() => JSON.parse(localStorage.getItem("mgs_cart_v3"))[0]);
+  assert.equal(item.product_id, "p2");
+  assert.equal(item.price, 32000);
 });
 
 /* ---------- runner : chaque test à chaque viewport ---------- */
