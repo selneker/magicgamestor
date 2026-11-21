@@ -78,6 +78,7 @@
     container: null,
     onToken: null,
     onExpire: null,
+    onInteractive: null,
   };
 
   /* `main` suit le thème de l'application (`dark` sur <html>) et la langue du
@@ -112,6 +113,10 @@
    * visible : `turnstile.render` y injecte son iframe.
    *   - onToken(token)  : jeton obtenu (chaîne) ou "" à l'expiration/erreur.
    *   - onExpire()      : jeton expiré ou erreur Cloudflare (à re-solliciter).
+   *   - onInteractive(isInteractive) : Cloudflare demande (true) ou termine
+   *                       (false) une interaction — l'appelant ouvre/ferme sa
+   *                       feuille « Vérification de sécurité »
+   *                       (CaptchaWidget.js:126-127, Checkout.js:326).
    *   - appearance      : "interaction-only" par défaut (comme `main`) ;
    *                       passer "always" quand l'API a répondu
    *                       `captcha_required` (CaptchaWidget.js:110-114).
@@ -123,6 +128,7 @@
     state.container = container || null;
     state.onToken = typeof opts.onToken === "function" ? opts.onToken : null;
     state.onExpire = typeof opts.onExpire === "function" ? opts.onExpire : null;
+    state.onInteractive = typeof opts.onInteractive === "function" ? opts.onInteractive : null;
     state.widgetId = null;
     clearToken();
 
@@ -155,6 +161,14 @@
             clearToken();
             if (state.onToken) state.onToken("");
             if (state.onExpire) state.onExpire();
+          },
+          // PL-CHK-4 — Cloudflare demande une action : l'appelant ouvre sa feuille
+          // « Vérification de sécurité » ; interaction terminée : il la referme.
+          "before-interactive-callback": function () {
+            if (state.onInteractive) state.onInteractive(true);
+          },
+          "after-interactive-callback": function () {
+            if (state.onInteractive) state.onInteractive(false);
           },
         });
         return { ok: true, code: "ready" };
