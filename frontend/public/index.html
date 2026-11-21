@@ -3496,7 +3496,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       "auth.name": "Entrez votre nom", "auth.emailFirst": "Entrez votre email d'abord", "auth.pwPrompt": "Mot de passe",
       "auth.emailBad": "Adresse email invalide", "auth.pwShort": "Mot de passe trop court ({n} caractères min.)",
       "auth.emailTaken": "Cet email est déjà inscrit", "auth.blocked": "Ce compte est bloqué. Contactez le support.",
-      "auth.tooMany": "Trop de tentatives. Réessayez dans 15 minutes."
+      "auth.tooMany": "Trop de tentatives. Réessayez dans 15 minutes.", "cart.otherGame": "Un autre jeu est déjà dans le panier. Un seul jeu par panier par commande."
     },
     en: {
       "toast.added": "Added to cart", "toast.login": "Signed in", "toast.logout": "Signed out",
@@ -3530,7 +3530,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       "auth.name": "Enter your name", "auth.emailFirst": "Enter your email first", "auth.pwPrompt": "Password",
       "auth.emailBad": "Invalid email address", "auth.pwShort": "Password too short ({n} characters min.)",
       "auth.emailTaken": "This email is already registered", "auth.blocked": "This account is blocked. Contact support.",
-      "auth.tooMany": "Too many attempts. Try again in 15 minutes."
+      "auth.tooMany": "Too many attempts. Try again in 15 minutes.", "cart.otherGame": "Another game is already in the cart. One game per cart."
     }
   };
   function t(k, v) { var s = (T[LANG] && T[LANG][k]) || T.fr[k] || k; if (v) Object.keys(v).forEach(function (key) { s = s.split("{" + key + "}").join(v[key]); }); return s; }
@@ -3602,11 +3602,14 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var cb = $(".mgs-cart-checkout"); if (cb) cb.disabled = !cart.length;
     cartBadges(); saveCart();
   }
+  function cartCap(item) { var ty = (item && item.type) || ""; return (ty === "prime" || ty === "prime_plus" || ty === "evo") ? 1 : 20; }
   function addToCart(item) {
     var key = item.key || (item.game_id + "|" + (item.product_id || item.name));
+    var game = item.game_id || "";
+    if (cart.length && game && cart[0].game_id && cart[0].game_id !== game) { toast(t("cart.otherGame"), "err"); return; }
     var it = cart.filter(function (x) { return x.key === key; })[0];
-    if (it) it.qty += (item.qty || 1);
-    else cart.push({ key: key, product_id: item.product_id || null, slug: item.slug || "", name: item.name, name_en: item.name_en || item.name, price: item.price || 0, uc_amount: item.uc_amount || "", unit: item.unit || "", type: item.type || "", game_id: item.game_id || "", game_name: item.game_name || "", image_url: item.image_url || "", qty: item.qty || 1 });
+    if (it) it.qty = Math.min(cartCap(it), it.qty + (item.qty || 1));
+    else { item.qty = Math.min(cartCap(item), item.qty || 1); cart.push({ key: key, product_id: item.product_id || null, slug: item.slug || "", name: item.name, name_en: item.name_en || item.name, price: item.price || 0, uc_amount: item.uc_amount || "", unit: item.unit || "", type: item.type || "", game_id: item.game_id || "", game_name: item.game_name || "", image_url: item.image_url || "", qty: item.qty || 1 }); }
     renderCart(); syncPillsFromCart(); toast(t("toast.added"));
   }
   function pillInfo(card) {
@@ -3620,8 +3623,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var qty = parseInt(pill.dataset.qty || "0", 10); var info = pillInfo(card);
     var it = cart.filter(function (x) { return x.key === info.key; })[0];
     if (qty <= 0) cart = cart.filter(function (x) { return x.key !== info.key; });
-    else if (it) it.qty = qty;
-    else { info.qty = qty; cart.push(info); }
+    else if (it) it.qty = Math.min(cartCap(it), qty);
+    else { info.qty = Math.min(cartCap(info), qty); cart.push(info); }
     renderCart();
   }
   function syncPillsFromCart() {
@@ -4020,7 +4023,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* panier (drawer) */
     if ((el.closest(".nav-cart-btn") || el.closest('[aria-label*="Panier"]')) && !el.closest(".mgs-cart-drawer")) { stop(e); openCart(); return; }
     if (el.closest(".mgs-cart-close") || el.classList.contains("mgs-cart-overlay")) { stop(e); closeCart(); return; }
-    var q = el.closest(".mgs-cart-item__qty button"); if (q) { stop(e); var it = q.closest(".mgs-cart-item"); var i = +it.dataset.i; cart[i].qty += (q.dataset.q === "plus" ? 1 : -1); if (cart[i].qty <= 0) cart.splice(i, 1); renderCart(); syncPillsFromCart(); return; }
+    var q = el.closest(".mgs-cart-item__qty button"); if (q) { stop(e); var it = q.closest(".mgs-cart-item"); var i = +it.dataset.i; cart[i].qty = Math.min(cartCap(cart[i]), cart[i].qty + (q.dataset.q === "plus" ? 1 : -1)); if (cart[i].qty <= 0) cart.splice(i, 1); renderCart(); syncPillsFromCart(); return; }
     var del = el.closest(".mgs-cart-item__del"); if (del) { stop(e); cart.splice(+del.closest(".mgs-cart-item").dataset.i, 1); renderCart(); syncPillsFromCart(); return; }
     if (el.closest(".mgs-cart-checkout")) { stop(e); if (cart.length) { closeCart(); coOpen(); } return; }
     if (el.closest(".mgs-cart-shop")) { stop(e); closeCart(); return; }
