@@ -3247,7 +3247,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var h=a.getAttribute("href"); if(h&&MGS_HREF[h]) return MGS_HREF[h];
     return null;
   }
-  function mgsSetNav(id){
+  function mgsSetNav(id){ if(id==="accueil")id="boutique";
     doc.querySelectorAll(".nav-inner-li a").forEach(function(a){a.classList.toggle("w--current",mgsTarget(a)===id);});
     doc.querySelectorAll(".bottom-nav-item").forEach(function(a){
       var on=mgsTarget(a)===id; a.classList.toggle("is--active",on);
@@ -3871,12 +3871,26 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     }).join("");
   }
   function loadOrders() {
-    if (!me) { renderOrders([]); return Promise.resolve([]); }
+    if (!me) { needLogin("commandes"); return Promise.resolve([]); }
     return req("/orders/me").then(function (orders) { orders = Array.isArray(orders) ? orders : (orders && orders.orders) || []; orders.sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); }); renderOrders(orders); return orders; }).catch(function (e) { toast(errMsg(e), "err"); return []; });
   }
 
   /* ---------- compte ---------- */
   function updatePointsPill(pts) { $$(".pts-n").forEach(function (e) { e.textContent = String(pts); }); $$('[aria-label*="Points fidélité"]').forEach(function (e) { var b = $(".nav-action-badge", e); if (b) b.textContent = String(pts); e.setAttribute("aria-label", "Points fidélité : " + pts); }); }
+  /* invité vs connecté : chrome de nav (pill points desktop + cercle points mobile) */
+  var authReturnTo = null, authBusy = false;
+  function syncAuthChrome() { var on = !!me; $$(".nav-points-pill").forEach(function (e) { e.style.display = on ? "" : "none"; }); $$('.nav-mobile-actions a[data-nav="points"]').forEach(function (e) { e.style.display = on ? "" : "none"; }); }
+  function needLogin(page) { authReturnTo = page || null; window.mgsShowPage("connexion"); }
+  function captchaToken() { try { return (window.MGS_CAPTCHA && window.MGS_CAPTCHA.enabled() && window.MGS_CAPTCHA.getToken()) || null; } catch (e) { return null; } }
+  function authErr(e) {
+    var st = e && e.status, d = String((e && e.data && (e.data.detail || e.data.message)) || e.message || "");
+    if (st === 401) return t("err.login");
+    if (st === 409) return t("auth.emailTaken");
+    if (st === 403) return t("auth.blocked");
+    if (st === 429) return t("auth.tooMany");
+    if (/captcha|turnstile/i.test(d)) return t("checkout.captchaAgain");
+    return errMsg(e);
+  }
   function renderAccount() {
     if (!me) { window.mgsShowPage("connexion"); return; }
     var name = me.name || me.email || "—"; var av = $(".mgs-avatar"); if (av) av.textContent = (name.trim().slice(0, 2) || "MG").toUpperCase();
@@ -3889,7 +3903,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function saveProfile() { var name = ($("#acc-name") || {}).value || ""; var phone = ($("#acc-phone") || {}).value || ""; var ids = (($("#acc-ids") || {}).value || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean); req("/auth/me", { method: "PATCH", body: { name: name, phone: phone, saved_pubg_ids: ids } }).then(function (u) { me = u || me; toast(t("toast.saved")); renderAccount(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
   function changePassword() { var cur = ($("#pw-cur") || {}).value || ""; var next = ($("#pw-next") || {}).value || ""; if (!cur || !next) { toast(t("err.generic"), "err"); return; } req("/auth/change-password", { method: "POST", body: { current_password: cur, new_password: next } }).then(function () { toast(t("toast.pwchanged")); $("#pw-cur").value = ""; $("#pw-next").value = ""; }).catch(function (e) { toast(errMsg(e), "err"); }); }
   function deleteAccount() { if (!window.confirm(t("confirm.delete"))) return; var pw = window.prompt(t("auth.pwPrompt")); if (pw == null) return; req("/auth/me/delete", { method: "POST", body: { password: pw, confirmation: "SUPPRIMER" } }).then(function () { me = null; toast(t("toast.deleted")); window.mgsShowPage("connexion"); }).catch(function (e) { toast(errMsg(e), "err"); }); }
-  function logout() { req("/auth/logout", { method: "POST" }).catch(function () { }).then(function () { me = null; toast(t("toast.logout")); renderCart(); window.mgsShowPage("accueil"); }); }
+  function logout() { req("/auth/logout", { method: "POST" }).catch(function () { }).then(function () { me = null; syncAuthChrome(); toast(t("toast.logout")); renderCart(); window.mgsShowPage("accueil"); }); }
 
   /* ---------- connexion / inscription ---------- */
   var authMode = "login";
@@ -4044,6 +4058,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     doc.addEventListener("click", function (e) { var pill = e.target.closest(".mgs-pill"); if (pill && (e.target.closest(".mgs-pill__add") || e.target.closest(".mgs-stepper__btn"))) syncPill(pill); });
     loadSession().then(function () {
       cartBadges();
+      syncAuthChrome();
+      if (window.mgsSetNav) mgsSetNav(body.getAttribute("data-page") || "accueil");
       if (me) req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; updatePointsPill(bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0))); }).catch(function () { });
       route(body.getAttribute("data-page") || "accueil");
     });
