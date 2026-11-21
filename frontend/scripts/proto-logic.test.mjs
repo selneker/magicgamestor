@@ -177,6 +177,20 @@ await test("thème sombre et langue anglaise suivis", async () => {
   assert.equal(ts.opts.language, "en");
 });
 
+await test("langue : mgs_lang prioritaire sur l'attribut lang du document", async () => {
+  const dom = makeDom();
+  dom.documentElement.lang = "fr";
+  const ctx = loadModule("mgs-logic-captcha.js", {
+    document: dom,
+    MGS_TURNSTILE_SITE_KEY: "k",
+    localStorage: { getItem: (k) => (k === "mgs_lang" ? "en" : null) },
+  });
+  const ts = makeTurnstile();
+  ctx.turnstile = ts;
+  await ctx.MGS_CAPTCHA.render({}, {});
+  assert.equal(ts.opts.language, "en");
+});
+
 await test("clé lue dans la balise meta", async () => {
   const dom = makeDom();
   dom.key = " 0xMETA ";

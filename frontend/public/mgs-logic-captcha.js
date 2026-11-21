@@ -86,9 +86,19 @@
     try { return root.document.documentElement.classList.contains("dark") ? "dark" : "light"; }
     catch (_) { return "light"; }
   }
+  /* `main` suit la langue de l'application (`useLang()`, CaptchaWidget.js:108).
+   * Dans le prototype, la langue vit dans `localStorage.mgs_lang`
+   * (index.html:3461) et `document.documentElement.lang` n'est mis à jour que
+   * par `setLang` : on lit donc `mgs_lang` d'abord, puis l'attribut. */
   function widgetLanguage() {
-    try { return String(root.document.documentElement.lang || "").toLowerCase() === "en" ? "en" : "fr"; }
-    catch (_) { return "fr"; }
+    try {
+      var stored = "";
+      try { stored = (root.localStorage && root.localStorage.getItem("mgs_lang")) || ""; } catch (_) { stored = ""; }
+      var lang = stored || (root.document && root.document.documentElement ? root.document.documentElement.lang : "");
+      return String(lang || "").toLowerCase() === "en" ? "en" : "fr";
+    } catch (_) {
+      return "fr";
+    }
   }
 
   function clearToken() {
