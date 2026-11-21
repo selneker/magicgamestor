@@ -3959,7 +3959,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (authMode === "register" && !($("#reg-name") || {}).value) { toast(t("auth.name"), "err"); return; }
     authBusy = true;
     var finish = function () { authBusy = false; };
-    var go = function () { loadSession().then(function () { syncAuthChrome(); toast(t("toast.login")); var to = authReturnTo || "compte"; authReturnTo = null; window.mgsShowPage(to); }).catch(finish); };
+    var go = function () { loadSession().then(function () { syncAuthChrome(); toast(t("toast.login")); var to = authReturnTo || "accueil"; authReturnTo = null; window.mgsShowPage(to); }).catch(finish); };
     if (authMode === "register") {
       var name = $("#reg-name").value;
       req("/auth/register", { method: "POST", body: { email: email, password: pw, name: name, captcha_token: captchaToken() } }).then(function () { toast(t("toast.register")); return req("/auth/login", { method: "POST", body: { email: email, password: pw, remember: true, captcha_token: captchaToken() } }); }).then(go).catch(function (e) { finish(); toast(authErr(e), "err"); });
@@ -4044,8 +4044,25 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   };
   var lastPage = null;
   function route(page) { if (page === lastPage) return; lastPage = page; if (loaders[page]) { try { loaders[page](); } catch (e) { } } }
-  var obs = new MutationObserver(function () { route(body.getAttribute("data-page")); });
+  /* ---------- URL <-> page (l'URL reflète la page affichée, et inversement) ---------- */
+  function mgsPageFromUrl() {
+    var p = String(location.pathname || "/").replace(/^\/+|\/+$/g, "");
+    if (p && doc.querySelector('.mgs-page[data-page="' + p + '"]')) return p;
+    var h = String(location.hash || "").replace(/^#/, "");
+    var H = { top: "accueil", jeux: "boutique", recharger: "evenements", securite: "commandes", commandes: "commandes", support: "support" };
+    return H[h] || "accueil";
+  }
+  function mgsSyncUrl(id, replace) {
+    try {
+      var want = id === "accueil" ? "/" : "/" + id;
+      if (location.pathname === want) return;
+      if (replace) history.replaceState({ mgs: id }, "", want + location.search);
+      else history.pushState({ mgs: id }, "", want + location.search);
+    } catch (e) { }
+  }
+  var obs = new MutationObserver(function () { var p = body.getAttribute("data-page"); mgsSyncUrl(p); route(p); });
   obs.observe(body, { attributes: true, attributeFilter: ["data-page"] });
+  window.addEventListener("popstate", function () { var p = mgsPageFromUrl(); if (p !== body.getAttribute("data-page")) window.mgsShowPage(p); });
 
   /* ---------- clics : capture, stoppe le script template sur les actions prises en charge ---------- */
   doc.addEventListener("click", function (e) {
@@ -4108,6 +4125,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     loadSession().then(function () {
       cartBadges();
       syncAuthChrome();
+      var fromUrl = mgsPageFromUrl();
+      if (fromUrl !== (body.getAttribute("data-page") || "accueil")) window.mgsShowPage(fromUrl);
+      else mgsSyncUrl(fromUrl, true);
       if (window.mgsSetNav) mgsSetNav(body.getAttribute("data-page") || "accueil");
       if (me) req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; updatePointsPill(bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0))); }).catch(function () { });
       route(body.getAttribute("data-page") || "accueil");

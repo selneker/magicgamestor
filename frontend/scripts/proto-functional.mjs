@@ -235,14 +235,18 @@ test("money path Binance (initiate -> écran USDT -> poll CONFIRMED -> reçu)", 
   assert.equal(await cartLen(page), 0);
 });
 
-test("auth : connexion -> compte + points", async (page, state) => {
+test("auth : connexion -> accueil + compte + points", async (page, state) => {
   state.loggedIn = false;
   await boot(page);
   await page.evaluate(() => window.mgsShowPage("connexion"));
   await pageIs(page, "connexion");
+  await page.waitForFunction(() => location.pathname === "/connexion", null, { timeout: 8000 });
   await page.locator("#em").fill("test@mg.store");
   await page.locator("#pw").fill("password123");
   await page.locator('.mgs-page[data-page="connexion"] a[data-nav="compte"]').click();
+  await pageIs(page, "accueil"); /* la connexion ramène à l'accueil */
+  await page.waitForFunction(() => location.pathname === "/", null, { timeout: 8000 });
+  await page.evaluate(() => window.mgsShowPage("compte"));
   await pageIs(page, "compte");
   await page.waitForFunction(() => document.querySelector("#acc-name") && document.querySelector("#acc-name").value === "Test Player", null, { timeout: 12000 });
   await page.evaluate(() => window.mgsShowPage("points"));
@@ -256,8 +260,25 @@ test("garde invité : points/compte -> connexion", async (page, state) => {
   await boot(page);
   await page.evaluate(() => window.mgsShowPage("points"));
   await pageIs(page, "connexion");
+  await page.waitForFunction(() => location.pathname === "/connexion", null, { timeout: 8000 });
   await page.evaluate(() => window.mgsShowPage("compte"));
   await pageIs(page, "connexion");
+});
+
+test("URL <-> page : l'URL suit la page affichée, et inversement", async (page) => {
+  await boot(page);
+  await page.evaluate(() => window.mgsShowPage("boutique"));
+  await page.waitForFunction(() => location.pathname === "/boutique", null, { timeout: 8000 });
+  await page.evaluate(() => window.mgsShowPage("evenements"));
+  await page.waitForFunction(() => location.pathname === "/evenements", null, { timeout: 8000 });
+  await page.evaluate(() => window.mgsShowPage("accueil"));
+  await page.waitForFunction(() => location.pathname === "/", null, { timeout: 8000 });
+  await page.goBack(); /* retour arrière -> page précédente */
+  await pageIs(page, "evenements");
+  await page.goto(new URL("/support", page.url()).href, { waitUntil: "load", timeout: 30000 }); /* ouverture directe */
+  await boot(page);
+  await pageIs(page, "support");
+  await page.waitForFunction(() => location.pathname === "/support", null, { timeout: 8000 });
 });
 
 /* ---------- runner : chaque test à chaque viewport ---------- */
