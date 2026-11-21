@@ -235,6 +235,22 @@ test("money path Binance (initiate -> écran USDT -> poll CONFIRMED -> reçu)", 
   assert.equal(await cartLen(page), 0);
 });
 
+test("paiement : annulation -> POST /orders/:id/cancel", async (page, state) => {
+  state.loggedIn = true;
+  await boot(page);
+  await addFirstProduct(page);
+  await openCheckout(page);
+  await verifyAndSubmit(page, "MVola");
+  await pageIs(page, "commande");
+  await page.waitForFunction(() => !document.querySelector('.mgs-co-screen[data-co="2"]').hidden, null, { timeout: 12000 });
+  const id = state.orders[0].id;
+  const resp = page.waitForResponse((r) => new RegExp("/api/orders/" + id + "/cancel$").test(r.url()), { timeout: 10000 });
+  await page.locator(".mgs-co-cancel").click();
+  const r = await resp;
+  assert.equal(r.request().postDataJSON().reason, "other");
+  assert.equal(r.status(), 200);
+});
+
 test("auth : connexion -> accueil + compte + points", async (page, state) => {
   state.loggedIn = false;
   await boot(page);
@@ -281,7 +297,7 @@ test("URL <-> page : l'URL suit la page affichée, et inversement", async (page)
   await page.waitForFunction(() => location.pathname === "/support", null, { timeout: 8000 });
 });
 
-test("liens internes du template (#jeux, #securite, #support) naviguent", async (page, state) => {
+test("liens internes du template (hero, FAQ, colonnes du pied de page) naviguent", async (page, state) => {
   state.loggedIn = true; /* commandes est protégée */
   await boot(page);
   await page.locator('a[href="#jeux"]').first().click();
@@ -297,6 +313,12 @@ test("liens internes du template (#jeux, #securite, #support) naviguent", async 
   await page.locator("a.p-m.text-link[href=\"#support\"]").first().click(); /* FAQ du pied de page */
   await pageIs(page, "support");
   await page.waitForFunction(() => location.pathname === "/support", null, { timeout: 8000 });
+  /* colonnes du pied de page : chaque lien amène à sa page (le pied de page est présent partout) */
+  for (const [href, cible] of [["#boutique", "boutique"], ["#commandes", "commandes"], ["#compte", "compte"], ["#top", "accueil"]]) {
+    await page.locator(`a[href="${href}"]`).filter({ visible: true }).first().click();
+    await pageIs(page, cible);
+    await page.waitForFunction((u) => location.pathname === u, cible === "accueil" ? "/" : "/" + cible, { timeout: 8000 });
+  }
 });
 
 test("favoris : bascule + persistance localStorage", async (page) => {
