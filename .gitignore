@@ -103,3 +103,10 @@ audit-shots/
 
 # Config locale des agents (permissions, tâches)
 .claude/
+
+# PL-FE-007-V1 — sorties générées et fichiers locaux d'agent
+graphify-out/
+tasks/
+# Sources design de travail non suivies (le livrable servi est frontend/public/index.html)
+design-system-v2.html
+design-system-v3.html
