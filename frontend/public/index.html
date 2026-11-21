@@ -3654,6 +3654,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
 
   /* ---------- catalogue (données réelles -> gabarit .mgs-pcard existant) ---------- */
+  var catalogSort = "populaire"; var catalogOriginal = [];
   function renderCatalog(products, game) {
     var grid = $(".mgs-boutique-catalog .mgs-grid") || $(".mgs-boutique-catalog");
     if (!grid) return;
@@ -3687,7 +3688,19 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       frag.appendChild(card);
     });
     $$(".mgs-pcard", grid).forEach(function (c) { c.remove(); });
-    grid.appendChild(frag); syncPillsFromCart(); syncFavs();
+    grid.appendChild(frag); syncPillsFromCart(); syncFavs(); catalogOriginal = $$(".mgs-pcard", grid).slice();
+    var ch = $$(".mgs-boutique-catalog .mgs-chip"); if (ch[0]) ch[0].textContent = t("catalog.sortPopular"); if (ch[1]) ch[1].textContent = t("catalog.sortPriceAll");
+  }
+  function sortCatalog(mode) {
+    catalogSort = mode;
+    var grid = $(".mgs-boutique-catalog .mgs-grid"); if (!grid) return;
+    var arr = (mode === "populaire" ? catalogOriginal : $$(".mgs-pcard", grid)).slice();
+    if (mode === "price_asc") arr.sort(function (a, b) { return parsePrice(($(".mgs-pill__price", a) || {}).textContent) - parsePrice(($(".mgs-pill__price", b) || {}).textContent); });
+    else if (mode === "price_desc") arr.sort(function (a, b) { return parsePrice(($(".mgs-pill__price", b) || {}).textContent) - parsePrice(($(".mgs-pill__price", a) || {}).textContent); });
+    arr.forEach(function (c) { grid.appendChild(c); });
+    var ch = $$(".mgs-boutique-catalog .mgs-chip");
+    if (ch[0]) ch[0].textContent = t("catalog.sortPopular");
+    if (ch[1]) ch[1].textContent = mode === "price_asc" ? t("catalog.sortPriceAsc") : mode === "price_desc" ? t("catalog.sortPriceDesc") : t("catalog.sortPriceAll");
   }
   function loadCatalogFor(gameName, gameSlug) {
     return loadGames().then(function () {
@@ -4046,6 +4059,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (el.closest(".mgs-cart-shop")) { stop(e); closeCart(); return; }
     /* choix jeu -> charge le vrai catalogue (NE stoppe PAS : le script template affiche le catalogue) */
     var g = el.closest(".mgs-game"); if (g) { loadCatalogFor(g.dataset.gamename, g.dataset.game); return; }
+    /* tri du catalogue (puces existantes) */
+    var chip = el.closest(".mgs-boutique-catalog .mgs-chip"); if (chip) { stop(e); var ci = $$(".mgs-boutique-catalog .mgs-chip").indexOf(chip); if (ci === 0) sortCatalog("populaire"); else sortCatalog(catalogSort === "price_asc" ? "price_desc" : "price_asc"); return; }
     /* fiche produit */
     if (el.closest(".mgs-page[data-page=produit]")) { var ptxt = (el.closest(".button-main") || {}).textContent || ""; if (/Ajouter au panier|Add to cart/i.test(ptxt)) { stop(e); var pi = produitItem(); if (pi) addToCart(pi); return; } if (/Acheter|Buy/i.test(ptxt)) { stop(e); var pi2 = produitItem(); if (pi2) addToCart(pi2); coOpen(); return; } }
     /* checkout */
