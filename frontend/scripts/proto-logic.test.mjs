@@ -229,6 +229,40 @@ await test("isCaptchaError : contrat backend + ancien déploiement", () => {
   assert.equal(f(null), false);
 });
 
+await test("signal d'interaction : before/after-interactive-callback -> onInteractive", async () => {
+  const dom = makeDom();
+  const ctx = loadModule("mgs-logic-captcha.js", { document: dom, MGS_TURNSTILE_SITE_KEY: "k" });
+  const ts = makeTurnstile();
+  ctx.turnstile = ts;
+  const events = [];
+  const r = await ctx.MGS_CAPTCHA.render({}, { onInteractive: (v) => events.push(v) });
+  assert.equal(r.ok, true);
+  assert.equal(typeof ts.opts["before-interactive-callback"], "function");
+  assert.equal(typeof ts.opts["after-interactive-callback"], "function");
+  ts.opts["before-interactive-callback"]();
+  ts.opts["after-interactive-callback"]();
+  same(events, [true, false]);
+});
+
+await test("codes captcha : no_container, render_failed, reset no_widget/disabled", async () => {
+  const dom = makeDom();
+  const ctx = loadModule("mgs-logic-captcha.js", { document: dom, MGS_TURNSTILE_SITE_KEY: "k" });
+  const nc = await ctx.MGS_CAPTCHA.render(null, {});
+  assert.equal(nc.ok, false);
+  assert.equal(nc.code, "no_container");
+  const rw = ctx.MGS_CAPTCHA.reset();
+  assert.equal(rw.ok, false);
+  assert.equal(rw.code, "no_widget");
+  ctx.turnstile = { render() { throw new Error("boom"); }, reset() {}, remove() {} };
+  const rf = await ctx.MGS_CAPTCHA.render({}, {});
+  assert.equal(rf.ok, false);
+  assert.equal(rf.code, "render_failed");
+  const ctx2 = loadModule("mgs-logic-captcha.js", { document: makeDom() });
+  const rd = ctx2.MGS_CAPTCHA.reset();
+  assert.equal(rd.ok, false);
+  assert.equal(rd.code, "disabled");
+});
+
 /* ===================================================================== */
 /*  CRYPTO                                                               */
 /* ===================================================================== */
@@ -455,6 +489,69 @@ await test("transport par défaut : /api + cookies, JSON décodé", async () => 
   assert.equal(r.ok, true);
   assert.equal(seen[0].url, "https://example.test/api/crypto/config");
   assert.equal(seen[0].opts.credentials, "include");
+});
+
+await test("initiate : reprise du même réseau -> 200 ok (paiement existant)", async () => {
+  const { ctx, api } = cryptoModule();
+  ctx.MGS_CRYPTO.useTransport(() => Promise.resolve({ status: 200, data: { ...PAYMENT_RAW, network: "TRC20" } }));
+  const r = await api.initiate("o1", "TRC20");
+  assert.equal(r.ok, true);
+  assert.equal(r.code, "ok");
+  assert.equal(r.payment.network, "TRC20");
+  assert.equal(r.payment.id, "pay-1");
+});
+
+await test("statusOf : 403 -> forbidden", async () => {
+  const { ctx, api } = cryptoModule();
+  ctx.MGS_CRYPTO.useTransport(() => Promise.resolve({ status: 403, data: { detail: "Forbidden" } }));
+  const r = await api.statusOf("o1");
+  assert.equal(r.ok, false);
+  assert.equal(r.code, "forbidden");
+});
+
+await test("loadConfig : payload non-objet -> bad_payload", async () => {
+  const { ctx, api } = cryptoModule();
+  ctx.MGS_CRYPTO.useTransport(() => Promise.resolve({ status: 200, data: null }));
+  let r = await api.loadConfig();
+  assert.equal(r.ok, false);
+  assert.equal(r.code, "bad_payload");
+  ctx.MGS_CRYPTO.useTransport(() => Promise.resolve({ status: 200, data: "texte" }));
+  r = await api.loadConfig();
+  assert.equal(r.code, "bad_payload");
+});
+
+await test("payment : expires_at passé -> expiresInMs 0 (jamais négatif)", () => {
+  const { api } = cryptoModule();
+  const p = api.payment({ id: "x", expires_at: new Date(Date.now() - 60000).toISOString() });
+  assert.equal(p.expiresInMs, 0);
+  assert.ok(p.expiresAt.length > 0);
+});
+
+await test("poll : échéance commande atteinte -> expired + onExpired + arrêt", async () => {
+  const { ctx, api } = cryptoModule();
+  let n = 0;
+  ctx.MGS_CRYPTO.useTransport(() => { n++; return Promise.resolve({ status: 200, data: { order_status: "pending_payment", payment: { ...PAYMENT_RAW, status: "WAITING" } } }); });
+  const updates = []; let expiredCalled = 0;
+  api.poll("o1", (u) => updates.push(u), { intervalMs: 5, deadlineAt: new Date(Date.now() - 1000).toISOString(), onExpired: () => { expiredCalled++; } });
+  await sleep(60);
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].expired, true);
+  assert.equal(expiredCalled, 1);
+  assert.equal(n, 1, "aucune requête après expiration");
+});
+
+await test("statusOf expose orderDeadline ; poll échéance future ne coupe pas avant CONFIRMED", async () => {
+  const { ctx, api } = cryptoModule();
+  const deadline = new Date(Date.now() + 60000).toISOString();
+  let n = 0;
+  ctx.MGS_CRYPTO.useTransport(() => { n++; const s = n >= 2 ? "CONFIRMED" : "WAITING"; return Promise.resolve({ status: 200, data: { order_status: "pending_payment", payment_deadline_at: deadline, payment: { ...PAYMENT_RAW, status: s } } }); });
+  const so = await api.statusOf("o1");
+  assert.equal(so.orderDeadline, deadline);
+  const updates = [];
+  api.poll("o1", (u) => updates.push(u), { intervalMs: 5 });
+  await sleep(80);
+  assert.equal(updates[updates.length - 1].done, true);
+  assert.ok(updates.every((u) => !u.expired));
 });
 
 /* ---------- bilan ---------- */
