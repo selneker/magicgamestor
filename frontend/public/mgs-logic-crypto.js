@@ -223,17 +223,22 @@
 
   /**
    * statusOf(orderId) — GET /crypto/{order_id}/status.
-   * Résout { ok, code, status, orderStatus, payment }.
+   * Résout { ok, code, status, orderStatus, orderDeadline, payment }.
    * La route est indexée par l'identifiant de COMMANDE
    * (backend/routers/crypto.py:123-127), pas par celui du paiement.
+   * `orderDeadline` = `payment_deadline_at` de la commande quand le backend le
+   * renvoie (modèle PaymentCountdown.js:15). NOTE : la projection actuelle de
+   * `/crypto/{id}/status` ne contient que `status` (routers/crypto.py:50) —
+   * `orderDeadline` est donc "" tant que le backend ne l'expose pas ; l'appelant
+   * passe alors l'échéance de la commande à `poll` via `opts.deadlineAt`.
    */
   function statusOf(orderId) {
     var id = orderId != null ? String(orderId) : "";
-    if (!id) return Promise.resolve({ ok: false, code: "order_not_found", status: 0, orderStatus: "", payment: null });
+    if (!id) return Promise.resolve({ ok: false, code: "order_not_found", status: 0, orderStatus: "", orderDeadline: "", payment: null });
     return call("GET", "/crypto/" + encodeURIComponent(id) + "/status").then(function (res) {
-      if (res.network) return { ok: false, code: "network_error", status: 0, orderStatus: "", payment: null };
+      if (res.network) return { ok: false, code: "network_error", status: 0, orderStatus: "", orderDeadline: "", payment: null };
       if (res.status < 200 || res.status >= 300) {
-        return { ok: false, code: res.status === 404 ? "order_not_found" : res.status === 403 ? "forbidden" : "http_" + res.status, status: res.status, orderStatus: "", payment: null };
+        return { ok: false, code: res.status === 404 ? "order_not_found" : res.status === 403 ? "forbidden" : "http_" + res.status, status: res.status, orderStatus: "", orderDeadline: "", payment: null };
       }
       var data = res.data || {};
       return {
@@ -241,6 +246,7 @@
         code: "ok",
         status: res.status,
         orderStatus: data.order_status ? String(data.order_status) : "",
+        orderDeadline: data.payment_deadline_at ? String(data.payment_deadline_at) : "",
         payment: payment(data.payment),
       };
     });
@@ -252,12 +258,18 @@
    * poll(orderId, onUpdate, opts) — sonde GET /crypto/{order_id}/status
    * (BinancePay.js:24-40). `opts` :
    *   - intervalMs  : cadence, 8000 par défaut ;
-   *   - maxAttempts : 0 (défaut) = illimité.
-   * `onUpdate({ ok, code, status, orderStatus, payment, done, failed, attempt })`
-   * à chaque réponse ; `done` = CONFIRMED, `failed` = FAILED.
-   * S'arrête seul sur CONFIRMED, FAILED, ou si la commande n'est plus en
-   * attente de paiement sans paiement en cours. Une erreur réseau continue le
-   * sondage (comme `main`). `stop()` arrête immédiatement.
+   *   - maxAttempts : 0 (défaut) = illimité ;
+   *   - deadlineAt  : échéance ISO de la commande (`payment_deadline_at`,
+   *                   modèle PaymentCountdown.js:15). À défaut, `orderDeadline`
+   *                   renvoyé par statusOf est utilisé ;
+   *   - onExpired() : appelé quand l'échéance arrive à zéro (PaymentCountdown.js:33).
+   * `onUpdate({ ok, code, status, orderStatus, orderDeadline, payment, done,
+   * failed, expired, attempt })` à chaque réponse ; `done` = CONFIRMED,
+   * `failed` = FAILED, `expired` = échéance atteinte.
+   * S'arrête seul sur CONFIRMED, FAILED, l'expiration (onExpired), ou si la
+   * commande n'est plus en attente de paiement sans paiement en cours (plus
+   * prudent que `main`, qui continue jusqu'au démontage). Une erreur réseau
+   * continue le sondage (comme `main`). `stop()` arrête immédiatement.
    */
   function poll(orderId, onUpdate, opts) {
     stop();
@@ -276,16 +288,20 @@
         var done = !!(res.payment && res.payment.status === STATUS.CONFIRMED);
         var failed = !!(res.payment && res.payment.status === STATUS.FAILED);
         var gone = !res.payment && !!res.orderStatus && res.orderStatus !== "pending_payment";
+        var deadlineMs = isoMs(opts.deadlineAt || res.orderDeadline || "");
+        var expired = !done && !failed && !!deadlineMs && Date.now() >= deadlineMs;
         if (typeof onUpdate === "function") {
           try {
             onUpdate({
               ok: res.ok, code: res.code, status: res.status,
-              orderStatus: res.orderStatus, payment: res.payment,
-              done: done, failed: failed, attempt: attempts,
+              orderStatus: res.orderStatus, orderDeadline: res.orderDeadline, payment: res.payment,
+              done: done, failed: failed, expired: expired, attempt: attempts,
             });
           } catch (_) { /* l'appelant ne casse pas le sondage */ }
         }
-        if (done || failed || gone) { stop(); return; }
+        if (done || failed) { stop(); return; }
+        if (expired) { if (typeof opts.onExpired === "function") { try { opts.onExpired(); } catch (_) { /* idem */ } } stop(); return; }
+        if (gone) { stop(); return; }
         if (max && attempts >= max) { stop(); return; }
         pollState.timer = setTimeout(tick, interval);
       });
