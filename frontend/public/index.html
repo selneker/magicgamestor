@@ -3485,7 +3485,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       "checkout.binanceConfirmed": "Paiement confirmé",
       "checkout.creating": "Création de la commande…", "checkout.uploading": "Envoi de la preuve…",
       "checkout.proofOk": "Preuve envoyée · vérification en cours", "checkout.needProof": "Choisissez une image de preuve (JPEG/PNG).",
-      "checkout.expired": "Délai expiré", "orders.empty": "Aucune commande pour le moment.",
+      "checkout.expired": "Délai expiré", "orders.empty": "Aucune commande pour le moment.", "catalog.emptyGame": "Ce jeu n'a pas encore de catalogue disponible.",
       "orders.login": "Connectez-vous pour voir vos commandes.", "pack.eligible": "Compte éligible",
       "pack.notEligible": "Compte non éligible", "pack.needId": "Entrez votre ID joueur PUBG.",
       "pack.checking": "Vérification…", "support.needMsg": "Écrivez un message.", "support.login": "Connectez-vous pour discuter.",
@@ -3516,7 +3516,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       "checkout.binanceConfirmed": "Payment confirmed",
       "checkout.creating": "Creating order…", "checkout.uploading": "Uploading proof…",
       "checkout.proofOk": "Proof sent · verification in progress", "checkout.needProof": "Choose a proof image (JPEG/PNG).",
-      "checkout.expired": "Time expired", "orders.empty": "No orders yet.",
+      "checkout.expired": "Time expired", "orders.empty": "No orders yet.", "catalog.emptyGame": "This game has no catalog available yet.",
       "orders.login": "Sign in to see your orders.", "pack.eligible": "Eligible account",
       "pack.notEligible": "Not eligible", "pack.needId": "Enter your PUBG player ID.",
       "pack.checking": "Checking…", "support.needMsg": "Write a message.", "support.login": "Sign in to chat.",
@@ -3638,16 +3638,28 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- catalogue (données réelles -> gabarit .mgs-pcard existant) ---------- */
   function renderCatalog(products, game) {
-    var grid = $(".mgs-boutique-catalog .mgs-grid") || $(".mgs-boutique-catalog"); var tpl = $(".mgs-boutique-catalog .mgs-pcard");
-    if (!grid || !tpl) return;
-    if (!products || !products.length) return; /* backend vide -> conserve le design statique */
+    var grid = $(".mgs-boutique-catalog .mgs-grid") || $(".mgs-boutique-catalog");
+    if (!grid) return;
+    var tpl = $(".mgs-boutique-catalog .mgs-pcard");
+    if (!tpl && window.__mgsCatalogTpl) { grid.appendChild(window.__mgsCatalogTpl); tpl = window.__mgsCatalogTpl; }
+    if (tpl) window.__mgsCatalogTpl = tpl;
+    if (!tpl) return;
+    if (!products || !products.length) {
+      /* backend vide ou en erreur : grille vidée + état vide, jamais de fausses cartes */
+      $$(".mgs-pcard", grid).forEach(function (c) { c.remove(); });
+      var ex = $(".mgs-empty", grid);
+      if (!ex) { ex = doc.createElement("div"); ex.className = "mgs-empty"; ex.setAttribute("role", "status"); ex.innerHTML = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><p style="margin:0;font-weight:600"></p>'; grid.appendChild(ex); }
+      var ep = $("p", ex); if (ep) ep.textContent = t("catalog.emptyGame");
+      return;
+    }
+    var exOk = $(".mgs-empty", grid); if (exOk) exOk.remove();
     var frag = doc.createDocumentFragment();
     products.forEach(function (p) {
       var card = tpl.cloneNode(true);
       var amount = p.uc_amount != null ? String(p.uc_amount) : (p.name || "");
       var am = $(".mgs-pcard__amount", card); if (am) { am.textContent = amount; am.classList.toggle("is--long", amount.length > 3); }
       var un = $(".mgs-pcard__unit", card); if (un) un.textContent = p.uc_amount != null ? (p.type === "prime" || p.type === "prime_plus" ? "" : "UC") : "";
-      var nm = $(".mgs-pcard__name", card); if (nm) nm.textContent = p.name || "";
+      var nm = $(".mgs-pcard__title", card); if (nm) nm.textContent = p.name || "";
       var pr = $(".mgs-pill__price", card); if (pr) pr.textContent = ar(p.price);
       var old = $(".mgs-pill__old", card); if (old) { if (p.old_price) { old.textContent = ar(p.old_price); old.hidden = false; } else old.hidden = true; }
       var img = $(".mgs-pcard__media img", card); if (img && p.image_url) img.src = p.image_url;
@@ -3807,7 +3819,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function coReceiptBinance() {
     var o = co.order || {}; var set = function (sel, val) { var e = $(sel); if (e) e.textContent = val; };
     set(".mgs-co-r-product", co.items); set(".mgs-co-r-pid", co.pid); set(".mgs-co-r-method", "Binance USDT");
-    set(".mgs-co-r-total", ar(o.total != null ? o.total : co.total)); set(".mgs-co-r-num", o.number || "—");
+    set(".mgs-co-r-total", ar(o.total != null ? o.total : co.total)); set(".mgs-co-r-num", o.order_number || o.number || "—");
     $$(".mgs-co-recap div").forEach(function (d) { var span = $("span", d); if (span && /Pseudo/i.test(span.textContent)) { var b = $("b", d); if (b) b.textContent = co.pseudo || "—"; } });
     var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = t("checkout.binanceConfirmed");
     var wt = $(".mgs-co-wait-t"); if (wt) wt.textContent = t("checkout.binanceConfirmed");
@@ -3825,7 +3837,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function coReceipt() {
     var o = co.order || {}; var set = function (sel, val) { var e = $(sel); if (e) e.textContent = val; };
     set(".mgs-co-r-product", co.items); set(".mgs-co-r-pid", co.pid); set(".mgs-co-r-method", methodLabel(co.method));
-    set(".mgs-co-r-total", ar(o.total != null ? o.total : co.total)); set(".mgs-co-r-num", o.number || "—");
+    set(".mgs-co-r-total", ar(o.total != null ? o.total : co.total)); set(".mgs-co-r-num", o.order_number || o.number || "—");
     $$(".mgs-co-recap div").forEach(function (d) { var span = $("span", d); if (span && /Pseudo/i.test(span.textContent)) { var b = $("b", d); if (b) b.textContent = co.pseudo || "—"; } });
     var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = t("checkout.proofOk");
     coShow(3); window.scrollTo(0, 0);
@@ -3838,7 +3850,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
   function coFinish() {
     if (co.poll) { clearInterval(co.poll); co.poll = null; } if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } stopTimer();
-    var num = co.order && co.order.number; cart = []; renderCart(); syncPillsFromCart();
+    var num = co.order && (co.order.order_number || co.order.number); cart = []; renderCart(); syncPillsFromCart();
     loadOrders().then(function () { window.mgsShowPage("commandes"); if (num) { var card = $('.mgs-order[data-order="' + num + '"]'); if (card) card.click(); } });
   }
 
@@ -3855,7 +3867,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (empty) empty.hidden = true;
     list.innerHTML = orders.map(function (o) {
       var b = statusBucket(o.status); var d = fmtDate(o.created_at); var product = orderProductLabel(o); var total = ar(o.total); var method = orderMethodLabel(o); var label = statusLabel(o.status); var filter = b === "progress" ? "progress" : "done";
-      return '<div class="mgs-order" role="button" tabindex="0" data-order="' + esc(o.number) + '" data-product="' + esc(product) + '" data-pid="' + esc(o.pubg_id || "") + '" data-total="' + esc(total) + '" data-method="' + esc(method) + '" data-status="' + b + '" data-statuslabel="' + esc(label) + '" data-date="' + esc(d.date) + '" data-time="' + esc(d.time) + '" data-filter="' + filter + '" data-id="' + esc(o.id) + '"><div class="mgs-order__main"><p class="mgs-order__title">' + esc(product) + '</p><p class="mgs-order__meta"><span class="mgs-mono">' + esc(o.number) + '</span><button type="button" class="mgs-order__copy" aria-label="Copier le numéro">' + COPY_IC + '</button><span>· ' + esc(d.date) + ' · ' + esc(d.time) + '</span><span class="mgs-order__method">· ' + esc(method) + '</span></p></div><div class="mgs-order__right"><p class="mgs-order__price">' + esc(total) + '</p><span class="mgs-status mgs-status--' + b + '">' + STATUS_IC[b] + esc(label) + '</span></div></div>';
+      return '<div class="mgs-order" role="button" tabindex="0" data-order="' + esc(o.order_number || o.number) + '" data-product="' + esc(product) + '" data-pid="' + esc(o.pubg_id || "") + '" data-total="' + esc(total) + '" data-method="' + esc(method) + '" data-status="' + b + '" data-statuslabel="' + esc(label) + '" data-date="' + esc(d.date) + '" data-time="' + esc(d.time) + '" data-filter="' + filter + '" data-id="' + esc(o.id) + '"><div class="mgs-order__main"><p class="mgs-order__title">' + esc(product) + '</p><p class="mgs-order__meta"><span class="mgs-mono">' + esc(o.order_number || o.number) + '</span><button type="button" class="mgs-order__copy" aria-label="Copier le numéro">' + COPY_IC + '</button><span>· ' + esc(d.date) + ' · ' + esc(d.time) + '</span><span class="mgs-order__method">· ' + esc(method) + '</span></p></div><div class="mgs-order__right"><p class="mgs-order__price">' + esc(total) + '</p><span class="mgs-status mgs-status--' + b + '">' + STATUS_IC[b] + esc(label) + '</span></div></div>';
     }).join("");
   }
   function loadOrders() {
@@ -3876,7 +3888,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
   function saveProfile() { var name = ($("#acc-name") || {}).value || ""; var phone = ($("#acc-phone") || {}).value || ""; var ids = (($("#acc-ids") || {}).value || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean); req("/auth/me", { method: "PATCH", body: { name: name, phone: phone, saved_pubg_ids: ids } }).then(function (u) { me = u || me; toast(t("toast.saved")); renderAccount(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
   function changePassword() { var cur = ($("#pw-cur") || {}).value || ""; var next = ($("#pw-next") || {}).value || ""; if (!cur || !next) { toast(t("err.generic"), "err"); return; } req("/auth/change-password", { method: "POST", body: { current_password: cur, new_password: next } }).then(function () { toast(t("toast.pwchanged")); $("#pw-cur").value = ""; $("#pw-next").value = ""; }).catch(function (e) { toast(errMsg(e), "err"); }); }
-  function deleteAccount() { if (!window.confirm(t("confirm.delete"))) return; var pw = window.prompt(t("auth.pwPrompt")); if (pw == null) return; req("/auth/me/delete", { method: "POST", body: { password: pw, confirmation: "DELETE" } }).then(function () { me = null; toast(t("toast.deleted")); window.mgsShowPage("connexion"); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+  function deleteAccount() { if (!window.confirm(t("confirm.delete"))) return; var pw = window.prompt(t("auth.pwPrompt")); if (pw == null) return; req("/auth/me/delete", { method: "POST", body: { password: pw, confirmation: "SUPPRIMER" } }).then(function () { me = null; toast(t("toast.deleted")); window.mgsShowPage("connexion"); }).catch(function (e) { toast(errMsg(e), "err"); }); }
   function logout() { req("/auth/logout", { method: "POST" }).catch(function () { }).then(function () { me = null; toast(t("toast.logout")); renderCart(); window.mgsShowPage("accueil"); }); }
 
   /* ---------- connexion / inscription ---------- */
@@ -3996,7 +4008,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (el.closest(".mgs-co-back")) { stop(e); window.mgsShowPage("boutique"); return; }
     if (el.closest(".mgs-co-back2")) { stop(e); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } coShow(1); return; }
     if (el.closest(".mgs-co-proof")) { stop(e); ensureProofInput().click(); return; }
-    if (el.closest(".mgs-co-cancel")) { stop(e); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } if (co.order) req("/orders/" + co.order.id + "/cancel", { method: "POST", body: { reason: "customer_cancel" } }).catch(function () { }); coShow(1); return; }
+    if (el.closest(".mgs-co-cancel")) { stop(e); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } if (co.order) req("/orders/" + co.order.id + "/cancel", { method: "POST", body: { reason: "other" } }).catch(function (e) { toast(errMsg(e), "err"); }); coShow(1); return; }
     if (el.closest(".mgs-co-done")) { stop(e); coFinish(); return; }
     if (el.closest(".mgs-human-close") || el.closest(".mgs-human-cancel") || el.classList.contains("mgs-human-overlay")) { stop(e); closeHuman(); return; }
     if (el.closest(".mgs-human-confirm")) { stop(e); var capOn = window.MGS_CAPTCHA && window.MGS_CAPTCHA.enabled(); if (capOn) { if (window.MGS_CAPTCHA.getToken()) createOrder(); } else if (($(".mgs-human-cb") || {}).checked) createOrder(); return; }
