@@ -3996,7 +3996,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (el.closest(".mgs-co-back")) { stop(e); window.mgsShowPage("boutique"); return; }
     if (el.closest(".mgs-co-back2")) { stop(e); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } coShow(1); return; }
     if (el.closest(".mgs-co-proof")) { stop(e); ensureProofInput().click(); return; }
-    if (el.closest(".mgs-co-cancel")) { stop(e); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } if (co.order) req("/orders/" + co.order.id + "/cancel", { method: "POST", body: { reason: "customer_cancel" } }).catch(function () { }); coShow(1); return; }
+    if (el.closest(".mgs-co-cancel")) { stop(e); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } if (co.order) req("/orders/" + co.order.id + "/cancel", { method: "POST", body: { reason: "other" } }).catch(function (e) { toast(errMsg(e), "err"); }); coShow(1); return; }
     if (el.closest(".mgs-co-done")) { stop(e); coFinish(); return; }
     if (el.closest(".mgs-human-close") || el.closest(".mgs-human-cancel") || el.classList.contains("mgs-human-overlay")) { stop(e); closeHuman(); return; }
     if (el.closest(".mgs-human-confirm")) { stop(e); var capOn = window.MGS_CAPTCHA && window.MGS_CAPTCHA.enabled(); if (capOn) { if (window.MGS_CAPTCHA.getToken()) createOrder(); } else if (($(".mgs-human-cb") || {}).checked) createOrder(); return; }
