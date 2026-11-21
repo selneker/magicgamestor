@@ -3496,7 +3496,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       "auth.name": "Entrez votre nom", "auth.emailFirst": "Entrez votre email d'abord", "auth.pwPrompt": "Mot de passe",
       "auth.emailBad": "Adresse email invalide", "auth.pwShort": "Mot de passe trop court ({n} caractères min.)",
       "auth.emailTaken": "Cet email est déjà inscrit", "auth.blocked": "Ce compte est bloqué. Contactez le support.",
-      "auth.tooMany": "Trop de tentatives. Réessayez dans 15 minutes.", "cart.otherGame": "Un autre jeu est déjà dans le panier. Un seul jeu par panier par commande."
+      "auth.tooMany": "Trop de tentatives. Réessayez dans 15 minutes.", "cart.otherGame": "Un autre jeu est déjà dans le panier. Un seul jeu par panier par commande.",
+      "points.redeem": "Échanger", "points.pidPrompt": "ID joueur PUBG / PUBG player ID", "events.empty": "Aucun événement pour le moment.",
+      "catalog.sortPopular": "Trier : populaire", "catalog.sortPriceAll": "Prix : tous", "catalog.sortPriceAsc": "Prix : croissant", "catalog.sortPriceDesc": "Prix : décroissant"
     },
     en: {
       "toast.added": "Added to cart", "toast.login": "Signed in", "toast.logout": "Signed out",
@@ -3530,7 +3532,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       "auth.name": "Enter your name", "auth.emailFirst": "Enter your email first", "auth.pwPrompt": "Password",
       "auth.emailBad": "Invalid email address", "auth.pwShort": "Password too short ({n} characters min.)",
       "auth.emailTaken": "This email is already registered", "auth.blocked": "This account is blocked. Contact support.",
-      "auth.tooMany": "Too many attempts. Try again in 15 minutes.", "cart.otherGame": "Another game is already in the cart. One game per cart."
+      "auth.tooMany": "Too many attempts. Try again in 15 minutes.", "cart.otherGame": "Another game is already in the cart. One game per cart.",
+      "points.redeem": "Redeem", "points.pidPrompt": "PUBG player ID", "events.empty": "No events right now.",
+      "catalog.sortPopular": "Sort: popular", "catalog.sortPriceAll": "Price: all", "catalog.sortPriceAsc": "Price: low to high", "catalog.sortPriceDesc": "Price: high to low"
     }
   };
   function t(k, v) { var s = (T[LANG] && T[LANG][k]) || T.fr[k] || k; if (v) Object.keys(v).forEach(function (key) { s = s.split("{" + key + "}").join(v[key]); }); return s; }
@@ -3761,6 +3765,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function startTimer(sec) { stopTimer(); var el = $(".mgs-co-countdown") || $(".mgs-co-timer"); function tick() { if (sec < 0) { stopTimer(); if (el) el.textContent = t("checkout.expired"); return; } var m = Math.floor(sec / 60), s = sec % 60; if (el) el.textContent = m + ":" + (s < 10 ? "0" : "") + s; sec--; } tick(); co.timer = setInterval(tick, 1000); }
   function methodLabel(m) { return m === "MVola" ? t("method.mvola") : m === "Orange Money" ? t("method.orange") : m === "Binance" ? t("method.binance") : m; }
   function createOrder() {
+    if (co.busy) return;
     if (!co.verified) { coStatus("is--err", esc(t("checkout.needVerify"))); return; }
     if (!co.method) { toast(t("checkout.needMethod"), "err"); return; }
     var isBinance = co.method === "Binance";
@@ -3774,9 +3779,11 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (!isBinance) { payload.manual_operator = co.method === "MVola" ? "mvola" : "orange"; payload.manual_reference = null; }
     if (capTok) payload.captcha_token = capTok;
     var btn = $(".mgs-human-confirm"); if (btn) btn.disabled = true;
+    co.busy = true;
     toast(t("checkout.creating"));
-    req("/orders", { method: "POST", body: payload }).then(function (order) { co.order = order; closeHuman(); if (isBinance) initiateBinance(order); else coPay(); }).catch(function (e) {
+    req("/orders", { method: "POST", body: payload }).then(function (order) { co.order = order; co.busy = false; closeHuman(); if (isBinance) initiateBinance(order); else coPay(); }).catch(function (e) {
       if (btn) btn.disabled = false;
+      co.busy = false;
       if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.isCaptchaError(e)) { window.MGS_CAPTCHA.reset(); toast(t("checkout.captchaAgain"), "err"); openHuman(true); return; }
       toast(errMsg(e), "err"); coStatus("is--err", esc(errMsg(e)));
     });
@@ -3911,12 +3918,12 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (head) { var nm = $("div p", head); if (nm) nm.textContent = name; var sub = $(".mgs-muted", head); if (sub) sub.textContent = (me.email || "") + (me.created_at ? " · membre depuis " + fmtDate(me.created_at).date : ""); }
     var an = $("#acc-name"); if (an) an.value = me.name || ""; var ap = $("#acc-phone"); if (ap) ap.value = me.phone || ""; var ai = $("#acc-ids"); if (ai) ai.value = (me.saved_pubg_ids || []).join(", ");
     req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; var pts = bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0)); var sn = $(".mgs-page[data-page=compte] .mgs-stat__n"); if (sn) sn.textContent = String(pts); updatePointsPill(pts); }).catch(function () { });
-    req("/orders/me").then(function (o) { o = Array.isArray(o) ? o : (o && o.orders) || []; var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = String(o.length); }).catch(function () { });
+    req("/orders/me").then(function (o) { o = Array.isArray(o) ? o : (o && o.orders) || []; var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = String(o.length); if (stats[2]) stats[2].textContent = String((me.saved_pubg_ids || []).length); }).catch(function () { });
   }
   function saveProfile() { var name = ($("#acc-name") || {}).value || ""; var phone = ($("#acc-phone") || {}).value || ""; var ids = (($("#acc-ids") || {}).value || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean); req("/auth/me", { method: "PATCH", body: { name: name, phone: phone, saved_pubg_ids: ids } }).then(function (u) { me = u || me; toast(t("toast.saved")); renderAccount(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
   function changePassword() { var cur = ($("#pw-cur") || {}).value || ""; var next = ($("#pw-next") || {}).value || ""; if (!cur || !next) { toast(t("err.generic"), "err"); return; } req("/auth/change-password", { method: "POST", body: { current_password: cur, new_password: next } }).then(function () { toast(t("toast.pwchanged")); $("#pw-cur").value = ""; $("#pw-next").value = ""; }).catch(function (e) { toast(errMsg(e), "err"); }); }
   function deleteAccount() { if (!window.confirm(t("confirm.delete"))) return; var pw = window.prompt(t("auth.pwPrompt")); if (pw == null) return; req("/auth/me/delete", { method: "POST", body: { password: pw, confirmation: "SUPPRIMER" } }).then(function () { me = null; toast(t("toast.deleted")); window.mgsShowPage("connexion"); }).catch(function (e) { toast(errMsg(e), "err"); }); }
-  function logout() { req("/auth/logout", { method: "POST" }).catch(function () { }).then(function () { me = null; syncAuthChrome(); toast(t("toast.logout")); renderCart(); window.mgsShowPage("accueil"); }); }
+  function logout() { req("/auth/logout", { method: "POST" }).catch(function () { }).then(function () { me = null; syncAuthChrome(); cart = []; saveCart(); toast(t("toast.logout")); renderCart(); window.mgsShowPage("accueil"); }); }
 
   /* ---------- connexion / inscription ---------- */
   var authMode = "login";
@@ -3965,10 +3972,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     }).catch(function () { });
     req("/loyalty/rewards").then(function (rewards) {
       rewards = Array.isArray(rewards) ? rewards : []; var box = $(".mgs-page[data-page=points] .mgs-list"); if (!box || !rewards.length) return;
-      box.innerHTML = rewards.map(function (r) { var cost = r.cost_points != null ? r.cost_points : (r.cost || 0); return '<div class="mgs-list-item" data-reward="' + esc(r.id) + '"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg><div style="flex:1"><p style="font-weight:700;margin:0">' + esc(r.name || r.label || "—") + '</p><p class="mgs-muted" style="font-size:.8em;margin:.1em 0 0">' + cost + ' points</p></div><a href="#" class="button-main w-inline-block mgs-redeem" data-button-theme="dark" data-button-accent="yellow" data-reward="' + esc(r.id) + '"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Échanger"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Échanger</span></span></span></span></a></div>'; }).join("");
+      box.innerHTML = rewards.map(function (r) { var cost = r.cost_points != null ? r.cost_points : (r.cost || 0); var lbl = esc(t("points.redeem")); return '<div class="mgs-list-item" data-reward="' + esc(r.id) + '"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg><div style="flex:1"><p style="font-weight:700;margin:0">' + esc(r.name || r.label || "—") + '</p><p class="mgs-muted" style="font-size:.8em;margin:.1em 0 0">' + cost + ' points</p></div><a href="#" class="button-main w-inline-block mgs-redeem" data-button-theme="dark" data-button-accent="yellow" data-reward="' + esc(r.id) + '"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="' + lbl + '"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>' + lbl + '</span></span></span></span></a></div>'; }).join("");
     }).catch(function () { });
   }
-  function redeem(rewardId) { var pid = (me && me.saved_pubg_ids && me.saved_pubg_ids[0]) || window.prompt("ID joueur PUBG / PUBG player ID") || ""; if (!pid) return; req("/loyalty/redeem", { method: "POST", body: { reward_id: rewardId, pubg_id: pid } }).then(function () { toast(t("toast.redeem")); renderPoints(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+  function redeem(rewardId) { var pid = (me && me.saved_pubg_ids && me.saved_pubg_ids[0]) || window.prompt(t("points.pidPrompt")) || ""; if (!pid) return; req("/loyalty/redeem", { method: "POST", body: { reward_id: rewardId, pubg_id: pid } }).then(function () { toast(t("toast.redeem")); renderPoints(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
 
   /* ---------- pack évolutif ---------- */
   function packVerify() {
@@ -3979,9 +3986,15 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
 
   /* ---------- événements ---------- */
+  var eventTpl = null;
   function renderEvents() {
+    var grid = $(".mgs-page[data-page=evenements] .mgs-grid"); if (!grid) return;
+    if (!eventTpl) eventTpl = $(".mgs-card", grid);
+    var showEmpty = function () { grid.innerHTML = ""; var ex = doc.createElement("div"); ex.className = "mgs-empty"; ex.setAttribute("role", "status"); ex.textContent = t("events.empty"); grid.appendChild(ex); };
     req("/events").then(function (events) {
-      events = Array.isArray(events) ? events : []; var grid = $(".mgs-page[data-page=evenements] .mgs-grid"); if (!grid || !events.length) return; var tpl = $(".mgs-card", grid); if (!tpl) return;
+      events = Array.isArray(events) ? events : [];
+      if (!events.length) { showEmpty(); return; }
+      var tpl = eventTpl; if (!tpl) return;
       var themes = ["yellow", "green", "orange", "blue", "violet"];
       grid.innerHTML = events.map(function (ev, i) {
         var card = tpl.cloneNode(true); var title = (LANG === "en" && ev.title_en) ? ev.title_en : (ev.title_fr || ev.title || ""); var desc = (LANG === "en" && ev.description_en) ? ev.description_en : (ev.description_fr || ev.description || "");
@@ -3990,7 +4003,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         var chip = $(".mgs-chip", card); if (chip) chip.textContent = ev.starts_at ? fmtDate(ev.starts_at).date : (ev.slug || "");
         return card.outerHTML;
       }).join("");
-    }).catch(function () { });
+    }).catch(function () { showEmpty(); });
   }
 
   /* ---------- support / chat ---------- */
