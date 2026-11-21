@@ -3807,7 +3807,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function coReceiptBinance() {
     var o = co.order || {}; var set = function (sel, val) { var e = $(sel); if (e) e.textContent = val; };
     set(".mgs-co-r-product", co.items); set(".mgs-co-r-pid", co.pid); set(".mgs-co-r-method", "Binance USDT");
-    set(".mgs-co-r-total", ar(o.total != null ? o.total : co.total)); set(".mgs-co-r-num", o.number || "—");
+    set(".mgs-co-r-total", ar(o.total != null ? o.total : co.total)); set(".mgs-co-r-num", o.order_number || o.number || "—");
     $$(".mgs-co-recap div").forEach(function (d) { var span = $("span", d); if (span && /Pseudo/i.test(span.textContent)) { var b = $("b", d); if (b) b.textContent = co.pseudo || "—"; } });
     var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = t("checkout.binanceConfirmed");
     var wt = $(".mgs-co-wait-t"); if (wt) wt.textContent = t("checkout.binanceConfirmed");
@@ -3825,7 +3825,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function coReceipt() {
     var o = co.order || {}; var set = function (sel, val) { var e = $(sel); if (e) e.textContent = val; };
     set(".mgs-co-r-product", co.items); set(".mgs-co-r-pid", co.pid); set(".mgs-co-r-method", methodLabel(co.method));
-    set(".mgs-co-r-total", ar(o.total != null ? o.total : co.total)); set(".mgs-co-r-num", o.number || "—");
+    set(".mgs-co-r-total", ar(o.total != null ? o.total : co.total)); set(".mgs-co-r-num", o.order_number || o.number || "—");
     $$(".mgs-co-recap div").forEach(function (d) { var span = $("span", d); if (span && /Pseudo/i.test(span.textContent)) { var b = $("b", d); if (b) b.textContent = co.pseudo || "—"; } });
     var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = t("checkout.proofOk");
     coShow(3); window.scrollTo(0, 0);
@@ -3838,7 +3838,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
   function coFinish() {
     if (co.poll) { clearInterval(co.poll); co.poll = null; } if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } stopTimer();
-    var num = co.order && co.order.number; cart = []; renderCart(); syncPillsFromCart();
+    var num = co.order && (co.order.order_number || co.order.number); cart = []; renderCart(); syncPillsFromCart();
     loadOrders().then(function () { window.mgsShowPage("commandes"); if (num) { var card = $('.mgs-order[data-order="' + num + '"]'); if (card) card.click(); } });
   }
 
@@ -3855,7 +3855,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (empty) empty.hidden = true;
     list.innerHTML = orders.map(function (o) {
       var b = statusBucket(o.status); var d = fmtDate(o.created_at); var product = orderProductLabel(o); var total = ar(o.total); var method = orderMethodLabel(o); var label = statusLabel(o.status); var filter = b === "progress" ? "progress" : "done";
-      return '<div class="mgs-order" role="button" tabindex="0" data-order="' + esc(o.number) + '" data-product="' + esc(product) + '" data-pid="' + esc(o.pubg_id || "") + '" data-total="' + esc(total) + '" data-method="' + esc(method) + '" data-status="' + b + '" data-statuslabel="' + esc(label) + '" data-date="' + esc(d.date) + '" data-time="' + esc(d.time) + '" data-filter="' + filter + '" data-id="' + esc(o.id) + '"><div class="mgs-order__main"><p class="mgs-order__title">' + esc(product) + '</p><p class="mgs-order__meta"><span class="mgs-mono">' + esc(o.number) + '</span><button type="button" class="mgs-order__copy" aria-label="Copier le numéro">' + COPY_IC + '</button><span>· ' + esc(d.date) + ' · ' + esc(d.time) + '</span><span class="mgs-order__method">· ' + esc(method) + '</span></p></div><div class="mgs-order__right"><p class="mgs-order__price">' + esc(total) + '</p><span class="mgs-status mgs-status--' + b + '">' + STATUS_IC[b] + esc(label) + '</span></div></div>';
+      return '<div class="mgs-order" role="button" tabindex="0" data-order="' + esc(o.order_number || o.number) + '" data-product="' + esc(product) + '" data-pid="' + esc(o.pubg_id || "") + '" data-total="' + esc(total) + '" data-method="' + esc(method) + '" data-status="' + b + '" data-statuslabel="' + esc(label) + '" data-date="' + esc(d.date) + '" data-time="' + esc(d.time) + '" data-filter="' + filter + '" data-id="' + esc(o.id) + '"><div class="mgs-order__main"><p class="mgs-order__title">' + esc(product) + '</p><p class="mgs-order__meta"><span class="mgs-mono">' + esc(o.order_number || o.number) + '</span><button type="button" class="mgs-order__copy" aria-label="Copier le numéro">' + COPY_IC + '</button><span>· ' + esc(d.date) + ' · ' + esc(d.time) + '</span><span class="mgs-order__method">· ' + esc(method) + '</span></p></div><div class="mgs-order__right"><p class="mgs-order__price">' + esc(total) + '</p><span class="mgs-status mgs-status--' + b + '">' + STATUS_IC[b] + esc(label) + '</span></div></div>';
     }).join("");
   }
   function loadOrders() {
