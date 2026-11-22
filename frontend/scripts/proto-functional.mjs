@@ -126,7 +126,7 @@ function mockApi(page, state) {
 const boot = (page) => page.waitForFunction(() => typeof window.mgsRenderRecent === "function" && document.querySelectorAll(".mgs-page").length > 0, null, { timeout: 20000 });
 const pageIs = (page, name) => page.waitForFunction((n) => document.body.getAttribute("data-page") === n, name, { timeout: 15000 });
 const txt = (page, sel) => page.locator(sel).first().textContent();
-const cartLen = (page) => page.evaluate(() => { try { return (JSON.parse(localStorage.getItem("mgs_cart_v3")) || []).length; } catch { return 0; } });
+const cartLen = (page) => page.evaluate(() => { try { return (JSON.parse(localStorage.getItem("mgs_cart")) || []).length; } catch { return 0; } });
 // bouton panier VISIBLE (le header desktop .nav-cart-btn est masqué sur mobile 390px)
 const clickCart = (page) => page.locator('button[aria-label*="Panier"]:visible').first().click();
 
@@ -136,7 +136,7 @@ async function addFirstProduct(page) {
   await page.locator('.mgs-game[data-gamename="PUBG Mobile"]').first().click();
   await page.waitForSelector('.mgs-pcard[data-pid="p1"]', { timeout: 15000 });
   await page.locator('.mgs-pcard[data-pid="p1"] .mgs-pill__add').click();
-  await page.waitForFunction(() => { try { return (JSON.parse(localStorage.getItem("mgs_cart_v3")) || []).some((x) => x.product_id === "p1"); } catch { return false; } }, null, { timeout: 10000 });
+  await page.waitForFunction(() => { try { return (JSON.parse(localStorage.getItem("mgs_cart")) || []).some((x) => x.product_id === "p1"); } catch { return false; } }, null, { timeout: 10000 });
 }
 async function openCheckout(page) {
   await clickCart(page);
@@ -178,7 +178,7 @@ test("catalogue + panier + drawer (+/−/suppr/fermer)", async (page) => {
   await page.locator('.mgs-cart-item__qty button[data-q="minus"]').click();
   await page.waitForFunction(() => document.querySelector(".mgs-cart-total-n").textContent.trim() === "12 500 Ar", null, { timeout: 8000 });
   await page.locator(".mgs-cart-item__del").click();
-  await page.waitForFunction(() => (JSON.parse(localStorage.getItem("mgs_cart_v3")) || []).length === 0, null, { timeout: 8000 });
+  await page.waitForFunction(() => (JSON.parse(localStorage.getItem("mgs_cart")) || []).length === 0, null, { timeout: 8000 });
   await page.locator(".mgs-cart-close").click();
   await page.waitForFunction(() => !document.querySelector(".mgs-cart-drawer").classList.contains("is--open"), null, { timeout: 8000 });
 });
@@ -359,7 +359,7 @@ test("fiche produit : remplie depuis la carte cliquée + ajout au panier", async
   assert.equal((await txt(page, '.mgs-page[data-page="produit"] .mgs-price')).replace(/\s+/g, " ").trim(), "32 000 Ar");
   await page.locator('.mgs-page[data-page=produit] a.button-main', { hasText: "Ajouter au panier" }).click();
   assert.equal(await cartLen(page), 1);
-  const item = await page.evaluate(() => JSON.parse(localStorage.getItem("mgs_cart_v3"))[0]);
+  const item = await page.evaluate(() => JSON.parse(localStorage.getItem("mgs_cart"))[0]);
   assert.equal(item.product_id, "p2");
   assert.equal(item.price, 32000);
 });
