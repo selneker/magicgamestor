@@ -140,31 +140,45 @@ n'existent pas dans `main` (`/support` = page Chat dans `main`) ou libellés que
 
 | Fonction | Source `main` | Route backend | Prototype | État |
 |---|---|---|---|---|
-| Restauration de session au chargement (401 = déconnecté, panne = 2 reprises puis hors ligne, sans message) | `context/AuthContext.js:27-49` | `GET /auth/me` | `loadSession()` | porté |
-| Refresh silencieux sur 401, sauf liste d'endroits d'auth | `lib/api.js:12,40-59` | `POST /auth/refresh` | `req()` + `NO_SILENT_REFRESH` | porté |
-| Connexion : un seul `POST /auth/login`, `data.user` posé directement | `pages/AuthPage.js:38-49` | `POST /auth/login` (`routers/auth.py:195-211`) | `doAuth()` | porté |
-| Inscription : un seul `POST /auth/register` (pas de second login), `data.user`, message « email de vérification envoyé » | `pages/AuthPage.js:42-46` | `POST /auth/register` (`routers/auth.py:166-193`) | `doAuth()` | porté |
-| « Se souvenir » coché par défaut, envoyé en `remember` | `pages/AuthPage.js:25,111-119` | `POST /auth/login` | `boot()` + `doAuth()` | porté |
-| Validation email / mot de passe (8 car. inscription, 6 connexion, nom requis) | `pages/AuthPage.js:100-110` | — | `doAuth()` | porté |
-| Messages d'erreur d'auth : par `code`, sinon statut HTTP, sinon repli — jamais le détail anglais | `lib/authErrors.js:12-64` | réponses 400/401/403/409/422/429/5xx | `authErr()` | porté |
-| Captcha Turnstile : widget monté seulement si la clé publique existe ; inscription ou connexion déjà échouée ; apparence `always` si l'API l'exige | `pages/AuthPage.js:33,51-55,120` ; `components/common/CaptchaWidget.js` | `captcha.require` / `_check_lock` (`routers/auth.py:113-133,169,199`) | `renderAuthCaptcha()` / `syncAuthCaptcha()` | porté |
-| Redirection après connexion vers la page d'origine (`from`), accueil par défaut | `pages/AuthPage.js:34,36,49` ; `components/ProtectedRoute.js` | — | `authReturnTo`, `needLogin()`, `loaders.connexion` | porté |
-| Déjà connecté + visite de `/connexion` → redirection vers la page d'origine | `pages/AuthPage.js:36` | — | `loaders.connexion` | porté |
-| Mot de passe oublié : envoi, message inline, captcha, erreurs traduites | `pages/AuthExtras.js:48-76` | `POST /auth/forgot-password` (`routers/auth.py:222-241`) | `forgotPassword()` / `renderForgotCaptcha()` | porté |
-| Réinitialisation par jeton (`/reinitialiser/:token`), 8 car. min., confirmation identique, lien invalide → message | `pages/AuthExtras.js:78-101` ; `App.js:76` | `POST /auth/reset-password` (`routers/auth.py:244-253`) | `resetPassword()` / `resetTokenFromUrl()` | porté |
-| Vérification d'email (`/verifier-email/:token`) : jeton consommé au chargement, message visible, session rafraîchie | `pages/AuthExtras.js:103-126` ; `App.js:77` | `POST /auth/verify-email` (`routers/auth.py:213-220`) | `verifyTokenFromUrl()` + `boot()` | porté |
-| Connexion Google : départ vers `/auth/google/start?return_to=…` | `components/AuthCallback.js:8-11` | `GET /auth/google/start` (`routers/auth.py:288-317`) | `googleLogin()` | porté |
-| Retour Google en échec (`?error=google`) : message + URL nettoyée | `components/AuthCallback.js:14-28` | `GET /auth/google/callback` (`routers/auth.py:319-…`) | `handleGoogleError()` | porté |
-| Déconnexion : `POST /auth/logout`, session vidée, retour accueil — **le panier n'est pas vidé** | `context/AuthContext.js:58-61` ; `context/CartContext.js` | `POST /auth/logout` | `logout()` | porté |
-| Points fidélité : pastille masquée hors connexion | `components/layout/Header.js:33` | `GET /loyalty/me` | `syncAuthChrome()` | porté |
-| Pages protégées (`/compte`, `/compte/points`) : redirection vers la connexion puis retour. `/commandes` n'est PAS protégée (`main` la redirige vers `/suivi`, `components/common/OrdersRedirect.js:8`) | `components/ProtectedRoute.js` ; `App.js:68,80-81` | — | `needLogin()` | porté |
+| Restauration de session au chargement (401 = déconnecté, panne = 2 reprises puis hors ligne, sans message) | `context/AuthContext.js:27-49` | `GET /auth/me` (`routers/auth.py:387`) | `loadSession()` `index.html:3587-3597` | porté |
+| Refresh silencieux sur 401, sauf liste d'endroits d'auth | `lib/api.js:12,40-59` | `POST /auth/refresh` (`routers/auth.py:363`) | `NO_SILENT_REFRESH` `index.html:3548`, `req()` `:3553` | porté |
+| Connexion : un seul `POST /auth/login`, `data.user` posé directement | `pages/AuthPage.js:38-49` | `POST /auth/login` (`routers/auth.py:195-211`) | `doAuth()` `index.html:4085` (appel `:4106`) | porté |
+| Inscription : un seul `POST /auth/register` (pas de second login), `data.user`, message « email de vérification envoyé » | `pages/AuthPage.js:42-46` | `POST /auth/register` (`routers/auth.py:166-193`) | `doAuth()` `index.html:4085` (appel `:4106`) | porté |
+| « Se souvenir » coché par défaut, envoyé en `remember` | `pages/AuthPage.js:25,111-119` | `POST /auth/login` | `boot()` `index.html:4389` ; `doAuth()` `:4097-4098` | porté |
+| Validation email / mot de passe (8 car. inscription, 6 connexion, nom requis) | `pages/AuthPage.js:100-105` | — | `doAuth()` `index.html:4088-4092` | porté |
+| Messages d'erreur d'auth : par `code`, sinon statut HTTP, sinon repli — jamais le détail anglais | `lib/authErrors.js:12-64` | réponses 400/401/403/409/422/429/5xx | `authErr()` `index.html:4020-4027` | porté |
+| Captcha Turnstile : widget monté seulement si la clé publique existe ; inscription ou connexion déjà échouée ; apparence `always` si l'API l'exige | `pages/AuthPage.js:33,51-55,120` ; `components/common/CaptchaWidget.js:110-116` | `captcha.require` / `_check_lock` (`routers/auth.py:113-133,169,199`) | `renderAuthCaptcha()` `index.html:4059-4072` / `syncAuthCaptcha()` `:4073-4080` | porté |
+| Redirection après connexion vers la page d'origine (`from`), accueil par défaut | `pages/AuthPage.js:34,36,49` ; `components/ProtectedRoute.js:29-30` | — | `authReturnTo` `index.html:4005`, `doAuth()` `:4111`, `needLogin()` `:4007`, `loaders.connexion` `:4285` | porté |
+| Déjà connecté + visite de `/connexion` → redirection vers la page d'origine | `pages/AuthPage.js:36` | — | `loaders.connexion` `index.html:4285` | porté |
+| Mot de passe oublié : envoi, message inline, captcha, erreurs traduites | `pages/AuthExtras.js:48-76` | `POST /auth/forgot-password` (`routers/auth.py:222-241`) | `forgotPassword()` `index.html:4140-4146` / `renderForgotCaptcha()` `:4128-4139` | porté |
+| Réinitialisation par jeton (`/reinitialiser/:token`), 8 car. min., confirmation identique, lien invalide → message | `pages/AuthExtras.js:78-101` ; `App.js:76` | `POST /auth/reset-password` (`routers/auth.py:244-253`) | `resetPassword()` `index.html:4178-4189` / `resetTokenFromUrl()` `:4149-4157` | porté |
+| Vérification d'email (`/verifier-email/:token`) : jeton consommé au chargement, message visible, session rafraîchie | `pages/AuthExtras.js:103-126` ; `App.js:77` | `POST /auth/verify-email` (`routers/auth.py:213-220`) | `verifyTokenFromUrl()` `index.html:4161-4164` + `boot()` `:4403-4411` | porté |
+| Connexion Google : départ vers `/auth/google/start?return_to=…` | `components/AuthCallback.js:8-11` | `GET /auth/google/start` (`routers/auth.py:288-317`) | `googleLogin()` `index.html:4126` | porté |
+| Retour Google en échec (`?error=google`) : message + URL nettoyée | `components/AuthCallback.js:14-28` | `GET /auth/google/callback` (`routers/auth.py:319-…`) | `handleGoogleError()` `index.html:4168-4177` | porté |
+| Déconnexion : `POST /auth/logout`, session vidée, retour accueil — **le panier n'est pas vidé** | `context/AuthContext.js:58-61` ; `context/CartContext.js:10-14` | `POST /auth/logout` (`routers/auth.py:404`) | `logout()` `index.html:4040` | porté |
+| Points fidélité : pastille masquée hors connexion | `components/layout/Header.js:33-35` | `GET /loyalty/me` (`routers/loyalty.py:60`) | `syncAuthChrome()` `index.html:4006` | porté |
+| Pages protégées (`/compte`, `/compte/points`) : redirection vers la connexion puis retour. `/commandes` n'est PAS protégée (`main` la redirige vers `/suivi`, `components/common/OrdersRedirect.js:8`) | `components/ProtectedRoute.js:29-30` ; `App.js:68,80-81` | — | `needLogin()` `index.html:4007` | porté |
+
+### Preuves de lignes (Z1) — les trois règles citées brut
+
+- **Nom ≥ 2 caractères** : `main` `frontend/src/pages/AuthPage.js:100` — `required minLength={2}` sur
+  l'input `#name` (inscription). Prototype `frontend/public/index.html:4092` —
+  `if (authMode === "register" && (($("#reg-name") || {}).value || "").trim().length < 2)`.
+- **Apparence Turnstile** : `main` `frontend/src/components/common/CaptchaWidget.js:116` —
+  `appearance: visible ? "always" : "interaction-only"` (commentaire `:110-115`).
+  Prototype `frontend/public/index.html:4071` —
+  `cap.render(authCaptchaBox, { appearance: authCaptchaRequired ? "always" : "interaction-only", … })`.
+- **Pastille de points** : `main` `frontend/src/components/layout/Header.js:35` —
+  `if (!user || total === null) return null;` (appel `GET /loyalty/me` `:29-31`).
+  Prototype `frontend/public/index.html:4006` —
+  `function syncAuthChrome() { var on = !!me && loyaltyOk; … }`.
 
 ### Modules vérifiés (aucune modification nécessaire)
 
 | Module | Référence `main` | Verdict |
 |---|---|---|
-| `mgs-logic-captcha.js` | `components/common/CaptchaWidget.js` | conforme (URL du script, `size: flexible`, `appearance`, thème, langue, `isCaptchaError`, `reset`) |
-| `mgs-logic-crypto.js` | `pages/Checkout.js`, `components/store/checkout/BinancePay.js`, `routers/crypto.py` | conforme (config, initiate, statut, sondage 8 s, codes d'erreur) |
+| `mgs-logic-captcha.js` | `components/common/CaptchaWidget.js:103-122` (render, sitekey, theme, size, appearance, language, callbacks) | conforme — `mgs-logic-captcha.js:138` (`appearance`), `:147-150` (theme/size/language) |
+| `mgs-logic-crypto.js` | `pages/Checkout.js:177` (`POST /crypto/initiate`) ; `components/store/checkout/BinancePay.js:32` (`GET /crypto/{id}/status`) ; `routers/crypto.py:107,112,123,130` | conforme — `mgs-logic-crypto.js:27` (`POLL_MS = 8000`) |
 
 ### Écarts connus (Z1)
 
