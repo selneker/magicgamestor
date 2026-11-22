@@ -22,6 +22,11 @@ Règles appliquées :
 pas encore repris de `main` ; `diverge` = repris mais écart documenté ;
 `absent du design` = pas d'écran dans le prototype.
 
+Plan : **PL-006** (cf. `planning-agent-rules.md` §6 — chaque rapport reprend l'ID du
+prompt reçu). Lots frontend : Z1 = **PL-006-FE-02-V1** (auth), Z2 = **PL-006-FE-03-V1**
+(catalogue, recherche, fiche produit, panier). Les commits de ces lots gardent le
+préfixe de zone (`fix(z1): …`, `fix(z2): …`).
+
 Écrans du prototype (`data-page`) : accueil, admin, boutique, commande, commandes,
 compte, connexion, evenements, mdp, pack, points, produit, reset, support.
 
@@ -138,6 +143,8 @@ n'existent pas dans `main` (`/support` = page Chat dans `main`) ou libellés que
 
 ## Z1 — Authentification (session, connexion, inscription, mot de passe, email)
 
+Prompt : **PL-006-FE-02-V1**.
+
 | Fonction | Source `main` | Route backend | Prototype | État |
 |---|---|---|---|---|
 | Restauration de session au chargement (401 = déconnecté, panne = 2 reprises puis hors ligne, sans message) | `context/AuthContext.js:27-49` | `GET /auth/me` (`routers/auth.py:387`) | `loadSession()` `index.html:3587-3597` | porté |
@@ -195,6 +202,8 @@ n'existent pas dans `main` (`/support` = page Chat dans `main`) ou libellés que
 ---
 
 ## Z2 — Catalogue, recherche, fiche produit, panier
+
+Prompt : **PL-006-FE-03-V1**.
 
 | Fonction | Source `main` | Route backend | Prototype | État |
 |---|---|---|---|---|
