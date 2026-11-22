@@ -3471,6 +3471,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       "toast.redeem": "Récompense échangée", "toast.sent": "Message envoyé", "toast.forgot": "Email de réinitialisation envoyé",
       "toast.google": "Redirection vers Google…", "err.network": "Serveur injoignable. Réessayez.",
       "err.generic": "Une erreur est survenue", "err.login": "Email ou mot de passe incorrect",
+      "err.origin": "Connexion au serveur impossible",
       "err.auth": "Connectez-vous pour continuer", "checkout.empty": "Votre panier est vide",
       "checkout.needId": "Entrez votre ID joueur.", "checkout.needVerify": "Vérifiez votre ID joueur d'abord.",
       "checkout.needMethod": "Choisissez un mode de paiement.", "checkout.verifying": "Vérification…",
@@ -3507,6 +3508,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       "toast.redeem": "Reward redeemed", "toast.sent": "Message sent", "toast.forgot": "Reset email sent",
       "toast.google": "Redirecting to Google…", "err.network": "Server unreachable. Try again.",
       "err.generic": "Something went wrong", "err.login": "Wrong email or password",
+      "err.origin": "Cannot reach the server",
       "err.auth": "Sign in to continue", "checkout.empty": "Your cart is empty",
       "checkout.needId": "Enter your player ID.", "checkout.needVerify": "Verify your player ID first.",
       "checkout.needMethod": "Choose a payment method.", "checkout.verifying": "Verifying…",
@@ -3574,15 +3576,22 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function errMsg(e) {
     if (!e) return t("err.generic");
     if (e.status === 401) return t("err.auth");
-    if (e.message && /Failed to fetch|NetworkError|load failed/i.test(e.message)) return t("err.network");
-    return (e.data && (e.data.detail || e.data.message)) || e.message || t("err.generic");
+    var d = String((e.data && (e.data.detail || e.message)) || e.message || "");
+    /* 403 « Origine non autorisée » : le navigateur parle à un backend qui refuse cette
+       origine (CORS/CSRF). Message dédié, pas le détail technique. */
+    if (e.status === 403 && /origine/i.test(d)) return t("err.origin");
+    if (/Failed to fetch|NetworkError|load failed/i.test(e.message)) return t("err.network");
+    return d || t("err.generic");
   }
+  /* Erreur visible : tout échec qui n'est pas un 401 (invité non connecté) doit se voir.
+     Renvoie le message affiché, pour les appelants qui veulent aussi l'écrire ailleurs. */
+  function signale(e) { if (e && e.status === 401) return t("err.auth"); var m = errMsg(e); toast(m, "err"); return m; }
 
   /* ---------- session ---------- */
   var me = null, payCfg = null, gamesCache = null;
-  function loadSession() { return req("/auth/me").then(function (u) { me = u; return u; }).catch(function () { me = null; return null; }); }
-  function loadPayCfg() { return req("/payments/config").then(function (c) { payCfg = c; return c; }).catch(function () { return null; }); }
-  function loadGames() { if (gamesCache) return Promise.resolve(gamesCache); return req("/games").then(function (g) { gamesCache = g || []; return gamesCache; }).catch(function () { gamesCache = []; return gamesCache; }); }
+  function loadSession() { return req("/auth/me").then(function (u) { me = u; return u; }).catch(function (e) { me = null; signale(e); return null; }); }
+  function loadPayCfg() { return req("/payments/config").then(function (c) { payCfg = c; return c; }).catch(function (e) { signale(e); return null; }); }
+  function loadGames() { if (gamesCache) return Promise.resolve(gamesCache); return req("/games").then(function (g) { gamesCache = g || []; return gamesCache; }).catch(function (e) { signale(e); gamesCache = []; return gamesCache; }); }
   function gameByName(name) { return (gamesCache || []).filter(function (x) { return (x.name || "").toLowerCase() === String(name || "").toLowerCase(); })[0] || null; }
   function gameIdFromSlug(slug) { var map = { pubg: "pubg-mobile", freefire: "free-fire", mlbb: "mobile-legends", codm: "codm" }; var g = (gamesCache || []).filter(function (x) { return x.slug === slug || x.id === map[slug]; })[0]; return g ? g.id : (map[slug] || slug); }
   function primaryField(g) { if (g && g.identity_fields && g.identity_fields.length) return (g.identity_fields.filter(function (f) { return f.primary; })[0] || g.identity_fields[0]).key; return "pubg_id"; }
@@ -3896,8 +3905,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function statusBucket(s) { s = String(s || "").toLowerCase(); if (s === "delivered" || s === "done" || s === "completed") return "done"; if (s === "cancelled" || s === "canceled" || s === "expired" || s === "failed" || s === "refunded") return "cancel"; return "progress"; }
   function statusLabel(s) { var b = statusBucket(s); if (b === "done") return t("status.done"); if (b === "cancel") return t("status.cancel"); var sl = String(s || "").toLowerCase(); if (sl === "pending_payment") return t("status.pending"); if (sl === "awaiting_verification") return t("status.verify"); return t("status.progress"); }
   function pollOrder() {
-    if (co.poll) clearInterval(co.poll); if (!co.order) return; var tries = 0;
-    co.poll = setInterval(function () { tries++; if (tries > 60) { clearInterval(co.poll); co.poll = null; return; } req("/orders/" + co.order.id).then(function (o) { co.order = o; var b = statusBucket(o.status); var badge = $(".mgs-co-wait-badge"); var wt = $(".mgs-co-wait-t"); if (b === "done") { if (badge) badge.textContent = t("status.done"); if (wt) wt.textContent = t("status.done"); clearInterval(co.poll); co.poll = null; } else if (b === "cancel") { if (badge) badge.textContent = t("status.cancel"); if (wt) wt.textContent = t("status.cancel"); clearInterval(co.poll); co.poll = null; } }).catch(function () { }); }, 5000);
+    if (co.poll) clearInterval(co.poll); if (!co.order) return; var tries = 0, pollFails = 0;
+    co.poll = setInterval(function () { tries++; if (tries > 60) { clearInterval(co.poll); co.poll = null; var fb = $(".mgs-co-wait-badge"); if (fb) fb.textContent = t("err.network"); return; } req("/orders/" + co.order.id).then(function (o) { pollFails = 0; co.order = o; var b = statusBucket(o.status); var badge = $(".mgs-co-wait-badge"); var wt = $(".mgs-co-wait-t"); if (b === "done") { if (badge) badge.textContent = t("status.done"); if (wt) wt.textContent = t("status.done"); clearInterval(co.poll); co.poll = null; } else if (b === "cancel") { if (badge) badge.textContent = t("status.cancel"); if (wt) wt.textContent = t("status.cancel"); clearInterval(co.poll); co.poll = null; } }).catch(function (e) { pollFails++; if (pollFails === 3) { var fb2 = $(".mgs-co-wait-badge"); if (fb2) fb2.textContent = errMsg(e); signale(e); } }); }, 5000);
   }
   function coFinish() {
     if (co.poll) { clearInterval(co.poll); co.poll = null; } if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } stopTimer();
@@ -3927,7 +3936,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
 
   /* ---------- compte ---------- */
-  function updatePointsPill(pts) { $$(".pts-n").forEach(function (e) { e.textContent = String(pts); }); $$('[aria-label*="Points fidélité"]').forEach(function (e) { var b = $(".nav-action-badge", e); if (b) b.textContent = String(pts); e.setAttribute("aria-label", "Points fidélité : " + pts); }); }
+  function updatePointsPill(pts) { var txt = pts == null ? "—" : String(pts); $$(".pts-n").forEach(function (e) { e.textContent = txt; }); $$('[aria-label*="Points fidélité"]').forEach(function (e) { var b = $(".nav-action-badge", e); if (b) b.textContent = txt; e.setAttribute("aria-label", txt === "—" ? "Points fidélité indisponibles" : "Points fidélité : " + txt); }); }
   /* invité vs connecté : chrome de nav (pill points desktop + cercle points mobile) */
   var authReturnTo = null, authBusy = false;
   function syncAuthChrome() { var on = !!me; $$(".nav-points-pill").forEach(function (e) { e.style.display = on ? "" : "none"; }); $$('.nav-mobile-actions a[data-nav="points"]').forEach(function (e) { e.style.display = on ? "" : "none"; }); }
@@ -3948,8 +3957,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var head = $(".mgs-page[data-page=compte] .mgs-panel.mgs-row");
     if (head) { var nm = $("div p", head); if (nm) nm.textContent = name; var sub = $(".mgs-muted", head); if (sub) sub.textContent = (me.email || "") + (me.created_at ? " · membre depuis " + fmtDate(me.created_at).date : ""); }
     var an = $("#acc-name"); if (an) an.value = me.name || ""; var ap = $("#acc-phone"); if (ap) ap.value = me.phone || ""; var ai = $("#acc-ids"); if (ai) ai.value = (me.saved_pubg_ids || []).join(", ");
-    req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; var pts = bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0)); var sn = $(".mgs-page[data-page=compte] .mgs-stat__n"); if (sn) sn.textContent = String(pts); updatePointsPill(pts); }).catch(function () { });
-    req("/orders/me").then(function (o) { o = Array.isArray(o) ? o : (o && o.orders) || []; var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = String(o.length); if (stats[2]) stats[2].textContent = String((me.saved_pubg_ids || []).length); }).catch(function () { });
+    req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; var pts = bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0)); var sn = $(".mgs-page[data-page=compte] .mgs-stat__n"); if (sn) sn.textContent = String(pts); updatePointsPill(pts); }).catch(function (e) { var sn = $(".mgs-page[data-page=compte] .mgs-stat__n"); if (sn) sn.textContent = "—"; signale(e); });
+    req("/orders/me").then(function (o) { o = Array.isArray(o) ? o : (o && o.orders) || []; var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = String(o.length); if (stats[2]) stats[2].textContent = String((me.saved_pubg_ids || []).length); }).catch(function (e) { var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = "—"; signale(e); });
   }
   function saveProfile() { var name = ($("#acc-name") || {}).value || ""; var phone = ($("#acc-phone") || {}).value || ""; var ids = (($("#acc-ids") || {}).value || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean); req("/auth/me", { method: "PATCH", body: { name: name, phone: phone, saved_pubg_ids: ids } }).then(function (u) { me = u || me; toast(t("toast.saved")); renderAccount(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
   function changePassword() { var cur = ($("#pw-cur") || {}).value || ""; var next = ($("#pw-next") || {}).value || ""; if (!cur || !next) { toast(t("err.generic"), "err"); return; } req("/auth/change-password", { method: "POST", body: { current_password: cur, new_password: next } }).then(function () { toast(t("toast.pwchanged")); $("#pw-cur").value = ""; $("#pw-next").value = ""; }).catch(function (e) { toast(errMsg(e), "err"); }); }
@@ -4000,11 +4009,11 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       var stats = $$(".mgs-page[data-page=points] .mgs-stat__n"); if (stats[0]) stats[0].textContent = String(avail); if (stats[1]) stats[1].textContent = String(earned); if (stats[2]) stats[2].textContent = String(used); updatePointsPill(avail);
       var hist = $(".mgs-page[data-page=points] .mgs-panel .mgs-kv");
       if (hist && ledger.length) { var panel = hist.closest(".mgs-panel"); panel.innerHTML = ledger.slice(0, 12).map(function (e) { var delta = e.amount != null ? e.amount : (e.delta || e.points || 0); var sign = delta >= 0 ? "+" : "−"; var col = delta >= 0 ? "var(--color--green-700)" : "inherit"; return '<div class="mgs-kv"><span>' + esc(e.reason || e.label || e.type || "—") + '</span><span style="color:' + col + '">' + sign + Math.abs(delta) + ' pts</span></div>'; }).join(""); }
-    }).catch(function () { });
+    }).catch(function (e) { signale(e); });
     req("/loyalty/rewards").then(function (rewards) {
       rewards = Array.isArray(rewards) ? rewards : []; var box = $(".mgs-page[data-page=points] .mgs-list"); if (!box || !rewards.length) return;
       box.innerHTML = rewards.map(function (r) { var cost = r.cost_points != null ? r.cost_points : (r.cost || 0); var lbl = esc(t("points.redeem")); return '<div class="mgs-list-item" data-reward="' + esc(r.id) + '"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg><div style="flex:1"><p style="font-weight:700;margin:0">' + esc(r.name || r.label || "—") + '</p><p class="mgs-muted" style="font-size:.8em;margin:.1em 0 0">' + cost + ' points</p></div><a href="#" class="button-main w-inline-block mgs-redeem" data-button-theme="dark" data-button-accent="yellow" data-reward="' + esc(r.id) + '"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="' + lbl + '"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>' + lbl + '</span></span></span></span></a></div>'; }).join("");
-    }).catch(function () { });
+    }).catch(function (e) { signale(e); });
   }
   function redeem(rewardId) { var pid = (me && me.saved_pubg_ids && me.saved_pubg_ids[0]) || window.prompt(t("points.pidPrompt")) || ""; if (!pid) return; req("/loyalty/redeem", { method: "POST", body: { reward_id: rewardId, pubg_id: pid } }).then(function () { toast(t("toast.redeem")); renderPoints(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
 
@@ -4034,7 +4043,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         var chip = $(".mgs-chip", card); if (chip) chip.textContent = ev.starts_at ? fmtDate(ev.starts_at).date : (ev.slug || "");
         return card.outerHTML;
       }).join("");
-    }).catch(function () { showEmpty(); });
+    }).catch(function (e) { showEmpty(); signale(e); });
   }
 
   /* ---------- support / chat ---------- */
@@ -4056,12 +4065,12 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     compte: function () { renderAccount(); },
     points: function () { renderPoints(); },
     evenements: function () { renderEvents(); },
-    pack: function () { req("/evo/season").catch(function () { }); },
+    pack: function () { req("/evo/season").catch(function (e) { var st = $(".mgs-page[data-page=pack] .mgs-status"); if (st) { st.className = "mgs-status mgs-status--cancel"; st.textContent = errMsg(e); } }); },
     connexion: function () { if (me) { var to = authReturnTo || "compte"; authReturnTo = null; window.mgsShowPage(to); return; } setAuthMode(authMode); },
     accueil: function () { loadGames(); renderEvents(); }
   };
   var lastPage = null;
-  function route(page) { if (page === lastPage) return; lastPage = page; if (loaders[page]) { try { loaders[page](); } catch (e) { } } }
+  function route(page) { if (page === lastPage) return; lastPage = page; if (loaders[page]) { try { loaders[page](); } catch (e) { signale(e); } } }
   /* ---------- URL <-> page (l'URL reflète la page affichée, et inversement) ---------- */
   function mgsPageFromUrl() {
     var p = String(location.pathname || "/").replace(/^\/+|\/+$/g, "");
@@ -4157,7 +4166,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       if (fromUrl !== (body.getAttribute("data-page") || "accueil")) window.mgsShowPage(fromUrl);
       else mgsSyncUrl(fromUrl, true);
       if (window.mgsSetNav) mgsSetNav(body.getAttribute("data-page") || "accueil");
-      if (me) req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; updatePointsPill(bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0))); }).catch(function () { });
+      if (me) req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; updatePointsPill(bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0))); }).catch(function (e) { updatePointsPill(null); signale(e); });
       route(body.getAttribute("data-page") || "accueil");
     });
     window.addEventListener("resize", renderRecent);
