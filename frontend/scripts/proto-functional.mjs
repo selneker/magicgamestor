@@ -88,8 +88,8 @@ function mockApi(page, state) {
     const cryptoPayment = (status) => ({ id: "pay1", order_id: "o1", order_number: "MGS-001", network: "TRC20", binance_network: "TRX", currency: "USDT", address: CRYPTO_ADDRESS, memo: null, amount_usdt: "2.7812", base_usdt: "2.78", amount_ar: 12500, rate_ar_per_usdt: 4500, status, tx_hash: null, created_at: now, expires_at: cryptoDeadline });
 
     if (p === "/auth/me" && method === "GET") return state.loggedIn ? json(USER) : json({ detail: "Non authentifié" }, 401);
-    if (p === "/auth/login" && method === "POST") { state.loggedIn = true; return json({ ok: true }); }
-    if (p === "/auth/register" && method === "POST") { state.loggedIn = true; return json({ ok: true }); }
+    if (p === "/auth/login" && method === "POST") { state.loggedIn = true; return json({ user: USER, access_token: "t" }); }
+    if (p === "/auth/register" && method === "POST") { state.loggedIn = true; return json({ user: USER, access_token: "t" }); }
     if (p === "/auth/logout" && method === "POST") { state.loggedIn = false; return json({ ok: true }); }
     if (p === "/auth/refresh" && method === "POST") return state.loggedIn ? json({ ok: true }) : json({ detail: "no refresh" }, 401);
     if (p === "/auth/me" && method === "PATCH") return json({ ...USER, ...JSON.parse(req.postData() || "{}") });
