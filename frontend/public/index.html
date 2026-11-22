@@ -4172,7 +4172,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       if (st) { st.className = "mgs-status mgs-status--done"; st.textContent = t("auth.resetDone"); }
       toast(t("auth.resetDone")); $("#rp-pass").value = ""; $("#rp-confirm").value = "";
       setTimeout(function () { window.mgsShowPage("connexion"); }, 900);
-    }).catch(function (e) { var m = authErr(e, "auth.invalidLink"); if (st) { st.className = "mgs-status mgs-status--cancel"; st.textContent = m; } else toast(m, "err"); });
+    }).catch(function (e) { var m = authErr(e, "auth.errorInvalidLink"); if (st) { st.className = "mgs-status mgs-status--cancel"; st.textContent = m; } else toast(m, "err"); });
   }
 
   /* ---------- points ---------- */
