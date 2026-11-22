@@ -4007,12 +4007,12 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
      Le détail anglais brut du backend n'est jamais affiché. */
   var AUTH_CODE_KEYS = {
     invalid_credentials: "auth.errorInvalidCredentials", invalid_email_or_password: "auth.errorInvalidCredentials", wrong_password: "auth.errorInvalidCredentials",
-    email_taken: "auth.emailTaken", email_exists: "auth.emailTaken", email_already_registered: "auth.emailTaken",
-    too_many_attempts: "auth.tooMany", rate_limited: "auth.tooMany",
-    account_blocked: "auth.blocked", user_blocked: "auth.blocked",
-    invalid_token: "auth.invalidLink", invalid_link: "auth.invalidLink", expired_token: "auth.invalidLink"
+    email_taken: "auth.errorEmailTaken", email_exists: "auth.errorEmailTaken", email_already_registered: "auth.errorEmailTaken",
+    too_many_attempts: "auth.errorTooManyAttempts", rate_limited: "auth.errorTooManyAttempts",
+    account_blocked: "auth.errorAccountBlocked", user_blocked: "auth.errorAccountBlocked",
+    invalid_token: "auth.errorInvalidLink", invalid_link: "auth.errorInvalidLink", expired_token: "auth.errorInvalidLink"
   };
-  var AUTH_STATUS_KEYS = { 401: "auth.errorInvalidCredentials", 403: "auth.blocked", 409: "auth.emailTaken", 422: "auth.errorGeneric", 429: "auth.tooMany", 500: "auth.errorUnavailable", 502: "auth.errorUnavailable", 503: "auth.errorUnavailable", 504: "auth.errorUnavailable" };
+  var AUTH_STATUS_KEYS = { 401: "auth.errorInvalidCredentials", 403: "auth.errorAccountBlocked", 409: "auth.errorEmailTaken", 422: "auth.errorGeneric", 429: "auth.errorTooManyAttempts", 500: "auth.errorUnavailable", 502: "auth.errorUnavailable", 503: "auth.errorUnavailable", 504: "auth.errorUnavailable" };
   function authErr(e, fallback) {
     var body = (e && e.data) || {};
     var code = String((body && body.code) || (e && e.code) || "").trim().toLowerCase();
