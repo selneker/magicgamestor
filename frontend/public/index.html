@@ -3659,7 +3659,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function pillInfo(card) {
     var amount = ($(".mgs-pcard__amount", card) || {}).textContent || ""; var unit = ($(".mgs-pcard__unit", card) || {}).textContent || "";
     var name = (amount + " " + unit).trim(); var game = ($(".mgs-cat-game") || {}).textContent || "Jeu";
-    return { key: card.dataset.pid ? (card.dataset.game + "|" + card.dataset.pid) : (game + "|" + name), product_id: card.dataset.pid || null, slug: card.dataset.slug || "", name: card.dataset.name || name, name_en: card.dataset.nameEn || card.dataset.name || name, price: parsePrice(($(".mgs-pill__price", card) || {}).textContent || "0"), uc_amount: amount, unit: unit, type: card.dataset.type || "", game_id: card.dataset.game || "", game_name: game, image_url: card.dataset.img || "" };
+    return { key: card.dataset.pid ? (card.dataset.game + "|" + card.dataset.pid) : (game + "|" + name), id: card.dataset.pid || null, product_id: card.dataset.pid || null, slug: card.dataset.slug || "", name: card.dataset.name || name, name_en: card.dataset.nameEn || card.dataset.name || name, price: parsePrice(($(".mgs-pill__price", card) || {}).textContent || "0"), uc_amount: amount, unit: unit, type: card.dataset.type || "", game_id: card.dataset.game || "", game_name: game, image_url: card.dataset.img || "" };
   }
   /* lit dataset.qty POSÉ par le stepper visuel du script template (phase bubble, après lui) */
   function syncPill(pill) {
@@ -3686,20 +3686,32 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function openCart() { renderCart(); var d = $(".mgs-cart-drawer"), o = $(".mgs-cart-overlay"); if (!d) return; d.hidden = false; o.hidden = false; void d.offsetWidth; d.classList.add("is--open"); o.classList.add("is--open"); }
   function closeCart() { var d = $(".mgs-cart-drawer"), o = $(".mgs-cart-overlay"); if (!d) return; d.classList.remove("is--open"); o.classList.remove("is--open"); setTimeout(function () { d.hidden = true; o.hidden = true; }, 450); }
   var produitCurrent = null;
-  function renderProduit(card) {
-    var p = $(".mgs-page[data-page=produit]"); if (!p || !card) return;
-    var name = card.dataset.name || "Produit";
-    var price = parsePrice(($(".mgs-pill__price", card) || {}).textContent || "0");
+  /* Fiche produit : GET /products/{slug} (pages/Product.js:81). À défaut de slug,
+     on reste sur les données de la carte (pillInfo). */
+  function normProduit(p, gameName) {
+    var name = (LANG === "en" && p.name_en) ? p.name_en : (p.name || "Produit");
+    return { key: p.key || ("produit|" + name), id: p.id || p.product_id || null, product_id: p.id || p.product_id || null, slug: p.slug || "", name: name, name_en: p.name_en || p.name || name, price: p.price || 0, uc_amount: p.uc_amount != null ? p.uc_amount : "", unit: p.unit || "", type: p.type || "", game_id: p.game_id || "", game_name: gameName || p.game_name || "", image_url: p.image_url || "", qty: 1 };
+  }
+  function renderProduit(p, gameName) {
+    var page = $(".mgs-page[data-page=produit]"); if (!page || !p) return;
+    var it = normProduit(p, gameName);
+    var name = it.name, price = it.price, gname = it.game_name;
+    var crumb = $(".mgs-crumb span", page); if (crumb) crumb.textContent = name;
+    var tt = $("h1", page); if (tt) tt.textContent = name;
+    var pr = $(".mgs-price", page); if (pr) pr.innerHTML = arNum(price) + " <small>Ar</small>";
+    var bb = $(".mgs-buybar .mgs-price", page); if (bb) bb.innerHTML = arNum(price) + " <small>Ar</small>";
+    var eb = $(".mgs-eyebrow", page); if (eb) eb.textContent = (gname ? gname + " · " : "") + (LANG === "en" ? "direct top-up" : "recharge directe");
+    var desc = $(".mgs-sub", page); if (desc) desc.textContent = (LANG === "en" && p.description_en) ? p.description_en : (p.description_fr || p.description || "");
+    var media = $(".mgs-card__media", page); if (media && it.image_url) media.innerHTML = '<img src="' + esc(it.image_url) + '" alt="' + esc(name) + '" style="width:100%;height:100%;object-fit:cover">';
+    var st = $(".mgs-status--done", page); if (st) st.style.display = "none"; /* badge « pseudo vérifié » démo : rien n'est vérifié ici */
+    var pid = $("#pid", page); if (pid) pid.value = (me && me.saved_pubg_ids && me.saved_pubg_ids[0]) || "";
+    produitCurrent = it;
+  }
+  function openProduit(card) {
+    var slug = card.dataset && card.dataset.slug;
     var gname = ($(".mgs-cat-game") || {}).textContent || "";
-    var crumb = $(".mgs-crumb span", p); if (crumb) crumb.textContent = name;
-    var tt = $("h1", p); if (tt) tt.textContent = name;
-    var pr = $(".mgs-price", p); if (pr) pr.innerHTML = arNum(price) + " <small>Ar</small>";
-    var bb = $(".mgs-buybar .mgs-price", p); if (bb) bb.innerHTML = arNum(price) + " <small>Ar</small>";
-    var eb = $(".mgs-eyebrow", p); if (eb) eb.textContent = (gname ? gname + " · " : "") + (LANG === "en" ? "direct top-up" : "recharge directe");
-    var media = $(".mgs-card__media", p); if (media && card.dataset.img) media.innerHTML = '<img src="' + esc(card.dataset.img) + '" alt="' + esc(name) + '" style="width:100%;height:100%;object-fit:cover">';
-    var st = $(".mgs-status--done", p); if (st) st.style.display = "none"; /* badge « pseudo vérifié » démo : rien n'est vérifié ici */
-    var pid = $("#pid", p); if (pid) pid.value = (me && me.saved_pubg_ids && me.saved_pubg_ids[0]) || "";
-    produitCurrent = { key: "produit|" + name, product_id: card.dataset.pid || null, name: name, price: price, game_name: gname, qty: 1 };
+    if (!slug) { renderProduit(pillInfo(card), gname); window.mgsShowPage("produit"); return; }
+    req("/products/" + encodeURIComponent(slug)).then(function (p) { renderProduit(p, gname); window.mgsShowPage("produit"); }).catch(function () { renderProduit(pillInfo(card), gname); window.mgsShowPage("produit"); });
   }
   function produitItem() {
     if (produitCurrent) return produitCurrent;
@@ -3707,7 +3719,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var name = ($("h1", p) || {}).textContent || "Produit";
     var price = parsePrice(($(".mgs-price", p) || {}).textContent || "0");
     var game = ($(".mgs-eyebrow", p) || {}).textContent || ""; game = game.split("·")[0].trim();
-    return { key: "produit|" + name, product_id: null, name: name.trim(), price: price, game_name: game, qty: 1 };
+    return { key: "produit|" + name, id: null, product_id: null, slug: "", name: name.trim(), name_en: name.trim(), price: price, uc_amount: "", unit: "", type: "", game_id: "", game_name: game, image_url: "", qty: 1 };
   }
 
   /* ---------- catalogue (données réelles -> gabarit .mgs-pcard existant) ---------- */
@@ -4372,7 +4384,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* fiche produit : tout clic sur la carte (hors pilule/favori) ouvre la fiche remplie avec le produit.
        Le <a> plein cadre est en z-index:0, donc sous __figure/__bottom : lui seul était inatteignable. */
     var pc = el.closest(".mgs-pcard");
-    if (pc && !el.closest(".mgs-pill") && !el.closest(".mgs-pcard__fav")) { stop(e); renderProduit(pc); window.mgsShowPage("produit"); return; }
+    if (pc && !el.closest(".mgs-pill") && !el.closest(".mgs-pcard__fav")) { stop(e); openProduit(pc); return; }
     /* liens internes du template (#jeux, #securite, #support, #top…) : le sélecteur du script
        template (a[data-nav], .nav-inner-li a, …) ne les couvrait pas — ces boutons ne faisaient rien */
     var la = el.closest('a[href^="#"]');
