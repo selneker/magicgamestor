@@ -281,6 +281,10 @@ test("annulation avec motif valide (wrong_info)", async (page, state) => {
   await verifyAndSubmit(page, "MVola");
   await page.waitForFunction(() => !document.querySelector('.mgs-co-screen[data-co="2"]').hidden, null, { timeout: 15000 });
   await page.locator(".mgs-co-cancel").click();
+  /* le motif est obligatoire : le bouton ouvre un sélecteur (cf. main) */
+  await page.waitForSelector('.mgs-co-cancel-popup:not([hidden])', { timeout: 8000 });
+  await page.locator('input[name="co-cancel-reason"][value="wrong_info"]').check();
+  await page.locator(".mgs-co-cancel-confirm").click();
   await page.waitForTimeout(2000);
   // la commande doit être annulée sans erreur masquée
   const list = (await api("/orders/me", { token: state.userToken })).data;
