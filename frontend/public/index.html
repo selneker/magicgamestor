@@ -3814,9 +3814,66 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     });
   }
 
+  /* ---------- commande en attente : mémoire + reprise (PL-CHK-3/PL-CHK-6,
+     même forme que main frontend/src/lib/pendingOrder.js:13-30,37,47,65) ----------
+     Une SEULE clé ne portant QUE { id, createdAt }, try/catch partout, 24 h.
+     Le design n'a AUCUN conteneur de bannière : la reprise est silencieuse
+     (aucun élément ajouté) vers l'écran existant du tunnel — voir PORTAGE Z3a. */
+  var PENDING_KEY = "mgs_pending_order_id";
+  var PENDING_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+  function readPendingOrderId() {
+    try { var raw = localStorage.getItem(PENDING_KEY); if (!raw) return null; var p = JSON.parse(raw); if (!p || typeof p.id !== "string" || !p.id) return null; return { id: p.id, createdAt: typeof p.createdAt === "string" ? p.createdAt : null }; } catch (e) { return null; }
+  }
+  function writePendingOrderId(id, createdAt) { if (!id) return; try { localStorage.setItem(PENDING_KEY, JSON.stringify({ id: id, createdAt: createdAt || null })); } catch (e) { } }
+  function clearPendingOrderId() { try { localStorage.removeItem(PENDING_KEY); } catch (e) { } }
+  function candidatePendingOrderId() {
+    var p = readPendingOrderId(); if (!p) return null;
+    if (!p.createdAt || isNaN(Date.parse(p.createdAt)) || Date.now() - Date.parse(p.createdAt) > PENDING_MAX_AGE_MS) { clearPendingOrderId(); return null; }
+    return p.id;
+  }
+  var PENDING_ACTIVE_STATUSES = ["pending_payment", "proof_submitted"];
+  function isUsablePendingOrder(o) {
+    if (!o || PENDING_ACTIVE_STATUSES.indexOf(o.status) < 0) return false;
+    if (o.payment_method === "manual" && !o.manual_operator) return false;
+    return true;
+  }
+
   /* ---------- checkout ---------- */
   var co = { verified: false, pid: "", pseudo: "", method: "", total: 0, items: "", game: "", game_id: "", order: null, timer: null, poll: null };
   function coShow(n) { $$(".mgs-co-screen").forEach(function (sc) { sc.hidden = (+sc.dataset.co !== n); }); }
+  /* Reprise silencieuse : hydrate le tunnel depuis la commande relue (aucun
+     élément créé — on peuple uniquement les écrans existants). */
+  function hydrateCoFromOrder(o) {
+    co.order = o; co.verified = true;
+    co.pid = o.pubg_id || ""; co.pseudo = o.pseudo || "";
+    co.game_id = o.game_id || ""; co.game = ((gamesCache || []).filter(function (g) { return g.id === o.game_id; })[0] || {}).name || "";
+    co.total = (o.subtotal != null ? o.subtotal : (o.total != null ? o.total : co.total));
+    co.items = (o.items || []).map(function (it) { return (it.quantity != null ? it.quantity : 1) + " × " + (it.name || it.product_name || it.product_id || ""); }).join(", ");
+    var m = String(o.payment_method || "");
+    if (m === "binance" || m === "crypto") co.method = "Binance";
+    else if (o.manual_operator === "orange" || m === "orange") co.method = "Orange Money";
+    else if (o.manual_operator === "mvola" || m === "mvola") co.method = "MVola";
+    else co.method = "";
+    var cg = $(".mgs-co-game"); if (cg) cg.textContent = co.game;
+    var ct = $(".mgs-co-total"); if (ct) ct.textContent = ar(co.total);
+    var ci = $(".mgs-co-items"); if (ci) ci.textContent = co.items;
+    var ip = $(".mgs-co-id-input"); if (ip) ip.value = co.pid;
+    var st = $(".mgs-co-id-status"); if (st) { st.hidden = false; st.className = "mgs-co-id-status is--ok"; st.innerHTML = CK + "<span>" + esc(co.pseudo || co.pid) + "</span>"; }
+  }
+  /* Au chargement : une commande mémorisée encore utilisable ouvre le tunnel
+     sur l'écran qui correspond à son état (main /orders/:id) ; entrée
+     introuvable, périmée ou statut final → elle meurt en silence. */
+  function resumePendingOrder(done) {
+    var id = candidatePendingOrderId();
+    if (!id) { done(); return; }
+    req("/orders/" + encodeURIComponent(id)).then(function (o) {
+      if (!isUsablePendingOrder(o)) { clearPendingOrderId(); done(); return; }
+      hydrateCoFromOrder(o);
+      window.mgsShowPage("commande");
+      if (o.status === "proof_submitted") { coReceipt(); pollOrder(); }
+      else { coPay(); }
+    }).catch(function () { clearPendingOrderId(); done(); });
+  }
   var RECENT_KEY = "mgs_recent_ids";
   function getRecent() { try { var a = JSON.parse(localStorage.getItem(RECENT_KEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   function addRecent(id) { id = String(id || "").slice(0, 60); if (!id) return; var a = getRecent().filter(function (x) { return x !== id; }); a.push(id); while (a.length > 10) a.shift(); try { localStorage.setItem(RECENT_KEY, JSON.stringify(a)); } catch (e) { } renderRecent(); }
@@ -3899,7 +3956,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var btn = $(".mgs-human-confirm"); if (btn) btn.disabled = true;
     co.busy = true;
     toast(t("checkout.creating"));
-    req("/orders", { method: "POST", body: payload }).then(function (order) { co.order = order; co.busy = false; closeHuman(); if (isBinance) initiateBinance(order); else coPay(); }).catch(function (e) {
+    req("/orders", { method: "POST", body: payload }).then(function (order) { writePendingOrderId(order.id, order.created_at || new Date().toISOString()); co.order = order; co.busy = false; closeHuman(); if (isBinance) initiateBinance(order); else coPay(); }).catch(function (e) {
       if (btn) btn.disabled = false;
       co.busy = false;
       if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.isCaptchaError(e)) { window.MGS_CAPTCHA.reset(); toast(t("captcha.verifyAgain"), "err"); openHuman(true); return; }
@@ -3984,7 +4041,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function statusLabel(s) { var b = statusBucket(s); if (b === "done") return t("order.status.delivered"); if (b === "cancel") return t("order.status.cancelled"); var sl = String(s || "").toLowerCase(); if (sl === "pending_payment") return t("order.status.pending_payment"); if (sl === "awaiting_verification") return t("order.status.awaiting_verification"); return t("order.tabs.progress"); }
   function pollOrder() {
     if (co.poll) clearInterval(co.poll); if (!co.order) return; var tries = 0, pollFails = 0;
-    co.poll = setInterval(function () { tries++; if (tries > 60) { clearInterval(co.poll); co.poll = null; var fb = $(".mgs-co-wait-badge"); if (fb) fb.textContent = t("common.error"); return; } req("/orders/" + co.order.id).then(function (o) { pollFails = 0; co.order = o; var b = statusBucket(o.status); var badge = $(".mgs-co-wait-badge"); var wt = $(".mgs-co-wait-t"); if (b === "done") { if (badge) badge.textContent = t("order.status.delivered"); if (wt) wt.textContent = t("order.status.delivered"); clearInterval(co.poll); co.poll = null; } else if (b === "cancel") { if (badge) badge.textContent = t("order.status.cancelled"); if (wt) wt.textContent = t("order.status.cancelled"); clearInterval(co.poll); co.poll = null; } }).catch(function (e) { pollFails++; if (pollFails === 3) { var fb2 = $(".mgs-co-wait-badge"); if (fb2) fb2.textContent = errMsg(e); signale(e); } }); }, 5000);
+    co.poll = setInterval(function () { tries++; if (tries > 60) { clearInterval(co.poll); co.poll = null; var fb = $(".mgs-co-wait-badge"); if (fb) fb.textContent = t("common.error"); return; } req("/orders/" + co.order.id).then(function (o) { pollFails = 0; co.order = o; var b = statusBucket(o.status); var badge = $(".mgs-co-wait-badge"); var wt = $(".mgs-co-wait-t"); if (b === "done") { if (badge) badge.textContent = t("order.status.delivered"); if (wt) wt.textContent = t("order.status.delivered"); clearPendingOrderId(); clearInterval(co.poll); co.poll = null; } else if (b === "cancel") { if (badge) badge.textContent = t("order.status.cancelled"); if (wt) wt.textContent = t("order.status.cancelled"); clearPendingOrderId(); clearInterval(co.poll); co.poll = null; } }).catch(function (e) { pollFails++; if (pollFails === 3) { var fb2 = $(".mgs-co-wait-badge"); if (fb2) fb2.textContent = errMsg(e); signale(e); } }); }, 5000);
   }
   function coFinish() {
     if (co.poll) { clearInterval(co.poll); co.poll = null; } if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } stopTimer();
@@ -4008,6 +4065,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     closeCancel(); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; }
     if (!co.order) { coShow(1); return; }
     req("/orders/" + co.order.id + "/cancel", { method: "POST", body: { reason: reason, note: note || undefined } })
+      .then(function () { clearPendingOrderId(); })
       .catch(function (e) { toast(errMsg(e), "err"); });
     coShow(1);
   }
@@ -4482,12 +4540,14 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
           .then(function () { window.mgsShowPage(me ? "compte" : "connexion"); });
         return;
       }
-      var fromUrl = mgsPageFromUrl();
-      if (fromUrl !== (body.getAttribute("data-page") || "accueil")) window.mgsShowPage(fromUrl);
-      else mgsSyncUrl(fromUrl, true);
-      if (window.mgsSetNav) mgsSetNav(body.getAttribute("data-page") || "accueil");
-      if (me) req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; updatePointsPill(bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0))); }).catch(function (e) { updatePointsPill(null); signale(e); });
-      route(body.getAttribute("data-page") || "accueil");
+      resumePendingOrder(function () {
+        var fromUrl = mgsPageFromUrl();
+        if (fromUrl !== (body.getAttribute("data-page") || "accueil")) window.mgsShowPage(fromUrl);
+        else mgsSyncUrl(fromUrl, true);
+        if (window.mgsSetNav) mgsSetNav(body.getAttribute("data-page") || "accueil");
+        if (me) req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; updatePointsPill(bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0))); }).catch(function (e) { updatePointsPill(null); signale(e); });
+        route(body.getAttribute("data-page") || "accueil");
+      });
     });
     window.addEventListener("resize", renderRecent);
   }
