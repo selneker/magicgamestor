@@ -269,6 +269,9 @@ test("auth : connexion -> accueil + compte + points", async (page, state) => {
   await page.locator('.mgs-page[data-page="connexion"] a[data-nav="compte"]').click();
   await pageIs(page, "accueil"); /* la connexion ramène à l'accueil */
   await page.waitForFunction(() => location.pathname === "/", null, { timeout: 8000 });
+  /* main : la pastille de points n'apparaît qu'une fois le solde récupéré
+     (Header.js:35) — elle doit passer de « none » à visible après la connexion. */
+  await page.waitForFunction(() => { const p = document.querySelector(".nav-points-pill"); return !!p && p.style.display !== "none"; }, null, { timeout: 10000 });
   await page.evaluate(() => window.mgsShowPage("compte"));
   await pageIs(page, "compte");
   await page.waitForFunction(() => document.querySelector("#acc-name") && document.querySelector("#acc-name").value === "Test Player", null, { timeout: 12000 });
@@ -281,6 +284,8 @@ test("auth : connexion -> accueil + compte + points", async (page, state) => {
 test("garde invité : points/compte -> connexion", async (page, state) => {
   state.loggedIn = false;
   await boot(page);
+  /* main : pastille absente hors connexion (Header.js:35). */
+  await page.waitForFunction(() => { const p = document.querySelector(".nav-points-pill"); return !!p && p.style.display === "none"; }, null, { timeout: 10000 });
   await page.evaluate(() => window.mgsShowPage("points"));
   await pageIs(page, "connexion");
   await page.waitForFunction(() => location.pathname === "/connexion", null, { timeout: 8000 });

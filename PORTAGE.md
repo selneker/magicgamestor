@@ -157,7 +157,7 @@ n'existent pas dans `main` (`/support` = page Chat dans `main`) ou libellés que
 | Retour Google en échec (`?error=google`) : message + URL nettoyée | `components/AuthCallback.js:14-28` | `GET /auth/google/callback` (`routers/auth.py:319-…`) | `handleGoogleError()` | porté |
 | Déconnexion : `POST /auth/logout`, session vidée, retour accueil — **le panier n'est pas vidé** | `context/AuthContext.js:58-61` ; `context/CartContext.js` | `POST /auth/logout` | `logout()` | porté |
 | Points fidélité : pastille masquée hors connexion | `components/layout/Header.js:33` | `GET /loyalty/me` | `syncAuthChrome()` | porté |
-| Pages protégées (`/compte`, `/compte/points`, `/commandes`) : redirection vers la connexion puis retour | `components/ProtectedRoute.js` ; `App.js:68,80-81` | — | `needLogin()` | porté |
+| Pages protégées (`/compte`, `/compte/points`) : redirection vers la connexion puis retour. `/commandes` n'est PAS protégée (`main` la redirige vers `/suivi`, `components/common/OrdersRedirect.js:8`) | `components/ProtectedRoute.js` ; `App.js:68,80-81` | — | `needLogin()` | porté |
 
 ### Modules vérifiés (aucune modification nécessaire)
 
@@ -170,9 +170,13 @@ n'existent pas dans `main` (`/support` = page Chat dans `main`) ou libellés que
 
 - Pas d'écran dédié « vérification d'email » : le jeton est consommé et le
   résultat affiché par un toast (élément visible manquant, voir plus bas).
-- Le captcha des formulaires d'auth n'existe visuellement que si une clé
-  publique Turnstile est configurée (sinon aucun élément n'est ajouté).
-- La suppression de compte utilise encore `confirm()` + `prompt()` (à traiter en Z5).
+- La suppression de compte passe par `confirm()` + `prompt()` (consigne
+  PL-FE-012-V1 : « aucun nouvel élément ») ; `main` a un formulaire dédié.
+- La déconnexion retourne à l'accueil avec un toast ; `main` reste sur la page
+  et laisse `ProtectedRoute` renvoyer vers `/connexion`. Navigation non touchée
+  (consigne : « ni la navigation »).
+- L'échec Google affiche `auth.errorGeneric` ; `main` a un texte dédié codé en
+  dur (`AuthCallback.js:20`), absente du dictionnaire.
 
 ---
 

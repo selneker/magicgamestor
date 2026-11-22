@@ -4000,7 +4000,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- compte ---------- */
   var loyaltyOk = false;
-  function updatePointsPill(pts) { loyaltyOk = pts != null; var txt = pts == null ? "—" : String(pts); $$(".pts-n").forEach(function (e) { e.textContent = txt; }); $$('[aria-label*="Points fidélité"]').forEach(function (e) { var b = $(".nav-action-badge", e); if (b) b.textContent = txt; e.setAttribute("aria-label", txt === "—" ? "Points fidélité indisponibles" : "Points fidélité : " + txt); }); }
+  function updatePointsPill(pts) { loyaltyOk = pts != null; var txt = pts == null ? "—" : String(pts); $$(".pts-n").forEach(function (e) { e.textContent = txt; }); $$('[aria-label*="Points fidélité"]').forEach(function (e) { var b = $(".nav-action-badge", e); if (b) b.textContent = txt; e.setAttribute("aria-label", txt === "—" ? "Points fidélité indisponibles" : "Points fidélité : " + txt); }); syncAuthChrome(); }
   /* invité vs connecté : chrome de nav (pill points desktop + cercle points mobile) */
   var authReturnTo = null, authBusy = false;
   function syncAuthChrome() { var on = !!me && loyaltyOk; $$(".nav-points-pill").forEach(function (e) { e.style.display = on ? "" : "none"; }); $$('.nav-mobile-actions a[data-nav="points"]').forEach(function (e) { e.style.display = on ? "" : "none"; }); }
@@ -4055,8 +4055,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
      quand la clé publique est configurée (AuthPage.js:33,120 ; AuthExtras.js:69).
      Le prototype ne crée le conteneur QUE si MGS_CAPTCHA.enabled() — sans clé,
      aucun élément n'est ajouté à la page. */
-  var authCaptchaBox = null, authCaptchaWant = false, authLoginFailed = false;
-  function renderAuthCaptcha(always) {
+  var authCaptchaBox = null, authCaptchaWant = false, authLoginFailed = false, authCaptchaRequired = false;
+  function renderAuthCaptcha() {
     var cap = window.MGS_CAPTCHA; if (!cap || !cap.enabled()) return;
     var page = $(".mgs-page[data-page=connexion]"); if (!page) return;
     var submit = $('a[data-nav="compte"]', page); if (!submit) return;
@@ -4065,7 +4065,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       submit.parentNode.insertBefore(authCaptchaBox, submit);
     }
     authCaptchaBox.hidden = false;
-    cap.render(authCaptchaBox, { appearance: always ? "always" : "interaction-only", onToken: function () { }, onExpire: function () { } });
+    /* main : « always » seulement quand l'API a exigé le contrôle
+       (CaptchaWidget.js:110-116) — un échec d'identifiants ordinaire reste
+       en « interaction-only ». */
+    cap.render(authCaptchaBox, { appearance: authCaptchaRequired ? "always" : "interaction-only", onToken: function () { }, onExpire: function () { } });
   }
   function syncAuthCaptcha() {
     var cap = window.MGS_CAPTCHA;
@@ -4073,7 +4076,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var want = (authMode === "register" || authLoginFailed); /* AuthPage.js:33 */
     if (!want) { authCaptchaWant = false; if (authCaptchaBox) authCaptchaBox.hidden = true; return; }
     if (authCaptchaWant && authCaptchaBox && !authCaptchaBox.hidden) return;
-    authCaptchaWant = true; renderAuthCaptcha(authLoginFailed);
+    authCaptchaWant = true; renderAuthCaptcha();
   }
   function refreshPointsPill() {
     if (!me) { updatePointsPill(null); return; }
@@ -4086,7 +4089,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast(t("auth.errorGeneric"), "err"); return; }
     var min = authMode === "register" ? 8 : 6;
     if (pw.length < min) { toast(t("auth.errorGeneric", { n: min }), "err"); return; }
-    if (authMode === "register" && !($("#reg-name") || {}).value) { toast(t("auth.name"), "err"); return; }
+    if (authMode === "register" && (($("#reg-name") || {}).value || "").trim().length < 2) { toast(t("auth.name"), "err"); return; }
+    /* main : soumission bloquée tant que le widget est affiché sans jeton
+       (AuthPage.js:122, `captcha.enabled && showCaptcha && !captcha.ready`). */
+    if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.enabled() && authCaptchaWant && !captchaToken()) { toast(t("captcha.required"), "err"); return; }
     authBusy = true;
     var rc = $('.mgs-page[data-page=connexion] input[type="checkbox"]');
     var remember = rc ? !!rc.checked : true; /* main : coché par défaut (AuthPage.js:25) */
@@ -4098,7 +4104,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
        { user, access_token } (backend/routers/auth.py:107-110,193,211) —
        main n'enchaîne pas un second login après l'inscription (AuthPage.js:42-49). */
     req("/auth/" + authMode, { method: "POST", body: payload }).then(function (r) {
-      authBusy = false; authLoginFailed = false;
+      authBusy = false; authLoginFailed = false; authCaptchaRequired = false;
       me = (r && r.user) || null;
       syncAuthChrome(); refreshPointsPill();
       if (authMode === "register") toast(t("auth.verifySent"));
@@ -4107,8 +4113,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     }).catch(function (e) {
       authBusy = false;
       if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.isCaptchaError(e)) {
+        authCaptchaRequired = true;
         window.MGS_CAPTCHA.reset();
-        renderAuthCaptcha(true);
+        renderAuthCaptcha();
         toast(t("captcha.required"), "err");
         return;
       }
@@ -4118,7 +4125,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
   function googleLogin() { toast(t("auth.google")); var to = authReturnTo ? "/" + authReturnTo : "/"; window.location.href = API + "/auth/google/start?return_to=" + encodeURIComponent(to); }
   var forgotCaptchaBox = null;
-  function renderForgotCaptcha(always) {
+  function renderForgotCaptcha() {
     var cap = window.MGS_CAPTCHA; if (!cap || !cap.enabled()) return;
     var page = $(".mgs-page[data-page=mdp]"); if (!page) return;
     var send = $(".mgs-mdp-send", page); if (!send) return;
@@ -4127,11 +4134,13 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       send.parentNode.insertBefore(forgotCaptchaBox, send);
     }
     forgotCaptchaBox.hidden = false;
-    cap.render(forgotCaptchaBox, { appearance: always ? "always" : "interaction-only", onToken: function () { }, onExpire: function () { } });
+    /* main : pas de `visible` sur cette page → toujours « interaction-only ». */
+    cap.render(forgotCaptchaBox, { appearance: "interaction-only", onToken: function () { }, onExpire: function () { } });
   }
-  function forgotPassword() { var email = ((($("#fpe") || {}).value || ($("#em") || {}).value) || "").trim(); if (!email) { toast(t("auth.errorGeneric"), "err"); return; } req("/auth/forgot-password", { method: "POST", body: { email: email, captcha_token: captchaToken() } }).then(function () { var st = $("#mdp-status"); if (st) { st.className = "mgs-status mgs-status--done"; st.textContent = t("auth.forgotSent"); } else { toast(t("auth.forgotSent")); } }).catch(function (e) {
+  function forgotPassword() { var email = ((($("#fpe") || {}).value || ($("#em") || {}).value) || "").trim(); if (!email) { toast(t("auth.errorGeneric"), "err"); return; } if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.enabled() && !captchaToken()) { toast(t("captcha.required"), "err"); return; } req("/auth/forgot-password", { method: "POST", body: { email: email, captcha_token: captchaToken() } }).then(function () { var st = $("#mdp-status"); if (st) { st.className = "mgs-status mgs-status--done"; st.textContent = t("auth.forgotSent"); } else { toast(t("auth.forgotSent")); } }).catch(function (e) {
     var capErr = !!(window.MGS_CAPTCHA && window.MGS_CAPTCHA.isCaptchaError(e));
-    if (capErr) { window.MGS_CAPTCHA.reset(); renderForgotCaptcha(true); }
+    if (capErr) window.MGS_CAPTCHA.reset();
+    renderForgotCaptcha(); /* main : jeton à usage unique, nouveau challenge à chaque échec (AuthExtras.js:61) */
     var m = capErr ? t("captcha.required") : authErr(e);
     var st = $("#mdp-status"); if (st) { st.className = "mgs-status mgs-status--cancel"; st.textContent = m; } else { toast(m, "err"); }
   }); }
@@ -4274,7 +4283,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     evenements: function () { renderEvents(); },
     pack: function () { req("/evo/season").catch(function (e) { var st = $(".mgs-page[data-page=pack] .mgs-status"); if (st) { st.className = "mgs-status mgs-status--cancel"; st.textContent = errMsg(e); } }); },
     connexion: function () { if (me) { var to = authReturnTo || "accueil"; authReturnTo = null; window.mgsShowPage(to); return; } setAuthMode(authMode); },
-    mdp: function () { var st = $("#mdp-status"); if (st) { st.className = "mgs-status"; st.textContent = ""; } renderForgotCaptcha(false); },
+    mdp: function () { var st = $("#mdp-status"); if (st) { st.className = "mgs-status"; st.textContent = ""; } renderForgotCaptcha(); },
     reset: function () { var st = $("#reset-status"); if (st) { st.className = "mgs-status"; st.textContent = resetTokenFromUrl() ? "" : t("auth.errorInvalidLink"); } },
     accueil: function () { loadGames(); renderEvents(); }
   };
