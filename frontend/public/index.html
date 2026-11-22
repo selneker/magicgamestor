@@ -3557,6 +3557,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     });
     function parse(r) {
       var ct = r.headers.get("content-type") || "";
+      /* Garde T1.7 (main frontend/src/lib/api.js:19-35) : une réponse non-JSON
+         (page d'erreur HTML du proxy, maintenance) est traitée comme une
+         erreur, jamais renvoyée comme payload à un appelant. */
+      if (ct && ct.indexOf("json") < 0) { var gu = new Error("Réponse non-JSON depuis " + API + path); gu.status = r.status; console.error("[api guard] " + API + path + ": content-type non-JSON (" + ct + ")"); return Promise.reject(gu); }
       var p = ct.indexOf("json") >= 0 ? r.json().catch(function () { return null; }) : r.text();
       return p.then(function (data) { if (!r.ok) { var e = new Error((data && (data.detail || data.message)) || ("HTTP " + r.status)); e.status = r.status; e.data = data; throw e; } return data; });
     }
