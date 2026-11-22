@@ -3596,10 +3596,35 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     return attempt(0);
   }
   function loadPayCfg() { return req("/payments/config").then(function (c) { payCfg = c; return c; }).catch(function (e) { signale(e); return null; }); }
-  function loadGames() { if (gamesCache) return Promise.resolve(gamesCache); return req("/games").then(function (g) { gamesCache = g || []; return gamesCache; }).catch(function (e) { signale(e); gamesCache = []; return gamesCache; }); }
+  function loadGames() { if (gamesCache) return Promise.resolve(gamesCache); return req("/games").then(function (g) { var list = Array.isArray(g) ? g.filter(function (x) { return x.active !== false; }) : []; list.sort(function (a, b) { return (a.sort_order || 0) - (b.sort_order || 0); }); gamesCache = list; return gamesCache; }).catch(function (e) { signale(e); gamesCache = []; return gamesCache; }); }
   function gameByName(name) { return (gamesCache || []).filter(function (x) { return (x.name || "").toLowerCase() === String(name || "").toLowerCase(); })[0] || null; }
   function gameIdFromSlug(slug) { var map = { pubg: "pubg-mobile", freefire: "free-fire", mlbb: "mobile-legends", codm: "codm" }; var g = (gamesCache || []).filter(function (x) { return x.slug === slug || x.id === map[slug]; })[0]; return g ? g.id : (map[slug] || slug); }
   function primaryField(g) { if (g && g.identity_fields && g.identity_fields.length) return (g.identity_fields.filter(function (f) { return f.primary; })[0] || g.identity_fields[0]).key; return "pubg_id"; }
+  /* Liste des jeux : GET /games (context/GameContext.js:42-52) — filtre `active`,
+     tri `sort_order`, rendu dans le gabarit .mgs-game existant. */
+  var gameTpl = null;
+  function renderGames() {
+    var grid = $(".mgs-boutique-games .mgs-grid"); if (!grid) return;
+    if (!gameTpl) { gameTpl = $(".mgs-game", grid); if (!gameTpl) return; }
+    var frag = doc.createDocumentFragment();
+    (gamesCache || []).forEach(function (g) {
+      var card = gameTpl.cloneNode(true);
+      var name = (LANG === "en" && g.name_en) ? g.name_en : (g.name || "");
+      var desc = (LANG === "en" && g.description_en) ? g.description_en : (g.description || "");
+      card.setAttribute("data-game", g.slug || g.id || "");
+      card.setAttribute("data-gamename", g.name || "");
+      card.setAttribute("aria-label", "Voir le catalogue " + name);
+      var nm = $(".mgs-game__name", card); if (nm) nm.textContent = name;
+      var de = $(".mgs-game__desc", card); if (de) de.textContent = desc;
+      var media = $(".mgs-game__media", card);
+      if (media) { var tag = $(".mgs-game__tag", media); if (tag) tag.remove(); if (g.icon_url) media.innerHTML = '<img src="' + esc(g.icon_url) + '" alt="" style="width:100%;height:100%;object-fit:cover">'; }
+      var chips = $(".mgs-chips", card);
+      if (chips) { chips.innerHTML = (g.product_types || []).map(function (pt) { return '<span class="mgs-chip">' + esc((LANG === "en" && pt.label_en) || pt.label || pt.key) + "</span>"; }).join(""); }
+      frag.appendChild(card);
+    });
+    $$(".mgs-game", grid).forEach(function (c) { c.remove(); });
+    grid.appendChild(frag);
+  }
 
   /* ---------- panier persistant ---------- */
   var CART_KEY = "mgs_cart"; var cart = [];
@@ -4276,7 +4301,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- routage : observe body[data-page] (découplé du script template) ---------- */
   var loaders = {
-    boutique: function () { loadGames(); },
+    boutique: function () { loadGames().then(renderGames); },
     commandes: function () { loadOrders(); },
     compte: function () { renderAccount(); },
     points: function () { renderPoints(); },
@@ -4285,7 +4310,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     connexion: function () { if (me) { var to = authReturnTo || "accueil"; authReturnTo = null; window.mgsShowPage(to); return; } setAuthMode(authMode); },
     mdp: function () { var st = $("#mdp-status"); if (st) { st.className = "mgs-status"; st.textContent = ""; } renderForgotCaptcha(); },
     reset: function () { var st = $("#reset-status"); if (st) { st.className = "mgs-status"; st.textContent = resetTokenFromUrl() ? "" : t("auth.errorInvalidLink"); } },
-    accueil: function () { loadGames(); renderEvents(); }
+    accueil: function () { loadGames().then(renderGames); renderEvents(); }
   };
   var lastPage = null;
   function route(page) { if (page === lastPage) return; lastPage = page; if (loaders[page]) { try { loaders[page](); } catch (e) { signale(e); } } }
