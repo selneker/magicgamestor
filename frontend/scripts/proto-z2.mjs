@@ -96,7 +96,7 @@ function apiHandler(page, state) {
       return json(list);
     }
     const m = /^\/products\/([\w-]+)$/.exec(p);
-    if (m && req.method() === "GET") { const pr = PRODUCTS.find((x) => x.slug === m[1]); return pr ? json(pr) : json({ detail: "not found" }, 404); }
+    if (m && req.method() === "GET") { if (state.force404) return json({ detail: "not found" }, 404); const pr = PRODUCTS.find((x) => x.slug === m[1]); return pr ? json(pr) : json({ detail: "not found" }, 404); }
     if (p === "/loyalty/me" && req.method() === "GET") return json(LOYALTY);
     return json({ detail: "mock: route non gérée " + req.method() + " " + p }, 404);
   };
@@ -134,13 +134,22 @@ test("Z2 catalogue : paramètres exacts game/type/sort + cartes", async (page, s
   assert.deepEqual(ids, ["evo1", "p1", "p2", "prime1"], "catalogue PUBG : " + JSON.stringify(ids));
   const req = state.urls.filter((u) => u.startsWith("GET /products?")).pop();
   assert.ok(/[?&]game=pubg-mobile(&|$)/.test(req), "param game : " + req);
-  // tri par prix (paramètre sort=price_asc)
+  assert.ok(/sort=price_asc(&|$)/.test(req), "tri par défaut price_asc : " + req);
+  // puce « Populaire » -> popular=1 (main pages/Catalog.js:244)
+  await page.locator('.mgs-boutique-catalog .mgs-chip').nth(0).click();
+  await page.waitForFunction(() => document.querySelectorAll('.mgs-boutique-catalog .mgs-pcard[data-pid]').length === 1, null, { timeout: 10000 });
+  const reqP = state.urls.filter((u) => u.startsWith("GET /products?")).pop();
+  assert.ok(/popular=1/.test(reqP), "param popular : " + reqP);
+  assert.ok(!/unit_price/.test(reqP), "jamais unit_price : " + reqP);
+  await page.locator('.mgs-boutique-catalog .mgs-chip').nth(0).click();
+  await page.waitForFunction(() => document.querySelectorAll('.mgs-boutique-catalog .mgs-pcard[data-pid]').length === 4, null, { timeout: 10000 });
+  // puce prix -> price_desc (le backend n'accepte pas unit_price, routers/products.py:78)
   await page.locator('.mgs-boutique-catalog .mgs-chip').nth(1).click();
-  await page.waitForFunction(() => document.querySelector('.mgs-boutique-catalog .mgs-pcard[data-pid]') && document.querySelector('.mgs-boutique-catalog .mgs-pcard').dataset.pid === "prime1", null, { timeout: 10000 });
-  const req2 = state.urls.filter((u) => u.startsWith("GET /products?")).pop();
-  assert.ok(/sort=price_asc/.test(req2), "param sort : " + req2);
+  await page.waitForFunction(() => document.querySelector('.mgs-boutique-catalog .mgs-pcard[data-pid]') && document.querySelector('.mgs-boutique-catalog .mgs-pcard').dataset.pid === "evo1", null, { timeout: 10000 });
+  const reqS = state.urls.filter((u) => u.startsWith("GET /products?")).pop();
+  assert.ok(/sort=price_desc/.test(reqS), "param sort : " + reqS);
   const prices = await page.$$eval('.mgs-boutique-catalog .mgs-pcard .mgs-pill__price', (els) => els.map((e) => e.textContent.replace(/\s/g, "")));
-  assert.deepEqual(prices, ["4500Ar", "12500Ar", "32000Ar", "60000Ar"], "tri prix croissant : " + JSON.stringify(prices));
+  assert.deepEqual(prices, ["60000Ar", "32000Ar", "12500Ar", "4500Ar"], "tri prix décroissant : " + JSON.stringify(prices));
   // type=evo
   await page.goto(new URL("/index.html?game=pubg-mobile&type=evo", page.url()).href, { waitUntil: "load" });
   await boot(page);
@@ -164,6 +173,21 @@ test("Z2 fiche produit : GET /products/{slug}", async (page, state) => {
   assert.ok(state.urls.some((u) => u === "GET /products/1800-uc"), "appel GET /products/{slug} : " + JSON.stringify(state.urls.filter((u) => u.includes("/products/"))));
   assert.equal((await txt(page, '.mgs-page[data-page="produit"] .mgs-price')).replace(/\s+/g, " ").trim(), "32 000 Ar");
   assert.equal((await txt(page, '.mgs-page[data-page="produit"] h1')).trim(), "1800 UC");
+});
+
+test("Z2 fiche produit : échec GET /products/{slug} -> état d'erreur", async (page, state) => {
+  state.force404 = true;
+  await boot(page);
+  await page.evaluate(() => window.mgsShowPage("boutique"));
+  await pageIs(page, "boutique");
+  await page.locator('.mgs-game[data-gamename="PUBG Mobile"]').first().click();
+  await page.waitForSelector('.mgs-boutique-catalog .mgs-pcard[data-pid="p2"]', { timeout: 15000 });
+  await page.locator('.mgs-boutique-catalog .mgs-pcard[data-pid="p2"] .mgs-pcard__figure').click();
+  await pageIs(page, "produit");
+  await page.waitForSelector('.mgs-page[data-page="produit"] .mgs-empty', { timeout: 10000 });
+  const msg = (await txt(page, '.mgs-page[data-page="produit"] .mgs-empty')).trim();
+  assert.equal(msg, "Aucun pack ne correspond.", "état d'erreur = catalog.empty : " + JSON.stringify(msg));
+  assert.equal(await page.locator('.mgs-page[data-page="produit"] h1').count(), 0, "pas de fiche produit en cas d'échec");
 });
 
 test("Z2 panier : un seul jeu par panier", async (page, state) => {

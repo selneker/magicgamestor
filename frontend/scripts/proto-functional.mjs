@@ -95,6 +95,8 @@ function mockApi(page, state) {
     if (p === "/auth/me" && method === "PATCH") return json({ ...USER, ...JSON.parse(req.postData() || "{}") });
     if (p === "/games" && method === "GET") return json(GAMES);
     if (p === "/products" && method === "GET") { const g = url.searchParams.get("game"); return json(PRODUCTS.filter((x) => !g || x.game_id === g)); }
+    const pm = /^\/products\/([\w-]+)$/.exec(p);
+    if (pm && method === "GET") { const pr = PRODUCTS.find((x) => x.slug === pm[1]); return pr ? json(pr) : json({ detail: "not found" }, 404); }
     if (p === "/payments/config" && method === "GET") return json(PAYCFG);
     if (p === "/crypto/config" && method === "GET") return json(CRYPTOCFG);
     if (p === "/crypto/initiate" && method === "POST") { const b = JSON.parse(req.postData() || "{}"); return json({ ...cryptoPayment("WAITING"), network: b.network || "TRC20" }); }

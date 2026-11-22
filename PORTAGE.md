@@ -191,8 +191,10 @@ Prompt : **PL-006-FE-02-V1**.
 
 - Pas d'écran dédié « vérification d'email » : le jeton est consommé et le
   résultat affiché par un toast (élément visible manquant, voir plus bas).
-- La suppression de compte passe par `confirm()` + `prompt()` (consigne
-  PL-FE-012-V1 : « aucun nouvel élément ») ; `main` a un formulaire dédié.
+- La suppression de compte passe par `confirm()` + `prompt()` et **n'envoie pas le
+  mot de passe** : régression introduite par `c5cfb41` (l'ancien code demandait le mot
+  de passe puis « SUPPRIMER »). `main` envoie `{ password, confirmation }`
+  (`pages/Account.js:150`) et le backend l'exige (`routers/auth.py:442-444`).
 - La déconnexion retourne à l'accueil avec un toast ; `main` reste sur la page
   et laisse `ProtectedRoute` renvoyer vers `/connexion`. Navigation non touchée
   (consigne : « ni la navigation »).
@@ -207,9 +209,10 @@ Prompt : **PL-006-FE-03-V1**.
 
 | Fonction | Source `main` | Route backend | Prototype | État |
 |---|---|---|---|---|
-| Liste des jeux (filtre `active`, tri `sort_order`) | `context/GameContext.js:42-52` | `GET /games` (`routers/games.py:53`) | `loadGames()` `index.html:3599`, `renderGames()` `:3606` | porté |
-| Catalogue : `game, type, q, sort, popular, favorites, min_price, max_price` | `pages/Catalog.js:142` | `GET /products` (`routers/products.py:75`) | `qs()` `index.html:3735`, `catalogQuery()` `:3736`, `loadCatalogFor()` `:3786` | porté |
+| Liste des jeux (filtre `active`, tri `sort_order`, liste vide → gabarit conservé) | `context/GameContext.js:42-52` | `GET /games` (`routers/games.py:53`) | `loadGames()` `index.html:3599`, `renderGames()` `:3611` (couleur + badge par carte, repli icône cassée) | porté |
+| Catalogue : `game, type, q, sort, popular, favorites, min_price, max_price` | `pages/Catalog.js:118,142,244` | `GET /products` (`routers/products.py:75`) | `qs()` `index.html:3735`, `catalogQuery()` `:3736`, `loadCatalogFor()` `:3786`, puces `:4419` | porté |
 | Fiche produit | `pages/Product.js:81` | `GET /products/{slug}` (`routers/products.py:118`) | `openProduit()` `index.html:3717`, `renderProduit()` `:3702` | porté |
+| Fiche produit : échec (slug inconnu) | `pages/Product.js:84-93` | `GET /products/{slug}` | `renderProduitError()` `index.html:3729` (`catalog.empty`) | porté |
 | Fiche produit : `related` (4) | `pages/Product.js:145-149` | `GET /products/{slug}` (champ `related`) | aucun conteneur dans le design | non porté (design) |
 | Accueil : populaires / prime / evo | `pages/Home.js:389-391` | `GET /products` | aucun conteneur produits sur l'accueil | non porté (design) |
 | Accueil : événements | `pages/Home.js:407` | `GET /events` (`routers/events.py:46`) | `renderEvents()` `index.html:4289` (pré-chargé depuis `loaders.accueil`) | partiel |
@@ -224,14 +227,20 @@ Prompt : **PL-006-FE-03-V1**.
 ### Preuves de lignes (Z2)
 
 - **Liste des jeux** : `main` `frontend/src/context/GameContext.js:42` (`api.get("/games")`),
-  `:45` (`g.active !== false`), `:47` (`(a.sort_order ?? 0) - (b.sort_order ?? 0)`).
-  Prototype `frontend/public/index.html:3599` (les trois opérations), rendu `:3606`.
+  `:45` (`g.active !== false`), `:46` (`if (list.length > 0)`), `:47` (`(a.sort_order ?? 0) - (b.sort_order ?? 0)`).
+  Prototype `frontend/public/index.html:3599` (les quatre), rendu `:3611` ; le badge n'est
+  retiré que si une icône est injectée (`:3629`), la couleur `u--bg--*` tourne sur la palette
+  du design (`GAME_BG` `:3608`), icône cassée → icône du design (`GameCard.js:63-65`).
 - **Paramètres catalogue** : `main` `frontend/src/pages/Catalog.js:142` —
-  `api.get("/products", { params: { game, type, q, sort, popular, favorites, min_price, max_price } })`.
+  `api.get("/products", { params: { game, type, q, sort, popular, favorites, min_price, max_price } })` ;
+  tri par défaut `price_asc` (`:118`), puce « Populaire » → `popular=1` (`:244`).
   Prototype `index.html:3786-3792` (même objet) ; `qs()` `:3735` omet les valeurs vides,
-  comme axios omet `undefined`.
-- **Fiche produit** : `main` `frontend/src/pages/Product.js:81` — `` api.get(`/products/${slug}`) ``.
-  Prototype `index.html:3717` — `req("/products/" + encodeURIComponent(slug))`.
+  comme axios omet `undefined` ; puce 0 `popular=1`, puce 1 `price_asc`/`price_desc`
+  (`:4419`) — `unit_price` n'est jamais envoyé (`routers/products.py:78`).
+- **Fiche produit** : `main` `frontend/src/pages/Product.js:81` — `` api.get(`/products/${slug}`) `` ;
+  échec → état d'erreur `:84-93`. Prototype `index.html:3717` —
+  `req("/products/" + encodeURIComponent(slug))`, puis `renderProduitError()` `:3729`
+  (`catalog.empty` FR/EN, clé de main).
 - **Panier** : `main` `frontend/src/context/CartContext.js:21` (un seul jeu), `:23-26`
   (doublon d'abonnement), `:29` (`Math.min(20, …)`, `single ? 1`). Prototype `index.html:3653-3663`.
 - **Favoris** : `main` `frontend/src/lib/favorites.js:41-48` (bascule + `mgs_favorites`),
@@ -294,7 +303,7 @@ Prompt : **PL-006-FE-03-V1**.
 |---|---|---|---|---|---|
 | Profil (nom, téléphone, IDs sauvegardés) | `pages/Account.js:132` | `PATCH /auth/me` (`routers/auth.py:392`) | oui | `saveProfile()` 4129 | à porter |
 | Mot de passe | `pages/Account.js:142` | `POST /auth/change-password` (`routers/auth.py:255`) | oui | `changePassword()` 4130 | à porter |
-| Suppression (`confirmation: "SUPPRIMER"`) | `pages/Account.js:150` | `POST /auth/me/delete` (`routers/auth.py:436`) | oui | `deleteAccount()` 4131 | diverge (confirm/prompt) |
+| Suppression (`confirmation: "SUPPRIMER"`) | `pages/Account.js:150` | `POST /auth/me/delete` (`routers/auth.py:436`) | oui | `deleteAccount()` 4131 | diverge — mot de passe absent depuis `c5cfb41` |
 | Renvoyer l'email de vérification | `pages/Account.js:51` | `POST /auth/resend-verification` (`routers/auth.py:207`) | oui | absent | à porter |
 | Carte joueur PUBG | `components/PubgPlayerCard.js:141` | `PATCH /auth/me` | oui | à vérifier | à porter |
 | Points : solde, ledger, config | `pages/Loyalty.js:147` ; `components/layout/Header.js:29` | `GET /loyalty/me` (`routers/loyalty.py:60`) | oui | 4126,4172,4277,4499 | à porter |
@@ -365,7 +374,7 @@ Prompt : **PL-006-FE-03-V1**.
 | `POST /fazercards/validate-id` | `game_id`, `fields` | `req` 3876 | `IdentityFieldsVerify.js:102` | `routers/fazercards.py:118` |
 | `POST /loyalty/redeem` | `reward_id`, `pubg_id` | 4291 | `pages/Loyalty.js:155` | `routers/loyalty.py:73` |
 | `PATCH /auth/me` | `name`, `phone`, `saved_pubg_ids` (10 max, chiffres) | 4129 | `pages/Account.js:132` | `routers/auth.py:392-396` |
-| `POST /auth/me/delete` | `password`, `confirmation` ("SUPPRIMER") | 4131 | `pages/Account.js:150` | `routers/auth.py:436-444` |
+| `POST /auth/me/delete` | `password`, `confirmation` ("SUPPRIMER") | 4131 — `password` absent depuis `c5cfb41` | `pages/Account.js:150` | `routers/auth.py:436-444` |
 | `GET /me/game-identities` | `game_id` ; `fields`, `label`, `player_name` | absent | `GameIdentities.js:44-56` | `routers/games.py:103-152` |
 | `GET /orders/track` | `order_number`, `pubg_id` | absent | `OrderTrack.js:455` | `routers/orders.py:450-451` |
 | `POST /orders/{id}/cancel` | `reason` | à vérifier | `CancelSheet.js:46` | `routers/orders.py:680` |
