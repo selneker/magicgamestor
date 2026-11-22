@@ -3493,7 +3493,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="other"> <span data-i18n="checkout.cancelOther">Autre raison</span></label>
   </div>
   <div class="mgs-field"><label for="co-cancel-note" data-i18n="checkout.cancelNote">Précision (facultatif)</label><input id="co-cancel-note" class="mgs-input" maxlength="200"></div>
-  <div class="mgs-human-foot"><button type="button" class="mgs-human-cancel mgs-co-cancel-close" data-i18n="common.close">Fermer</button><button type="button" class="button-main w-inline-block mgs-co-cancel-confirm" data-button-theme="dark" data-button-accent="green"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Confirmer l'annulation"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span data-i18n="checkout.cancelCta">Confirmer l'annulation</span></span></span></span></button></div>
+  <div class="mgs-human-foot"><button type="button" class="mgs-human-cancel mgs-co-cancel-close" data-i18n="common.close">Fermer</button><button type="button" class="button-main w-inline-block mgs-co-cancel-confirm" data-button-theme="dark" data-button-accent="green"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Confirmer l'annulation"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span data-i18n="checkout.cancelOrder">Confirmer l'annulation</span></span></span></span></button></div>
 </div>
 
 <script src="mgs-logic-captcha.js"></script>
@@ -3518,109 +3518,12 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   var LANG = localStorage.getItem("mgs_lang") || "fr";
   var T = {
     fr: {
-      "toast.added": "Ajouté au panier", "toast.login": "Connecté", "toast.logout": "Déconnecté",
-      "toast.register": "Compte créé — vérifiez votre email", "toast.saved": "Enregistré",
-      "toast.pwchanged": "Mot de passe modifié", "toast.deleted": "Compte supprimé",
-      "toast.redeem": "Récompense échangée", "toast.sent": "Message envoyé", "toast.forgot": "Email de réinitialisation envoyé",
-      "toast.google": "Redirection vers Google…", "err.network": "Serveur injoignable. Réessayez.",
-      "err.generic": "Une erreur est survenue", "err.login": "Identifiants invalides : vérifiez votre e-mail et votre mot de passe",
-      "err.origin": "Connexion au serveur impossible",
-      "err.auth": "Connectez-vous pour continuer", "checkout.empty": "Votre panier est vide",
-      "checkout.needId": "Entrez votre ID joueur.", "checkout.needVerify": "Vérifiez votre ID joueur d'abord.",
-      "checkout.needMethod": "Choisissez un mode de paiement.", "checkout.verifying": "Vérification…",
-      "checkout.invalidId": "ID joueur introuvable. Vérifiez le numéro.",
-      "checkout.noCatalog": "Catalogue en cours d'activation côté serveur. Réessayez bientôt.",
-      "checkout.binanceOff": "Binance est indisponible actuellement (paiement manuel uniquement).",
-      "checkout.captchaAgain": "Vérification anti-robot requise — réessayez.",
-      "checkout.binanceAmount": "Montant exact", "checkout.binanceNetwork": "Réseau", "checkout.binanceAddress": "Adresse", "checkout.binanceMemo": "Mémo",
-      "checkout.binanceNoProof": "Le paiement est détecté automatiquement. Aucune preuve à envoyer.",
-      "checkout.binanceDetected": "Paiement détecté — confirmation en cours…",
-      "checkout.binanceFailed": "Paiement refusé. Vous pouvez réessayer.",
-      "checkout.binanceConfirmed": "Paiement confirmé",
-      "checkout.creating": "Création de la commande…", "checkout.uploading": "Envoi de la preuve…",
-      "checkout.proofOk": "Preuve envoyée · vérification en cours", "checkout.needProof": "Choisissez une image de preuve (JPEG/PNG).",
-      "checkout.expired": "Délai expiré", "orders.empty": "Aucune commande pour le moment.", "catalog.emptyGame": "Ce jeu n'a pas encore de catalogue disponible.",
-      "orders.login": "Connectez-vous pour voir vos commandes.", "pack.eligible": "Compte éligible",
-      "pack.notEligible": "Compte non éligible", "pack.needId": "Entrez votre ID joueur PUBG.",
-      "pack.checking": "Vérification…", "support.needMsg": "Écrivez un message.", "support.login": "Connectez-vous pour discuter.",
-      "support.chatOpen": "Chat ouvert — écrivez ci-dessous", "support.waPending": "Numéro WhatsApp support à confirmer.", "pack.noSeason": "Aucune offre évolutive active.", "status.done": "Livrée", "status.cancel": "Annulée",
-      "status.pending": "À payer", "status.verify": "Vérification", "status.progress": "En cours",
-      "method.mvola": "MVola", "method.orange": "Orange Money", "method.binance": "USDT",
-      "confirm.delete": "Supprimer définitivement votre compte ? Cette action est irréversible.",
-      "auth.name": "Entrez votre nom", "auth.emailFirst": "Entrez votre email d'abord", "auth.pwPrompt": "Mot de passe",
-      "auth.emailBad": "Adresse email invalide", "auth.pwShort": "Mot de passe trop court ({n} caractères min.)",
-      "auth.emailTaken": "Un compte existe déjà avec cet e-mail.", "auth.blocked": "Ce compte est bloqué. Contactez le support.",
-      "auth.tooMany": "Trop de tentatives. Réessayez dans quelques minutes.", "cart.otherGame": "Un autre jeu est déjà dans le panier. Un seul jeu par panier par commande.",
-      "auth.verifySent": "Un email de vérification vous a été envoyé.", "auth.errorUnavailable": "Service indisponible pour le moment. Réessayez plus tard.",
-      "auth.verifyOk": "Votre email est vérifié. Merci !", "auth.verifyError": "Lien invalide ou expiré. Renvoyez un email depuis votre compte.",
-      "auth.errorGeneric": "Une erreur est survenue. Réessayez.", "auth.googleFailed": "Connexion Google impossible. Réessayez.",
-      "captcha.required": "Contrôle de sécurité requis : terminez la vérification ci-dessus puis réessayez.",
-      "auth.forgotTitle": "Mot de passe oublié", "auth.forgotSub": "Recevez un lien de réinitialisation par e-mail.",
-      "auth.forgotCta": "Envoyer le lien", "auth.forgotSent": "Si ce compte existe, un e-mail de réinitialisation a été envoyé.",
-      "auth.resetTitle": "Nouveau mot de passe", "auth.resetSub": "Choisissez un nouveau mot de passe (8 caractères minimum).",
-      "auth.resetCta": "Réinitialiser", "auth.resetDone": "Mot de passe modifié. Connectez-vous.",
-      "auth.pwMismatch": "Les deux mots de passe ne correspondent pas", "auth.invalidLink": "Ce lien est invalide ou expiré.", "auth.needToken": "Aucun jeton de réinitialisation dans l'URL.",
-      "auth.backLogin": "Retour à la connexion", "common.previous": "Précédent", "common.next": "Suivant",
-      "checkout.cancelWrongInfo": "Je me suis trompé (ID ou produit)", "checkout.cancelChangeMethod": "Je veux changer de mode de paiement",
-      "checkout.cancelTooShort": "Le délai est trop court", "checkout.cancelCannotPayNow": "Je ne peux pas payer maintenant", "checkout.cancelOther": "Autre raison",
-      "checkout.cancelTitle": "Annuler la commande", "checkout.cancelNote": "Précision (facultatif)", "checkout.cancelCta": "Confirmer l'annulation",
-      "checkout.cancelSub": "Choisissez un motif (obligatoire).", "common.close": "Fermer", "events.shared": "Lien copié",
-      "points.redeem": "Échanger", "points.pidPrompt": "ID joueur PUBG / PUBG player ID", "events.empty": "Aucun événement pour le moment.",
-      "catalog.sortPopular": "Trier : populaire", "catalog.sortPriceAll": "Prix : tous", "catalog.sortPriceAsc": "Prix : croissant", "catalog.sortPriceDesc": "Prix : décroissant"
+      "account.deleteWarning": "Cette action est définitive : vos données personnelles seront anonymisées. L'historique des commandes est conservé de façon anonyme. Vos points seront perdus.", "account.deleted": "Compte supprimé.", "account.passwordChanged": "Mot de passe mis à jour.", "account.saved": "Profil mis à jour", "auth.errorGeneric": "Une erreur est survenue. Réessayez.", "auth.errorInvalidLink": "Ce lien est invalide ou expiré.", "auth.forgotSent": "Si un compte existe pour cet email, un lien vient d'être envoyé. Vérifiez vos spams.", "auth.google": "Continuer avec Google", "auth.name": "Nom", "auth.password": "Mot de passe", "auth.passwordMismatch": "Les mots de passe ne correspondent pas.", "auth.resetDone": "Mot de passe réinitialisé. Connectez-vous.", "auth.verifyError": "Lien invalide ou expiré. Renvoyez un email depuis votre compte.", "auth.verifyOk": "Votre email est vérifié. Merci !", "auth.verifySent": "Un email de vérification vous a été envoyé.", "captcha.required": "Contrôle de sécurité requis : termine la vérification ci-dessus puis réessaie.", "captcha.verifyAgain": "Merci de refaire le contrôle de sécurité ci-dessus puis de réessayer.", "cart.empty": "Votre panier est vide.", "cart.otherGame": "Votre panier contient des offres d'un autre jeu. Finalisez ou videz-le avant d'ajouter ce pack.", "catalog.emptyGame": "Ce jeu n'a pas encore de catalogue disponible. Configurez-le dans l'administration avant l'ouverture à la vente.", "catalog.popular": "Populaire", "catalog.priceAsc": "Prix croissant", "catalog.priceDesc": "Prix décroissant", "catalog.sortDefault": "Par défaut", "chat.sent": "Envoyé", "checkout.binanceAddress": "Adresse", "checkout.binanceExactAmount": "Montant exact", "checkout.binanceMemo": "MEMO / Tag", "checkout.binanceNetwork": "Réseau", "checkout.binanceNoProof": "Le paiement est détecté automatiquement. Aucune preuve à envoyer.", "checkout.binanceTitle": "Binance USDT", "checkout.cancelCannotPayNow": "Je ne peux pas payer maintenant", "checkout.cancelChangeMethod": "Je veux changer de mode de paiement", "checkout.cancelNote": "", "checkout.cancelOrder": "Annuler la commande", "checkout.cancelOther": "Autre raison", "checkout.cancelSub": "", "checkout.cancelTitle": "Pourquoi annulez-vous ?", "checkout.cancelTooShort": "Le délai est trop court", "checkout.cancelWrongInfo": "Je me suis trompé (ID ou produit)", "checkout.creating": "Création…", "checkout.cryptoDetected": "Transaction détectée — confirmation en cours…", "checkout.cryptoFailed": "Paiement USDT expiré. Aucun paiement n'a été validé pour cette commande.", "checkout.expired": "Paiement expiré", "checkout.methodMvola": "MVola", "checkout.methodOrange": "Orange Money", "checkout.papiOff": "Le paiement automatique est momentanément désactivé : réglez via USSD puis saisissez votre référence.", "checkout.playerId": "ID joueur", "checkout.proofCount": "Envoyez 1 à 3 captures d'écran.", "checkout.proofSubmitting": "Envoi de la preuve…", "checkout.selectMethod": "Mode de paiement", "checkout.success": "Paiement confirmé !", "checkout.verifyIdInvalid": "Identifiant invalide. Corrigez-le et revérifiez.", "checkout.verifyRequired": "Vérifiez votre ID PUBG Mobile avant de continuer.", "checkout.verifySub": "Entrez votre ID joueur : nous vérifions le compte avant le paiement.", "checkout.verifying": "Vérification…", "common.close": "Fermer", "common.error": "Une erreur est survenue", "common.next": "Suivant", "common.previous": "Précédent", "events.empty": "Aucun événement pour le moment.", "events.shared": "Lien copié !", "evo.checking": "Vérification…", "evo.eligible": "Éligible ! Vous pouvez continuer vers le paiement.", "evo.invalidId": "ID PUBG Mobile invalide (9 à 13 chiffres).", "evo.noSeason": "Aucune saison active", "evo.pubgLabel": "ID PUBG Mobile (9–13 chiffres)", "loyalty.redeemed": "Échange enregistré ! Notre équipe le traite sous peu.", "nav.logout": "Déconnexion", "order.banner.proofWaiting": "Preuve envoyée · vérification en cours", "order.loginToSee": "Connectez-vous pour voir vos commandes", "order.none": "Aucune commande pour le moment.", "order.status.awaiting_verification": "Vérification en cours", "order.status.cancelled": "Annulée", "order.status.delivered": "Livrée", "order.status.pending_payment": "Paiement en attente", "order.tabs.progress": "En cours", "product.added": "Ajouté au panier", "support.chatOpen": "Chat ouvert — écrivez ci-dessous", "support.login": "Connectez-vous pour discuter.", "support.needMsg": "Écrivez un message.", "support.waPending": "Numéro WhatsApp support à confirmer."
     },
     en: {
-      "toast.added": "Added to cart", "toast.login": "Signed in", "toast.logout": "Signed out",
-      "toast.register": "Account created — check your email", "toast.saved": "Saved",
-      "toast.pwchanged": "Password changed", "toast.deleted": "Account deleted",
-      "toast.redeem": "Reward redeemed", "toast.sent": "Message sent", "toast.forgot": "Reset email sent",
-      "toast.google": "Redirecting to Google…", "err.network": "Server unreachable. Try again.",
-      "err.generic": "Something went wrong", "err.login": "Invalid credentials: check your email and password",
-      "err.origin": "Cannot reach the server",
-      "err.auth": "Sign in to continue", "checkout.empty": "Your cart is empty",
-      "checkout.needId": "Enter your player ID.", "checkout.needVerify": "Verify your player ID first.",
-      "checkout.needMethod": "Choose a payment method.", "checkout.verifying": "Verifying…",
-      "checkout.invalidId": "Player ID not found. Check the number.",
-      "checkout.noCatalog": "Catalog is being activated server-side. Try again soon.",
-      "checkout.binanceOff": "Binance is currently unavailable (manual payment only).",
-      "checkout.captchaAgain": "Anti-bot verification required — try again.",
-      "checkout.binanceAmount": "Exact amount", "checkout.binanceNetwork": "Network", "checkout.binanceAddress": "Address", "checkout.binanceMemo": "Memo",
-      "checkout.binanceNoProof": "Payment is detected automatically. No proof to send.",
-      "checkout.binanceDetected": "Payment detected — confirming…",
-      "checkout.binanceFailed": "Payment failed. You can try again.",
-      "checkout.binanceConfirmed": "Payment confirmed",
-      "checkout.creating": "Creating order…", "checkout.uploading": "Uploading proof…",
-      "checkout.proofOk": "Proof sent · verification in progress", "checkout.needProof": "Choose a proof image (JPEG/PNG).",
-      "checkout.expired": "Time expired", "orders.empty": "No orders yet.", "catalog.emptyGame": "This game has no catalog available yet.",
-      "orders.login": "Sign in to see your orders.", "pack.eligible": "Eligible account",
-      "pack.notEligible": "Not eligible", "pack.needId": "Enter your PUBG player ID.",
-      "pack.checking": "Checking…", "support.needMsg": "Write a message.", "support.login": "Sign in to chat.",
-      "support.chatOpen": "Chat opened — write below", "support.waPending": "Support WhatsApp number to be confirmed.", "pack.noSeason": "No active evolutionary offer.", "status.done": "Delivered", "status.cancel": "Cancelled",
-      "status.pending": "To pay", "status.verify": "Verifying", "status.progress": "In progress",
-      "method.mvola": "MVola", "method.orange": "Orange Money", "method.binance": "USDT",
-      "confirm.delete": "Permanently delete your account? This cannot be undone.",
-      "auth.name": "Enter your name", "auth.emailFirst": "Enter your email first", "auth.pwPrompt": "Password",
-      "auth.emailBad": "Invalid email address", "auth.pwShort": "Password too short ({n} characters min.)",
-      "auth.emailTaken": "An account already exists with this email.", "auth.blocked": "This account is blocked. Contact support.",
-      "auth.tooMany": "Too many attempts. Try again in a few minutes.", "cart.otherGame": "Another game is already in the cart. One game per cart.",
-      "auth.verifySent": "A verification email has been sent to you.", "auth.errorUnavailable": "Service temporarily unavailable. Try again later.",
-      "auth.verifyOk": "Your email is verified. Thank you!", "auth.verifyError": "Invalid or expired link. Resend an email from your account.",
-      "auth.errorGeneric": "Something went wrong. Try again.", "auth.googleFailed": "Google sign-in failed. Try again.",
-      "captcha.required": "Security check required: complete the verification above and try again.",
-      "auth.forgotTitle": "Forgot password", "auth.forgotSub": "Get a reset link by email.",
-      "auth.forgotCta": "Send the link", "auth.forgotSent": "If this account exists, a reset email has been sent.",
-      "auth.resetTitle": "New password", "auth.resetSub": "Choose a new password (8 characters minimum).",
-      "auth.resetCta": "Reset password", "auth.resetDone": "Password changed. Sign in.",
-      "auth.pwMismatch": "The two passwords do not match", "auth.invalidLink": "This link is invalid or has expired.", "auth.needToken": "No reset token in the URL.",
-      "auth.backLogin": "Back to sign in", "common.previous": "Previous", "common.next": "Next",
-      "checkout.cancelWrongInfo": "I made a mistake (ID or product)", "checkout.cancelChangeMethod": "I want to change payment method",
-      "checkout.cancelTooShort": "The deadline is too short", "checkout.cancelCannotPayNow": "I can't pay right now", "checkout.cancelOther": "Other reason",
-      "checkout.cancelTitle": "Cancel the order", "checkout.cancelNote": "Details (optional)", "checkout.cancelCta": "Confirm cancellation",
-      "checkout.cancelSub": "Choose a reason (required).", "common.close": "Close", "events.shared": "Link copied",
-      "points.redeem": "Redeem", "points.pidPrompt": "PUBG player ID", "events.empty": "No events right now.",
-      "catalog.sortPopular": "Sort: popular", "catalog.sortPriceAll": "Price: all", "catalog.sortPriceAsc": "Price: low to high", "catalog.sortPriceDesc": "Price: high to low"
+      "account.deleteWarning": "This is permanent: your personal data will be anonymised. Order history is kept anonymously. Your points will be forfeited.", "account.deleted": "Account deleted.", "account.passwordChanged": "Password updated.", "account.saved": "Profile updated", "auth.errorGeneric": "Something went wrong. Try again.", "auth.errorInvalidLink": "This link is invalid or has expired.", "auth.forgotSent": "If an account exists for this email, a link was just sent. Check your spam folder.", "auth.google": "Continue with Google", "auth.name": "Name", "auth.password": "Password", "auth.passwordMismatch": "Passwords do not match.", "auth.resetDone": "Password reset. Please log in.", "auth.verifyError": "Invalid or expired link. Resend an email from your account.", "auth.verifyOk": "Your email is verified. Thank you!", "auth.verifySent": "A verification email has been sent to you.", "captcha.required": "Security check required: complete the verification above and try again.", "captcha.verifyAgain": "Please complete the security check above and try again.", "cart.empty": "Your cart is empty.", "cart.otherGame": "Your cart holds offers from another game. Check out or empty it before adding this pack.", "catalog.emptyGame": "This game has no catalog available yet. Configure it in the admin before opening it for sale.", "catalog.popular": "Popular", "catalog.priceAsc": "Price: low to high", "catalog.priceDesc": "Price: high to low", "catalog.sortDefault": "Default", "chat.sent": "Sent", "checkout.binanceAddress": "Address", "checkout.binanceExactAmount": "Exact amount", "checkout.binanceMemo": "MEMO / Tag", "checkout.binanceNetwork": "Network", "checkout.binanceNoProof": "The payment is detected automatically. No proof to submit.", "checkout.binanceTitle": "Binance USDT", "checkout.cancelCannotPayNow": "I can't pay right now", "checkout.cancelChangeMethod": "I want to change payment method", "checkout.cancelNote": "", "checkout.cancelOrder": "Cancel order", "checkout.cancelOther": "Other reason", "checkout.cancelSub": "", "checkout.cancelTitle": "Why are you cancelling?", "checkout.cancelTooShort": "The deadline is too short", "checkout.cancelWrongInfo": "I made a mistake (ID or product)", "checkout.creating": "Creating…", "checkout.cryptoDetected": "Transaction detected — confirming…", "checkout.cryptoFailed": "USDT payment expired. No payment was validated for this order.", "checkout.expired": "Payment expired", "checkout.methodMvola": "MVola", "checkout.methodOrange": "Orange Money", "checkout.papiOff": "Automatic payment is temporarily off: pay via USSD, then enter your reference.", "checkout.playerId": "Player ID", "checkout.proofCount": "Send 1 to 3 screenshots.", "checkout.proofSubmitting": "Sending proof…", "checkout.selectMethod": "Payment method", "checkout.success": "Payment confirmed!", "checkout.verifyIdInvalid": "Invalid ID. Correct it and verify again.", "checkout.verifyRequired": "Verify your PUBG Mobile ID before continuing.", "checkout.verifySub": "Enter your player ID: we check the account before payment.", "checkout.verifying": "Verifying…", "common.close": "Close", "common.error": "Something went wrong", "common.next": "Next", "common.previous": "Previous", "events.empty": "No events yet.", "events.shared": "Link copied!", "evo.checking": "Checking…", "evo.eligible": "Eligible! You can proceed to payment.", "evo.invalidId": "Invalid PUBG Mobile ID (9 to 13 digits).", "evo.noSeason": "No active season", "evo.pubgLabel": "PUBG Mobile ID (9–13 digits)", "loyalty.redeemed": "Redemption recorded! Our team will process it shortly.", "nav.logout": "Log out", "order.banner.proofWaiting": "Proof sent · under review", "order.loginToSee": "Log in to see your orders", "order.none": "No orders yet.", "order.status.awaiting_verification": "Under verification", "order.status.cancelled": "Cancelled", "order.status.delivered": "Delivered", "order.status.pending_payment": "Payment pending", "order.tabs.progress": "In progress", "product.added": "Added to cart", "support.chatOpen": "Chat ouvert — écrivez ci-dessous", "support.login": "Connectez-vous pour discuter.", "support.needMsg": "Écrivez un message.", "support.waPending": "Numéro WhatsApp support à confirmer."
     }
-  };
-  function t(k, v) { var s = (T[LANG] && T[LANG][k]) || T.fr[k] || k; if (v) Object.keys(v).forEach(function (key) { s = s.split("{" + key + "}").join(v[key]); }); return s; }
+  };function t(k, v) { var s = (T[LANG] && T[LANG][k]) || T.fr[k] || k; if (v) Object.keys(v).forEach(function (key) { s = s.split("{" + key + "}").join(v[key]); }); return s; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function ar(n) { n = Math.round(Number(n) || 0); return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " Ar"; }
   function arNum(n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, " "); }
@@ -3659,18 +3562,18 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     }
   }
   function errMsg(e) {
-    if (!e) return t("err.generic");
-    if (e.status === 401) return t("err.auth");
+    if (!e) return t("common.error");
+    if (e.status === 401) return t("auth.errorGeneric");
     var d = String((e.data && (e.data.detail || e.message)) || e.message || "");
     /* 403 « Origine non autorisée » : le navigateur parle à un backend qui refuse cette
        origine (CORS/CSRF). Message dédié, pas le détail technique. */
-    if (e.status === 403 && /origine/i.test(d)) return t("err.origin");
-    if (/Failed to fetch|NetworkError|load failed/i.test(e.message)) return t("err.network");
-    return d || t("err.generic");
+    if (e.status === 403 && /origine/i.test(d)) return t("common.error");
+    if (/Failed to fetch|NetworkError|load failed/i.test(e.message)) return t("common.error");
+    return d || t("common.error");
   }
   /* Erreur visible : tout échec qui n'est pas un 401 (invité non connecté) doit se voir.
      Renvoie le message affiché, pour les appelants qui veulent aussi l'écrire ailleurs. */
-  function signale(e) { if (e && e.status === 401) return t("err.auth"); var m = errMsg(e); toast(m, "err"); return m; }
+  function signale(e) { if (e && e.status === 401) return t("auth.errorGeneric"); var m = errMsg(e); toast(m, "err"); return m; }
 
   /* ---------- session ---------- */
   var me = null, payCfg = null, gamesCache = null;
@@ -3695,7 +3598,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function primaryField(g) { if (g && g.identity_fields && g.identity_fields.length) return (g.identity_fields.filter(function (f) { return f.primary; })[0] || g.identity_fields[0]).key; return "pubg_id"; }
 
   /* ---------- panier persistant ---------- */
-  var CART_KEY = "mgs_cart_v3"; var cart = [];
+  var CART_KEY = "mgs_cart"; var cart = [];
   try { var c0 = JSON.parse(localStorage.getItem(CART_KEY)); if (Array.isArray(c0)) cart = c0; } catch (e) { }
   function saveCart() { try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch (e) { } }
   function cartCount() { return cart.reduce(function (a, x) { return a + (x.qty || 0); }, 0); }
@@ -3722,7 +3625,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var it = cart.filter(function (x) { return x.key === key; })[0];
     if (it) it.qty = Math.min(cartCap(it), it.qty + (item.qty || 1));
     else { item.qty = Math.min(cartCap(item), item.qty || 1); cart.push({ key: key, product_id: item.product_id || null, slug: item.slug || "", name: item.name, name_en: item.name_en || item.name, price: item.price || 0, uc_amount: item.uc_amount || "", unit: item.unit || "", type: item.type || "", game_id: item.game_id || "", game_name: item.game_name || "", image_url: item.image_url || "", qty: item.qty || 1 }); }
-    renderCart(); syncPillsFromCart(); toast(t("toast.added"));
+    renderCart(); syncPillsFromCart(); toast(t("product.added"));
   }
   function pillInfo(card) {
     var amount = ($(".mgs-pcard__amount", card) || {}).textContent || ""; var unit = ($(".mgs-pcard__unit", card) || {}).textContent || "";
@@ -3814,7 +3717,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     });
     $$(".mgs-pcard", grid).forEach(function (c) { c.remove(); });
     grid.appendChild(frag); syncPillsFromCart(); syncFavs(); catalogOriginal = $$(".mgs-pcard", grid).slice();
-    var ch = $$(".mgs-boutique-catalog .mgs-chip"); if (ch[0]) ch[0].textContent = t("catalog.sortPopular"); if (ch[1]) ch[1].textContent = t("catalog.sortPriceAll");
+    var ch = $$(".mgs-boutique-catalog .mgs-chip"); if (ch[0]) ch[0].textContent = t("catalog.popular"); if (ch[1]) ch[1].textContent = t("catalog.sortDefault");
   }
   function sortCatalog(mode) {
     catalogSort = mode;
@@ -3824,8 +3727,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     else if (mode === "price_desc") arr.sort(function (a, b) { return parsePrice(($(".mgs-pill__price", b) || {}).textContent) - parsePrice(($(".mgs-pill__price", a) || {}).textContent); });
     arr.forEach(function (c) { grid.appendChild(c); });
     var ch = $$(".mgs-boutique-catalog .mgs-chip");
-    if (ch[0]) ch[0].textContent = t("catalog.sortPopular");
-    if (ch[1]) ch[1].textContent = mode === "price_asc" ? t("catalog.sortPriceAsc") : mode === "price_desc" ? t("catalog.sortPriceDesc") : t("catalog.sortPriceAll");
+    if (ch[0]) ch[0].textContent = t("catalog.popular");
+    if (ch[1]) ch[1].textContent = mode === "price_asc" ? t("catalog.priceAsc") : mode === "price_desc" ? t("catalog.priceDesc") : t("catalog.sortDefault");
   }
   function loadCatalogFor(gameName, gameSlug) {
     return loadGames().then(function () {
@@ -3850,7 +3753,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   window.mgsRenderRecent = renderRecent;
   var cryptoCfg = null; var manualHintTexts = null;
   function coOpen() {
-    if (!cart.length) { toast(t("checkout.empty"), "err"); return; }
+    if (!cart.length) { toast(t("cart.empty"), "err"); return; }
     if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; }
     co.total = cartTotal(); co.items = cart.map(function (x) { return x.qty + " × " + x.name; }).join(", ");
     co.game = cart[0].game_name || cart[0].game || ""; co.game_id = cart[0].game_id || "";
@@ -3869,13 +3772,13 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   var CK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
   function verifyId() {
     var inp = $(".mgs-co-id-input"); var v = (inp && inp.value || "").trim();
-    if (!v) { coStatus("is--err", esc(t("checkout.needId"))); return; }
+    if (!v) { coStatus("is--err", esc(t("checkout.verifySub"))); return; }
     coStatus("", esc(t("checkout.verifying")));
     var gid = co.game_id || "pubg-mobile"; var g = (gamesCache || []).filter(function (x) { return x.id === gid; })[0];
     var fields = {}; fields[primaryField(g)] = v;
     req("/fazercards/validate-id", { method: "POST", body: { game_id: gid, fields: fields } }).then(function (r) {
       if (r && r.valid) { co.verified = true; co.pid = v; co.pseudo = r.player_name || ""; addRecent(v); coStatus("is--ok", CK + "<span>" + esc(r.player_name || v) + (r.region ? " · " + esc(r.region) : "") + "</span>"); }
-      else { co.verified = false; coStatus("is--err", esc(t("checkout.invalidId"))); }
+      else { co.verified = false; coStatus("is--err", esc(t("checkout.verifyIdInvalid"))); }
     }).catch(function (e) { co.verified = false; coStatus("is--err", esc(errMsg(e))); });
   }
   function openHuman(always) {
@@ -3901,15 +3804,15 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function closeHuman() { var o = $(".mgs-human-overlay"), p = $(".mgs-human-popup"); if (o) o.hidden = true; if (p) p.hidden = true; }
   function stopTimer() { if (co.timer) { clearInterval(co.timer); co.timer = null; } }
   function startTimer(sec) { stopTimer(); var el = $(".mgs-co-countdown") || $(".mgs-co-timer"); function tick() { if (sec < 0) { stopTimer(); if (el) el.textContent = t("checkout.expired"); return; } var m = Math.floor(sec / 60), s = sec % 60; if (el) el.textContent = m + ":" + (s < 10 ? "0" : "") + s; sec--; } tick(); co.timer = setInterval(tick, 1000); }
-  function methodLabel(m) { return m === "MVola" ? t("method.mvola") : m === "Orange Money" ? t("method.orange") : m === "Binance" ? t("method.binance") : m; }
+  function methodLabel(m) { return m === "MVola" ? t("checkout.methodMvola") : m === "Orange Money" ? t("checkout.methodOrange") : m === "Binance" ? t("checkout.binanceTitle") : m; }
   function createOrder() {
     if (co.busy) return;
-    if (!co.verified) { coStatus("is--err", esc(t("checkout.needVerify"))); return; }
-    if (!co.method) { toast(t("checkout.needMethod"), "err"); return; }
+    if (!co.verified) { coStatus("is--err", esc(t("checkout.verifyRequired"))); return; }
+    if (!co.method) { toast(t("checkout.selectMethod"), "err"); return; }
     var isBinance = co.method === "Binance";
-    if (isBinance && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.binanceOff"), "err"); return; }
-    if (cart.some(function (x) { return !x.product_id; })) { coStatus("is--err", esc(t("checkout.noCatalog"))); toast(t("checkout.noCatalog"), "err"); return; }
-    if (!me) { toast(t("err.auth"), "err"); closeHuman(); window.mgsShowPage("connexion"); return; }
+    if (isBinance && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.papiOff"), "err"); return; }
+    if (cart.some(function (x) { return !x.product_id; })) { coStatus("is--err", esc(t("catalog.emptyGame"))); toast(t("catalog.emptyGame"), "err"); return; }
+    if (!me) { toast(t("auth.errorGeneric"), "err"); closeHuman(); window.mgsShowPage("connexion"); return; }
     var g = (gamesCache || []).filter(function (x) { return x.id === co.game_id; })[0];
     var idf = {}; idf[primaryField(g)] = co.pid;
     var capTok = (window.MGS_CAPTCHA && window.MGS_CAPTCHA.getToken()) || "";
@@ -3922,7 +3825,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     req("/orders", { method: "POST", body: payload }).then(function (order) { co.order = order; co.busy = false; closeHuman(); if (isBinance) initiateBinance(order); else coPay(); }).catch(function (e) {
       if (btn) btn.disabled = false;
       co.busy = false;
-      if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.isCaptchaError(e)) { window.MGS_CAPTCHA.reset(); toast(t("checkout.captchaAgain"), "err"); openHuman(true); return; }
+      if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.isCaptchaError(e)) { window.MGS_CAPTCHA.reset(); toast(t("captcha.verifyAgain"), "err"); openHuman(true); return; }
       toast(errMsg(e), "err"); coStatus("is--err", esc(errMsg(e)));
     });
   }
@@ -3943,8 +3846,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var net = co.network || (cryptoCfg && cryptoCfg.networks && cryptoCfg.networks[0] && cryptoCfg.networks[0].key) || "TRC20";
     window.MGS_CRYPTO.initiate(order.id, net).then(function (r) {
       if (r.ok && r.payment) { coPayBinance(r.payment); return; }
-      if (r.code === "already_open") { window.MGS_CRYPTO.statusOf(order.id).then(function (s) { if (s.payment) coPayBinance(s.payment); else { toast(t("checkout.binanceOff"), "err"); coShow(1); } }); return; }
-      toast(r.detail || t("checkout.binanceOff"), "err"); coShow(1);
+      if (r.code === "already_open") { window.MGS_CRYPTO.statusOf(order.id).then(function (s) { if (s.payment) coPayBinance(s.payment); else { toast(t("checkout.papiOff"), "err"); coShow(1); } }); return; }
+      toast(r.detail || t("checkout.papiOff"), "err"); coShow(1);
     });
   }
   function coPayBinance(p) {
@@ -3954,7 +3857,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (merch) merch.hidden = true;
     if (bin) {
       var netLabel = p.network; ((cryptoCfg && cryptoCfg.networks) || []).forEach(function (n) { if (n.key === p.network && n.label) netLabel = n.label; });
-      var rows = '<div><span>' + esc(t("checkout.binanceAmount")) + '</span><b>' + esc(p.amountUsdt) + ' ' + esc(p.currency) + '</b></div>'
+      var rows = '<div><span>' + esc(t("checkout.binanceExactAmount")) + '</span><b>' + esc(p.amountUsdt) + ' ' + esc(p.currency) + '</b></div>'
         + '<div><span>' + esc(t("checkout.binanceNetwork")) + '</span><b>' + esc(netLabel) + '</b></div>'
         + '<div><span>' + esc(t("checkout.binanceAddress")) + '</span><b>' + esc(p.address) + '</b></div>';
       if (p.memo) rows += '<div><span>' + esc(t("checkout.binanceMemo")) + '</span><b>' + esc(p.memo) + '</b></div>';
@@ -3968,9 +3871,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     startTimer(sec);
     if (co.cryptoPoll) co.cryptoPoll.stop();
     co.cryptoPoll = window.MGS_CRYPTO.poll(co.order.id, function (u) {
-      if (u.payment) { co.payment = u.payment; if (u.payment.status === "DETECTED") { var h = $(".mgs-co-hint"); if (h) h.textContent = t("checkout.binanceDetected"); } }
+      if (u.payment) { co.payment = u.payment; if (u.payment.status === "DETECTED") { var h = $(".mgs-co-hint"); if (h) h.textContent = t("checkout.cryptoDetected"); } }
       if (u.done) { stopTimer(); coReceiptBinance(); }
-      else if (u.failed) { stopTimer(); toast(t("checkout.binanceFailed"), "err"); coShow(1); }
+      else if (u.failed) { stopTimer(); toast(t("checkout.cryptoFailed"), "err"); coShow(1); }
     }, { deadlineAt: deadline, onExpired: function () { stopTimer(); var el = $(".mgs-co-timer"); if (el) el.textContent = t("checkout.expired"); toast(t("checkout.expired"), "err"); } });
     window.scrollTo(0, 0);
   }
@@ -3979,8 +3882,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     set(".mgs-co-r-product", co.items); set(".mgs-co-r-pid", co.pid); set(".mgs-co-r-method", "Binance USDT");
     set(".mgs-co-r-total", ar(o.total != null ? o.total : co.total)); set(".mgs-co-r-num", o.order_number || o.number || "—");
     $$(".mgs-co-recap div").forEach(function (d) { var span = $("span", d); if (span && /Pseudo/i.test(span.textContent)) { var b = $("b", d); if (b) b.textContent = co.pseudo || "—"; } });
-    var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = t("checkout.binanceConfirmed");
-    var wt = $(".mgs-co-wait-t"); if (wt) wt.textContent = t("checkout.binanceConfirmed");
+    var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = t("checkout.success");
+    var wt = $(".mgs-co-wait-t"); if (wt) wt.textContent = t("checkout.success");
     coShow(3); window.scrollTo(0, 0);
   }
   var proofInput = null;
@@ -3988,8 +3891,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function uploadProof(files) {
     if (!co.order) return; var fd = new FormData(); var n = 0;
     for (var i = 0; i < files.length && n < 3; i++) { var f = files[i]; if (/image\/(jpeg|png)/.test(f.type) && f.size <= 8 * 1024 * 1024) { fd.append("files", f); n++; } }
-    if (!n) { toast(t("checkout.needProof"), "err"); return; }
-    toast(t("checkout.uploading"));
+    if (!n) { toast(t("checkout.proofCount"), "err"); return; }
+    toast(t("checkout.proofSubmitting"));
     req("/orders/" + co.order.id + "/proof", { method: "POST", body: fd }).then(function (r) { if (r && r.id) co.order = r; stopTimer(); coReceipt(); pollOrder(); }).catch(function (e) { toast(errMsg(e), "err"); });
   }
   function coReceipt() {
@@ -3997,14 +3900,14 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     set(".mgs-co-r-product", co.items); set(".mgs-co-r-pid", co.pid); set(".mgs-co-r-method", methodLabel(co.method));
     set(".mgs-co-r-total", ar(o.total != null ? o.total : co.total)); set(".mgs-co-r-num", o.order_number || o.number || "—");
     $$(".mgs-co-recap div").forEach(function (d) { var span = $("span", d); if (span && /Pseudo/i.test(span.textContent)) { var b = $("b", d); if (b) b.textContent = co.pseudo || "—"; } });
-    var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = t("checkout.proofOk");
+    var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = t("order.banner.proofWaiting");
     coShow(3); window.scrollTo(0, 0);
   }
   function statusBucket(s) { s = String(s || "").toLowerCase(); if (s === "delivered" || s === "done" || s === "completed") return "done"; if (s === "cancelled" || s === "canceled" || s === "expired" || s === "failed" || s === "refunded") return "cancel"; return "progress"; }
-  function statusLabel(s) { var b = statusBucket(s); if (b === "done") return t("status.done"); if (b === "cancel") return t("status.cancel"); var sl = String(s || "").toLowerCase(); if (sl === "pending_payment") return t("status.pending"); if (sl === "awaiting_verification") return t("status.verify"); return t("status.progress"); }
+  function statusLabel(s) { var b = statusBucket(s); if (b === "done") return t("order.status.delivered"); if (b === "cancel") return t("order.status.cancelled"); var sl = String(s || "").toLowerCase(); if (sl === "pending_payment") return t("order.status.pending_payment"); if (sl === "awaiting_verification") return t("order.status.awaiting_verification"); return t("order.tabs.progress"); }
   function pollOrder() {
     if (co.poll) clearInterval(co.poll); if (!co.order) return; var tries = 0, pollFails = 0;
-    co.poll = setInterval(function () { tries++; if (tries > 60) { clearInterval(co.poll); co.poll = null; var fb = $(".mgs-co-wait-badge"); if (fb) fb.textContent = t("err.network"); return; } req("/orders/" + co.order.id).then(function (o) { pollFails = 0; co.order = o; var b = statusBucket(o.status); var badge = $(".mgs-co-wait-badge"); var wt = $(".mgs-co-wait-t"); if (b === "done") { if (badge) badge.textContent = t("status.done"); if (wt) wt.textContent = t("status.done"); clearInterval(co.poll); co.poll = null; } else if (b === "cancel") { if (badge) badge.textContent = t("status.cancel"); if (wt) wt.textContent = t("status.cancel"); clearInterval(co.poll); co.poll = null; } }).catch(function (e) { pollFails++; if (pollFails === 3) { var fb2 = $(".mgs-co-wait-badge"); if (fb2) fb2.textContent = errMsg(e); signale(e); } }); }, 5000);
+    co.poll = setInterval(function () { tries++; if (tries > 60) { clearInterval(co.poll); co.poll = null; var fb = $(".mgs-co-wait-badge"); if (fb) fb.textContent = t("common.error"); return; } req("/orders/" + co.order.id).then(function (o) { pollFails = 0; co.order = o; var b = statusBucket(o.status); var badge = $(".mgs-co-wait-badge"); var wt = $(".mgs-co-wait-t"); if (b === "done") { if (badge) badge.textContent = t("order.status.delivered"); if (wt) wt.textContent = t("order.status.delivered"); clearInterval(co.poll); co.poll = null; } else if (b === "cancel") { if (badge) badge.textContent = t("order.status.cancelled"); if (wt) wt.textContent = t("order.status.cancelled"); clearInterval(co.poll); co.poll = null; } }).catch(function (e) { pollFails++; if (pollFails === 3) { var fb2 = $(".mgs-co-wait-badge"); if (fb2) fb2.textContent = errMsg(e); signale(e); } }); }, 5000);
   }
   function coFinish() {
     if (co.poll) { clearInterval(co.poll); co.poll = null; } if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } stopTimer();
@@ -4036,7 +3939,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   var MOIS = ["jan", "fév", "mar", "avr", "mai", "jun", "jul", "aoû", "sep", "oct", "nov", "déc"];
   function fmtDate(iso) { var d = new Date(iso); if (isNaN(d)) return { date: "—", time: "" }; return { date: d.getDate() + " " + MOIS[d.getMonth()] + " " + d.getFullYear(), time: ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2) }; }
   function orderProductLabel(o) { var names = (o.items || []).map(function (it) { return it.name || it.product_name || (it.uc_amount ? it.uc_amount + " UC" : it.product_id); }).join(", "); var gn = o.game_name || ((gamesCache || []).filter(function (g) { return g.id === o.game_id; })[0] || {}).name || ""; return (gn ? gn + " — " : "") + (names || "—"); }
-  function orderMethodLabel(o) { if (o.payment_method === "binance" || o.payment_method === "crypto") return t("method.binance"); if (o.manual_operator === "orange" || o.payment_method === "orange") return t("method.orange"); return t("method.mvola"); }
+  function orderMethodLabel(o) { if (o.payment_method === "binance" || o.payment_method === "crypto") return t("checkout.binanceTitle"); if (o.manual_operator === "orange" || o.payment_method === "orange") return t("checkout.methodOrange"); return t("checkout.methodMvola"); }
   var STATUS_IC = { progress: '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>', done: '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>', cancel: '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>' };
   var COPY_IC = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
   /* Pagination de l'historique (libellés « Précédent / Suivant » : design system, cf. main
@@ -4077,7 +3980,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   function renderOrders(orders) {
     var list = $(".mgs-order-list"); if (!list) return; var empty = $(".mgs-cmd-empty");
-    if (!orders || !orders.length) { list.innerHTML = ""; if (empty) { empty.hidden = false; var p = $("p", empty); if (p) p.textContent = me ? t("orders.empty") : t("orders.login"); } var bx = $(".mgs-cmd-pages"); if (bx) bx.hidden = true; return; }
+    if (!orders || !orders.length) { list.innerHTML = ""; if (empty) { empty.hidden = false; var p = $("p", empty); if (p) p.textContent = me ? t("order.none") : t("order.loginToSee"); } var bx = $(".mgs-cmd-pages"); if (bx) bx.hidden = true; return; }
     if (empty) empty.hidden = true;
     list.innerHTML = orders.map(function (o) {
       var b = statusBucket(o.status); var d = fmtDate(o.created_at); var product = orderProductLabel(o); var total = ar(o.total); var method = orderMethodLabel(o); var label = statusLabel(o.status); var filter = b === "progress" ? "progress" : "done";
@@ -4087,28 +3990,29 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     orderPaginate();
   }
   function loadOrders() {
-    if (!me) { needLogin("commandes"); return Promise.resolve([]); }
+    if (!me) { renderOrders([]); return Promise.resolve([]); }
     return req("/orders/me").then(function (orders) { orders = Array.isArray(orders) ? orders : (orders && orders.orders) || []; orders.sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); }); renderOrders(orders); return orders; }).catch(function (e) { toast(errMsg(e), "err"); return []; });
   }
 
   /* ---------- compte ---------- */
-  function updatePointsPill(pts) { var txt = pts == null ? "—" : String(pts); $$(".pts-n").forEach(function (e) { e.textContent = txt; }); $$('[aria-label*="Points fidélité"]').forEach(function (e) { var b = $(".nav-action-badge", e); if (b) b.textContent = txt; e.setAttribute("aria-label", txt === "—" ? "Points fidélité indisponibles" : "Points fidélité : " + txt); }); }
+  var loyaltyOk = false;
+  function updatePointsPill(pts) { loyaltyOk = pts != null; var txt = pts == null ? "—" : String(pts); $$(".pts-n").forEach(function (e) { e.textContent = txt; }); $$('[aria-label*="Points fidélité"]').forEach(function (e) { var b = $(".nav-action-badge", e); if (b) b.textContent = txt; e.setAttribute("aria-label", txt === "—" ? "Points fidélité indisponibles" : "Points fidélité : " + txt); }); }
   /* invité vs connecté : chrome de nav (pill points desktop + cercle points mobile) */
   var authReturnTo = null, authBusy = false;
-  function syncAuthChrome() { var on = !!me; $$(".nav-points-pill").forEach(function (e) { e.style.display = on ? "" : "none"; }); $$('.nav-mobile-actions a[data-nav="points"]').forEach(function (e) { e.style.display = on ? "" : "none"; }); }
+  function syncAuthChrome() { var on = !!me && loyaltyOk; $$(".nav-points-pill").forEach(function (e) { e.style.display = on ? "" : "none"; }); $$('.nav-mobile-actions a[data-nav="points"]').forEach(function (e) { e.style.display = on ? "" : "none"; }); }
   function needLogin(page) { authReturnTo = page || null; window.mgsShowPage("connexion"); }
   function captchaToken() { try { return (window.MGS_CAPTCHA && window.MGS_CAPTCHA.enabled() && window.MGS_CAPTCHA.getToken()) || null; } catch (e) { return null; } }
   /* Messages d'authentification : traduction par CODE d'erreur, sinon par STATUT
      HTTP, sinon repli — même table que main (frontend/src/lib/authErrors.js:25-54).
      Le détail anglais brut du backend n'est jamais affiché. */
   var AUTH_CODE_KEYS = {
-    invalid_credentials: "err.login", invalid_email_or_password: "err.login", wrong_password: "err.login",
+    invalid_credentials: "auth.errorInvalidCredentials", invalid_email_or_password: "auth.errorInvalidCredentials", wrong_password: "auth.errorInvalidCredentials",
     email_taken: "auth.emailTaken", email_exists: "auth.emailTaken", email_already_registered: "auth.emailTaken",
     too_many_attempts: "auth.tooMany", rate_limited: "auth.tooMany",
     account_blocked: "auth.blocked", user_blocked: "auth.blocked",
     invalid_token: "auth.invalidLink", invalid_link: "auth.invalidLink", expired_token: "auth.invalidLink"
   };
-  var AUTH_STATUS_KEYS = { 401: "err.login", 403: "auth.blocked", 409: "auth.emailTaken", 422: "auth.errorGeneric", 429: "auth.tooMany", 500: "auth.errorUnavailable", 502: "auth.errorUnavailable", 503: "auth.errorUnavailable", 504: "auth.errorUnavailable" };
+  var AUTH_STATUS_KEYS = { 401: "auth.errorInvalidCredentials", 403: "auth.blocked", 409: "auth.emailTaken", 422: "auth.errorGeneric", 429: "auth.tooMany", 500: "auth.errorUnavailable", 502: "auth.errorUnavailable", 503: "auth.errorUnavailable", 504: "auth.errorUnavailable" };
   function authErr(e, fallback) {
     var body = (e && e.data) || {};
     var code = String((body && body.code) || (e && e.code) || "").trim().toLowerCase();
@@ -4126,10 +4030,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; var pts = bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0)); var sn = $(".mgs-page[data-page=compte] .mgs-stat__n"); if (sn) sn.textContent = String(pts); updatePointsPill(pts); }).catch(function (e) { var sn = $(".mgs-page[data-page=compte] .mgs-stat__n"); if (sn) sn.textContent = "—"; signale(e); });
     req("/orders/me").then(function (o) { o = Array.isArray(o) ? o : (o && o.orders) || []; var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = String(o.length); if (stats[2]) stats[2].textContent = String((me.saved_pubg_ids || []).length); }).catch(function (e) { var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = "—"; signale(e); });
   }
-  function saveProfile() { var name = ($("#acc-name") || {}).value || ""; var phone = ($("#acc-phone") || {}).value || ""; var ids = (($("#acc-ids") || {}).value || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean); req("/auth/me", { method: "PATCH", body: { name: name, phone: phone, saved_pubg_ids: ids } }).then(function (u) { me = u || me; toast(t("toast.saved")); renderAccount(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
-  function changePassword() { var cur = ($("#pw-cur") || {}).value || ""; var next = ($("#pw-next") || {}).value || ""; if (!cur || !next) { toast(t("err.generic"), "err"); return; } req("/auth/change-password", { method: "POST", body: { current_password: cur, new_password: next } }).then(function () { toast(t("toast.pwchanged")); $("#pw-cur").value = ""; $("#pw-next").value = ""; }).catch(function (e) { toast(errMsg(e), "err"); }); }
-  function deleteAccount() { if (!window.confirm(t("confirm.delete"))) return; var pw = window.prompt(t("auth.pwPrompt")); if (pw == null) return; req("/auth/me/delete", { method: "POST", body: { password: pw, confirmation: "SUPPRIMER" } }).then(function () { me = null; toast(t("toast.deleted")); window.mgsShowPage("connexion"); }).catch(function (e) { toast(errMsg(e), "err"); }); }
-  function logout() { req("/auth/logout", { method: "POST" }).catch(function () { }).then(function () { me = null; syncAuthChrome(); toast(t("toast.logout")); renderCart(); window.mgsShowPage("accueil"); }); }
+  function saveProfile() { var name = ($("#acc-name") || {}).value || ""; var phone = ($("#acc-phone") || {}).value || ""; var ids = (($("#acc-ids") || {}).value || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean); req("/auth/me", { method: "PATCH", body: { name: name, phone: phone, saved_pubg_ids: ids } }).then(function (u) { me = u || me; toast(t("account.saved")); renderAccount(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+  function changePassword() { var cur = ($("#pw-cur") || {}).value || ""; var next = ($("#pw-next") || {}).value || ""; if (!cur || !next) { toast(t("common.error"), "err"); return; } req("/auth/change-password", { method: "POST", body: { current_password: cur, new_password: next } }).then(function () { toast(t("account.passwordChanged")); $("#pw-cur").value = ""; $("#pw-next").value = ""; }).catch(function (e) { toast(errMsg(e), "err"); }); }
+  function deleteAccount() { if (!window.confirm(t("account.deleteWarning"))) return; var pw = window.prompt(t("auth.password")); if (pw == null) return; req("/auth/me/delete", { method: "POST", body: { password: pw, confirmation: "SUPPRIMER" } }).then(function () { me = null; toast(t("account.deleted")); window.mgsShowPage("connexion"); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+  function logout() { req("/auth/logout", { method: "POST" }).catch(function () { }).then(function () { me = null; syncAuthChrome(); toast(t("nav.logout")); renderCart(); window.mgsShowPage("accueil"); }); }
 
   /* ---------- connexion / inscription ---------- */
   var authMode = "login";
@@ -4174,10 +4078,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function doAuth() {
     if (authBusy) return;
     var email = ($("#em") || {}).value || ""; var pw = ($("#pw") || {}).value || "";
-    if (!email || !pw) { toast(t("err.generic"), "err"); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast(t("auth.emailBad"), "err"); return; }
+    if (!email || !pw) { toast(t("common.error"), "err"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast(t("auth.errorGeneric"), "err"); return; }
     var min = authMode === "register" ? 8 : 6;
-    if (pw.length < min) { toast(t("auth.pwShort", { n: min }), "err"); return; }
+    if (pw.length < min) { toast(t("auth.errorGeneric", { n: min }), "err"); return; }
     if (authMode === "register" && !($("#reg-name") || {}).value) { toast(t("auth.name"), "err"); return; }
     authBusy = true;
     var rc = $('.mgs-page[data-page=connexion] input[type="checkbox"]');
@@ -4208,7 +4112,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       toast(authErr(e), "err");
     });
   }
-  function googleLogin() { toast(t("toast.google")); var to = authReturnTo ? "/" + authReturnTo : "/"; window.location.href = API + "/auth/google/start?return_to=" + encodeURIComponent(to); }
+  function googleLogin() { toast(t("auth.google")); var to = authReturnTo ? "/" + authReturnTo : "/"; window.location.href = API + "/auth/google/start?return_to=" + encodeURIComponent(to); }
   var forgotCaptchaBox = null;
   function renderForgotCaptcha(always) {
     var cap = window.MGS_CAPTCHA; if (!cap || !cap.enabled()) return;
@@ -4221,7 +4125,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     forgotCaptchaBox.hidden = false;
     cap.render(forgotCaptchaBox, { appearance: always ? "always" : "interaction-only", onToken: function () { }, onExpire: function () { } });
   }
-  function forgotPassword() { var email = ((($("#fpe") || {}).value || ($("#em") || {}).value) || "").trim(); if (!email) { toast(t("auth.emailFirst"), "err"); return; } req("/auth/forgot-password", { method: "POST", body: { email: email, captcha_token: captchaToken() } }).then(function () { var st = $("#mdp-status"); if (st) { st.className = "mgs-status mgs-status--done"; st.textContent = t("auth.forgotSent"); } else { toast(t("toast.forgot")); } }).catch(function (e) {
+  function forgotPassword() { var email = ((($("#fpe") || {}).value || ($("#em") || {}).value) || "").trim(); if (!email) { toast(t("auth.errorGeneric"), "err"); return; } req("/auth/forgot-password", { method: "POST", body: { email: email, captcha_token: captchaToken() } }).then(function () { var st = $("#mdp-status"); if (st) { st.className = "mgs-status mgs-status--done"; st.textContent = t("auth.forgotSent"); } else { toast(t("auth.forgotSent")); } }).catch(function (e) {
     var capErr = !!(window.MGS_CAPTCHA && window.MGS_CAPTCHA.isCaptchaError(e));
     if (capErr) { window.MGS_CAPTCHA.reset(); renderForgotCaptcha(true); }
     var m = capErr ? t("captcha.required") : authErr(e);
@@ -4252,7 +4156,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     try {
       var u = new URL(location.href);
       if (u.searchParams.get("error") !== "google") return;
-      toast(t("auth.googleFailed"), "err");
+      toast(t("auth.errorGeneric"), "err");
       u.searchParams.delete("error");
       var q = u.searchParams.toString();
       history.replaceState({}, "", u.pathname + (q ? "?" + q : "") + u.hash);
@@ -4261,9 +4165,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function resetPassword() {
     var st = $("#reset-status"); var tok = resetTokenFromUrl();
     var pw = ($("#rp-pass") || {}).value || ""; var cf = ($("#rp-confirm") || {}).value || "";
-    if (!tok) { if (st) { st.className = "mgs-status mgs-status--cancel"; st.textContent = t("auth.needToken"); } else toast(t("auth.needToken"), "err"); return; }
-    if (pw.length < 8) { if (st) { st.className = "mgs-status mgs-status--cancel"; st.textContent = t("auth.pwShort", { n: 8 }); } else toast(t("auth.pwShort", { n: 8 }), "err"); return; }
-    if (pw !== cf) { if (st) { st.className = "mgs-status mgs-status--cancel"; st.textContent = t("auth.pwMismatch"); } else toast(t("auth.pwMismatch"), "err"); return; }
+    if (!tok) { if (st) { st.className = "mgs-status mgs-status--cancel"; st.textContent = t("auth.errorInvalidLink"); } else toast(t("auth.errorInvalidLink"), "err"); return; }
+    if (pw.length < 8) { if (st) { st.className = "mgs-status mgs-status--cancel"; st.textContent = t("auth.errorGeneric", { n: 8 }); } else toast(t("auth.errorGeneric", { n: 8 }), "err"); return; }
+    if (pw !== cf) { if (st) { st.className = "mgs-status mgs-status--cancel"; st.textContent = t("auth.passwordMismatch"); } else toast(t("auth.passwordMismatch"), "err"); return; }
     req("/auth/reset-password", { method: "POST", body: { token: tok, password: pw } }).then(function () {
       if (st) { st.className = "mgs-status mgs-status--done"; st.textContent = t("auth.resetDone"); }
       toast(t("auth.resetDone")); $("#rp-pass").value = ""; $("#rp-confirm").value = "";
@@ -4285,24 +4189,24 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     }).catch(function (e) { signale(e); });
     req("/loyalty/rewards").then(function (rewards) {
       rewards = Array.isArray(rewards) ? rewards : []; var box = $(".mgs-page[data-page=points] .mgs-list"); if (!box || !rewards.length) return;
-      box.innerHTML = rewards.map(function (r) { var cost = r.cost_points != null ? r.cost_points : (r.cost || 0); var lbl = esc(t("points.redeem")); return '<div class="mgs-list-item" data-reward="' + esc(r.id) + '"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg><div style="flex:1"><p style="font-weight:700;margin:0">' + esc(r.name || r.label || "—") + '</p><p class="mgs-muted" style="font-size:.8em;margin:.1em 0 0">' + cost + ' points</p></div><a href="#" class="button-main w-inline-block mgs-redeem" data-button-theme="dark" data-button-accent="yellow" data-reward="' + esc(r.id) + '"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="' + lbl + '"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>' + lbl + '</span></span></span></span></a></div>'; }).join("");
+      box.innerHTML = rewards.map(function (r) { var cost = r.cost_points != null ? r.cost_points : (r.cost || 0); var lbl = esc(cost + " pts"); return '<div class="mgs-list-item" data-reward="' + esc(r.id) + '"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg><div style="flex:1"><p style="font-weight:700;margin:0">' + esc(r.name || r.label || "—") + '</p><p class="mgs-muted" style="font-size:.8em;margin:.1em 0 0">' + cost + ' points</p></div><a href="#" class="button-main w-inline-block mgs-redeem" data-button-theme="dark" data-button-accent="yellow" data-reward="' + esc(r.id) + '"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="' + lbl + '"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>' + lbl + '</span></span></span></span></a></div>'; }).join("");
     }).catch(function (e) { signale(e); });
   }
-  function redeem(rewardId) { var pid = (me && me.saved_pubg_ids && me.saved_pubg_ids[0]) || window.prompt(t("points.pidPrompt")) || ""; if (!pid) return; req("/loyalty/redeem", { method: "POST", body: { reward_id: rewardId, pubg_id: pid } }).then(function () { toast(t("toast.redeem")); renderPoints(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+  function redeem(rewardId) { var pid = (me && me.saved_pubg_ids && me.saved_pubg_ids[0]) || window.prompt(t("checkout.playerId")) || ""; if (!pid) return; req("/loyalty/redeem", { method: "POST", body: { reward_id: rewardId, pubg_id: pid } }).then(function () { toast(t("loyalty.redeemed")); renderPoints(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
 
   /* ---------- pack évolutif ---------- */
   function packVerify() {
     var inp = $("#eid"); var v = (inp && inp.value || "").trim(); var statusRow = $(".mgs-page[data-page=pack] .mgs-status");
-    if (!v) { toast(t("pack.needId"), "err"); return; }
-    if (statusRow) { statusRow.className = "mgs-status"; statusRow.textContent = t("pack.checking"); }
-    req("/evo/season").then(function (s) { var productId = (s && s.season && s.season.product_id) || ""; if (!productId) { if (statusRow) { statusRow.className = "mgs-status mgs-status--cancel"; statusRow.textContent = t("pack.noSeason"); } return null; } return req("/evo/eligibility?pubg_id=" + encodeURIComponent(v) + "&product_id=" + encodeURIComponent(productId)); }).then(function (r) { if (!r) return; var ok = r.eligible === true || r.eligible === "true"; if (statusRow) { statusRow.className = "mgs-status " + (ok ? "mgs-status--done" : "mgs-status--cancel"); statusRow.innerHTML = (ok ? CK : "") + esc(ok ? t("pack.eligible") : (r.reason || t("pack.notEligible"))); } }).catch(function (e) { if (statusRow) { statusRow.className = "mgs-status mgs-status--cancel"; statusRow.textContent = errMsg(e); } });
+    if (!v) { toast(t("evo.pubgLabel"), "err"); return; }
+    if (statusRow) { statusRow.className = "mgs-status"; statusRow.textContent = t("evo.checking"); }
+    req("/evo/season").then(function (s) { var productId = (s && s.season && s.season.product_id) || ""; if (!productId) { if (statusRow) { statusRow.className = "mgs-status mgs-status--cancel"; statusRow.textContent = t("evo.noSeason"); } return null; } return req("/evo/eligibility?pubg_id=" + encodeURIComponent(v) + "&product_id=" + encodeURIComponent(productId)); }).then(function (r) { if (!r) return; var ok = r.eligible === true || r.eligible === "true"; if (statusRow) { statusRow.className = "mgs-status " + (ok ? "mgs-status--done" : "mgs-status--cancel"); statusRow.innerHTML = (ok ? CK : "") + esc(ok ? t("evo.eligible") : (r.reason || t("evo.invalidId"))); } }).catch(function (e) { if (statusRow) { statusRow.className = "mgs-status mgs-status--cancel"; statusRow.textContent = errMsg(e); } });
   }
 
   /* ---------- événements ---------- */
   var eventTpl = null;
   var HEART_IC = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
   var SHARE_IC = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>';
-  function sessionId() { try { var v = localStorage.getItem("mgs_session_id"); if (v) return v; v = "s-" + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem("mgs_session_id", v); return v; } catch (e) { return "s-anonyme"; } }
+  function sessionId() { try { var v = localStorage.getItem("mgs_session"); if (v) return v; v = "s-" + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem("mgs_session", v); return v; } catch (e) { return "s-anonyme"; } }
   function eventLike(id, btn) {
     req("/events/" + id + "/like", { method: "POST", body: { session_id: sessionId() } }).then(function (r) {
       var n = $(".mgs-card__like-n", btn); if (n) n.textContent = String(r.likes != null ? r.likes : 0);
@@ -4353,7 +4257,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (!me) { toast(t("support.login"), "err"); window.mgsShowPage("connexion"); return; }
     var full = (subj && subj.value ? subj.value.trim() + "\n" : "") + text;
     var p = chatCid ? Promise.resolve(chatCid) : req("/chat/conversations", { method: "POST", body: {} }).then(function (c) { chatCid = c.id || (c.conversation && c.conversation.id); return chatCid; });
-    p.then(function (cid) { return req("/chat/conversations/" + cid + "/messages", { method: "POST", body: { text: full } }); }).then(function () { toast(t("toast.sent")); if (msg) msg.value = ""; if (subj) subj.value = ""; }).catch(function (e) { toast(errMsg(e), "err"); });
+    p.then(function (cid) { return req("/chat/conversations/" + cid + "/messages", { method: "POST", body: { text: full } }); }).then(function () { toast(t("chat.sent")); if (msg) msg.value = ""; if (subj) subj.value = ""; }).catch(function (e) { toast(errMsg(e), "err"); });
   }
   function openChat() { if (!me) { toast(t("support.login"), "err"); window.mgsShowPage("connexion"); return; } req("/chat/conversations", { method: "POST", body: {} }).then(function (c) { chatCid = c.id || (c.conversation && c.conversation.id); toast(t("support.chatOpen")); var msg = $("#ms"); if (msg) msg.focus(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
 
@@ -4367,7 +4271,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     pack: function () { req("/evo/season").catch(function (e) { var st = $(".mgs-page[data-page=pack] .mgs-status"); if (st) { st.className = "mgs-status mgs-status--cancel"; st.textContent = errMsg(e); } }); },
     connexion: function () { if (me) { var to = authReturnTo || "accueil"; authReturnTo = null; window.mgsShowPage(to); return; } setAuthMode(authMode); },
     mdp: function () { var st = $("#mdp-status"); if (st) { st.className = "mgs-status"; st.textContent = ""; } renderForgotCaptcha(false); },
-    reset: function () { var st = $("#reset-status"); if (st) { st.className = "mgs-status"; st.textContent = resetTokenFromUrl() ? "" : t("auth.needToken"); } },
+    reset: function () { var st = $("#reset-status"); if (st) { st.className = "mgs-status"; st.textContent = resetTokenFromUrl() ? "" : t("auth.errorInvalidLink"); } },
     accueil: function () { loadGames(); renderEvents(); }
   };
   var lastPage = null;
@@ -4433,7 +4337,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var rc = el.closest(".mgs-co-recent-chip"); if (rc) { stop(e); var ri = $(".mgs-co-id-input"); if (ri) ri.value = rc.dataset.id; verifyId(); return; }
     if (el.closest(".mgs-co-verify")) { stop(e); verifyId(); return; }
     var m = el.closest(".mgs-co-method"); if (m) { stop(e); $$(".mgs-co-method").forEach(function (x) { x.classList.remove("is--active"); }); m.classList.add("is--active"); var r = $("input", m); if (r) r.checked = true; co.method = r ? r.value : ""; if (co.method === "Binance") co.network = (cryptoCfg && cryptoCfg.networks && cryptoCfg.networks[0] && cryptoCfg.networks[0].key) || ""; return; }
-    if (el.closest(".mgs-co-submit")) { stop(e); if (!co.verified) { coStatus("is--err", esc(t("checkout.needVerify"))); return; } if (!co.method) { toast(t("checkout.needMethod"), "err"); return; } if (co.method === "Binance" && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.binanceOff"), "err"); return; } openHuman(); return; }
+    if (el.closest(".mgs-co-submit")) { stop(e); if (!co.verified) { coStatus("is--err", esc(t("checkout.verifyRequired"))); return; } if (!co.method) { toast(t("checkout.selectMethod"), "err"); return; } if (co.method === "Binance" && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.papiOff"), "err"); return; } openHuman(); return; }
     if (el.closest(".mgs-co-back")) { stop(e); window.mgsShowPage("boutique"); return; }
     if (el.closest(".mgs-co-back2")) { stop(e); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } coShow(1); return; }
     if (el.closest(".mgs-co-proof")) { stop(e); ensureProofInput().click(); return; }

@@ -33,16 +33,106 @@ compte, connexion, evenements, mdp, pack, points, produit, reset, support.
 |---|---|---|---|---|---|
 | Base d'URL + `withCredentials` (cookies) | `lib/api.js:3-10` | — | non | `index.html:3511-3512`, `req()` 3649 | identique |
 | Refresh silencieux 401 + liste `NO_SILENT_REFRESH` | `lib/api.js:12,40-59` | `POST /auth/refresh` (`routers/auth.py:363`) | non | `req()` + `NO_SILENT_REFRESH` | identique |
-| En-têtes langue + `mgs_session` | `lib/api.js:77,82-85` | — | non | non vérifié | à porter |
-| Erreurs 401/403/409/422/429/5xx avec message visible | `lib/api.js:64` (`errorMessage`) + `lib/authErrors.js:12-64` | réponses HTTP | — | `authErr()`, `errMsg()` | à porter (partiel) |
-| État de connexion (équivalent `AuthContext`) | `context/AuthContext.js:27-49,58-61` | `GET /auth/me` (`routers/auth.py:387`) | oui | `loadSession()`, `me` | identique |
+| En-têtes langue + `mgs_session` | `lib/api.js:77,82-85` | — | non | `sessionId()` | corrigé : main n'envoie aucun en-tête de langue ; clé `mgs_session` (était `mgs_session_id`) |
+| Erreurs 401/403/409/422/429/5xx avec message visible | `lib/api.js:64` (`errorMessage`) + `lib/authErrors.js:25-54` | réponses HTTP | — | `authErr()`, `errMsg()`, `signale()` | identique (mêmes CODE_MAP / STATUS_MAP) |
+| État de connexion (équivalent `AuthContext`) | `context/AuthContext.js:27-49,58-61` | `GET /auth/me` (`routers/auth.py:387`) | oui | `loadSession()`, `me` | identique (401 silencieux, 2 reprises 3 s/8 s, hors ligne sans message) |
 | Déconnexion sans vider le panier | `context/AuthContext.js:58-61` | `POST /auth/logout` (`routers/auth.py:404`) | oui | `logout()` | identique |
-| Traductions `t()` FR/EN | `i18n/translations.js` | — | — | `t()` + `LANG` | identique (parité à confirmer en Z0) |
+| Traductions `t()` FR/EN | `i18n/translations.js` | — | — | `t()` + `LANG` + `T` | aligné sur les clés de `main` (82 clés, 6 exceptions — voir plus bas) |
 | Redirections / pages protégées (`from`) | `components/ProtectedRoute.js:29-30` | — | — | `needLogin()`, `authReturnTo` | identique |
-| Panier (stockage `mgs_cart`) | `context/CartContext.js:10-14` | — | non | `cart`/`saveCart()` | à porter (clé à vérifier) |
-| Favoris | `lib/favorites.js:8,45,51` | `GET /products?favorites` (`routers/products.py:75`) | non | `syncFavs()` | à porter |
+| Panier (stockage `mgs_cart`) | `context/CartContext.js:10-14` | — | non | `cart`/`saveCart()` | corrigé (clé `mgs_cart`, était `mgs_cart_v3`) |
+| Favoris | `lib/favorites.js:8,45,51` | `GET /products?favorites` (`routers/products.py:75`) | non | `syncFavs()` | identique (même clé `mgs_favorites`) |
 | Commande en attente (`mgs_pending_order_id`) | `lib/pendingOrder.js:17-39` | — | non | à vérifier | à porter |
-| IDs joueur récents | `lib/recentPlayerIds.js:40,94` | — | non | `renderRecent()` | à porter |
+| IDs joueur récents | `lib/recentPlayerIds.js:40,94` | — | non | `renderRecent()` | à vérifier (clé `mgs_recent_ids`) |
+
+### État de départ (Z0, commit `3c238f6`)
+
+- `yarn build` : **échec** sans `REACT_APP_BACKEND_URL` (garde-fou
+  `scripts/check-backend-url.mjs --strict`), **réussite** avec
+  `REACT_APP_BACKEND_URL=https://magicgamestore-api-v2.onrender.com` (exit 0).
+- `yarn test:ci` : **0 échec** (8 suites / 37 tests, exit 0).
+
+### Visibilité navigation — invité / connecté
+
+Source `main` : `components/layout/Header.js` (desktop 300-360, mobile 362-395,
+`LoyaltyChip` 27-52, `MobilePointsPill` 57-90, `AccountAction` 127-168) et
+`lib/bottomChrome.js:8-16,30-38`.
+
+| Élément | Invité (`main`) | Connecté (`main`) | Prototype après Z0 |
+|---|---|---|---|
+| Pilules boutique / commandes / support / compte | visibles | visibles | visibles (inchangé) |
+| Pastille points bureau `.nav-points-pill` | absente | visible si `/loyalty/me` a répondu | masquée tant que `me` ou `/loyalty/me` n'est pas connu (`loyaltyOk`) |
+| Pastille points mobile `.nav-mobile-actions a[data-nav=points]` | absente | visible si `/loyalty/me` a répondu | idem |
+| Cercle compte mobile | bouton « Connexion » → `/connexion` | icône compte → `/compte` | lien `compte` → `/compte` ; invité : `renderAccount()` renvoie vers la connexion (`needLogin`) |
+| Panier (bureau + mobile) | visible, badge 0 | visible, badge `count` | visible, badge `cartCount()` |
+| Panneau du burger | boutique, événements, suivi, chat, **connexion** | + compte, points, panier | 4 entrées fixes de la maquette (boutique, commandes, support, compte) — main n'a pas d'équivalent pour les 4 dans ce panneau |
+| Barre basse | visible | visible, masquée sur `/commande` | visible, masquée sur `commande` (CSS `index.html:1091`) |
+| Pied de page | visible | visible, absent sur `/commande` et `/admin` | visible, absent sur `connexion` (CSS `index.html:855`) |
+
+### `t()` — correspondance des clés (Z0)
+
+Toutes les clés du prototype sont maintenant des clés de `main`
+(`frontend/src/i18n/translations.js`), avec les textes FR **et** EN de `main`.
+Correspondances non triviales :
+
+| Prototype (avant) | `main` |
+|---|---|
+| `toast.added` | `product.added` |
+| `toast.saved` | `account.saved` |
+| `toast.pwchanged` | `account.passwordChanged` |
+| `toast.deleted` | `account.deleted` |
+| `toast.redeem` | `loyalty.redeemed` |
+| `toast.forgot` | `auth.forgotSent` |
+| `toast.google` | `auth.google` |
+| `toast.logout` | `nav.logout` |
+| `toast.sent` | `chat.sent` |
+| `err.generic` / `err.network` / `err.origin` / `err.auth` | `common.error` |
+| `err.login` | `auth.errorInvalidCredentials` |
+| `checkout.empty` | `cart.empty` |
+| `checkout.needId` | `checkout.verifySub` |
+| `checkout.needVerify` | `checkout.verifyRequired` |
+| `checkout.needMethod` | `checkout.selectMethod` |
+| `checkout.invalidId` | `checkout.verifyIdInvalid` |
+| `checkout.noCatalog` | `catalog.emptyGame` |
+| `checkout.binanceAmount` | `checkout.binanceExactAmount` |
+| `checkout.binanceConfirmed` | `checkout.success` |
+| `checkout.binanceDetected` | `checkout.cryptoDetected` |
+| `checkout.binanceFailed` | `checkout.cryptoFailed` |
+| `checkout.binanceOff` | `checkout.papiOff` |
+| `checkout.captchaAgain` | `captcha.verifyAgain` |
+| `checkout.needProof` | `checkout.proofCount` |
+| `checkout.proofOk` | `order.banner.proofWaiting` |
+| `checkout.uploading` | `checkout.proofSubmitting` |
+| `checkout.cancelCta` (data-i18n) | `checkout.cancelOrder` |
+| `orders.empty` | `order.none` |
+| `orders.login` | `order.loginToSee` |
+| `status.done` / `status.cancel` / `status.pending` / `status.verify` | `order.status.delivered` / `.cancelled` / `.pending_payment` / `.awaiting_verification` |
+| `status.progress` | `order.tabs.progress` |
+| `method.mvola` / `method.orange` / `method.binance` | `checkout.methodMvola` / `.methodOrange` / `.binanceTitle` |
+| `pack.checking` / `pack.eligible` / `pack.noSeason` | `evo.checking` / `evo.eligible` / `evo.noSeason` |
+| `pack.needId` | `evo.pubgLabel` |
+| `pack.notEligible` | `evo.invalidId` |
+| `points.pidPrompt` | `checkout.playerId` |
+| `points.redeem` | supprimé — main affiche `{cost_points} pts` (`pages/Loyalty.js:88`) |
+| `confirm.delete` | `account.deleteWarning` |
+| `auth.emailBad` / `auth.emailFirst` / `auth.pwShort` / `auth.googleFailed` / `err.auth` | `auth.errorGeneric` |
+| `auth.needToken` | `auth.errorInvalidLink` |
+| `auth.pwMismatch` | `auth.passwordMismatch` |
+| `auth.pwPrompt` | `auth.password` |
+| `catalog.sortPopular` / `sortPriceAll` / `sortPriceAsc` / `sortPriceDesc` | `catalog.popular` / `.sortDefault` / `.priceAsc` / `.priceDesc` |
+
+**Exceptions (6 clés, sans équivalent dans `main`)** — écrans de la maquette qui
+n'existent pas dans `main` (`/support` = page Chat dans `main`) ou libellés que
+`main` n'a pas : `support.login`, `support.needMsg`, `support.chatOpen`,
+`support.waPending`, `checkout.cancelNote`, `checkout.cancelSub`.
+
+### Invité — ce que Z0 a aligné
+
+- `/commandes` : `main` redirige vers `/suivi` (page publique,
+  `components/common/OrdersRedirect.js:8`) ; le prototype affichait l'écran de
+  connexion. Corrigé : l'invité voit l'écran `commandes` avec l'état vide
+  `order.loginToSee`.
+- `/compte` et `/compte/points` restent protégés (`needLogin`), comme
+  `components/ProtectedRoute.js:29-30`.
 
 ---
 
