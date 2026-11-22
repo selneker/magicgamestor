@@ -2,7 +2,7 @@
 
 Généré par `frontend/scripts/proto-dead-controls.mjs` contre le site de `scripts/demo-local.sh`.
 
-**Éléments interactifs visibles audités : 120** — vivants 120, morts 0.
+**Éléments interactifs visibles audités : 121** — vivants 121, morts 0.
 
 Méthode : clic réel sans `force:true`, gestionnaires lus par CDP (`DOMDebugger.getEventListeners`) **et** délégués (`e.target.closest(…)` sur `document`), liens réels, `data-nav` routés, champs de saisie.
 
@@ -91,7 +91,7 @@ accueil · catalogue (liste jeux, catalogue PUBG, favori) · panier + drawer · 
 | `a[href="#"][data-nav="compte"]` | compte | data-nav routé | main:frontend/src/pages/Account.js:180-182 |
 | `a[href="#"][data-nav="points"]` | 0 pts | data-nav routé | main:frontend/src/pages/Loyalty.js |
 | `a[href="#"][data-nav="connexion"]` | Déconnexion | data-nav routé | — |
-| `a[href="#"][data-nav="commandes"]` | 1Commandes ↗ | data-nav routé | main:frontend/src/pages/OrderHistory.js:185 ; backend/routers/orders.py:436-438 |
+| `a[href="#"][data-nav="commandes"]` | 0Commandes ↗ | data-nav routé | main:frontend/src/pages/OrderHistory.js:185 ; backend/routers/orders.py:436-438 |
 | `input#acc-name` | text | champ de saisie | — |
 | `input#acc-phone` | tel | champ de saisie | — |
 | `input#acc-ids` | text | champ de saisie | — |
@@ -132,7 +132,7 @@ accueil · catalogue (liste jeux, catalogue PUBG, favori) · panier + drawer · 
 | `a[href="#mdp"]` | Envoyer le lien | gestionnaire délégué: a[href^="#"] | — |
 | `a[href="#connexion"][data-nav="connexion"]` | Retour à la connexion | lien interne routé | — |
 
-### commande (15)
+### commande (16)
 
 | élément | libellé | ce qu'il fait | équivalent dans main |
 |---|---|---|---|
@@ -142,6 +142,7 @@ accueil · catalogue (liste jeux, catalogue PUBG, favori) · panier + drawer · 
 | `button` | Vérifier l'ID | gestionnaire délégué: .button-main | — |
 | `label` | MVolaPaiement manuel | gestionnaire délégué: .mgs-co-method | main:frontend/src/pages/Checkout.js ; backend/routers/payments.py |
 | `label` | Orange MoneyPaiement manuel | gestionnaire délégué: .mgs-co-method | main:frontend/src/pages/Checkout.js ; backend/routers/payments.py |
+| `label` | BinanceUSDT · détection automatique | gestionnaire délégué: .mgs-co-method | main:frontend/src/pages/Checkout.js ; backend/routers/payments.py |
 | `button` | Passer la commande | gestionnaire délégué: .button-main | main:frontend/src/pages/OrderHistory.js:185 ; backend/routers/orders.py:436-438 |
 | `button` | 123456789 | gestionnaire délégué: .mgs-co-recent-chip | — |
 | `label` | MVolaPaiement manuel | gestionnaire délégué: .mgs-co-method | main:frontend/src/pages/Checkout.js ; backend/routers/payments.py |
