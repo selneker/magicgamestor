@@ -196,16 +196,52 @@ n'existent pas dans `main` (`/support` = page Chat dans `main`) ou libellés que
 
 ## Z2 — Catalogue, recherche, fiche produit, panier
 
-| Fonction | Source `main` | Route backend | Auth | Prototype | État |
-|---|---|---|---|---|---|
-| Liste des jeux | `context/GameContext.js:42` | `GET /games` (`routers/games.py:53`) | non | `loadGames()` 3692 | à porter |
-| Catalogue : `game, type, q, sort, popular, favorites, min_price, max_price` | `pages/Catalog.js:142` | `GET /products` (`routers/products.py:75`) | non | `req("/products?game=")` 3833 | à porter |
-| Fiche produit + `related` (4) | `pages/Product.js:81` | `GET /products/{slug}` (`routers/products.py:118`) | non | écran `produit` | à porter |
-| Accueil : populaires / prime / evo / événements | `pages/Home.js:389-391,407` | `GET /products`, `GET /events` | non | écran `accueil` | à porter |
-| Panier : ajout, quantités, limites (une seule règle « un jeu par panier ») | `context/CartContext.js` | — | non | `cart`/`renderCart()` | à porter |
-| Favoris (bascule + filtre catalogue) | `lib/favorites.js` | `GET /products?favorites` | non | `syncFavs()` | à porter |
-| Pack évolutif intégré au catalogue (type `evo`) | `pages/Catalog.js:13,248` ; `pages/PackEvolutif.js:41` | `GET /products?type=evo` | non | écran `pack` | à porter |
-| Règles ajoutées par des agents sans équivalent dans `main` | commits `3a3ed0c`, `af89a88`, `224ca8c`, `5871a5b`, `5895a64` | — | — | — | à vérifier/revert |
+| Fonction | Source `main` | Route backend | Prototype | État |
+|---|---|---|---|---|
+| Liste des jeux (filtre `active`, tri `sort_order`) | `context/GameContext.js:42-52` | `GET /games` (`routers/games.py:53`) | `loadGames()` `index.html:3599`, `renderGames()` `:3606` | porté |
+| Catalogue : `game, type, q, sort, popular, favorites, min_price, max_price` | `pages/Catalog.js:142` | `GET /products` (`routers/products.py:75`) | `qs()` `index.html:3735`, `catalogQuery()` `:3736`, `loadCatalogFor()` `:3786` | porté |
+| Fiche produit | `pages/Product.js:81` | `GET /products/{slug}` (`routers/products.py:118`) | `openProduit()` `index.html:3717`, `renderProduit()` `:3702` | porté |
+| Fiche produit : `related` (4) | `pages/Product.js:145-149` | `GET /products/{slug}` (champ `related`) | aucun conteneur dans le design | non porté (design) |
+| Accueil : populaires / prime / evo | `pages/Home.js:389-391` | `GET /products` | aucun conteneur produits sur l'accueil | non porté (design) |
+| Accueil : événements | `pages/Home.js:407` | `GET /events` (`routers/events.py:46`) | `renderEvents()` `index.html:4289` (pré-chargé depuis `loaders.accueil`) | partiel |
+| Panier : un seul jeu par panier | `context/CartContext.js:16-21` | — | `addToCart()` `index.html:3653` | porté |
+| Panier : doublon Prime / Prime+ | `context/CartContext.js:23-26` ; `addFeedback` `:49-53` | — | `addToCart()` `:3653` (`product.duplicateSub`) | porté |
+| Panier : quantités (1 souscription/évo, 20 max) | `context/CartContext.js:29,34` ; `components/store/ProductCard.js:53,88` ; `components/store/CartDrawer.js:129` | — | `isSingle()` `index.html:3649`, `syncPill()` `:3672`, tiroir panier `:4393` | porté |
+| Favoris : bascule + persistance | `lib/favorites.js:3,41-48` | — | `toggleFav()` `index.html:3691`, `getFavs()` `:3690` | porté |
+| Favoris : filtre catalogue | `pages/Catalog.js:155-157` | `GET /products?favorites` | `renderCatalog()` `index.html:3748` | porté |
+| Pack évolutif intégré au catalogue (type `evo`) | `pages/Catalog.js:13,243,274` ; `pages/PackEvolutif.js:41-43` | `GET /products?type=evo`, `GET /evo/season` (`routers/evo.py:110`) | `?type=evo` accepté par le catalogue ; pack sur son écran `packVerify()` `:4265` | écarté (pas d'onglet type) |
+| Règles ajoutées sans équivalent dans `main` | commits `3a3ed0c`, `af89a88`, `224ca8c`, `5871a5b`, `5895a64` | — | tri client par prix absolu retiré (`194533a`) | traité |
+
+### Preuves de lignes (Z2)
+
+- **Liste des jeux** : `main` `frontend/src/context/GameContext.js:42` (`api.get("/games")`),
+  `:45` (`g.active !== false`), `:47` (`(a.sort_order ?? 0) - (b.sort_order ?? 0)`).
+  Prototype `frontend/public/index.html:3599` (les trois opérations), rendu `:3606`.
+- **Paramètres catalogue** : `main` `frontend/src/pages/Catalog.js:142` —
+  `api.get("/products", { params: { game, type, q, sort, popular, favorites, min_price, max_price } })`.
+  Prototype `index.html:3786-3792` (même objet) ; `qs()` `:3735` omet les valeurs vides,
+  comme axios omet `undefined`.
+- **Fiche produit** : `main` `frontend/src/pages/Product.js:81` — `` api.get(`/products/${slug}`) ``.
+  Prototype `index.html:3717` — `req("/products/" + encodeURIComponent(slug))`.
+- **Panier** : `main` `frontend/src/context/CartContext.js:21` (un seul jeu), `:23-26`
+  (doublon d'abonnement), `:29` (`Math.min(20, …)`, `single ? 1`). Prototype `index.html:3653-3663`.
+- **Favoris** : `main` `frontend/src/lib/favorites.js:41-48` (bascule + `mgs_favorites`),
+  `frontend/src/pages/Catalog.js:155-157` (filtre client). Prototype `index.html:3691` et `:3748`.
+
+### Limites du design v3 (aucun nouvel élément)
+
+- **`related` (4)** : `main` `pages/Product.js:145-149` rend une grille `.mgs-grid--3` de
+  `ProductCard`. L'écran `produit` du design n'a que `.mgs-grid--2` + `.mgs-buybar` — aucun
+  conteneur « related ». Non porté plutôt que d'ajouter un élément visible.
+- **Accueil** : `main` `pages/Home.js:430-457` (sections populaires / abonnements) n'a aucun
+  conteneur equivalent dans le design (hero, deux colonnes, marquee, sécurité, logos).
+  Les événements, eux, sont chargés (`index.html:4289`) et affichés sur la page Événements.
+- **Pack évolutif** : `main` `pages/Catalog.js:274` rend `PackEvolutif embedded` dans l'onglet
+  `evo`. Le catalogue du prototype n'a pas d'onglets de type (2 puces de tri) ; `?type=evo`
+  filtre la grille, et le pack reste sur son écran dédié (`packVerify()`).
+- **Thème sombre** : le design v3 n'a ni sélecteur `.dark`, ni `prefers-color-scheme`, ni lecteur
+  de `mgs-theme` (`grep -c` = 0 dans `index.html`). L'auto-contrôle Z2 tourne donc en clair ;
+  le « sombre » de `audit-contrast` est un no-op sur ce prototype.
 
 ---
 
