@@ -246,8 +246,15 @@ test("paiement : annulation -> POST /orders/:id/cancel", async (page, state) => 
   const id = state.orders[0].id;
   const resp = page.waitForResponse((r) => new RegExp("/api/orders/" + id + "/cancel$").test(r.url()), { timeout: 10000 });
   await page.locator(".mgs-co-cancel").click();
+  await page.waitForFunction(() => !document.querySelector(".mgs-co-cancel-popup").hidden, null, { timeout: 8000 });
+  // le motif est un sélecteur (backend/routers/orders.py: raison fermée)
+  assert.deepEqual(await page.evaluate(() => Array.from(document.querySelectorAll("input[name='co-cancel-reason']")).map((r) => r.value)),
+    ["wrong_info", "change_method", "too_short", "cannot_pay_now", "other"]);
+  await page.locator('input[name="co-cancel-reason"][value="too_short"]').check();
+  await page.locator("#co-cancel-note").fill("délai trop court");
+  await page.locator(".mgs-co-cancel-confirm").click();
   const r = await resp;
-  assert.equal(r.request().postDataJSON().reason, "other");
+  assert.deepEqual(r.request().postDataJSON(), { reason: "too_short", note: "délai trop court" });
   assert.equal(r.status(), 200);
 });
 
