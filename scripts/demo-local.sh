@@ -170,7 +170,7 @@ echo "→ MongoDB ok (pid $MONGO_PID)"
 
 # ---------- 5. stub fournisseurs ----------
 echo "→ démarrage du stub fournisseurs…"
-python3 "$REPO/frontend/scripts/stubs/provider_stub.py" --port "$STUB_PORT" >"$LOGS/stub.log" 2>&1 &
+setsid python3 "$REPO/frontend/scripts/stubs/provider_stub.py" --port "$STUB_PORT" >"$LOGS/stub.log" 2>&1 < /dev/null &
 STUB_PID=$!
 for _ in $(seq 1 60); do
   curl -s -o /dev/null "http://127.0.0.1:$STUB_PORT/" 2>/dev/null && break
@@ -181,39 +181,42 @@ done
 # Variables FACTICES : aucune clé réelle, jamais de lecture de backend/.env.
 # TURNSTILE_SECRET_KEY volontairement absent -> captcha désactivé (services/captcha.py:35).
 echo "→ démarrage du backend…"
-(
-  cd "$REPO/backend" || exit 1
-  export MONGO_URL="mongodb://127.0.0.1:${MONGO_PORT}"
-  export DB_NAME="mgs_demo"
-  export JWT_SECRET="demo0000000000000000000000000000000000000000000000000000000000000000"
-  export ADMIN_EMAIL="$ADMIN_EMAIL"
-  export ADMIN_PASSWORD="$ADMIN_PASSWORD"
-  export PAYMENT_MODE="manual"
-  export CORS_ORIGINS="http://127.0.0.1:${WEB_PORT}"
-  export FRONTEND_URL="http://127.0.0.1:${WEB_PORT}"
-  export COOKIE_SAMESITE="lax"
-  export FAZERCARDS_API_BASE="http://127.0.0.1:${STUB_PORT}"
-  export FAZERCARDS_API_KEY="demo-fazercards-key"
-  export FAZERCARDS_WEBHOOK_SECRET="demo-fazercards-webhook"
-  export BINANCE_API_BASE="http://127.0.0.1:${STUB_PORT}"
-  export BINANCE_API_KEY="demo-binance-key"
-  export BINANCE_API_SECRET="demo-binance-secret"
-  export FIVEONE_API_BASE="http://127.0.0.1:${STUB_PORT}"
-  export FIVEONE_API_KEY="demo-fiveone-key"
-  export PAPI_API_BASE="http://127.0.0.1:${STUB_PORT}"
-  export PAPI_API_KEY="demo-papi-key"
-  export PAPI_WEBHOOK_SECRET="demo-papi-webhook"
-  export P2P_ARMY_API_KEY="demo-p2p-key"
-  export SHOP2TOPUP_API_KEY="demo-shop2topup-key"
-  export MAILJET_API_KEY="demo-mailjet-key"
-  export MAILJET_SECRET_KEY="demo-mailjet-secret"
-  export MAILJET_FROM_EMAIL="demo@example.com"
-  export GOOGLE_CLIENT_ID="demo-google-id"
-  export GOOGLE_CLIENT_SECRET="demo-google-secret"
-  export VAPID_SUBJECT="mailto:${ADMIN_EMAIL}"
-  export STOCK_OFFERS_SYNC_MODE="manual"
-  exec "$VENV/bin/python" -m uvicorn server:app --host 127.0.0.1 --port "$BACKEND_PORT"
-) >"$LOGS/backend.log" 2>&1 &
+# Variables FACTICES écrites dans un fichier d'environnement (jamais backend/.env).
+# TURNSTILE_SECRET_KEY volontairement absent -> captcha désactivé (services/captcha.py:35).
+cat >"$DEMO/backend.env" <<EOF
+MONGO_URL=mongodb://127.0.0.1:${MONGO_PORT}
+DB_NAME=mgs_demo
+JWT_SECRET=demo0000000000000000000000000000000000000000000000000000000000000000
+ADMIN_EMAIL=${ADMIN_EMAIL}
+ADMIN_PASSWORD=${ADMIN_PASSWORD}
+PAYMENT_MODE=manual
+CORS_ORIGINS=http://127.0.0.1:${WEB_PORT}
+FRONTEND_URL=http://127.0.0.1:${WEB_PORT}
+COOKIE_SAMESITE=lax
+FAZERCARDS_API_BASE=http://127.0.0.1:${STUB_PORT}
+FAZERCARDS_API_KEY=demo-fazercards-key
+FAZERCARDS_WEBHOOK_SECRET=demo-fazercards-webhook
+BINANCE_API_BASE=http://127.0.0.1:${STUB_PORT}
+BINANCE_API_KEY=demo-binance-key
+BINANCE_API_SECRET=demo-binance-secret
+FIVEONE_API_BASE=http://127.0.0.1:${STUB_PORT}
+FIVEONE_API_KEY=demo-fiveone-key
+PAPI_API_BASE=http://127.0.0.1:${STUB_PORT}
+PAPI_API_KEY=demo-papi-key
+PAPI_WEBHOOK_SECRET=demo-papi-webhook
+P2P_ARMY_API_KEY=demo-p2p-key
+SHOP2TOPUP_API_KEY=demo-shop2topup-key
+MAILJET_API_KEY=demo-mailjet-key
+MAILJET_SECRET_KEY=demo-mailjet-secret
+MAILJET_FROM_EMAIL=demo@example.com
+GOOGLE_CLIENT_ID=demo-google-id
+GOOGLE_CLIENT_SECRET=demo-google-secret
+VAPID_SUBJECT=mailto:${ADMIN_EMAIL}
+STOCK_OFFERS_SYNC_MODE=manual
+EOF
+chmod 600 "$DEMO/backend.env"
+# setsid : le backend survit à la fermeture du terminal qui a lancé la commande.
+setsid bash -c 'set -a; . "$1"; set +a; cd "$2" || exit 1; exec "$3" -m uvicorn server:app --host 127.0.0.1 --port "$4"' _ "$DEMO/backend.env" "$REPO/backend" "$VENV/bin/python" "$BACKEND_PORT" >"$LOGS/backend.log" 2>&1 < /dev/null &
 BACKEND_PID=$!
 
 for _ in $(seq 1 120); do
@@ -228,8 +231,8 @@ echo "→ backend ok (pid $BACKEND_PID)"
 
 # ---------- 7. prototype ----------
 echo "→ démarrage du prototype (frontend/public, MGS_BACKEND_URL injecté au vol)…"
-node "$REPO/frontend/scripts/demo-server.mjs" --port "$WEB_PORT" \
-  --backend "http://127.0.0.1:${BACKEND_PORT}" >"$LOGS/web.log" 2>&1 &
+setsid node "$REPO/frontend/scripts/demo-server.mjs" --port "$WEB_PORT" \
+  --backend "http://127.0.0.1:${BACKEND_PORT}" >"$LOGS/web.log" 2>&1 < /dev/null &
 WEB_PID=$!
 for _ in $(seq 1 60); do
   curl -fsS "http://127.0.0.1:${WEB_PORT}/__demo/config" >/dev/null 2>&1 && break

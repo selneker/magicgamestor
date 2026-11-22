@@ -23,6 +23,7 @@ if [[ -f "$STATE" ]]; then
     [[ "$val" =~ ^[0-9]+$ ]] || continue
     if kill -0 "$val" 2>/dev/null; then
       kill "$val" 2>/dev/null && echo "→ $key (pid $val) arrêté"
+      kill -- "-$val" 2>/dev/null || true   # setsid : le groupe entier
     fi
   done
 fi
