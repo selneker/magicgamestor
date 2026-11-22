@@ -178,6 +178,8 @@ test("Z2 panier : un seul jeu par panier", async (page, state) => {
   assert.equal(item.id, "p1", "forme d'objet de main (i.id) : " + JSON.stringify(item));
   assert.equal(item.product_id, "p1");
   // un deuxième jeu est refusé
+  await page.locator(".mgs-back-games").click();
+  await page.waitForSelector('.mgs-game[data-gamename="Free Fire"]', { state: "visible", timeout: 10000 });
   await page.locator('.mgs-game[data-gamename="Free Fire"]').first().click();
   await page.waitForSelector('.mgs-boutique-catalog .mgs-pcard[data-pid="f1"]', { timeout: 15000 });
   await page.locator('.mgs-boutique-catalog .mgs-pcard[data-pid="f1"] .mgs-pill__add').click();
