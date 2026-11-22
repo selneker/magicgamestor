@@ -85,6 +85,12 @@ afficher_rapport() {
   echo
   echo "  Arrêter :  ./scripts/demo-local-stop.sh"
   echo
+  echo "  Vérifier tout le parcours dans un vrai navigateur (30 scénarios) :"
+  echo "    cd frontend && MGS_REAL_BACKEND=http://127.0.0.1:${BACKEND_PORT} \\"
+  echo "      MGS_MONGO_PORT=${MONGO_PORT} MGS_MONGO_DB=mgs_demo \\"
+  echo "      MGS_ADMIN_EMAIL=${ADMIN_EMAIL} MGS_ADMIN_PASSWORD=${ADMIN_PASSWORD} \\"
+  echo "      node scripts/proto-e2e-real.mjs"
+  echo
 }
 
 # ---------- déjà démarré ? (idempotence) ----------

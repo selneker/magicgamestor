@@ -176,7 +176,9 @@ async function loginUi(page, email, password) {
   await page.locator("#em").fill(email);
   await page.locator("#pw").fill(password);
   await page.locator('.mgs-page[data-page="connexion"] a[data-nav="compte"]').click();
-  await pageIs(page, "compte");
+  /* fc979aa : la connexion ramène à l'accueil (comme main), pas au compte */
+  await pageIs(page, "accueil");
+  await goto(page, "compte");
   await page.waitForFunction(() => document.querySelector("#acc-name") && document.querySelector("#acc-name").value.length > 0, null, { timeout: 15000 });
 }
 
@@ -191,7 +193,9 @@ test("auth : inscription, connexion, session au rechargement, déconnexion", asy
   await page.locator("#em").fill(email);
   await page.locator("#pw").fill(password);
   await page.locator('.mgs-page[data-page="connexion"] a[data-nav="compte"]').click();
-  await pageIs(page, "compte");
+  /* fc979aa : la connexion ramène à l'accueil (comme main), pas au compte */
+  await pageIs(page, "accueil");
+  await goto(page, "compte");
   await page.waitForFunction(() => document.querySelector("#acc-name") && document.querySelector("#acc-name").value === "E2E Real", null, { timeout: 15000 });
   // session conservée au rechargement
   await page.reload({ waitUntil: "load" });
@@ -374,9 +378,13 @@ test("pack évolutif : élégibilité réelle", async (page) => {
 test("mot de passe oublié : demande envoyée + jeton en base", async (page) => {
   await boot(page);
   await goto(page, "connexion");
-  await page.locator("#em").fill("admin@example.com");
   await page.locator('.mgs-page[data-page="connexion"] a.mgs-muted').filter({ hasText: /Mot de passe oublié|Forgot/ }).click();
-  await page.waitForTimeout(1500);
+  /* l'écran dédié (cf. main AuthExtras) : on saisit l'e-mail puis on envoie */
+  await pageIs(page, "mdp");
+  await page.locator("#fpe").fill("admin@example.com");
+  await page.locator(".mgs-mdp-send").click();
+  await page.waitForFunction(() => { const s = document.querySelector("#mdp-status"); return s && s.textContent.trim().length > 5; }, null, { timeout: 15000 });
+  await page.waitForTimeout(1200);
   const cnt = Number(mongoEval(`db.auth_tokens.countDocuments({purpose:"reset_password", used_at:null})`));
   assert.ok(cnt >= 1, "aucun jeton reset_password créé en base");
 });
