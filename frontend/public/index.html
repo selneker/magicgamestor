@@ -2443,6 +2443,11 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
       <div class="mgs-order__right"><p class="mgs-order__price">8 000 Ar</p><span class="mgs-status mgs-status--done"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Livrée</span></div>
     </div></div>
     <div class="mgs-empty mgs-cmd-empty" hidden><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><p style="margin:0;font-weight:600">Aucune commande ne correspond.</p></div>
+    <div class="mgs-row mgs-cmd-pages" style="justify-content:center;gap:.6em;margin-top:1.2em" hidden>
+      <button type="button" class="button-main w-inline-block" data-op="prev" data-button-theme="light" data-button-accent=""><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Précédent"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span data-i18n="common.previous">Précédent</span></span></span></span></button>
+      <span class="mgs-muted mgs-cmd-pages-n">1 / 1</span>
+      <button type="button" class="button-main w-inline-block" data-op="next" data-button-theme="light" data-button-accent=""><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Suivant"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span data-i18n="common.next">Suivant</span></span></span></span></button>
+    </div>
   </div>
   <div class="mgs-cmd-detail" hidden>
     <div class="mgs-crumb"><a href="#commandes" class="mgs-back-list" role="button"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Vos commandes</a> <svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg> <span class="mgs-d-num">MGS-2026-0142</span></div>
@@ -3476,6 +3481,21 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   <div class="mgs-human-foot"><button type="button" class="mgs-human-cancel">Fermer</button><button type="button" class="button-main w-inline-block mgs-human-confirm" data-button-theme="dark" data-button-accent="green" disabled><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Passer la commande"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Passer la commande</span></span></span></span></button></div>
 </div>
 
+<div class="mgs-human-overlay mgs-co-cancel-overlay" hidden></div>
+<div class="mgs-human-popup mgs-co-cancel-popup" hidden role="dialog" aria-label="Annuler la commande">
+  <div class="mgs-human-head"><p data-i18n="checkout.cancelTitle">Annuler la commande</p><button type="button" class="mgs-human-close mgs-co-cancel-close" aria-label="Fermer"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <p class="mgs-human-sub" data-i18n="checkout.cancelSub">Choisissez un motif (obligatoire).</p>
+  <div class="mgs-field" style="display:flex;flex-direction:column;gap:.55em;margin-bottom:1em">
+    <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="wrong_info" checked> <span data-i18n="checkout.cancelWrongInfo">Je me suis trompé (ID ou produit)</span></label>
+    <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="change_method"> <span data-i18n="checkout.cancelChangeMethod">Je veux changer de mode de paiement</span></label>
+    <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="too_short"> <span data-i18n="checkout.cancelTooShort">Le délai est trop court</span></label>
+    <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="cannot_pay_now"> <span data-i18n="checkout.cancelCannotPayNow">Je ne peux pas payer maintenant</span></label>
+    <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="other"> <span data-i18n="checkout.cancelOther">Autre raison</span></label>
+  </div>
+  <div class="mgs-field"><label for="co-cancel-note" data-i18n="checkout.cancelNote">Précision (facultatif)</label><input id="co-cancel-note" class="mgs-input" maxlength="200"></div>
+  <div class="mgs-human-foot"><button type="button" class="mgs-human-cancel mgs-co-cancel-close" data-i18n="common.close">Fermer</button><button type="button" class="button-main w-inline-block mgs-co-cancel-confirm" data-button-theme="dark" data-button-accent="green"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Confirmer l'annulation"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span data-i18n="checkout.cancelCta">Confirmer l'annulation</span></span></span></span></button></div>
+</div>
+
 <script src="mgs-logic-captcha.js"></script>
 <script src="mgs-logic-crypto.js"></script>
 <script>
@@ -3540,6 +3560,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       "checkout.cancelWrongInfo": "Je me suis trompé (ID ou produit)", "checkout.cancelChangeMethod": "Je veux changer de mode de paiement",
       "checkout.cancelTooShort": "Le délai est trop court", "checkout.cancelCannotPayNow": "Je ne peux pas payer maintenant", "checkout.cancelOther": "Autre raison",
       "checkout.cancelTitle": "Annuler la commande", "checkout.cancelNote": "Précision (facultatif)", "checkout.cancelCta": "Confirmer l'annulation",
+      "checkout.cancelSub": "Choisissez un motif (obligatoire).", "common.close": "Fermer", "events.shared": "Lien copié",
       "points.redeem": "Échanger", "points.pidPrompt": "ID joueur PUBG / PUBG player ID", "events.empty": "Aucun événement pour le moment.",
       "catalog.sortPopular": "Trier : populaire", "catalog.sortPriceAll": "Prix : tous", "catalog.sortPriceAsc": "Prix : croissant", "catalog.sortPriceDesc": "Prix : décroissant"
     },
@@ -3586,6 +3607,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       "checkout.cancelWrongInfo": "I made a mistake (ID or product)", "checkout.cancelChangeMethod": "I want to change payment method",
       "checkout.cancelTooShort": "The deadline is too short", "checkout.cancelCannotPayNow": "I can't pay right now", "checkout.cancelOther": "Other reason",
       "checkout.cancelTitle": "Cancel the order", "checkout.cancelNote": "Details (optional)", "checkout.cancelCta": "Confirm cancellation",
+      "checkout.cancelSub": "Choose a reason (required).", "common.close": "Close", "events.shared": "Link copied",
       "points.redeem": "Redeem", "points.pidPrompt": "PUBG player ID", "events.empty": "No events right now.",
       "catalog.sortPopular": "Sort: popular", "catalog.sortPriceAll": "Price: all", "catalog.sortPriceAsc": "Price: low to high", "catalog.sortPriceDesc": "Price: high to low"
     }
@@ -3964,6 +3986,26 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var num = co.order && (co.order.order_number || co.order.number); cart = []; renderCart(); syncPillsFromCart();
     loadOrders().then(function () { window.mgsShowPage("commandes"); if (num) { var card = $('.mgs-order[data-order="' + num + '"]'); if (card) card.click(); } });
   }
+  /* ---------- annulation : sélecteur de motif (backend/routers/orders.py — raison fermée) ---------- */
+  function openCancel() {
+    var o = $(".mgs-co-cancel-overlay"), p = $(".mgs-co-cancel-popup"); if (!p) return;
+    var all = $$("input[name='co-cancel-reason']", p); all.forEach(function (r) { r.checked = false; });
+    if (all[0]) all[0].checked = true;
+    var n = $("#co-cancel-note"); if (n) n.value = "";
+    if (o) o.hidden = false; p.hidden = false;
+  }
+  function closeCancel() { var o = $(".mgs-co-cancel-overlay"), p = $(".mgs-co-cancel-popup"); if (o) o.hidden = true; if (p) p.hidden = true; }
+  function confirmCancel() {
+    var p = $(".mgs-co-cancel-popup");
+    var r = $("input[name='co-cancel-reason']:checked", p);
+    var reason = r ? r.value : "other";
+    var note = (($("#co-cancel-note") || {}).value || "").trim();
+    closeCancel(); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; }
+    if (!co.order) { coShow(1); return; }
+    req("/orders/" + co.order.id + "/cancel", { method: "POST", body: { reason: reason, note: note || undefined } })
+      .catch(function (e) { toast(errMsg(e), "err"); });
+    coShow(1);
+  }
 
   /* ---------- commandes (liste réelle -> gabarit .mgs-order ; détail/filtre/reçu = script template) ---------- */
   var MOIS = ["jan", "fév", "mar", "avr", "mai", "jun", "jul", "aoû", "sep", "oct", "nov", "déc"];
@@ -3972,14 +4014,52 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function orderMethodLabel(o) { if (o.payment_method === "binance" || o.payment_method === "crypto") return t("method.binance"); if (o.manual_operator === "orange" || o.payment_method === "orange") return t("method.orange"); return t("method.mvola"); }
   var STATUS_IC = { progress: '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>', done: '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>', cancel: '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>' };
   var COPY_IC = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+  /* Pagination de l'historique (libellés « Précédent / Suivant » : design system, cf. main
+     frontend/src/components/ui/pagination.jsx + i18n common.previous/next). */
+  var ORDER_PAGE_SIZE = 10, orderPage = 1;
+  function orderVisibleCards() {
+    var p = $(".mgs-page[data-page=commandes]"); if (!p) return [];
+    var q = (($(".mgs-cmd-search", p) || {}).value || "").toLowerCase().trim();
+    var tab = $(".mgs-cmd-tab.is--active", p);
+    var f = tab ? tab.dataset.filter : "all";
+    return $$(".mgs-order", p).filter(function (o) {
+      var okf = (f === "all") || (o.dataset.filter === f);
+      var okq = !q || (o.dataset.order + " " + o.dataset.product).toLowerCase().indexOf(q) >= 0;
+      return okf && okq;
+    });
+  }
+  function orderPaginate() {
+    var p = $(".mgs-page[data-page=commandes]"); if (!p) return;
+    var cards = orderVisibleCards();
+    var pages = Math.max(1, Math.ceil(cards.length / ORDER_PAGE_SIZE));
+    if (orderPage > pages) orderPage = pages;
+    if (orderPage < 1) orderPage = 1;
+    cards.forEach(function (c, i) { c.style.display = (i >= (orderPage - 1) * ORDER_PAGE_SIZE && i < orderPage * ORDER_PAGE_SIZE) ? "" : "none"; });
+    var box = $(".mgs-cmd-pages", p); if (!box) return;
+    box.hidden = cards.length <= ORDER_PAGE_SIZE;
+    var prev = $('[data-op="prev"]', box), next = $('[data-op="next"]', box), lab = $(".mgs-cmd-pages-n", box);
+    if (prev) { prev.disabled = orderPage <= 1; prev.setAttribute("aria-disabled", orderPage <= 1 ? "true" : "false"); }
+    if (next) { next.disabled = orderPage >= pages; next.setAttribute("aria-disabled", orderPage >= pages ? "true" : "false"); }
+    if (lab) lab.textContent = orderPage + " / " + pages;
+  }
+  doc.addEventListener("input", function (e) { if (e.target && e.target.classList && e.target.classList.contains("mgs-cmd-search")) { orderPage = 1; orderPaginate(); } });
+  doc.addEventListener("click", function (e) {
+    if (e.target.closest && e.target.closest(".mgs-cmd-tab")) { orderPage = 1; orderPaginate(); return; }
+    var pg = e.target.closest && e.target.closest("[data-op]");
+    if (pg && pg.getAttribute("data-op") === "next") { orderPage++; orderPaginate(); }
+    else if (pg && pg.getAttribute("data-op") === "prev") { orderPage--; orderPaginate(); }
+  });
+
   function renderOrders(orders) {
     var list = $(".mgs-order-list"); if (!list) return; var empty = $(".mgs-cmd-empty");
-    if (!orders || !orders.length) { list.innerHTML = ""; if (empty) { empty.hidden = false; var p = $("p", empty); if (p) p.textContent = me ? t("orders.empty") : t("orders.login"); } return; }
+    if (!orders || !orders.length) { list.innerHTML = ""; if (empty) { empty.hidden = false; var p = $("p", empty); if (p) p.textContent = me ? t("orders.empty") : t("orders.login"); } var bx = $(".mgs-cmd-pages"); if (bx) bx.hidden = true; return; }
     if (empty) empty.hidden = true;
     list.innerHTML = orders.map(function (o) {
       var b = statusBucket(o.status); var d = fmtDate(o.created_at); var product = orderProductLabel(o); var total = ar(o.total); var method = orderMethodLabel(o); var label = statusLabel(o.status); var filter = b === "progress" ? "progress" : "done";
       return '<div class="mgs-order" role="button" tabindex="0" data-order="' + esc(o.order_number || o.number) + '" data-product="' + esc(product) + '" data-pid="' + esc(o.pubg_id || "") + '" data-total="' + esc(total) + '" data-method="' + esc(method) + '" data-status="' + b + '" data-statuslabel="' + esc(label) + '" data-date="' + esc(d.date) + '" data-time="' + esc(d.time) + '" data-filter="' + filter + '" data-id="' + esc(o.id) + '"><div class="mgs-order__main"><p class="mgs-order__title">' + esc(product) + '</p><p class="mgs-order__meta"><span class="mgs-mono">' + esc(o.order_number || o.number) + '</span><button type="button" class="mgs-order__copy" aria-label="Copier le numéro">' + COPY_IC + '</button><span>· ' + esc(d.date) + ' · ' + esc(d.time) + '</span><span class="mgs-order__method">· ' + esc(method) + '</span></p></div><div class="mgs-order__right"><p class="mgs-order__price">' + esc(total) + '</p><span class="mgs-status mgs-status--' + b + '">' + STATUS_IC[b] + esc(label) + '</span></div></div>';
     }).join("");
+    orderPage = 1;
+    orderPaginate();
   }
   function loadOrders() {
     if (!me) { needLogin("commandes"); return Promise.resolve([]); }
@@ -4092,6 +4172,21 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- événements ---------- */
   var eventTpl = null;
+  var HEART_IC = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
+  var SHARE_IC = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>';
+  function sessionId() { try { var v = localStorage.getItem("mgs_session_id"); if (v) return v; v = "s-" + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem("mgs_session_id", v); return v; } catch (e) { return "s-anonyme"; } }
+  function eventLike(id, btn) {
+    req("/events/" + id + "/like", { method: "POST", body: { session_id: sessionId() } }).then(function (r) {
+      var n = $(".mgs-card__like-n", btn); if (n) n.textContent = String(r.likes != null ? r.likes : 0);
+      btn.setAttribute("aria-pressed", r.liked ? "true" : "false");
+    }).catch(function (e) { signale(e); });
+  }
+  function eventShare(id, btn) {
+    var url = location.origin + location.pathname + "#evenements";
+    var compte = function () { req("/events/" + id + "/share", { method: "POST", body: { session_id: sessionId() } }).then(function (r) { var n = $(".mgs-card__share-n", btn); if (n) n.textContent = String(r.shares != null ? r.shares : 0); }).catch(function (e) { signale(e); }); };
+    if (navigator.share) navigator.share({ title: document.title, url: url }).then(compte, function () { });
+    else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { toast(t("events.shared")); compte(); }, function () { });
+  }
   function renderEvents() {
     var grid = $(".mgs-page[data-page=evenements] .mgs-grid"); if (!grid) return;
     if (!eventTpl) eventTpl = $(".mgs-card", grid);
@@ -4106,6 +4201,17 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         var nm = $(".mgs-card__name", card); if (nm) nm.textContent = title; var de = $(".mgs-card__desc", card); if (de) de.textContent = desc;
         var media = $(".mgs-card__media", card); if (media) { media.className = "mgs-card__media u--bg--" + themes[i % themes.length]; if (ev.image_url) media.innerHTML = '<img src="' + esc(ev.image_url) + '" alt="' + esc(title) + '" style="width:100%;height:100%;object-fit:cover">'; }
         var chip = $(".mgs-chip", card); if (chip) chip.textContent = ev.starts_at ? fmtDate(ev.starts_at).date : (ev.slug || "");
+        /* j'aime / partage — comme main (frontend/src/pages/Events.js) : .mgs-chip + endpoints /events/{id}/like|share */
+        var foot = $(".mgs-card__foot", card);
+        if (foot) {
+          var like = doc.createElement("button"); like.type = "button"; like.className = "mgs-chip mgs-card__like"; like.dataset.ev = ev.id; like.setAttribute("aria-pressed", "false");
+          like.setAttribute("aria-label", LANG === "en" ? "Like" : "J’aime");
+          like.innerHTML = HEART_IC + '<span class="mgs-card__like-n">' + (ev.likes != null ? ev.likes : 0) + "</span>";
+          var shr = doc.createElement("button"); shr.type = "button"; shr.className = "mgs-chip mgs-card__share"; shr.dataset.ev = ev.id;
+          shr.setAttribute("aria-label", LANG === "en" ? "Share" : "Partager");
+          shr.innerHTML = SHARE_IC + '<span class="mgs-card__share-n">' + (ev.shares != null ? ev.shares : 0) + "</span>";
+          foot.appendChild(like); foot.appendChild(shr);
+        }
         return card.outerHTML;
       }).join("");
     }).catch(function (e) { showEmpty(); signale(e); });
@@ -4203,7 +4309,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (el.closest(".mgs-co-back")) { stop(e); window.mgsShowPage("boutique"); return; }
     if (el.closest(".mgs-co-back2")) { stop(e); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } coShow(1); return; }
     if (el.closest(".mgs-co-proof")) { stop(e); ensureProofInput().click(); return; }
-    if (el.closest(".mgs-co-cancel")) { stop(e); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } if (co.order) req("/orders/" + co.order.id + "/cancel", { method: "POST", body: { reason: "other" } }).catch(function (e) { toast(errMsg(e), "err"); }); coShow(1); return; }
+    if (el.closest(".mgs-co-cancel")) { stop(e); openCancel(); return; }
+    if (el.closest(".mgs-co-cancel-close") || el.classList.contains("mgs-co-cancel-overlay")) { stop(e); closeCancel(); return; }
+    if (el.closest(".mgs-co-cancel-confirm")) { stop(e); confirmCancel(); return; }
     if (el.closest(".mgs-co-done")) { stop(e); coFinish(); return; }
     if (el.closest(".mgs-human-close") || el.closest(".mgs-human-cancel") || el.classList.contains("mgs-human-overlay")) { stop(e); closeHuman(); return; }
     if (el.closest(".mgs-human-confirm")) { stop(e); var capOn = window.MGS_CAPTCHA && window.MGS_CAPTCHA.enabled(); if (capOn) { if (window.MGS_CAPTCHA.getToken()) createOrder(); } else if (($(".mgs-human-cb") || {}).checked) createOrder(); return; }
@@ -4212,6 +4320,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* connexion */
     if (el.closest(".mgs-mdp-send")) { stop(e); forgotPassword(); return; }
     if (el.closest(".mgs-reset-send")) { stop(e); resetPassword(); return; }
+    var lk = el.closest(".mgs-card__like"); if (lk) { stop(e); eventLike(lk.dataset.ev, lk); return; }
+    var sh = el.closest(".mgs-card__share"); if (sh) { stop(e); eventShare(sh.dataset.ev, sh); return; }
     if (el.closest(".mgs-page[data-page=connexion]")) { if (/Google/i.test((el.closest(".button-main") || {}).textContent || "")) { stop(e); googleLogin(); return; } var cb = el.closest('a[data-nav="compte"]'); if (cb) { stop(e); doAuth(); return; } var tab = el.closest(".mgs-tab"); if (tab) { stop(e); var idx = $$(".mgs-page[data-page=connexion] .mgs-tab").indexOf(tab); setAuthMode(idx === 0 ? "login" : "register"); return; } }
     /* points */
     var rd = el.closest(".mgs-redeem"); if (rd) { stop(e); redeem(rd.dataset.reward); return; }
@@ -4225,7 +4335,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   doc.addEventListener("change", function (e) { if (e.target.classList.contains("mgs-human-cb")) { var cf = $(".mgs-human-confirm"); if (cf) cf.disabled = !e.target.checked; } });
 
-  function setLang(l) { LANG = l; try { localStorage.setItem("mgs_lang", l); } catch (e) { } doc.documentElement.lang = l; if (lastPage) { var p = lastPage; lastPage = null; route(p); } renderCart(); }
+  function setLang(l) { LANG = l; try { localStorage.setItem("mgs_lang", l); } catch (e) { } doc.documentElement.lang = l; /* data-i18n : les libellés ajoutés dynamiquement aussi */ $$("[data-i18n]").forEach(function (e) { var k = e.getAttribute("data-i18n"); var v = t(k); if (typeof v === "string" && v !== k) e.textContent = v; }); if (lastPage) { var p = lastPage; lastPage = null; route(p); } renderCart(); }
 
   /* ---------- boot ---------- */
   function boot() {
