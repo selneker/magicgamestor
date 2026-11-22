@@ -3752,6 +3752,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (!tpl && window.__mgsCatalogTpl) { grid.appendChild(window.__mgsCatalogTpl); tpl = window.__mgsCatalogTpl; }
     if (tpl) window.__mgsCatalogTpl = tpl;
     if (!tpl) return;
+    /* main filtre les favoris côté client (pages/Catalog.js:155-157) */
+    if (catalogQuery().favorites === "1") { var favs = getFavs(); products = (products || []).filter(function (p) { return favs.indexOf(p.id) >= 0; }); }
     if (!products || !products.length) {
       /* backend vide ou en erreur : grille vidée + état vide, jamais de fausses cartes */
       $$(".mgs-pcard", grid).forEach(function (c) { c.remove(); });
