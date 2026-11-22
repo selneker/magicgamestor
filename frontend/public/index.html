@@ -3711,7 +3711,21 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
 
   /* ---------- catalogue (données réelles -> gabarit .mgs-pcard existant) ---------- */
-  var catalogSort = "populaire"; var catalogOriginal = [];
+  /* Paramètres EXACTS de main (pages/Catalog.js:142) : game, type, q, sort,
+     popular, favorites, min_price, max_price. Rien d'autre n'est envoyé. */
+  function qs(o) { return Object.keys(o).filter(function (k) { return o[k] !== null && o[k] !== undefined && o[k] !== ""; }).map(function (k) { return encodeURIComponent(k) + "=" + encodeURIComponent(o[k]); }).join("&"); }
+  function catalogQuery() {
+    var sp = new URL(location.href).searchParams;
+    return { game: sp.get("game") || "", type: sp.get("type") || "", q: sp.get("q") || "", sort: sp.get("sort") || "", popular: sp.get("popular") || "", favorites: sp.get("favorites") || "", min: sp.get("min") || "", max: sp.get("max") || "" };
+  }
+  var catalogGame = null;
+  function applyCatalogQuery(patch) {
+    var q = catalogQuery();
+    Object.keys(patch || {}).forEach(function (k) { if (patch[k]) q[k] = patch[k]; else delete q[k]; });
+    var s = qs(q);
+    try { history.replaceState({}, "", location.pathname + (s ? "?" + s : "") + location.hash); } catch (e) { }
+    if (catalogGame) loadCatalogFor(catalogGame.name, catalogGame.slug);
+  }
   function renderCatalog(products, game) {
     var grid = $(".mgs-boutique-catalog .mgs-grid") || $(".mgs-boutique-catalog");
     if (!grid) return;
@@ -3745,8 +3759,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       frag.appendChild(card);
     });
     $$(".mgs-pcard", grid).forEach(function (c) { c.remove(); });
-    grid.appendChild(frag); syncPillsFromCart(); syncFavs(); catalogOriginal = $$(".mgs-pcard", grid).slice();
-    var ch = $$(".mgs-boutique-catalog .mgs-chip"); if (ch[0]) ch[0].textContent = t("catalog.popular"); if (ch[1]) ch[1].textContent = t("catalog.sortDefault");
+    grid.appendChild(frag); syncPillsFromCart(); syncFavs();
+    var ch = $$(".mgs-boutique-catalog .mgs-chip"); if (ch[0]) ch[0].textContent = t("catalog.popular"); if (ch[1]) ch[1].textContent = catalogQuery().sort === "price_desc" ? t("catalog.priceDesc") : catalogQuery().sort === "price_asc" ? t("catalog.priceAsc") : t("catalog.sortDefault");
   }
   function sortCatalog(mode) {
     catalogSort = mode;
@@ -3760,9 +3774,14 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (ch[1]) ch[1].textContent = mode === "price_asc" ? t("catalog.priceAsc") : mode === "price_desc" ? t("catalog.priceDesc") : t("catalog.sortDefault");
   }
   function loadCatalogFor(gameName, gameSlug) {
+    catalogGame = { name: gameName, slug: gameSlug };
     return loadGames().then(function () {
       var g = gameByName(gameName); var gid = g ? g.id : gameIdFromSlug(gameSlug);
-      return req("/products?game=" + encodeURIComponent(gid)).catch(function () { return []; }).then(function (products) { renderCatalog(products || [], { id: gid, name: gameName }); });
+      var q = catalogQuery();
+      if (q.game !== gid) { q.game = gid; var s0 = qs(q); try { history.replaceState({}, "", location.pathname + (s0 ? "?" + s0 : "") + location.hash); } catch (e) { } }
+      var params = { game: gid, type: q.type, q: q.q, sort: q.sort, popular: q.popular, favorites: q.favorites, min_price: q.min, max_price: q.max };
+      var path = "/products" + (qs(params) ? "?" + qs(params) : "");
+      return req(path).catch(function () { return []; }).then(function (products) { renderCatalog(products || [], { id: gid, name: gameName }); });
     });
   }
 
@@ -4368,7 +4387,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* choix jeu -> charge le vrai catalogue (NE stoppe PAS : le script template affiche le catalogue) */
     var g = el.closest(".mgs-game"); if (g) { loadCatalogFor(g.dataset.gamename, g.dataset.game); return; }
     /* tri du catalogue (puces existantes) */
-    var chip = el.closest(".mgs-boutique-catalog .mgs-chip"); if (chip) { stop(e); var ci = $$(".mgs-boutique-catalog .mgs-chip").indexOf(chip); if (ci === 0) sortCatalog("populaire"); else sortCatalog(catalogSort === "price_asc" ? "price_desc" : "price_asc"); return; }
+    var chip = el.closest(".mgs-boutique-catalog .mgs-chip"); if (chip) { stop(e); var ci = $$(".mgs-boutique-catalog .mgs-chip").indexOf(chip); var cq = catalogQuery(); applyCatalogQuery({ sort: ci === 0 ? "" : (cq.sort === "price_asc" ? "price_desc" : "price_asc") }); return; }
     /* fiche produit */
     if (el.closest(".mgs-page[data-page=produit]")) { var ptxt = (el.closest(".button-main") || {}).textContent || ""; if (/Ajouter au panier|Add to cart/i.test(ptxt)) { stop(e); var pi = produitItem(); if (pi) addToCart(pi); return; } if (/Acheter|Buy/i.test(ptxt)) { stop(e); var pi2 = produitItem(); if (pi2) addToCart(pi2); coOpen(); return; } }
     /* checkout */
