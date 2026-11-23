@@ -3839,7 +3839,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
 
   /* ---------- checkout ---------- */
-  var co = { verified: false, pid: "", pseudo: "", method: "", total: 0, items: "", game: "", game_id: "", order: null, timer: null, poll: null, payPoll: null, payPollOn: false, payInfo: null };
+  var co = { verified: false, pid: "", pseudo: "", method: "", total: 0, items: "", game: "", game_id: "", order: null, timer: null, poll: null, payPoll: null, payPollOn: false, payInfo: null, identity: null };
   function coShow(n) { $$(".mgs-co-screen").forEach(function (sc) { sc.hidden = (+sc.dataset.co !== n); }); }
   /* Reprise silencieuse : hydrate le tunnel depuis la commande relue (aucun
      élément créé — on peuple uniquement les écrans existants). */
@@ -3896,15 +3896,46 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var sec = deadline ? Math.max(0, Math.floor((new Date(deadline) - new Date()) / 1000)) : ((cryptoCfg && cryptoCfg.expiryMinutes) || 30) * 60;
     startTimer(sec); window.scrollTo(0, 0);
   }
-  var RECENT_KEY = "mgs_recent_ids";
-  function getRecent() { try { var a = JSON.parse(localStorage.getItem(RECENT_KEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
-  function addRecent(id) { id = String(id || "").slice(0, 60); if (!id) return; var a = getRecent().filter(function (x) { return x !== id; }); a.push(id); while (a.length > 10) a.shift(); try { localStorage.setItem(RECENT_KEY, JSON.stringify(a)); } catch (e) { } renderRecent(); }
+  /* IDs joueur récents — main frontend/src/lib/recentPlayerIds.js:15,52-99 :
+     UN magasin { [gameId]: [{ id, usedAt }] }, 10 par jeu, les plus récents
+     d'abord, doublons retirés, AUCUN pseudo, valeurs invalides ignorées,
+     localStorage seul, tout en try/catch. Clé `mgs_recent_player_ids`. */
+  var RECENT_KEY = "mgs_recent_player_ids", MAX_RECENT = 10, MAX_ID_LEN = 60;
+  function readRecentStore() { try { var o = JSON.parse(localStorage.getItem(RECENT_KEY)); return (o && typeof o === "object" && !Array.isArray(o)) ? o : {}; } catch (e) { return {}; } }
+  function recentIdsOf(gameId) {
+    if (!gameId) return [];
+    var list = readRecentStore()[gameId]; if (!Array.isArray(list)) return [];
+    var seen = {}, out = [];
+    list.forEach(function (e) {
+      if (!e || typeof e !== "object") return;
+      var id = typeof e.id === "string" ? e.id.trim() : "";
+      if (!id || id.length > MAX_ID_LEN || seen[id]) return;
+      seen[id] = 1; out.push({ id: id, usedAt: isFinite(e.usedAt) ? e.usedAt : 0 });
+    });
+    out.sort(function (a, b) { return b.usedAt - a.usedAt; });
+    return out.slice(0, MAX_RECENT);
+  }
+  function rememberPlayerId(gameId, id) {
+    id = typeof id === "string" ? id.trim() : "";
+    if (!gameId || !id || id.length > MAX_ID_LEN) return recentIdsOf(gameId);
+    var kept = recentIdsOf(gameId).filter(function (e) { return e.id !== id; });
+    var next = [{ id: id, usedAt: Date.now() }].concat(kept).slice(0, MAX_RECENT);
+    var store = readRecentStore(), merged = {};
+    Object.keys(store).forEach(function (k) { merged[k] = store[k]; });
+    merged[gameId] = next;
+    try { localStorage.setItem(RECENT_KEY, JSON.stringify(merged)); } catch (e) { /* stockage refusé : l'écran reste utilisable */ }
+    return next;
+  }
+  /* main IdentityFieldsVerify.js:150-152,257-273 : les suggestions portent l'ID
+     du joueur, disparaissent dès que l'ID est vérifié, et un clic REMPLIT le
+     champ sans lancer la vérification (:185-188). */
   function renderRecent() {
-    var box = $(".mgs-co-recent"); if (!box) return; var a = getRecent();
-    if (!a.length) { box.hidden = true; box.innerHTML = ""; return; }
+    var box = $(".mgs-co-recent"); if (!box) return;
+    var ids = recentIdsOf(co.game_id || "pubg-mobile").map(function (e) { return e.id; });
+    if (!ids.length || co.verified) { box.hidden = true; box.innerHTML = ""; return; }
     box.hidden = false;
     var ic = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
-    box.innerHTML = '<span class="mgs-co-recent-label">Récents</span>' + a.map(function (id) { return '<button type="button" class="mgs-co-recent-chip" data-id="' + esc(id) + '">' + ic + '<span>' + esc(id) + '</span></button>'; }).join("");
+    box.innerHTML = '<span class="mgs-co-recent-label">' + esc(t("checkout.recentIds")) + "</span>" + ids.map(function (id) { return '<button type="button" class="mgs-co-recent-chip" data-id="' + esc(id) + '" aria-label="' + esc(t("checkout.useRecentId", { id: id })) + '">' + ic + "<span>" + esc(id) + "</span></button>"; }).join("");
   }
   window.mgsRenderRecent = renderRecent;
   var cryptoCfg = null; var manualHintTexts = null;
@@ -3914,7 +3945,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     stopPaymentPoll();
     co.total = cartTotal(); co.items = cart.map(function (x) { return x.qty + " × " + x.name; }).join(", ");
     co.game = cart[0].game_name || cart[0].game || ""; co.game_id = cart[0].game_id || "";
-    co.verified = false; co.method = ""; co.pid = ""; co.pseudo = ""; co.order = null; co.network = ""; co.payment = null;
+    co.verified = false; co.method = ""; co.pid = ""; co.pseudo = ""; co.order = null; co.network = ""; co.payment = null; co.identity = null;
     var bl = $('.mgs-co-method input[value="Binance"]'); if (bl) { var blbl = bl.closest(".mgs-co-method"); if (blbl) blbl.style.display = (cryptoCfg && cryptoCfg.available) ? "" : "none"; }
     /* MVola/Orange : même masquage que Binance (main pages/Checkout.js:83-84,277-278) —
        un opérateur non configuré dans GET /payments/config n'est pas proposé. */
@@ -3923,24 +3954,96 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var cg = $(".mgs-co-game"); if (cg) cg.textContent = co.game;
     var ct = $(".mgs-co-total"); if (ct) ct.textContent = ar(co.total);
     var ci = $(".mgs-co-items"); if (ci) ci.textContent = co.items;
-    var inp = $(".mgs-co-id-input"); if (inp) inp.value = "";
+    /* main Checkout.js:56-59,80-83 : l'ID part de `?pubg_id`, sinon du dernier
+       ID utilisé sur cette machine (`mgs_last_player_id`), sinon de l'ID du
+       compte ; toute modification est mémorisée. */
+    var inp = $(".mgs-co-id-input");
+    if (inp) { try { inp.value = new URL(location.href).searchParams.get("pubg_id") || localStorage.getItem("mgs_last_player_id") || (me && me.saved_pubg_ids && me.saved_pubg_ids[0]) || ""; } catch (e) { inp.value = (me && me.saved_pubg_ids && me.saved_pubg_ids[0]) || ""; } }
     var st = $(".mgs-co-id-status"); if (st) { st.hidden = true; st.textContent = ""; }
+    renderRecent();
     $$(".mgs-co-method").forEach(function (m) { m.classList.remove("is--active"); });
     $$('input[name="comethod"]').forEach(function (r) { r.checked = false; });
     coShow(1); window.mgsShowPage("commande"); window.scrollTo(0, 0);
   }
   function coStatus(cls, html) { var st = $(".mgs-co-id-status"); if (!st) return; st.hidden = false; st.className = "mgs-co-id-status " + cls; st.innerHTML = html; }
   var CK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+  /* Contrat de saisie d'un jeu : `identity_fields` publie par GET /games
+     (main IdentityFieldsVerify.js:68,210-212). Sans declaration, PUBG Mobile
+     garde son champ historique unique. */
+  function identitySpecOf(gameId) {
+    var g = (gamesCache || []).filter(function (x) { return x.id === (gameId || "pubg-mobile"); })[0];
+    if (g && g.identity_fields && g.identity_fields.length) return g.identity_fields;
+    return [{ key: "pubg_id", label: "", primary: true, required: true }];
+  }
+  function primaryKeyOf(spec) { var p = spec.filter(function (f) { return f.primary; })[0] || spec[0]; return p && p.key ? p.key : "pubg_id"; }
+  /* Validation locale d'un champ (main IdentityFieldsVerify.js:20-35) : requis,
+     min_length, max_length (60 par defaut), motif en correspondance TOTALE
+     (re.fullmatch) — un motif inutilisable refuse par securite. */
+  function fieldLocalError(f, value) {
+    var v = String(value == null ? "" : value).trim();
+    if (!v) return f.required === false ? null : "required";
+    if (f.min_length && v.length < f.min_length) return "min";
+    if (v.length > (f.max_length || 60)) return "max";
+    if (f.pattern) { try { if (!new RegExp("^(?:" + f.pattern + ")$").test(v)) return "pattern"; } catch (e) { return "pattern"; } }
+    return null;
+  }
+  function fieldMessage(code, f) {
+    if (code === "min") return t("checkout.fieldMin", { n: f.min_length });
+    if (code === "max") return t("checkout.fieldMax", { n: f.max_length || 60 });
+    if (code === "pattern") return t("checkout.fieldFormat");
+    return t("checkout.fieldRequired");
+  }
+  /* Table des verdicts de verification (main lib/identityErrors.js:16-38) :
+     jamais un detail brut, et jamais « ID invalide » pour une panne. */
+  function identityErrorKey(valid, code, status) {
+    if (valid === true) return null;
+    if (valid === false && code === "invalid_id") return { display: "refused", key: "checkout.verifyIdInvalid" };
+    if ((valid === false && code === "missing_field") || status === 422) return { display: "invalid_input", key: "checkout.verifyMissingField" };
+    if (status === 429 || code === "rate_limited") return { display: "unavailable", key: "checkout.verifyRateLimited" };
+    if (status === 502 || status === 503 || status === 504 || code === "provider_unavailable" || code === "unsupported_game") return { display: "unavailable", key: "checkout.verifyProviderUnavailable" };
+    return { display: "unavailable", key: "checkout.verifyError" };
+  }
+  /* Identite memorisee du compte connecte (main Checkout.js:132-141) :
+     POST /me/game-identities, deduplique cote serveur (routers/games.py:122-126).
+     Invite : rien n'est memorise. L'echec est sans consequence (la commande
+     part sans `identity_id`). */
+  function saveIdentity(fields, name) {
+    if (!me) return;
+    var spec = identitySpecOf(co.game_id), pk = primaryKeyOf(spec);
+    req("/me/game-identities", { method: "POST", body: { game_id: co.game_id || "pubg-mobile", label: name || fields[pk] || "", fields: fields, player_name: name || fields[pk] || "" } })
+      .then(function (d) { co.identity = d || null; })
+      .catch(function () { co.identity = null; });
+  }
   function verifyId() {
     var inp = $(".mgs-co-id-input"); var v = (inp && inp.value || "").trim();
-    if (!v) { coStatus("is--err", esc(t("checkout.verifySub"))); return; }
+    var gid = co.game_id || "pubg-mobile";
+    var spec = identitySpecOf(gid), pk = primaryKeyOf(spec);
+    var field = spec.filter(function (f) { return f.key === pk; })[0] || { key: pk, required: true };
+    /* main IdentityFieldsVerify.js:78-87 : la saisie locale est validee AVANT
+       tout appel ; le bouton reste actif (aria-disabled), la garde est ici. */
+    var localErr = fieldLocalError(field, v);
+    if (localErr) { coStatus("is--err", esc(fieldMessage(localErr, field))); return; }
     coStatus("", esc(t("checkout.verifying")));
-    var gid = co.game_id || "pubg-mobile"; var g = (gamesCache || []).filter(function (x) { return x.id === gid; })[0];
-    var fields = {}; fields[primaryField(g)] = v;
+    var fields = {}; fields[pk] = v;
     req("/fazercards/validate-id", { method: "POST", body: { game_id: gid, fields: fields } }).then(function (r) {
-      if (r && r.valid) { co.verified = true; co.pid = v; co.pseudo = r.player_name || ""; addRecent(v); coStatus("is--ok", CK + "<span>" + esc(r.player_name || v) + (r.region ? " · " + esc(r.region) : "") + "</span>"); }
-      else { co.verified = false; coStatus("is--err", esc(t("checkout.verifyIdInvalid"))); }
-    }).catch(function (e) { co.verified = false; coStatus("is--err", esc(errMsg(e))); });
+      if (r && r.valid === true) {
+        var region = typeof r.region === "string" && r.region.trim() ? r.region.trim() : null;
+        co.verified = true; co.pid = v; co.pseudo = r.player_name || "";
+        rememberPlayerId(gid, v); renderRecent();
+        coStatus("is--ok", CK + "<span>" + esc(r.player_name || v) + (region ? " · " + esc(region) : "") + "</span>");
+        saveIdentity(fields, r.player_name || null);
+      } else {
+        co.verified = false;
+        var vd = identityErrorKey(r && r.valid, r && r.code, 0);
+        coStatus("is--err", esc(t(vd.key)));
+        renderRecent();
+      }
+    }).catch(function (e) {
+      co.verified = false;
+      var vd2 = identityErrorKey(undefined, (e && e.data && e.data.code) || null, (e && e.status) || 0);
+      coStatus("is--err", esc(t(vd2.key)));
+      renderRecent();
+    });
   }
   function openHuman(always) {
     var o = $(".mgs-human-overlay"), p = $(".mgs-human-popup"); if (o) o.hidden = false; if (p) p.hidden = false;
@@ -3966,6 +4069,18 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function stopTimer() { if (co.timer) { clearInterval(co.timer); co.timer = null; } }
   function startTimer(sec) { stopTimer(); var el = $(".mgs-co-countdown") || $(".mgs-co-timer"); function tick() { if (sec < 0) { stopTimer(); if (el) el.textContent = t("checkout.expired"); return; } var m = Math.floor(sec / 60), s = sec % 60; if (el) el.textContent = m + ":" + (s < 10 ? "0" : "") + s; sec--; } tick(); co.timer = setInterval(tick, 1000); }
   function methodLabel(m) { return m === "MVola" ? t("checkout.methodMvola") : m === "Orange Money" ? t("checkout.methodOrange") : m === "Binance" ? t("checkout.binanceTitle") : m; }
+  /* 422 Pydantic traduite en libellé lisible (main Checkout.js:39-47) : jamais
+     le tableau brut de la bibliothèque. */
+  var FIELD_TEXT_KEYS = { payment_phone: "checkout.phoneError", manual_operator: "checkout.orderValidationError" };
+  function validationDetails(e) { var d = e && e.data && e.data.detail; return e && e.status === 422 && Array.isArray(d) ? d : null; }
+  function validationField(details) {
+    var found = null;
+    (details || []).forEach(function (x) {
+      if (found || !x || !Array.isArray(x.loc) || x.loc.length < 2) return;
+      found = x.loc[x.loc.length - 1];
+    });
+    return found;
+  }
   function createOrder() {
     if (co.busy) return;
     if (!co.verified) { coStatus("is--err", esc(t("checkout.verifyRequired"))); return; }
@@ -3979,21 +4094,36 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* Contrat /orders de REF (pages/Checkout.js:135-142) : un INVITÉ peut
        commander (aucun compte requis, get_optional_user backend) ; jamais de
        champ `email` ni `manual_reference` ; `identity_fields` seulement pour un
-       jeu à champs dynamiques (hors PUBG) ; `identity_id` absent (aucune
-       identité mémorisée n'est portée). */
+       jeu à champs dynamiques (hors PUBG). `identity_id` : première fois
+       seulement, quand l'identité vérifiée est bien celle mémorisée sur le
+       compte (REF :172-176). */
     var dynGame = !!co.game_id && co.game_id !== "pubg-mobile" && !!g && !!(g.identity_fields && g.identity_fields.length);
-    var payload = { pubg_id: co.pid, pseudo: co.pseudo || co.pid, items: cart.map(function (x) { return { product_id: x.id || x.product_id, quantity: x.qty }; }), payment_method: isBinance ? "binance" : "manual", game_id: co.game_id || "pubg-mobile" };
+    var pubgValue = co.pid;
+    var savedFields = (co.identity && co.identity.fields) || null;
+    var matchesSaved = !!(me && co.identity && co.identity.id && savedFields &&
+      (dynGame ? Object.keys(idf).every(function (k) { return savedFields[k] === idf[k]; }) : savedFields[primaryField(g)] === pubgValue));
+    var payload = { pubg_id: pubgValue, pseudo: co.pseudo || pubgValue, items: cart.map(function (x) { return { product_id: x.id || x.product_id, quantity: x.qty }; }), payment_method: isBinance ? "binance" : "manual", game_id: co.game_id || "pubg-mobile" };
+    if (matchesSaved) payload.identity_id = co.identity.id;
     if (dynGame) payload.identity_fields = idf;
     if (!isBinance) { payload.manual_operator = co.method === "MVola" ? "mvola" : "orange"; }
     if (capTok) payload.captcha_token = capTok;
     var btn = $(".mgs-human-confirm"); if (btn) btn.disabled = true;
     co.busy = true;
     toast(t("checkout.creating"));
-    req("/orders", { method: "POST", body: payload }).then(function (order) { writePendingOrderId(order.id, order.created_at || new Date().toISOString()); co.order = order; co.busy = false; closeHuman(); if (isBinance) initiateBinance(order); else coPay(); }).catch(function (e) {
+    req("/orders", { method: "POST", body: payload }).then(function (order) {
+      writePendingOrderId(order.id, order.created_at || new Date().toISOString());
+      co.order = order; co.busy = false; closeHuman();
+      /* main Checkout.js:186 : le panier est vidé DÈS la commande créée (la
+         suite du tunnel ne vit plus que par la commande elle-même). */
+      cart = []; renderCart(); syncPillsFromCart();
+      if (isBinance) initiateBinance(order); else coPay();
+    }).catch(function (e) {
       if (btn) btn.disabled = false;
       co.busy = false;
       if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.isCaptchaError(e)) { window.MGS_CAPTCHA.reset(); toast(t("captcha.verifyAgain"), "err"); openHuman(true); return; }
-      toast(errMsg(e), "err"); coStatus("is--err", esc(errMsg(e)));
+      var vDetails = validationDetails(e);
+      var m = vDetails ? t(FIELD_TEXT_KEYS[validationField(vDetails)] || "checkout.orderValidationError") : errMsg(e);
+      toast(m, "err"); coStatus("is--err", esc(m));
     });
   }
   function coPay() {
@@ -4092,12 +4222,58 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
   var proofInput = null;
   function ensureProofInput() { if (proofInput) return proofInput; proofInput = doc.createElement("input"); proofInput.type = "file"; proofInput.accept = "image/jpeg,image/png"; proofInput.multiple = true; proofInput.style.display = "none"; body.appendChild(proofInput); proofInput.addEventListener("change", function () { if (proofInput.files && proofInput.files.length) uploadProof(proofInput.files); }); return proofInput; }
+  /* Codes serveur → clé i18n (main ProofPay.js:33-38) : un nom technique de
+     code n'est jamais affiché. */
+  var PROOF_CODE_KEYS = {
+    proof_not_allowed: "checkout.proofNotPending", proof_not_pending: "checkout.proofNotPending",
+    proof_already_validated: "checkout.proofAlreadyValidated", proof_limit: "checkout.proofLimit",
+    proof_count: "checkout.proofCount", proof_format: "checkout.proofBadType", proof_too_large: "checkout.proofTooLarge",
+    proof_conflict: "checkout.proofConflict"
+  };
+  function bodyCode(e) { var d = e && e.data && e.data.detail; return d && typeof d === "object" ? d.code : null; }
+  function proofErrorMessage(e) {
+    var code = bodyCode(e);
+    if (e && e.status === 400 && code === "proof_deadline_passed") return null;
+    if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.isCaptchaError(e)) return t("captcha.verifyAgain");
+    var st = e && e.status;
+    if (code && PROOF_CODE_KEYS[code]) return t(PROOF_CODE_KEYS[code]);
+    if (st === 429) return t("checkout.proofRateLimited");
+    if (st === 503 || st === 502) return t("checkout.proofUnavailable");
+    if (st === 403) return t("checkout.proofDenied");
+    if (st === 404) return t("checkout.proofNotFound");
+    return errMsg(e);
+  }
+  /* 1 à 3 captures au TOTAL, preuves déjà envoyées comprises (main
+     ProofPay.js:76-101) : JPEG/PNG réels (type ou extension), 8 Mo maximum —
+     l'autorité finale reste le serveur. La limite est re-vérifiée côté serveur
+     (routers/orders.py:537-540). */
   function uploadProof(files) {
-    if (!co.order) return; var fd = new FormData(); var n = 0;
-    for (var i = 0; i < files.length && n < 3; i++) { var f = files[i]; if (/image\/(jpeg|png)/.test(f.type) && f.size <= 8 * 1024 * 1024) { fd.append("files", f); n++; } }
-    if (!n) { toast(t("checkout.proofCount"), "err"); return; }
+    if (!co.order) return;
+    var alreadySent = ((co.order.payment_proofs || []).length);
+    var left = 3 - alreadySent; if (left <= 0) { toast(t("checkout.proofTooMany"), "err"); return; }
+    var fd = new FormData(); var n = 0; var msg = "";
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      var typeOk = /image\/(jpeg|png)/.test(f.type) || /\.(jpe?g|png)$/i.test(f.name || "");
+      if (!typeOk) { msg = t("checkout.proofBadType"); continue; }
+      if (f.size > 8 * 1024 * 1024) { msg = t("checkout.proofTooLarge"); continue; }
+      if (n >= left) { msg = t("checkout.proofTooMany"); break; }
+      fd.append("files", f); n++;
+    }
+    if (!n) { toast(msg || t("checkout.proofCount"), "err"); return; }
     toast(t("checkout.proofSubmitting"));
-    req("/orders/" + co.order.id + "/proof", { method: "POST", body: fd }).then(function (r) { if (r && r.id) co.order = r; stopTimer(); coReceipt(); pollOrder(); }).catch(function (e) { toast(errMsg(e), "err"); });
+    var id = co.order.id;
+    req("/orders/" + id + "/proof", { method: "POST", body: fd }).then(function () {
+      /* main ProofPay.js:121-123 : l'état RÉEL est relu après l'envoi. */
+      return req("/orders/" + id).then(function (fresh) { if (fresh) co.order = fresh; },
+        function () { });
+    }).then(function () {
+      stopTimer(); coReceipt(); pollOrder();
+    }).catch(function (e) {
+      var m = proofErrorMessage(e);
+      if (m === null) { req("/orders/" + id).then(function (fresh) { if (fresh) co.order = fresh; }, function () { }); return; }
+      toast(m, "err");
+    });
   }
   function coReceipt() {
     var o = co.order || {}; var set = function (sel, val) { var e = $(sel); if (e) e.textContent = val; };
@@ -4115,7 +4291,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
   function coFinish() {
     if (co.poll) { clearInterval(co.poll); co.poll = null; } if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } stopPaymentPoll(); stopTimer();
-    var num = co.order && (co.order.order_number || co.order.number); cart = []; renderCart(); syncPillsFromCart();
+    var num = co.order && (co.order.order_number || co.order.number);
+    /* main Checkout.js:186 : le panier a déjà été vidé à la création de la
+       commande — on ne le re-vide pas ici (un panier reconstruit entre-temps
+       n'est jamais perdu). */
     loadOrders().then(function () { window.mgsShowPage("commandes"); if (num) { var card = $('.mgs-order[data-order="' + num + '"]'); if (card) card.click(); } });
   }
   /* ---------- annulation : sélecteur de motif (backend/routers/orders.py — raison fermée) ---------- */
@@ -4125,7 +4304,16 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
        (CancelSheet.js : raison seule) : masqué et listé (Z3). */
     var nf = $("#co-cancel-note"); if (nf) { var nfw = nf.closest(".mgs-field"); if (nfw) nfw.hidden = true; }
     var all = $$("input[name='co-cancel-reason']", p); all.forEach(function (r) { r.checked = false; });
-    if (all[0]) all[0].checked = true;
+    /* main CancelSheet.js:39-40,75-83 : chaque ouverture repart d'une feuille
+       vierge (aucune raison résiduelle) et l'annulation reste inerte tant
+       qu'aucune raison n'est choisie. */
+    var cf = $(".mgs-co-cancel-confirm"); if (cf) cf.disabled = true;
+    if (!p.__mgsCancelBound) {
+      p.__mgsCancelBound = true;
+      p.addEventListener("change", function (ev) {
+        if (ev.target && ev.target.name === "co-cancel-reason") { var b = $(".mgs-co-cancel-confirm"); if (b) b.disabled = false; }
+      });
+    }
     if (o) o.hidden = false; p.hidden = false;
   }
   function closeCancel() { var o = $(".mgs-co-cancel-overlay"), p = $(".mgs-co-cancel-popup"); if (o) o.hidden = true; if (p) p.hidden = true; }
@@ -4139,7 +4327,12 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     closeCancel(); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; }
     if (!co.order) { coShow(1); return; }
     req("/orders/" + co.order.id + "/cancel", { method: "POST", body: { reason: reason } })
-      .then(function () { clearPendingOrderId(); toast(t("checkout.cancelDone")); coShow(1); })
+      .then(function () {
+        /* main CancelSheet.js:48-51 + OrderTrack.js:406 : succès = la
+           mémorisation de reprise meurt, message de confirmation, retour à
+           l'accueil. */
+        clearPendingOrderId(); toast(t("checkout.cancelDone")); co.order = null; window.mgsShowPage("accueil");
+      })
       .catch(function (e) {
         var code = (e && e.data && e.data.detail && typeof e.data.detail === "object") ? e.data.detail.code : null;
         toast(e && e.status === 409 ? t(code === "cancel_conflict" ? "checkout.cancelConflict" : "checkout.cancelNotAllowed") : errMsg(e), "err");
@@ -4184,7 +4377,16 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (next) { next.disabled = orderPage >= pages; next.setAttribute("aria-disabled", orderPage >= pages ? "true" : "false"); }
     if (lab) lab.textContent = orderPage + " / " + pages;
   }
-  doc.addEventListener("input", function (e) { if (e.target && e.target.classList && e.target.classList.contains("mgs-cmd-search")) { orderPage = 1; orderPaginate(); } });
+  doc.addEventListener("input", function (e) {
+    if (e.target && e.target.classList && e.target.classList.contains("mgs-cmd-search")) { orderPage = 1; orderPaginate(); return; }
+    /* main Checkout.js:80-83 (mémorise le dernier ID) et
+       IdentityFieldsVerify.js:71-76 (un champ modifié invalide la
+       vérification précédente : rien n'est tenu pour définitif). */
+    if (e.target && e.target.classList && e.target.classList.contains("mgs-co-id-input")) {
+      try { localStorage.setItem("mgs_last_player_id", String(e.target.value || "").trim()); } catch (err) { }
+      if (co.verified) { co.verified = false; co.pseudo = ""; co.identity = null; var st = $(".mgs-co-id-status"); if (st) { st.hidden = true; st.textContent = ""; } renderRecent(); }
+    }
+  });
   doc.addEventListener("click", function (e) {
     if (e.target.closest && e.target.closest(".mgs-cmd-tab")) { orderPage = 1; orderPaginate(); return; }
     var pg = e.target.closest && e.target.closest("[data-op]");
@@ -4557,7 +4759,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* fiche produit */
     if (el.closest(".mgs-page[data-page=produit]")) { var ptxt = (el.closest(".button-main") || {}).textContent || ""; if (/Ajouter au panier|Add to cart/i.test(ptxt)) { stop(e); var pi = produitItem(); if (pi) addToCart(pi); return; } if (/Acheter|Buy/i.test(ptxt)) { stop(e); var pi2 = produitItem(); if (pi2) addToCart(pi2); coOpen(); return; } }
     /* checkout */
-    var rc = el.closest(".mgs-co-recent-chip"); if (rc) { stop(e); var ri = $(".mgs-co-id-input"); if (ri) ri.value = rc.dataset.id; verifyId(); return; }
+    var rc = el.closest(".mgs-co-recent-chip"); if (rc) { stop(e); var ri = $(".mgs-co-id-input"); if (ri) ri.value = rc.dataset.id; /* main IdentityFieldsVerify.js:185-188 : remplit le champ, ne vérifie PAS */ return; }
     if (el.closest(".mgs-co-verify")) { stop(e); verifyId(); return; }
     var m = el.closest(".mgs-co-method"); if (m) { stop(e); $$(".mgs-co-method").forEach(function (x) { x.classList.remove("is--active"); }); m.classList.add("is--active"); var r = $("input", m); if (r) r.checked = true; co.method = r ? r.value : ""; if (co.method === "Binance") co.network = (cryptoCfg && cryptoCfg.networks && cryptoCfg.networks[0] && cryptoCfg.networks[0].key) || ""; return; }
     if (el.closest(".mgs-co-submit")) { stop(e); if (!co.verified) { coStatus("is--err", esc(t("checkout.verifyRequired"))); return; } if (!co.method) { toast(t("checkout.selectMethod"), "err"); return; } if (co.method === "Binance" && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.papiOff"), "err"); return; } openHuman(); return; }
