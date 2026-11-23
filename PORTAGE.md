@@ -301,6 +301,13 @@ pour un bouton de relance → la reprise est **silencieuse** (aucun élément vi
   L'écran d'attente du design (`index.html:2628-2634`) n'a que « Voir ma commande » :
   aucun contrôle libre pour porter la relance. Rien n'est câblé ; à rebrancher dans un lot
   dédié si le propriétaire accepte un contrôle visible.
+- **Initiation paiement — NON PORTÉE (design).** `main pages/OrderTrack.js:114-126`
+  (`usePaymentRetry`) → `POST /payments/initiate` (`routers/payments.py:214`). main ne
+  l'appelle que derrière un bouton « Réessayer » rendu uniquement pour les statuts
+  `failed`/`expired` et les méthodes ni `manual` ni `binance` (`:202-205`, `:388-391`,
+  `:517-519`) ; le design n'a aucun contrôle libre (`index.html:2469` « Télécharger le
+  reçu » / « Commander encore », `:2634` « Voir ma commande ») et le prototype ne crée que
+  des commandes `manual` ou `binance` → fonction non déclenchable. Rien n'est câblé.
 
 ---
 
