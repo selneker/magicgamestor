@@ -84,7 +84,7 @@ function serveBuild() {
 const boot = (page) => page.waitForFunction(() => typeof window.mgsRenderRecent === "function" && document.querySelectorAll(".mgs-page").length > 0, null, { timeout: 25000 });
 const pageIs = (page, name) => page.waitForFunction((n) => document.body.getAttribute("data-page") === n, name, { timeout: 15000 });
 const txt = (page, sel) => page.locator(sel).first().textContent();
-const cartLen = (page) => page.evaluate(() => { try { return (JSON.parse(localStorage.getItem("mgs_cart_v3")) || []).length; } catch { return 0; } });
+const cartLen = (page) => page.evaluate(() => { try { return (JSON.parse(localStorage.getItem("mgs_cart")) || []).length; } catch { return 0; } });
 const clickCart = (page) => page.locator('button[aria-label*="Panier"]:visible').first().click();
 const goto = async (page, name) => { await page.evaluate((n) => window.mgsShowPage(n), name); await pageIs(page, name); };
 
@@ -93,7 +93,7 @@ async function addFirstProduct(page, gameName = "PUBG Mobile") {
   await page.locator(`.mgs-game[data-gamename="${gameName}"]`).first().click();
   await page.waitForSelector('.mgs-boutique-catalog .mgs-pcard[data-pid]', { timeout: 15000 });
   await page.locator('.mgs-boutique-catalog .mgs-pcard[data-pid] .mgs-pill__add').first().click();
-  await page.waitForFunction(() => { try { return (JSON.parse(localStorage.getItem("mgs_cart_v3")) || []).length === 1; } catch { return false; } }, null, { timeout: 10000 });
+  await page.waitForFunction(() => { try { return (JSON.parse(localStorage.getItem("mgs_cart")) || []).length === 1; } catch { return false; } }, null, { timeout: 10000 });
 }
 async function openCheckout(page) {
   await clickCart(page);
@@ -166,7 +166,7 @@ test("panier : ajout, quantité, suppression, total, persistance", async (page) 
   assert.equal(await cartLen(page), 1, "le panier survit au rechargement");
   await clickCart(page);
   await page.locator(".mgs-cart-item__del").click();
-  await page.waitForFunction(() => (JSON.parse(localStorage.getItem("mgs_cart_v3")) || []).length === 0, null, { timeout: 8000 });
+  await page.waitForFunction(() => (JSON.parse(localStorage.getItem("mgs_cart")) || []).length === 0, null, { timeout: 8000 });
 });
 
 async function ar(page, n) { return String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, " ") + " Ar"; }

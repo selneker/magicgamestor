@@ -88,13 +88,15 @@ function mockApi(page, state) {
     const cryptoPayment = (status) => ({ id: "pay1", order_id: "o1", order_number: "MGS-001", network: "TRC20", binance_network: "TRX", currency: "USDT", address: CRYPTO_ADDRESS, memo: null, amount_usdt: "2.7812", base_usdt: "2.78", amount_ar: 12500, rate_ar_per_usdt: 4500, status, tx_hash: null, created_at: now, expires_at: cryptoDeadline });
 
     if (p === "/auth/me" && method === "GET") return state.loggedIn ? json(USER) : json({ detail: "Non authentifié" }, 401);
-    if (p === "/auth/login" && method === "POST") { state.loggedIn = true; return json({ ok: true }); }
-    if (p === "/auth/register" && method === "POST") { state.loggedIn = true; return json({ ok: true }); }
+    if (p === "/auth/login" && method === "POST") { state.loggedIn = true; return json({ user: USER, access_token: "t" }); }
+    if (p === "/auth/register" && method === "POST") { state.loggedIn = true; return json({ user: USER, access_token: "t" }); }
     if (p === "/auth/logout" && method === "POST") { state.loggedIn = false; return json({ ok: true }); }
     if (p === "/auth/refresh" && method === "POST") return state.loggedIn ? json({ ok: true }) : json({ detail: "no refresh" }, 401);
     if (p === "/auth/me" && method === "PATCH") return json({ ...USER, ...JSON.parse(req.postData() || "{}") });
     if (p === "/games" && method === "GET") return json(GAMES);
     if (p === "/products" && method === "GET") { const g = url.searchParams.get("game"); return json(PRODUCTS.filter((x) => !g || x.game_id === g)); }
+    const pm = /^\/products\/([\w-]+)$/.exec(p);
+    if (pm && method === "GET") { const pr = PRODUCTS.find((x) => x.slug === pm[1]); return pr ? json(pr) : json({ detail: "not found" }, 404); }
     if (p === "/payments/config" && method === "GET") return json(PAYCFG);
     if (p === "/crypto/config" && method === "GET") return json(CRYPTOCFG);
     if (p === "/crypto/initiate" && method === "POST") { const b = JSON.parse(req.postData() || "{}"); return json({ ...cryptoPayment("WAITING"), network: b.network || "TRC20" }); }
@@ -126,7 +128,7 @@ function mockApi(page, state) {
 const boot = (page) => page.waitForFunction(() => typeof window.mgsRenderRecent === "function" && document.querySelectorAll(".mgs-page").length > 0, null, { timeout: 20000 });
 const pageIs = (page, name) => page.waitForFunction((n) => document.body.getAttribute("data-page") === n, name, { timeout: 15000 });
 const txt = (page, sel) => page.locator(sel).first().textContent();
-const cartLen = (page) => page.evaluate(() => { try { return (JSON.parse(localStorage.getItem("mgs_cart_v3")) || []).length; } catch { return 0; } });
+const cartLen = (page) => page.evaluate(() => { try { return (JSON.parse(localStorage.getItem("mgs_cart")) || []).length; } catch { return 0; } });
 // bouton panier VISIBLE (le header desktop .nav-cart-btn est masqué sur mobile 390px)
 const clickCart = (page) => page.locator('button[aria-label*="Panier"]:visible').first().click();
 
@@ -136,7 +138,7 @@ async function addFirstProduct(page) {
   await page.locator('.mgs-game[data-gamename="PUBG Mobile"]').first().click();
   await page.waitForSelector('.mgs-pcard[data-pid="p1"]', { timeout: 15000 });
   await page.locator('.mgs-pcard[data-pid="p1"] .mgs-pill__add').click();
-  await page.waitForFunction(() => { try { return (JSON.parse(localStorage.getItem("mgs_cart_v3")) || []).some((x) => x.product_id === "p1"); } catch { return false; } }, null, { timeout: 10000 });
+  await page.waitForFunction(() => { try { return (JSON.parse(localStorage.getItem("mgs_cart")) || []).some((x) => x.product_id === "p1"); } catch { return false; } }, null, { timeout: 10000 });
 }
 async function openCheckout(page) {
   await clickCart(page);
@@ -178,7 +180,7 @@ test("catalogue + panier + drawer (+/−/suppr/fermer)", async (page) => {
   await page.locator('.mgs-cart-item__qty button[data-q="minus"]').click();
   await page.waitForFunction(() => document.querySelector(".mgs-cart-total-n").textContent.trim() === "12 500 Ar", null, { timeout: 8000 });
   await page.locator(".mgs-cart-item__del").click();
-  await page.waitForFunction(() => (JSON.parse(localStorage.getItem("mgs_cart_v3")) || []).length === 0, null, { timeout: 8000 });
+  await page.waitForFunction(() => (JSON.parse(localStorage.getItem("mgs_cart")) || []).length === 0, null, { timeout: 8000 });
   await page.locator(".mgs-cart-close").click();
   await page.waitForFunction(() => !document.querySelector(".mgs-cart-drawer").classList.contains("is--open"), null, { timeout: 8000 });
 });
@@ -269,6 +271,9 @@ test("auth : connexion -> accueil + compte + points", async (page, state) => {
   await page.locator('.mgs-page[data-page="connexion"] a[data-nav="compte"]').click();
   await pageIs(page, "accueil"); /* la connexion ramène à l'accueil */
   await page.waitForFunction(() => location.pathname === "/", null, { timeout: 8000 });
+  /* main : la pastille de points n'apparaît qu'une fois le solde récupéré
+     (Header.js:35) — elle doit passer de « none » à visible après la connexion. */
+  await page.waitForFunction(() => { const p = document.querySelector(".nav-points-pill"); return !!p && p.style.display !== "none"; }, null, { timeout: 10000 });
   await page.evaluate(() => window.mgsShowPage("compte"));
   await pageIs(page, "compte");
   await page.waitForFunction(() => document.querySelector("#acc-name") && document.querySelector("#acc-name").value === "Test Player", null, { timeout: 12000 });
@@ -281,6 +286,8 @@ test("auth : connexion -> accueil + compte + points", async (page, state) => {
 test("garde invité : points/compte -> connexion", async (page, state) => {
   state.loggedIn = false;
   await boot(page);
+  /* main : pastille absente hors connexion (Header.js:35). */
+  await page.waitForFunction(() => { const p = document.querySelector(".nav-points-pill"); return !!p && p.style.display === "none"; }, null, { timeout: 10000 });
   await page.evaluate(() => window.mgsShowPage("points"));
   await pageIs(page, "connexion");
   await page.waitForFunction(() => location.pathname === "/connexion", null, { timeout: 8000 });
@@ -354,7 +361,7 @@ test("fiche produit : remplie depuis la carte cliquée + ajout au panier", async
   assert.equal((await txt(page, '.mgs-page[data-page="produit"] .mgs-price')).replace(/\s+/g, " ").trim(), "32 000 Ar");
   await page.locator('.mgs-page[data-page=produit] a.button-main', { hasText: "Ajouter au panier" }).click();
   assert.equal(await cartLen(page), 1);
-  const item = await page.evaluate(() => JSON.parse(localStorage.getItem("mgs_cart_v3"))[0]);
+  const item = await page.evaluate(() => JSON.parse(localStorage.getItem("mgs_cart"))[0]);
   assert.equal(item.product_id, "p2");
   assert.equal(item.price, 32000);
 });
