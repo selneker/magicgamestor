@@ -233,7 +233,8 @@ Leçon des 5 commits post-REF, vérifiés un par un cette session :
 
 | Fonction | Source REF | Route backend | Prototype | État |
 |---|---|---|---|---|
-| Admin : 14 écrans, ~45 routes | `pages/admin/*` ; `lib/adminNav.js` | `routers/admin_users.py`, `orders.py`, `products.py`, `games.py`, `events.py`, `loyalty.py`, `payments.py`, `crypto.py` | écran `admin` masqué aux non-administrateurs (`loaders.admin` `:4740`) | NON FAIT (laissé à l'application React ; le design n'a qu'un tableau de bord statique) |
+| Tableau de bord admin (stats + commandes récentes) | `pages/admin/AdminDashboard.js` | `GET /admin/stats`, `GET /admin/orders` (`routers/orders.py:856,737`) | `renderAdmin` + garde `loaders.admin` (non-admin → connexion) : peuple `.mgs-stat__n` (commandes 14 j, revenu, à livrer, livrées) et la table `.mgs-table` depuis les vraies données | fait |
+| Les 13 autres écrans admin (catalogue, jeux, fournisseur, paiements, chat, fidélité, utilisateurs, notifications…) | `pages/admin/*` ; `lib/adminNav.js` | `routers/admin_users.py`, `orders.py`, `products.py`, `games.py`, `events.py`, `loyalty.py`, `payments.py`, `crypto.py` | — | NON FAIT (le design n'a pas ces écrans ; leurs boutons sont masqués, voir « Éléments masqués ») |
 | Statut boutique, export, audit, stockage | `pages/admin/AdminLayout.js:25-29` | `/settings/status`, `/admin/status`, `/admin/export`, `/admin/audit`, `/admin/storage` (`routers/orders.py:794,890,922`) | — | NON FAIT (laissé à l'application React) |
 | Notifications push (abonnement, test, alerte) | `lib/pushSync.js:127-245` ; `components/admin/AdminPush.js` | `routers/push.py:48-95`, `routers/notifications.py:19-35` | — | NON FAIT (laissé à l'application React) |
 | Service worker | `public/sw.js` (push-only) ; `src/sw.test.js` | — | `frontend/public/sw.js` (copié tel quel) | fait (aucune modification nécessaire) |
@@ -283,6 +284,7 @@ anciens liens `#page` continuent de fonctionner.
 |---|---|---|---|
 | Formulaire d'abonnement du pied de page | `.footer .form-block` | aucune route backend ne l'accepte (seule l'inscription push **admin** existe, `routers/push.py:60`) | retirer la ligne `.footer .form-block` de `maskUnsupported` |
 | Pastille de date des cartes événement | `.mgs-card .mgs-chip` (page Événements) | la réponse ne porte aucune date (`starts_at` n'existe pas) et REF n'en affiche pas (`Events.js:39-52`) | remplacer `chip.style.display = "none"` par le remplissage voulu dans `renderEvents` |
+| Boutons du tableau de bord admin (« Gérer les produits », « Voir les paiements », « Notifications ») | `.mgs-page[data-page=admin] .mgs-row .button-main` | mènent aux écrans admin non portés (Z6) : aucune route n'existe dans le prototype | retirer la ligne `$$('.mgs-row .button-main', page).forEach(...)` de `renderAdmin` |
 
 ## Éléments visibles manquants (besoin d'un ajout de design, remonté au propriétaire)
 
@@ -303,7 +305,7 @@ anciens liens `#page` continuent de fonctionner.
 | Transferts de points | `Loyalty.js:95-134` | un formulaire sur l'écran points |
 | Fil de discussion du chat | `ChatThread.js` | une liste de messages sur l'écran support |
 | Sélecteur de thème | `ThemeToggle.js` | le design v3 n'a pas de thème sombre |
-| Admin (14 écrans) | `pages/admin/*` | laissé à l'application React |
+| Les 13 écrans admin (hors tableau de bord) | `pages/admin/*` | le design n'a pas ces écrans ; le tableau de bord, lui, est réel (`renderAdmin`) |
 
 ## Écarts de contrat (backend actuel vs REF)
 
