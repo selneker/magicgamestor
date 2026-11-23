@@ -4548,14 +4548,19 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       window.mgsShowPage(to);
     }).catch(function (e) {
       authBusy = false;
-      if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.isCaptchaError(e)) {
+      /* main AuthPage.js:57-61 : jeton à usage unique — sur un échec, le
+         contrôle est rendu au client (widget neuf) dès lors qu'il était
+         affiché ; un `captcha_required` force en plus l'affichage visible. */
+      var cap = window.MGS_CAPTCHA;
+      if (cap && cap.isCaptchaError(e)) {
         authCaptchaRequired = true;
-        window.MGS_CAPTCHA.reset();
+        cap.reset();
         renderAuthCaptcha();
         toast(t("captcha.required"), "err");
         return;
       }
       if (authMode === "login") { authLoginFailed = true; syncAuthCaptcha(); }
+      if (cap && cap.enabled() && authCaptchaWant) { cap.reset(); renderAuthCaptcha(); }
       toast(authErr(e), "err");
     });
   }
