@@ -4324,9 +4324,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   /* ---------- annulation : sélecteur de motif (backend/routers/orders.py — raison fermée) ---------- */
   function openCancel() {
     var o = $(".mgs-co-cancel-overlay"), p = $(".mgs-co-cancel-popup"); if (!p) return;
-    /* Le design porte un champ « Précision » (index.html:3495) que REF n'a pas
-       (CancelSheet.js : raison seule) : masqué et listé (Z3). */
-    var nf = $("#co-cancel-note"); if (nf) { var nfw = nf.closest(".mgs-field"); if (nfw) nfw.hidden = true; }
+    /* Le champ « Précision » du design est conservé : le backend l'accepte
+       (`CancelIn.note`, routers/orders.py:127, max 200) et il est envoyé
+       seulement s'il est rempli. */
+    var nf = $("#co-cancel-note"); if (nf) { var nfw = nf.closest(".mgs-field"); if (nfw) nfw.hidden = false; nf.value = ""; }
     var all = $$("input[name='co-cancel-reason']", p); all.forEach(function (r) { r.checked = false; });
     /* main CancelSheet.js:39-40,75-83 : chaque ouverture repart d'une feuille
        vierge (aucune raison résiduelle) et l'annulation reste inerte tant
@@ -4346,11 +4347,14 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var r = $("input[name='co-cancel-reason']:checked", p);
     if (!r) { toast(t("checkout.cancelTitle"), "err"); return; }
     var reason = r.value;
-    /* REF CancelSheet.js:46 → POST /orders/{id}/cancel { reason } seul
-       (raison fermée backend CancelIn, orders.py:126) ; jamais de note. */
+    var noteEl = $("#co-cancel-note");
+    var note = (noteEl && noteEl.value || "").trim().slice(0, 200);
+    /* POST /orders/{id}/cancel : `reason` (raison fermée, orders.py:126) et,
+       si le client l'a écrit, la `note` libre (orders.py:127). */
     closeCancel(); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; }
     if (!co.order) { coShow(1); return; }
-    req("/orders/" + co.order.id + "/cancel", { method: "POST", body: { reason: reason } })
+    var cancelBody = { reason: reason }; if (note) cancelBody.note = note;
+    req("/orders/" + co.order.id + "/cancel", { method: "POST", body: cancelBody })
       .then(function () {
         /* main CancelSheet.js:48-51 + OrderTrack.js:406 : succès = la
            mémorisation de reprise meurt, message de confirmation, retour à
@@ -4374,14 +4378,36 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   var STATUS_IC = { progress: '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>', done: '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>', cancel: '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>' };
   var COPY_IC = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
   /* main pages/OrderHistory.js:294-318 : la liste entière est affichée, le
-     filtre est LOCAL (onglets + recherche) — REF n'a aucune pagination. Le
-     bloc de pagination du design n'a donc pas d'équivalent : il est masqué
-     (PORTAGE « Éléments masqués ») et toutes les cartes restent visibles. */
-  var orderPage = 1;
+     filtre est LOCAL (onglets + recherche) ; le gabarit du design ajoute sa
+     pagination (10 par page), qui est conservée ici. */
+  /* Pagination de l'historique (design) : 10 commandes par page, flèches et
+     compteur du gabarit. La liste et le filtre sont locaux (REF OrderHistory.js). */
+  var ORDER_PAGE_SIZE = 10, orderPage = 1;
+  function orderVisibleCards() {
+    var p = $(".mgs-page[data-page=commandes]"); if (!p) return [];
+    var q = (($(".mgs-cmd-search", p) || {}).value || "").toLowerCase().trim();
+    var tab = $(".mgs-cmd-tab.is--active", p);
+    var f = tab ? tab.dataset.filter : "all";
+    return $$(".mgs-order", p).filter(function (o) {
+      var okf = (f === "all") || (o.dataset.filter === f);
+      var okq = !q || (o.dataset.order + " " + o.dataset.product + " " + (o.dataset.pid || "")).toLowerCase().indexOf(q) >= 0;
+      return okf && okq;
+    });
+  }
   function orderPaginate() {
     var p = $(".mgs-page[data-page=commandes]"); if (!p) return;
-    $$(".mgs-order", p).forEach(function (c) { c.style.display = ""; });
-    var box = $(".mgs-cmd-pages", p); if (box) box.hidden = true;
+    var cards = orderVisibleCards();
+    var pages = Math.max(1, Math.ceil(cards.length / ORDER_PAGE_SIZE));
+    if (orderPage > pages) orderPage = pages;
+    if (orderPage < 1) orderPage = 1;
+    $$(".mgs-order", p).forEach(function (c) { c.style.display = "none"; });
+    cards.forEach(function (c, i) { c.style.display = (i >= (orderPage - 1) * ORDER_PAGE_SIZE && i < orderPage * ORDER_PAGE_SIZE) ? "" : "none"; });
+    var box = $(".mgs-cmd-pages", p); if (!box) return;
+    box.hidden = cards.length <= ORDER_PAGE_SIZE;
+    var prev = $('[data-op="prev"]', box), next = $('[data-op="next"]', box), lab = $(".mgs-cmd-pages-n", box);
+    if (prev) { prev.disabled = orderPage <= 1; prev.setAttribute("aria-disabled", orderPage <= 1 ? "true" : "false"); }
+    if (next) { next.disabled = orderPage >= pages; next.setAttribute("aria-disabled", orderPage >= pages ? "true" : "false"); }
+    if (lab) lab.textContent = orderPage + " / " + pages;
   }
   doc.addEventListener("input", function (e) {
     if (e.target && e.target.classList && e.target.classList.contains("mgs-cmd-search")) { orderPage = 1; orderPaginate(); return; }
@@ -4473,7 +4499,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (head) { var nm = $("div p", head); if (nm) nm.textContent = name; var sub = $(".mgs-muted", head); if (sub) sub.textContent = (me.email || "") + (me.created_at ? " · membre depuis " + fmtDate(me.created_at).date : ""); }
     var an = $("#acc-name"); if (an) an.value = me.name || ""; var ap = $("#acc-phone"); if (ap) ap.value = me.phone || ""; var ai = $("#acc-ids"); if (ai) ai.value = (me.saved_pubg_ids || []).join(", ");
     req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; var pts = bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0)); var sn = $(".mgs-page[data-page=compte] .mgs-stat__n"); if (sn) sn.textContent = String(pts); updatePointsPill(pts); }).catch(function (e) { var sn = $(".mgs-page[data-page=compte] .mgs-stat__n"); if (sn) sn.textContent = "—"; signale(e); });
-    req("/orders/me").then(function (o) { o = Array.isArray(o) ? o : (o && o.orders) || []; var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = String(o.length); /* main Account.js: n'a AUCUN compteur de jeux liés — la 3e case du design est masquée (PORTAGE). */ if (stats[2] && stats[2].closest(".mgs-stat")) stats[2].closest(".mgs-stat").style.display = "none"; }).catch(function (e) { var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = "—"; signale(e); });
+    req("/orders/me").then(function (o) { o = Array.isArray(o) ? o : (o && o.orders) || []; var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = String(o.length); /* case « Jeux liés » du design : nombre d'ID joueur enregistrés sur le compte. */ if (stats[2]) { if (stats[2].closest(".mgs-stat")) stats[2].closest(".mgs-stat").style.display = ""; stats[2].textContent = String((me.saved_pubg_ids || []).length); } }).catch(function (e) { var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = "—"; signale(e); });
   }
   function saveProfile() { var name = ($("#acc-name") || {}).value || ""; var phone = ($("#acc-phone") || {}).value || ""; /* main Account.js:130 : virgules OU espaces séparent les ID. */ var ids = (($("#acc-ids") || {}).value || "").split(/[,\s]+/).filter(Boolean); req("/auth/me", { method: "PATCH", body: { name: name, phone: phone, saved_pubg_ids: ids } }).then(function (u) { me = u || me; toast(t("account.saved")); renderAccount(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
   function changePassword() { var cur = ($("#pw-cur") || {}).value || ""; var next = ($("#pw-next") || {}).value || ""; if (!cur || !next) { toast(t("common.error"), "err"); return; } req("/auth/change-password", { method: "POST", body: { current_password: cur, new_password: next } }).then(function () { toast(t("account.passwordChanged")); $("#pw-cur").value = ""; $("#pw-next").value = ""; }).catch(function (e) { toast(errMsg(e), "err"); }); }
@@ -4676,7 +4702,28 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- événements ---------- */
   var eventTpl = null;
+  var HEART_IC = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
+  var SHARE_IC = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>';
+  function likedSet() { try { var a = JSON.parse(localStorage.getItem("mgs_liked")); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  /* main lib/api.js:50-56 : identifiant anonyme stable pour les compteurs. */
   function sessionId() { try { var v = localStorage.getItem("mgs_session"); if (v) return v; v = "s_" + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem("mgs_session", v); return v; } catch (e) { return "s_anonyme"; } }
+  function setLiked(id, on) { var a = likedSet().filter(function (x) { return x !== id; }); if (on) a.push(id); try { localStorage.setItem("mgs_liked", JSON.stringify(a)); } catch (e) { } }
+  /* main pages/Events.js:18-29 : compteur rendu par l'API, état « aimé »
+     mémorisé dans `mgs_liked`, partage vers `/evenements#<slug>`. */
+  function eventLike(id) {
+    return req("/events/" + encodeURIComponent(id) + "/like", { method: "POST", body: { session_id: sessionId() } })
+      .then(function (r) {
+        var btn = $('.mgs-card__like[data-ev="' + id + '"]'); if (btn) { var n = $(".mgs-card__like-n", btn); if (n) n.textContent = String(r && r.likes != null ? r.likes : 0); btn.setAttribute("aria-pressed", r && r.liked ? "true" : "false"); }
+        setLiked(id, !!(r && r.liked));
+      }).catch(function (e) { toast(errMsg(e), "err"); });
+  }
+  function eventShare(id, slug) {
+    var url = location.origin + "/evenements#" + (slug || id);
+    var done = function () { return req("/events/" + encodeURIComponent(id) + "/share", { method: "POST", body: { session_id: sessionId() } }).then(function (r) { var btn = $('.mgs-card__share[data-ev="' + id + '"]'); if (btn) { var n = $(".mgs-card__share-n", btn); if (n) n.textContent = String(r && r.shares != null ? r.shares : 0); } }).catch(function (e) { toast(errMsg(e), "err"); }); };
+    if (navigator.share) { navigator.share({ title: document.title, url: url }).then(done, function () { }); return; }
+    if (navigator.clipboard) { navigator.clipboard.writeText(url).then(function () { toast(t("events.shared")); return done(); }, function () { }); return; }
+    done();
+  }
   function renderEvents() {
     var grid = $(".mgs-page[data-page=evenements] .mgs-grid"); if (!grid) return;
     if (!eventTpl) eventTpl = $(".mgs-card", grid);
@@ -4691,10 +4738,20 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         var nm = $(".mgs-card__name", card); if (nm) nm.textContent = title; var de = $(".mgs-card__desc", card); if (de) de.textContent = desc;
         var media = $(".mgs-card__media", card); if (media) { media.className = "mgs-card__media u--bg--" + themes[i % themes.length]; if (ev.image_url) media.innerHTML = '<img src="' + esc(ev.image_url) + '" alt="' + esc(title) + '" style="width:100%;height:100%;object-fit:cover">'; }
         var chip = $(".mgs-chip", card); if (chip) chip.textContent = ev.starts_at ? fmtDate(ev.starts_at).date : (ev.slug || "");
-        /* REF pages/Events.js:49-52 rend « j'aime » et « partager » SOUS la
-           carte ; le design v3 n'a aucun contrôle de ce type (ni .mgs-card__like
-           ni .mgs-card__share dans sa feuille de style) : ces deux fonctions ne
-           sont PAS portées ici (PORTAGE « Éléments visibles manquants »). */
+        /* « j'aime » et « partager » (REF Events.js:49-52) : boutons-jetons du
+           design (.mgs-chip) dans le pied de carte existant. */
+        var foot = $(".mgs-card__foot", card);
+        if (foot && !$(".mgs-card__like", foot)) {
+          var liked = likedSet().indexOf(ev.id) >= 0;
+          var like = doc.createElement("button"); like.type = "button"; like.className = "mgs-chip mgs-card__like"; like.dataset.ev = ev.id;
+          like.setAttribute("aria-pressed", liked ? "true" : "false");
+          like.setAttribute("aria-label", LANG === "en" ? "Like" : "J’aime");
+          like.innerHTML = HEART_IC + '<span class="mgs-card__like-n">' + (ev.likes != null ? ev.likes : 0) + "</span>";
+          var shr = doc.createElement("button"); shr.type = "button"; shr.className = "mgs-chip mgs-card__share"; shr.dataset.ev = ev.id; shr.dataset.slug = ev.slug || "";
+          shr.setAttribute("aria-label", LANG === "en" ? "Share" : "Partager");
+          shr.innerHTML = SHARE_IC + '<span class="mgs-card__share-n">' + (ev.shares != null ? ev.shares : 0) + "</span>";
+          foot.appendChild(like); foot.appendChild(shr);
+        }
         return card.outerHTML;
       }).join("");
     }).catch(function (e) { showEmpty(); signale(e); });
@@ -4706,30 +4763,30 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
      éléments du design sont donc masqués (voir PORTAGE « Éléments masqués »). */
   var chatCid = null;
   function maskUnsupported() {
-    /* Pied de page : le formulaire d'abonnement du design (« formulaire de
-       démonstration ») n'a AUCUN équivalent dans REF (son pied de page n'a que
-       des liens) : il est masqué plutôt que laissé inerte (PORTAGE). */
+    /* Abonnement du pied de page : AUCUNE route backend ne l'accepte (seule
+       l'inscription push admin existe, routers/push.py:60) — masqué tant que
+       l'endpoint n'existe pas. */
     $$(".footer .form-block").forEach(function (f) { f.style.display = "none"; });
     var page = $(".mgs-page[data-page=support]"); if (!page) return;
     var cards = $$(".mgs-grid", page)[0];
     if (cards) $$(":scope > *", cards).forEach(function (c) {
       var txt = c.textContent || "";
-      if (/WhatsApp|Email/i.test(txt)) c.style.display = "none";
-    });
-    var sj = $("#sj"); if (sj) { var sf = sj.closest(".mgs-field"); if (sf) sf.style.display = "none"; }
-    var grids = $$(".mgs-grid--2", page);
-    if (grids[0]) $$(":scope > *", grids[0]).forEach(function (col) {
-      if (/Questions fr[ée]quentes/i.test(col.textContent || "")) col.style.display = "none";
+      /* Les cartes du design sont de vrais liens : WhatsApp et e-mail. */
+      if (/WhatsApp/i.test(txt)) c.setAttribute("href", "https://wa.me/261377519833");
+      else if (/Email/i.test(txt)) c.setAttribute("href", "mailto:support@magicgame.store");
     });
   }
   function supportSend() {
-    var msg = $("#ms"); var text = (msg && msg.value || "").trim();
+    var subj = $("#sj"); var msg = $("#ms");
+    var subject = (subj && subj.value || "").trim();
+    var text = (msg && msg.value || "").trim();
     /* main ChatThread : composer vide = rien à envoyer (aucun message). */
     if (!text) return;
     /* main Chat.js:16-20 : la conversation exige un compte (invité → connexion). */
     if (!me) { needLogin("support"); return; }
     var p = chatCid ? Promise.resolve(chatCid) : req("/chat/conversations", { method: "POST" }).then(function (c) { chatCid = c.id || (c.conversation && c.conversation.id); return chatCid; });
-    p.then(function (cid) { return req("/chat/conversations/" + cid + "/messages", { method: "POST", body: { text: text } }); }).then(function () { toast(t("chat.sent")); if (msg) msg.value = ""; }).catch(function (e) { toast(errMsg(e), "err"); });
+    var body = { text: subject ? subject + "\n\n" + text : text };
+    p.then(function (cid) { return req("/chat/conversations/" + cid + "/messages", { method: "POST", body: body }); }).then(function () { toast(t("chat.sent")); msg.value = ""; if (subj) subj.value = ""; }).catch(function (e) { toast(errMsg(e), "err"); });
   }
   function openChat() {
     if (!me) { needLogin("support"); return; }
@@ -4756,17 +4813,51 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   };
   var lastPage = null;
   function route(page) { if (page === lastPage) return; lastPage = page; if (loaders[page]) { try { loaders[page](); } catch (e) { signale(e); } } }
-  /* ---------- URL <-> page (l'URL reflète la page affichée, et inversement) ---------- */
+  /* ---------- URL <-> page : les VRAIES routes du site (REF pages/App.js:49-96) ----------
+     /boutique, /produit/:slug, /commande, /commandes/:id, /suivi/:numero,
+     /pack-evolutif, /compte, /compte/points, /connexion, /inscription,
+     /mot-de-passe-oublie, /reinitialiser/:token, /verifier-email/:token,
+     /evenements, /chat, /support, /admin. */
+  var MGS_PATHS = [
+    [/^\/?$/, "accueil"],
+    [/^\/jeux\/?$/, "boutique"],
+    [/^\/boutique\/?$/, "boutique"],
+    [/^\/produit\/[^/]+\/?$/, "produit"],
+    [/^\/commande(\/confirmation)?\/?$/, "commande"],
+    [/^\/commandes(\/[^/]+)?\/?$/, "commandes"],
+    [/^\/suivi(\/[^/]+)?\/?$/, "commandes"],
+    [/^\/orders\/[^/]+\/?$/, "commandes"],
+    [/^\/pack-evolutif\/?$/, "pack"],
+    [/^\/evenements\/?$/, "evenements"],
+    [/^\/inscription\/?$/, "connexion"],
+    [/^\/connexion\/?$/, "connexion"],
+    [/^\/mot-de-passe-oublie\/?$/, "mdp"],
+    [/^\/reinitialiser\/[^/]+\/?$/, "reset"],
+    [/^\/verifier-email\/[^/]+\/?$/, "connexion"],
+    [/^\/chat\/?$/, "support"],
+    [/^\/support\/?$/, "support"],
+    [/^\/compte\/points\/?$/, "points"],
+    [/^\/compte\/?$/, "compte"],
+    [/^\/admin(\/.*)?$/, "admin"]
+  ];
   function mgsPageFromUrl() {
-    var p = String(location.pathname || "/").replace(/^\/+|\/+$/g, "");
+    var path = String(location.pathname || "/");
+    for (var i = 0; i < MGS_PATHS.length; i++) if (MGS_PATHS[i][0].test(path)) return MGS_PATHS[i][1];
+    var p = path.replace(/^\/+|\/+$/g, "");
     if (p && doc.querySelector('.mgs-page[data-page="' + p + '"]')) return p;
     var h = String(location.hash || "").replace(/^#/, "");
     var H = { top: "accueil", jeux: "boutique", recharger: "evenements", securite: "commandes", commandes: "commandes", support: "support" };
     return H[h] || "accueil";
   }
+  /* La route écrite dans la barre d'adresse est celle de REF. */
+  var MGS_URLS = { accueil: "/", boutique: "/boutique", commande: "/commande", commandes: "/commandes", compte: "/compte", points: "/compte/points", connexion: "/connexion", evenements: "/evenements", pack: "/pack-evolutif", support: "/support", admin: "/admin", mdp: "/mot-de-passe-oublie" };
   function mgsSyncUrl(id, replace) {
     try {
-      var want = id === "accueil" ? "/" : "/" + id;
+      var want = MGS_URLS[id] || (id === "produit" ? "/produit" : "/" + id);
+      /* On ne casse pas une URL profonde déjà correcte (slug, jeton, numéro). */
+      if (id === "produit" && /^\/produit\/[^/]+/.test(location.pathname)) return;
+      if (id === "reset" && /^\/reinitialiser\/[^/]+/.test(location.pathname)) return;
+      if (id === "commandes" && /^\/(suivi|commandes|orders)\/[^/]+/.test(location.pathname)) return;
       if (location.pathname === want) return;
       if (replace) history.replaceState({ mgs: id }, "", want + location.search);
       else history.pushState({ mgs: id }, "", want + location.search);
@@ -4775,6 +4866,32 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   var obs = new MutationObserver(function () { var p = body.getAttribute("data-page"); mgsSyncUrl(p); route(p); });
   obs.observe(body, { attributes: true, attributeFilter: ["data-page"] });
   window.addEventListener("popstate", function () { var p = mgsPageFromUrl(); if (p !== body.getAttribute("data-page")) window.mgsShowPage(p); });
+
+  /* ---------- liens profonds (REF App.js:53-59,67-68) ----------
+     /produit/:slug, /commandes/:id, /suivi/:numero, /orders/:id ouvrent
+     directement l'écran visé après un chargement ou un partage de lien. */
+  function openDeepLink() {
+    var path = String(location.pathname || "/");
+    var m = path.match(/^\/produit\/([^/]+)\/?$/);
+    if (m) { openProduit({ dataset: { slug: decodeURIComponent(m[1]) } }); return; }
+    m = path.match(/^\/(?:commandes|suivi|orders)\/([^/]+)\/?$/);
+    if (m) openOrderLink(decodeURIComponent(m[1]));
+  }
+  /* Suivi invité : GET /orders/track {order_number, pubg_id} (REF OrderTrack.js:434-479).
+     L'ID joueur est le dernier utilisé sur cette machine (mgs_last_player_id) —
+     le design n'a pas de champ ID sur l'écran commandes. */
+  function openOrderLink(ref) {
+    var open = function (order) {
+      if (!order || !order.id) return;
+      renderOrders([order]);
+      var card = $('.mgs-order[data-order="' + esc(order.order_number || "") + '"]') || $(".mgs-order");
+      if (card) card.click();
+    };
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}/i.test(ref)) { req("/orders/" + encodeURIComponent(ref)).then(open).catch(function (e) { toast(errMsg(e), "err"); }); return; }
+    var pid = ""; try { pid = localStorage.getItem("mgs_last_player_id") || ""; } catch (e) { }
+    if (!pid) { toast(t("order.loginToSee"), "err"); return; }
+    req("/orders/track?" + qs({ order_number: ref, pubg_id: pid })).then(open).catch(function (e) { toast(errMsg(e), "err"); });
+  }
 
   /* ---------- Entrée au clavier : valide les formulaires, comme dans main ---------- */
   doc.addEventListener("keydown", function (e) {
@@ -4832,6 +4949,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* connexion */
     if (el.closest(".mgs-mdp-send")) { stop(e); forgotPassword(); return; }
     if (el.closest(".mgs-reset-send")) { stop(e); resetPassword(); return; }
+    /* événements : j'aime / partager */
+    var lk = el.closest(".mgs-card__like"); if (lk) { stop(e); eventLike(lk.dataset.ev); return; }
+    var sh = el.closest(".mgs-card__share"); if (sh) { stop(e); eventShare(sh.dataset.ev, sh.dataset.slug); return; }
     if (el.closest(".mgs-page[data-page=connexion]")) { if (/Google/i.test((el.closest(".button-main") || {}).textContent || "")) { stop(e); googleLogin(); return; } var cb = el.closest('a[data-nav="compte"]'); if (cb) { stop(e); doAuth(); return; } var tab = el.closest(".mgs-tab"); if (tab) { stop(e); var idx = $$(".mgs-page[data-page=connexion] .mgs-tab").indexOf(tab); setAuthMode(idx === 0 ? "login" : "register"); return; } }
     /* points */
     var rd = el.closest(".mgs-redeem"); if (rd) { stop(e); redeem(rd.dataset.reward); return; }
@@ -4878,6 +4998,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         var fromUrl = mgsPageFromUrl();
         if (fromUrl !== (body.getAttribute("data-page") || "accueil")) window.mgsShowPage(fromUrl);
         else mgsSyncUrl(fromUrl, true);
+        openDeepLink();
         if (window.mgsSetNav) mgsSetNav(body.getAttribute("data-page") || "accueil");
         if (me) req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; updatePointsPill(bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0))); }).catch(function (e) { updatePointsPill(null); signale(e); });
         route(body.getAttribute("data-page") || "accueil");
