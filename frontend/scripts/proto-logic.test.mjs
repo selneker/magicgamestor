@@ -363,6 +363,9 @@ await test("initiate : codes d'erreur du backend", async () => {
     [400, "Cette commande n'utilise pas Binance USDT.", "not_binance"],
     [400, "Réseau USDT non disponible.", "network_unavailable"],
     [400, "Paramètre invalide.", "bad_request"],
+    // 422 : un réseau hors du motif ^(TRC20|BEP20|APTOS|TON)$ du contrat déployé
+    // arrive en validation (detail = tableau) et doit suivre le 400 « réseau refusé ».
+    [422, [{ type: "string_pattern_mismatch", loc: ["body", "network"] }], "network_unavailable"],
     [403, "Forbidden", "forbidden"],
     [404, "Order not found", "order_not_found"],
     [409, "Un paiement USDT est déjà en cours pour cette commande.", "already_open"],
@@ -377,7 +380,11 @@ await test("initiate : codes d'erreur du backend", async () => {
     const r = await ctx.MGS_CRYPTO.initiate("o1", "BEP20");
     assert.equal(r.ok, false, `statut ${status} doit échouer`);
     assert.equal(r.code, expected, `statut ${status} / « ${detail} »`);
-    assert.equal(r.detail, detail);
+    // `detail` est le texte brut du backend quand il en a un ; un detail non-texte
+    // (le TABLEAU de validation d'un 422) n'est jamais exposé — le module ne rend
+    // que des chaînes, l'appelant n'affiche donc jamais « [object Object] ».
+    if (typeof detail === "string") assert.equal(r.detail, detail);
+    else assert.equal(r.detail, "", `statut ${status} : detail non-texte non exposé`);
   }
 });
 

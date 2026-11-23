@@ -175,8 +175,15 @@
   /* ---------- initiation ---------- */
 
   /* `POST /crypto/initiate` (backend/routers/crypto.py:112-121) répond 400
-   * dans deux cas distincts, 409 dans trois, 503 pour la saturation. Les
-   * libellés cités sont ceux du backend (fichier:ligne ci-dessus). */
+   * dans deux cas distincts, 422 sur un réseau hors énumération, 409 dans
+   * trois, 503 pour la saturation. Les libellés cités sont ceux du backend
+   * (fichier:ligne ci-dessus).
+   *
+   * 422 : le contrat déployé déclare `network` avec le motif
+   * ^(TRC20|BEP20|APTOS|TON)$, donc un réseau refusé arrive en 422 de validation
+   * (`detail` = TABLEAU de la bibliothèque, jamais le texte du 400). Un 422 sur
+   * cette route est traité comme un réseau refusé, comme le 400 « Réseau USDT
+   * non disponible. » : même code, donc même message côté appelant. */
   function initiateCode(status, data) {
     var detail = detailOf(data);
     if (status === 400) {
@@ -184,6 +191,7 @@
       if (/r[ée]seau/i.test(detail)) return "network_unavailable";
       return "bad_request";
     }
+    if (status === 422) return "network_unavailable";
     if (status === 403) return "forbidden";
     if (status === 404) return "order_not_found";
     if (status === 409) {
