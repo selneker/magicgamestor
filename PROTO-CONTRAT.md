@@ -170,8 +170,8 @@ Codes : `"ok"` ; `"network_error"` ; `"not_binance"` (400) ;
 Deux mises à jour (PL-FE-019) :
 
 - le code `"invalid_network"` (réseau hors énumération, **sans** appel réseau)
-  n'existe plus : la validation locale du réseau a été retirée (`2559ed5`),
-  c'est le backend qui statue ;
+  n'existe plus : la validation locale du réseau (liste `NETWORKS` codée en dur,
+  `9358ae0`) a été retirée par `c157044` ; c'est le backend qui statue ;
 - un réseau refusé arrive donc **400** (« Réseau USDT non disponible. »,
   `backend/services/crypto.py:78`, levé depuis `routers/crypto.py:120`), **ou 422**
   (`network: str = Field(pattern=r"^(TRC20|BEP20|APTOS|TON)$")`,
