@@ -22,8 +22,9 @@ Sources : `backend/routers/*.py` et `backend/services/*.py` sur `feat/proto-fonc
   périmètre du prototype.
 - Erreurs FastAPI : `422` = corps invalide (Pydantic) ; `400/403/404/409/429/503` =
   règles métier ; `detail` est soit une **chaîne**, soit un **objet** `{code, message}`
-  (preuve et annulation, voir §3.4 et §3.7).
-- `POST` renvoie `201` quand la route est déclarée `status_code=201` (commande, preuve,
+  (preuve et annulation, voir §1.8/§1.9/§1.10). **SAUF** `product_unavailable` (§1.2) :
+  le code est au TOP LEVEL du corps avec `product_ids`, pas dans `detail`.
+- `POST` renvoie `201` quand la route est déclarée `status_code=201` (commande,
   échange de points, transfert, message de chat).
 
 ---
@@ -124,7 +125,8 @@ depuis ces champs (`status`, `proofs`) ou relire `GET /orders/{id}`.
 
 Erreurs `409` avec `detail = {code, message}` (`_proof_error` `:476-484`) :
 `proof_not_allowed` (commande non manuelle), `proof_not_pending`, `proof_already_validated`,
-`proof_deadline_passed`, `proof_count`, `proof_limit`, `proof_conflict`.
+`proof_deadline_passed`, `proof_count`, `proof_limit`, `proof_conflict`, `proof_too_large`,
+`proof_format`.
 `503` stockage/quota indisponible. `429` limite d'envois.
 
 ### 1.9 `POST /orders/{order_id}/remind` — optionnel
@@ -139,7 +141,8 @@ Cooldown 180 s, maximum 3 (`:627-628`).
 `:680`, corps `CancelIn` (`:124-128`) : `reason` **obligatoire** parmi
 `wrong_info|change_method|too_short|cannot_pay_now|other`, `note` ≤ 200 facultatif.
 Réponse `200` `{ok:true, status:"cancelled"}` (idempotent si déjà annulée par le client).
-`409 detail = {code:"cancel_not_allowed", message}` sinon.
+`409 detail = {code:"cancel_not_allowed", message}` sinon ; codes supplémentaires
+`cancel_proof_sent`, `cancel_paid`, `cancel_conflict` ; `429` rate limit.
 
 ### 1.11 `POST /fazercards/validate-id` — public
 
@@ -196,7 +199,7 @@ late_payment, paid, delivered, cancelled, failed, expired`.
 ### 3.3 `POST /auth/me/delete` — oui
 
 `:436`, corps `{password?, confirmation}`. `confirmation` doit valoir **`SUPPRIMER`**
-(insensible à la casse, `:439`) → `400` sinon ; `401` mot de passe faux ;
+(insensible à la casse, `:440`) → `400` sinon ; `401` mot de passe faux ;
 `409` commande encore en cours ; `403` compte admin.
 
 ### 3.4 `POST /auth/resend-verification` — oui
@@ -231,7 +234,7 @@ Erreurs de transfert : `503` désactivé, `403` email non vérifié, `404` desti
 | `GET` | `/evo/season` | — | `{season, week:"YYYY-Www"}` | `routers/evo.py:110` |
 | `GET` | `/evo/eligibility?product_id=&pubg_id=` | — | `{eligible, reason?, season, pubg_id?, week?}` | `:115` |
 
-`like` bascule (retire le like existant) ; `404` événement inconnu. `eligibility` : `400`
+`like` bascule (retire le like existant) ; **`404` événement inconnu côté `like` seulement** (pas dans `share`). `eligibility` : `400`
 ID non numérique / hors 9..13, `404` offre inconnue, `eligible:false` + `reason` pour les
 refus métier (jamais une exception).
 
@@ -269,5 +272,6 @@ le prototype** : `PORTAGE.md` les laisse à l'application React. Rien à câbler
 4. Suppression de compte : `SUPPRIMER`, pas `DELETE`.
 5. `GET /crypto/{id}/status` est indexé par **order_id**, pas par l'id du paiement.
 6. `amount_usdt` = montant exact ; `base_usdt` ne sert qu'à l'affichage de conversion.
-7. Les erreurs de preuve/annulation sont `{detail:{code,message}}`, les autres une chaîne :
-   un lecteur qui ne teste que `data.code` ratera les premières.
+7. Les erreurs de preuve/annulation sont `{detail:{code,message}}`, SAUF `product_unavailable`
+   (§1.2) qui porte `code` + `product_ids` au TOP LEVEL du corps ; les autres sont une
+   chaîne. Un lecteur qui ne teste que `data.code` ratera `product_unavailable`.
