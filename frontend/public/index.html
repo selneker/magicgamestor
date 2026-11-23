@@ -2530,9 +2530,9 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
     <div class="mgs-panel" style="background:var(--color--light)">
       <div class="mgs-tabs" style="margin-bottom:1.25em"><button class="mgs-tab is--active" type="button" style="flex:1">Connexion</button><button class="mgs-tab" type="button" style="flex:1">Inscription</button></div>
       <a href="#" style="width:100%;margin-bottom:1em" class="button-main w-inline-block " data-button-theme="light" data-button-accent=""><span style="width:100%;margin-bottom:1em" class="button-main-inner full-h"><span style="width:100%;margin-bottom:1em" class="button-main-inner__back" data-text="Continuer avec Google"></span><span style="width:100%;margin-bottom:1em" class="button-main-inner__front"><span style="width:100%;margin-bottom:1em" class="button-main-inner__bg"></span><span style="width:100%;margin-bottom:1em" class="button-main-inner__text"><span>Continuer avec Google</span></span></span></span></a>
-      <div class="mgs-field"><label for="em">Email</label><input id="em" type="email" class="mgs-input" placeholder="vous@example.mg"></div>
-      <div class="mgs-field"><label for="pw">Mot de passe</label><input id="pw" type="password" class="mgs-input" placeholder="••••••••"></div>
-      <div class="mgs-between" style="margin:.25em 0 1em;font-size:.85em"><label class="mgs-row" style="gap:.4em"><input type="checkbox"> Se souvenir</label><a href="#mdp" data-nav="mdp" class="mgs-muted" style="text-decoration:underline">Mot de passe oublié ?</a></div>
+      <form id="mgs-auth-form" method="post" action="#connexion" novalidate><div class="mgs-field"><label for="em">Email</label><input id="em" name="email" type="email" autocomplete="username" class="mgs-input" placeholder="vous@example.mg"></div>
+      <div class="mgs-field"><label for="pw">Mot de passe</label><input id="pw" name="password" type="password" autocomplete="current-password" class="mgs-input" placeholder="••••••••"></div>
+      <div class="mgs-between" style="margin:.25em 0 1em;font-size:.85em"><label class="mgs-row" style="gap:.4em"><input type="checkbox" name="remember"> Se souvenir</label><a href="#mdp" data-nav="mdp" class="mgs-muted" style="text-decoration:underline">Mot de passe oublié ?</a></div><button type="submit" hidden aria-hidden="true" tabindex="-1"></button></form>
       <a href="#" data-nav="compte" style="width:100%" class="button-main w-inline-block " data-button-theme="dark" data-button-accent="yellow"><span style="width:100%" class="button-main-inner full-h"><span style="width:100%" class="button-main-inner__back" data-text="Se connecter"></span><span style="width:100%" class="button-main-inner__front"><span style="width:100%" class="button-main-inner__bg"></span><span style="width:100%" class="button-main-inner__text"><span>Se connecter</span></span></span></span></a>
     </div>
   </div>
@@ -2546,7 +2546,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
       <p class="eyebrow">Magic Game Store</p><h1 class="mgs-title" style="font-size:2.2em">Mot de passe oublié</h1>
       <p class="mgs-sub" style="font-size:1em">Recevez un lien de réinitialisation par e-mail.</p></div>
     <div class="mgs-panel" style="background:var(--color--light)">
-      <div class="mgs-field"><label for="fpe">Email</label><input id="fpe" type="email" class="mgs-input" placeholder="vous@example.mg"></div>
+      <form id="mgs-mdp-form" method="post" action="#mdp" novalidate><div class="mgs-field"><label for="fpe">Email</label><input id="fpe" name="email" type="email" autocomplete="username" class="mgs-input" placeholder="vous@example.mg"></div><button type="submit" hidden aria-hidden="true" tabindex="-1"></button></form>
       <a href="#mdp" class="mgs-mdp-send button-main w-inline-block" style="width:100%" data-button-theme="dark" data-button-accent="yellow"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Envoyer le lien"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Envoyer le lien</span></span></span></span></a>
       <p class="mgs-muted" style="margin:1em 0 0;text-align:center"><a href="#connexion" data-nav="connexion" style="text-decoration:underline">Retour à la connexion</a></p>
       <p class="mgs-status" id="mdp-status" style="margin-top:1em" role="status"></p>
@@ -2562,8 +2562,8 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
       <p class="eyebrow">Magic Game Store</p><h1 class="mgs-title" style="font-size:2.2em">Nouveau mot de passe</h1>
       <p class="mgs-sub" style="font-size:1em">Choisissez un nouveau mot de passe (8 caractères minimum).</p></div>
     <div class="mgs-panel" style="background:var(--color--light)">
-      <div class="mgs-field"><label for="rp-pass">Nouveau mot de passe</label><input id="rp-pass" type="password" class="mgs-input" placeholder="••••••••"></div>
-      <div class="mgs-field"><label for="rp-confirm">Confirmer le mot de passe</label><input id="rp-confirm" type="password" class="mgs-input" placeholder="••••••••"></div>
+      <form id="mgs-reset-form" method="post" action="#reset" novalidate><div class="mgs-field"><label for="rp-pass">Nouveau mot de passe</label><input id="rp-pass" name="new_password" type="password" autocomplete="new-password" class="mgs-input" placeholder="••••••••"></div>
+      <div class="mgs-field"><label for="rp-confirm">Confirmer le mot de passe</label><input id="rp-confirm" name="confirm_password" type="password" autocomplete="new-password" class="mgs-input" placeholder="••••••••"></div><button type="submit" hidden aria-hidden="true" tabindex="-1"></button></form>
       <a href="#reset" class="mgs-reset-send button-main w-inline-block" style="width:100%" data-button-theme="dark" data-button-accent="yellow"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Réinitialiser"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Réinitialiser</span></span></span></span></a>
       <p class="mgs-muted" style="margin:1em 0 0;text-align:center"><a href="#connexion" data-nav="connexion" style="text-decoration:underline">Retour à la connexion</a></p>
       <p class="mgs-status" id="reset-status" style="margin-top:1em" role="status"></p>
@@ -3508,7 +3508,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 (function () {
   "use strict";
   var doc = document, body = doc.body;
-  var BACKEND = (window.MGS_BACKEND_URL || "https://magicgamestore-api-v2.onrender.com").replace(/\/+$/, "");
+  var BACKEND = (window.MGS_BACKEND_URL || "https://api.magicgame.store").replace(/\/+$/, "");
   var API = BACKEND + "/api";
   var $ = function (s, r) { return (r || doc).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || doc).querySelectorAll(s)); };
@@ -4535,7 +4535,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var title = $(".mgs-page[data-page=connexion] .mgs-title"); if (title) title.textContent = mode === "login" ? (LANG === "en" ? "Sign in" : "Connexion") : (LANG === "en" ? "Sign up" : "Inscription");
     var btn = $('.mgs-page[data-page=connexion] a[data-nav="compte"] .button-main-inner__text span'); if (btn) btn.textContent = mode === "login" ? (LANG === "en" ? "Sign in" : "Se connecter") : (LANG === "en" ? "Create account" : "Créer le compte");
     var nameField = $("#reg-name-field");
-    if (mode === "register" && !nameField) { var em = $("#em"); if (em && em.closest(".mgs-field")) { nameField = doc.createElement("div"); nameField.className = "mgs-field"; nameField.id = "reg-name-field"; nameField.innerHTML = '<label for="reg-name">' + (LANG === "en" ? "Name" : "Nom") + '</label><input id="reg-name" type="text" class="mgs-input" placeholder="' + (LANG === "en" ? "Your name" : "Votre nom") + '">'; em.closest(".mgs-field").parentNode.insertBefore(nameField, em.closest(".mgs-field")); } }
+    if (mode === "register" && !nameField) { var em = $("#em"); if (em && em.closest(".mgs-field")) { nameField = doc.createElement("div"); nameField.className = "mgs-field"; nameField.id = "reg-name-field"; nameField.innerHTML = '<label for="reg-name">' + (LANG === "en" ? "Name" : "Nom") + '</label><input id="reg-name" name="name" type="text" autocomplete="name" class="mgs-input" placeholder="' + (LANG === "en" ? "Your name" : "Votre nom") + '">'; em.closest(".mgs-field").parentNode.insertBefore(nameField, em.closest(".mgs-field")); } }
     else if (mode === "login" && nameField) { nameField.remove(); }
     syncAuthCaptcha();
   }
@@ -4616,7 +4616,14 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       toast(authErr(e), "err");
     });
   }
-  function googleLogin() { toast(t("auth.google")); var to = authReturnTo ? "/" + authReturnTo : "/"; window.location.href = API + "/auth/google/start?return_to=" + encodeURIComponent(to); }
+  /* main AuthPage.js:38,53 + AuthCallback.js:8-11 : /auth/google/start?return_to=<chemin>
+     et retour sur `<site>/<chemin>` (backend routers/auth.py:288-360). Le chemin
+     envoyé est la ROUTE RÉELLE de la page (MGS_URLS), pas son nom d'écran. */
+  function googleLogin() {
+    toast(t("auth.google"));
+    var to = MGS_URLS[authReturnTo] || "/";
+    window.location.href = API + "/auth/google/start?return_to=" + encodeURIComponent(to);
+  }
   var forgotCaptchaBox = null;
   function renderForgotCaptcha() {
     var cap = window.MGS_CAPTCHA; if (!cap || !cap.enabled()) return;
@@ -4914,6 +4921,18 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (!pid) { toast(t("order.loginToSee"), "err"); return; }
     req("/orders/track?" + qs({ order_number: ref, pubg_id: pid })).then(open).catch(function (e) { toast(errMsg(e), "err"); });
   }
+
+  /* Formulaires d'authentification : ce sont de VRAIS formulaires (comme main,
+     AuthPage.js:83 « <form onSubmit=…> ») pour que le gestionnaire de mots de
+     passe du navigateur reconnaisse la connexion et propose les comptes
+     enregistrés. La soumission (Entrée ou bouton) passe par les mêmes fonctions. */
+  doc.addEventListener("submit", function (e) {
+    var f = e.target;
+    if (!f || !f.id) return;
+    if (f.id === "mgs-auth-form") { e.preventDefault(); doAuth(); }
+    else if (f.id === "mgs-reset-form") { e.preventDefault(); resetPassword(); }
+    else if (f.id === "mgs-mdp-form") { e.preventDefault(); forgotPassword(); }
+  }, true);
 
   /* ---------- Entrée au clavier : valide les formulaires, comme dans main ---------- */
   doc.addEventListener("keydown", function (e) {
