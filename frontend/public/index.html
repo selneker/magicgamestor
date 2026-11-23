@@ -3890,8 +3890,16 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function resumePendingOrder(done) {
     var id = candidatePendingOrderId();
     if (!id) { done(); return; }
+    /* Reprise impossible (introuvable, statut final, panier vide) : l'entrée
+       meurt. Panier vide → REF renvoie à la boutique (« Recommencer »,
+       lib/pendingOrder.js:71-75) au lieu de laisser un tunnel à 0 Ar. */
+    var abandon = function () {
+      clearPendingOrderId();
+      done();
+      if (!cart.length) { toast(t("cart.empty"), "err"); window.mgsShowPage("boutique"); }
+    };
     req("/orders/" + encodeURIComponent(id)).then(function (o) {
-      if (!isUsablePendingOrder(o)) { clearPendingOrderId(); done(); return; }
+      if (!isUsablePendingOrder(o)) { abandon(); return; }
       hydrateCoFromOrder(o);
       window.mgsShowPage("commande");
       if (o.status === "proof_submitted") { coReceipt(); pollOrder(); return; }
@@ -3905,7 +3913,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         return;
       }
       coPay();
-    }).catch(function () { clearPendingOrderId(); done(); });
+    }).catch(function () { abandon(); });
   }
   /* Binance sans slot actif (main OrderTrack.js:340 : « aucune preuve » sur
      l'écran de paiement) : data-co=2, pas d'adresse, pas de preuve. */
@@ -4799,6 +4807,17 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
        n'a qu'un écran admin de démonstration, aucun de ses 14 écrans n'est
        porté (PORTAGE Z6) : un visiteur non administrateur ne le voit pas. */
     admin: function () { if (!me || (me.role !== "admin" && me.role !== "super_admin")) { needLogin("admin"); return; } },
+    /* Panier vide sur /commande : REF n'affiche JAMAIS le tunnel (état « panier
+       vide » + lien boutique, pages/Checkout.js:250-252). Le design n'a pas cet
+       état sur cet écran : on renvoie à la boutique avec le message de REF.
+       Une commande en cours (co.order) ou une reprise mémorisée garde l'écran. */
+    commande: function () {
+      if (!cart.length) { if (!co.order && !readPendingOrderId()) { toast(t("cart.empty"), "err"); window.mgsShowPage("boutique"); } return; }
+      /* Panier rempli et aucune commande en cours : l'écran 1 se remplit depuis
+         le panier (mêmes totaux, jeu, ID de départ) — REF rend le tunnel depuis
+         l'état du panier (pages/Checkout.js:56-100). */
+      if (!co.order) coOpen();
+    },
     boutique: function () { loadGames().then(renderGames); },
     commandes: function () { loadOrders(); },
     compte: function () { renderAccount(); },
@@ -4973,6 +4992,13 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   /* ---------- boot ---------- */
   function boot() {
     renderCart(); renderRecent(); loadPayCfg(); syncFavs(); maskUnsupported();
+    /* L'écran demandé par l'URL s'affiche TOUT DE SUITE : la vérification de
+       session (deux reprises de 3 s et 8 s en cas de réseau lent) ne doit pas
+       retarder la page — un visiteur qui ouvre /boutique doit voir la boutique. */
+    var early = mgsPageFromUrl();
+    if (early !== (body.getAttribute("data-page") || "accueil")) window.mgsShowPage(early);
+    else mgsSyncUrl(early, true);
+    if (window.mgsSetNav) mgsSetNav(early);
     /* main : « Se souvenir » est coché par défaut (AuthPage.js:25) */
     var rem = $('.mgs-page[data-page=connexion] input[type="checkbox"]'); if (rem) rem.checked = true;
     handleGoogleError();

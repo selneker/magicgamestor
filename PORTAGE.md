@@ -351,6 +351,45 @@ sont aujourd'hui contournés sans perte de comportement).
 - Clé publique Turnstile : `window.MGS_CAPTCHA` (sans clé, aucun widget n'est monté).
 - Push admin : clé publique VAPID (`GET /admin/push/config`).
 
+## Contrôle au rendu (bundle servi, Chromium, 390 px et 1440 px)
+
+Serveur jetable hors dépôt (repli SPA) + Chromium, lecture seule. Ce que j'ai
+observé, sans backend exploitable (les listes reviennent vides) :
+
+| URL demandée | Écran | Titre affiché | Débordement horizontal |
+|---|---|---|---|
+| `/` | accueil | « Rechargez vos jeux. Sans détour. » | non |
+| `/boutique`, `/jeux` | boutique | « Choisissez votre jeu » | non |
+| `/produit/uc-60` | produit | « 660 UC » | non |
+| `/commande` | commande | — | non |
+| `/commandes`, `/suivi` | commandes | « Vos commandes » | non |
+| `/compte`, `/compte/points` | → connexion (invité, `ProtectedRoute`) | « Connexion » | non |
+| `/connexion`, `/inscription` | connexion | « Connexion » | non |
+| `/mot-de-passe-oublie` | mdp | « Mot de passe oublié » | non |
+| `/evenements` | evenements | « Événements » (état vide) | non |
+| `/pack-evolutif` | pack | « Payez par paliers » | non |
+| `/support`, `/chat` | support | « Support » | non |
+| `/admin` | → connexion (non administrateur) | « Connexion » | non |
+
+Interactions observées : clic sur une carte de jeu → sous-vue catalogue « PUBG
+Mobile » ; retour arrière → écran précédent (popstate) ; `/support` affiche les
+cartes WhatsApp (`https://wa.me/261377519833`) et e-mail
+(`mailto:support@magicgame.store`), les champs `#sj`/`#ms`, la FAQ, et **aucun**
+formulaire d'abonnement (masqué) ; `/commande` avec panier vide → « Votre panier
+est vide. » + boutique ; avec panier rempli → écran 1 peuplé (« 3 × 660 UC »,
+« 15 000 Ar », jeu, pastilles méthode). Non observable sans backend : liste
+d'événements (donc boutons « j'aime »/« partager », créés par carte), catalogue
+réel, commandes. Aucun débordement horizontal, aucune page blanche.
+
+Deux défauts trouvés par ce contrôle et corrigés :
+
+1. **Les URL n'étaient appliquées qu'après `GET /auth/me`** : avec un réseau
+   lent, toutes les routes affichaient l'accueil pendant ~11 s. L'écran demandé
+   s'affiche désormais immédiatement (`boot()` `:4973`).
+2. **`/commande` avec panier vide** montrait le tunnel à 0 Ar et un bouton
+   actif. Désormais : message de REF + retour boutique, sauf commande en cours
+   ou reprise mémorisée (`loaders.commande` `:4806`).
+
 ## Validation de cette session (sorties brutes)
 
 ```
