@@ -195,7 +195,8 @@ Leçon des 5 commits post-REF, vérifiés un par un cette session :
 | Détail : reçu réservé à une commande payée au moins une fois (`paid_at`) | `OrderHistory.js:469,691-698` | — | `refreshOrderDetail()` `:4433` | fait |
 | Reçu (contenu : numéro, date, statut, jeu, produit, ID, méthode, montant) | `OrderHistory.js:342-374,513-525` (`window.print`) | — | bouton `.mgs-receipt-btn` : le gabarit du design produit un PNG (canvas) — mécanisme du design conservé, mêmes données | fait |
 | Détail : raison d'annulation et note traduites | `OrderHistory.js:376-384,624-635` | `GET /orders/{id}` | — | NON FAIT (design : aucune ligne « raison »/« note » dans le détail) |
-| Suivi public par numéro + ID joueur | `pages/OrderTrack.js:434-479,520-552` | `GET /orders/track` (`routers/orders.py:450`) | `openOrderLink()` `:4872` (`/suivi/:numero`, `/commandes/:id` ; ID joueur = `mgs_last_player_id`) | fait |
+| Suivi public par numéro + ID joueur | `pages/OrderTrack.js:434-479,520-552` | `GET /orders/track` (`routers/orders.py:450`) | `openOrderLink` (`/suivi/:numero`, `/orders/:id` ; ID joueur = `mgs_last_player_id`) | fait |
+| Détail `/commandes/:orderId` : session requise | `App.js:66` (ProtectedRoute) | `GET /orders/{id}` | garde du loader `commandes` | fait — sans compte → connexion ; le parcours invité (paiement, suivi) passe par `/commandes` et `/suivi`, pas par cette route |
 | Invité : texte `order.loginToSee` | `OrderTrack.js:543-550` | — | `renderOrders()` `:4405` | fait |
 | Invité : bouton « Se connecter » de l'état vide | `OrderTrack.js:546-548` | — | — | NON FAIT (design : l'état vide n'a qu'une icône et un texte) |
 | `/commandes` → `/suivi` | `components/common/OrdersRedirect.js:8` ; `App.js:67` | — | l'écran `commandes` EST la page (site mono-page) | fait (destination identique) |
