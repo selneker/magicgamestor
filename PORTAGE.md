@@ -348,6 +348,41 @@ la page pack affiche `evo.empty` et la boutique n'a aucun article — **données
 pas code** (à confirmer par le propriétaire : `api.magicgame.store` porte-t-il
 bien le catalogue de production ?).
 
+## Connexion Google — retour et boucle (2026-11-23, après PL-FE-019)
+
+Demande du propriétaire : après une connexion Google, l'utilisateur doit arriver
+sur la **liste des jeux disponibles**, pas sur l'écran de connexion.
+
+| Défaut constaté | Correction | Source |
+|---|---|---|
+| Sans page d'origine, `return_to` valait `/` (accueil) ; REF, lui, revenait sur `/compte` | `return_to` = `/boutique` — l'écran des jeux, `.mgs-boutique-catalog` étant `hidden` au chargement — et l'écran de connexion sort vers cette même page quand aucun `needLogin` n'a mémorisé de destination | `components/AuthCallback.js:8` (défaut REF), `pages/AuthPage.js:38,40` (`from`) |
+| Un utilisateur **connecté** restait bloqué sur `/connexion` : `boot()` affiche la page de l'URL avant de connaître la session, le `MutationObserver` sur `body[data-page]` fait tourner son loader avec `me` = null, et `route()` ignore un rappel identique au précédent (garde `lastPage`) — le loader « connexion » ne repassait donc jamais | la page courante est ré-évaluée **une fois** quand `me` est renseigné et que l'écran courant est `/connexion` (même idiome que le changement de langue) | `frontend/public/index.html` (`boot()`, `route()`) |
+
+### État du flux Google côté déploiement (vérifié en lecture seule)
+
+- `GET /api/auth/google/config` → `{"enabled":true}` : Google EST configuré côté API.
+- `GET /api/auth/google/start?return_to=%2Fboutique` → répond bien par une
+  redirection (opaque en `fetch` `redirect:manual`) : la première jambe fonctionne.
+- Le RETOUR concentre **six échecs distincts** sur la même redirection
+  `{FRONTEND_URL}/connexion?error=google` (`backend/routers/auth.py:321-344`) :
+  cookie `oauth_state` absent ou non concordant (`:325`), `oauth_states` introuvable
+  (`:327-329`), échange de jeton refusé (`:334-336`, seul cas journalisé
+  « Google token exchange failed »), `id_token` invalide — nonce/aud/email non
+  vérifié (`:308-316`, `:337-340`) —, compte bloqué ou supprimé (`:343-344`).
+  Aucun n'est distinguable depuis le navigateur : la redirection d'échec est la même.
+
+**À vérifier côté déploiement** (hors dépôt, non exécuté ici) : dans l'onglet réseau
+du navigateur, la redirection finale — vers `{FRONTEND_URL}/boutique` (succès) ou
+vers `/connexion?error=google` (échec) — et la présence du cookie `oauth_state` sur
+la requête `/api/auth/google/callback` ; puis les journaux de l'API. Trois variables
+d'environnement décident du cookie d'état et de l'`redirect_uri` enregistré chez
+Google : `COOKIE_DOMAIN` / `COOKIE_SAMESITE` (`backend/core/security.py:81-94` —
+sans `COOKIE_DOMAIN`, l'état part en `SameSite=None`, donc exposé au blocage des
+cookies tiers selon le navigateur) et `BACKEND_PUBLIC_URL`
+(`backend/routers/auth.py:95-96` ; à défaut, `redirect_uri` est construit depuis
+l'en-tête de la requête, et un proxy qui ne transmet pas l'hôte d'origine fait
+refuser l'échange de jeton par Google).
+
 ## Besoins backend
 
 Aucun bloquant : aucune route appelée par REF n'est absente du backend. Deux
@@ -556,3 +591,10 @@ e300442 fix(auth): backend = api.magicgame.store, formulaires de connexion réel
    lancés une fois sur l'état final (sorties brutes en « Validation de cette
    session ») ; aucun parcours navigateur n'a été rejoué pour PL-FE-019 (le
    brief l'excluait).
+11. **Connexion Google** : les deux défauts du prototype sont corrigés (retour sur
+   la liste des jeux, plus de blocage sur `/connexion` quand la session est
+   valide), mais **la boucle du retour Google n'est pas prouvée résolue** — elle
+   vient très probablement du déploiement (cookie d'état `oauth_state` ou
+   `redirect_uri`), que je ne peux pas observer sans identifiants Google. Les
+   vérifications à faire hors dépôt sont listées dans « Connexion Google — retour
+   et boucle » ci-dessus.
