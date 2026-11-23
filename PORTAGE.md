@@ -275,12 +275,32 @@ Prompt : **PL-006-FE-03-V1**.
 | Choix de la méthode (manuel vs binance) | `pages/Checkout.js:160-180` | — | — | à vérifier | à porter |
 | Création de commande (payload exact) | `pages/Checkout.js:135-142` | `POST /orders` (`routers/orders.py:315`) | non | à vérifier | à porter |
 | Preuve de paiement (1 à 3 captures) | `components/store/checkout/ProofPay.js:119` | `POST /orders/{id}/proof` (`routers/orders.py:501`) | non | à vérifier | à porter |
-| Relance admin (3 min / 3 max) | `components/store/checkout/ProofPay.js:216` | `POST /orders/{id}/remind` (`routers/orders.py:615`) | non | à vérifier | à porter |
+| Relance admin (3 min / 3 max) | `components/store/checkout/ProofPay.js:216-228` | `POST /orders/{id}/remind` (`routers/orders.py:615`, cooldown `:627`=180 s, max `:628`=3) | non | non porté (design) — aucun contrôle libre dans l'écran d'attente (`index.html:2628-2634`) | non porté (design) |
 | Annulation avec motif | `components/store/checkout/CancelSheet.js:46` | `POST /orders/{id}/cancel` (`routers/orders.py:680`) | non | à vérifier | à porter |
-| Initiation paiement (MVola/Orange) | `pages/OrderTrack.js:120` | `POST /payments/initiate` (`routers/payments.py:214`) | non | à vérifier | à porter |
+| Initiation paiement (MVola/Orange) | `pages/OrderTrack.js:114-126` (`usePaymentRetry`, appelé `:202-205,:486`) | `POST /payments/initiate` (`routers/payments.py:214`) | non | non porté (design) — main ne l'appelle que derrière un bouton « Réessayer » réservé aux statuts `failed`/`expired` et aux méthodes ni `manual` ni `binance` (`:203,:388-391,:517-519`) ; le prototype ne crée que des commandes `manual` ou `binance` | non porté (design) |
 | Statut paiement (sondage 5 s) | `pages/OrderTrack.js:97` | `GET /payments/{id}/status` (`routers/payments.py:294`) | non | à vérifier | à porter |
 | Binance : initiate / statut / « payé » | `pages/Checkout.js:177` ; `components/store/checkout/BinancePay.js:32` | `POST /crypto/initiate` (`routers/crypto.py:112`), `GET /crypto/{id}/status` (`:123`), `POST /crypto/{id}/paid` (`:130`) | non | `MGS_CRYPTO` | à porter |
-| Écran d'attente / reprise de commande | `pages/CheckoutConfirm.js` ; `lib/pendingOrder.js` | — | non | à vérifier | à porter |
+| Écran d'attente / reprise de commande | `pages/OrderTrack.js:145-231,266-359` ; `lib/pendingOrder.js:13-30,37,47,63-69` | `GET /orders/{id}` | non | `resumePendingOrder()` `index.html:3866-3886`, `hydrateCoFromOrder()` `:3846`, écrans `data-co=2/3` (`:2617,:2628`) | porté (Z3a) |
+
+### Z3a — paiement manuel (reprise, relance, initiation, sondage)
+
+Règle de conception : le design v3 n'a aucun conteneur pour une bannière de reprise ni
+pour un bouton de relance → la reprise est **silencieuse** (aucun élément visible ajouté).
+
+- **Reprise de commande en attente — PORTÉE.** Mémoire : une seule clé
+  `mgs_pending_order_id` = `{ id, createdAt }` (`index.html:3822-3833`), try/catch
+  partout, TTL 24 h, purge sur statut final / entrée introuvable — même forme que
+  `main frontend/src/lib/pendingOrder.js:13-30,37,47`. Au rechargement :
+  `GET /orders/{id}` puis **écran par statut** comme `main pages/OrderTrack.js:266-359` :
+  `pending_payment` → `data-co=2` (`index.html:2617` : compte à rebours, marchand,
+  bouton de preuve), `proof_submitted` → `data-co=3` (`:2628` : écran d'attente),
+  `pending_payment` Binance → `data-co=2` avec l'adresse/memo et **réouverture du slot**
+  par `GET /crypto/{id}/status` (`main :167-172`), jamais de 2ᵉ `initiate`.
+- **Relance admin — NON PORTÉE (design).** `main components/store/checkout/ProofPay.js:216-228`
+  → `POST /orders/{id}/remind` (`routers/orders.py:615`, cooldown `:627`=180 s, max `:628`=3).
+  L'écran d'attente du design (`index.html:2628-2634`) n'a que « Voir ma commande » :
+  aucun contrôle libre pour porter la relance. Rien n'est câblé ; à rebrancher dans un lot
+  dédié si le propriétaire accepte un contrôle visible.
 
 ---
 
