@@ -419,14 +419,13 @@ $ git diff --unified=0 | grep -E '^[+-].*(class=|style=)'  # règle 1
 (seules des lignes supprimées ; aucune valeur de classe modifiée)
 ```
 
-Un harnais pré-existant reste rouge, sans rapport avec ce portage :
-`node scripts/proto-logic.test.mjs` → **28 passed, 1 failed** —
-« initiate : réseau inconnu refusé sans appel réseau » attend un refus LOCAL
-(`invalid_network`) pour un réseau absent de la configuration. Le module
-`mgs-logic-crypto.js:208-209` documente le contraire (« aucune validation locale
-du réseau : c'est le backend qui statue »), et REF ne valide pas non plus côté
-client (`Checkout.js` ne propose que `crypto.networks`) : le test est en
-désaccord avec REF, il n'a **pas** été modifié.
+Harnais de logique : `node scripts/proto-logic.test.mjs` → **29 passed, 0 failed**.
+L'ancien test « réseau inconnu refusé sans appel réseau » attendait un refus LOCAL
+(`invalid_network`) ; REF ne valide pas le réseau côté client (`Checkout.js` ne
+propose que `crypto.networks`) et `mgs-logic-crypto.js` documente « aucune
+validation locale du réseau : c'est le backend qui statue ». Le test est aligné
+sur REF (PL-FE-017) : le réseau saisi part vers `POST /crypto/initiate`, le 400
+« Réseau USDT non disponible. » est attesté côté backend.
 
 ## Commits de cette session (branche `feat/proto-fonctionnel`, poussés)
 
