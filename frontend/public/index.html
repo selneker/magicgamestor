@@ -3803,7 +3803,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     try { history.replaceState({}, "", location.pathname + (s ? "?" + s : "") + location.hash); } catch (e) { }
     if (catalogGame) loadCatalogFor(catalogGame.name, catalogGame.slug);
   }
-  function renderCatalog(products, game) {
+  function renderCatalog(products, game, emptyKey) {
     var grid = $(".mgs-boutique-catalog .mgs-grid") || $(".mgs-boutique-catalog");
     if (!grid) return;
     var tpl = $(".mgs-boutique-catalog .mgs-pcard");
@@ -3813,11 +3813,13 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* main filtre les favoris côté client (pages/Catalog.js:155-157) */
     if (catalogQuery().favorites === "1") { var favs = getFavs(); products = (products || []).filter(function (p) { return favs.indexOf(p.id) >= 0; }); }
     if (!products || !products.length) {
-      /* backend vide ou en erreur : grille vidée + état vide, jamais de fausses cartes */
+      /* Liste VIDE (jeu sans catalogue publié) : état vide du design avec
+         `catalog.emptyGame`. L'appelant impose l'autre clé quand la requête a
+         échoué (voir loadCatalogFor). Grille vidée : jamais de fausses cartes. */
       $$(".mgs-pcard", grid).forEach(function (c) { c.remove(); });
       var ex = $(".mgs-empty", grid);
       if (!ex) { ex = doc.createElement("div"); ex.className = "mgs-empty"; ex.setAttribute("role", "status"); ex.innerHTML = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><p style="margin:0;font-weight:600"></p>'; grid.appendChild(ex); }
-      var ep = $("p", ex); if (ep) ep.textContent = t("catalog.emptyGame");
+      var ep = $("p", ex); if (ep) ep.textContent = t(emptyKey || "catalog.emptyGame");
       return;
     }
     var exOk = $(".mgs-empty", grid); if (exOk) exOk.remove();
@@ -3847,9 +3849,18 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       var g = gameByName(gameName); var gid = g ? g.id : gameIdFromSlug(gameSlug);
       var q = catalogQuery();
       if (q.game !== gid) { q.game = gid; var s0 = qs(q); try { history.replaceState({}, "", location.pathname + (s0 ? "?" + s0 : "") + location.hash); } catch (e) { } }
-      var params = { game: gid, type: q.type, q: q.q, sort: q.sort, popular: q.popular, favorites: q.favorites, min_price: q.min, max_price: q.max };
+      /* `favorites` n'existe pas au contrat déployé (GET /products : type, q,
+         min_price, max_price, popular, sort, include_inactive, game) — REF l'envoyait
+         pour rien, le backend ignore le paramètre : le filtre favoris reste
+         purement local (pages/Catalog.js:155-157, renderCatalog ci-dessus). */
+      var params = { game: gid, type: q.type, q: q.q, sort: q.sort, popular: q.popular, min_price: q.min, max_price: q.max };
       var path = "/products" + (qs(params) ? "?" + qs(params) : "");
-      return req(path).catch(function () { return []; }).then(function (products) { renderCatalog(products || [], { id: gid, name: gameName }); });
+      /* Échec de la requête (422 d'un `?sort` hors énumération, panne) : plus de
+         liste vide silencieuse — le message du catalogue est celui de REF quand sa
+         grille revient vide (`catalog.empty`, pages/Catalog.js:263). REF, lui, avale
+         l'erreur (:119 `.catch(() => setProducts([]))`) : l'écart est voulu. */
+      return req(path).then(function (products) { renderCatalog(products || [], { id: gid, name: gameName }); },
+        function () { renderCatalog([], { id: gid, name: gameName }, "catalog.empty"); });
     });
   }
 
