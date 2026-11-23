@@ -3870,9 +3870,31 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       if (!isUsablePendingOrder(o)) { clearPendingOrderId(); done(); return; }
       hydrateCoFromOrder(o);
       window.mgsShowPage("commande");
-      if (o.status === "proof_submitted") { coReceipt(); pollOrder(); }
-      else { coPay(); }
+      if (o.status === "proof_submitted") { coReceipt(); pollOrder(); return; }
+      /* pending_payment : écran par statut (main OrderTrack.js:266-359).
+         Binance → data-co=2 avec l'adresse/memo, slot rouvert par
+         GET /crypto/{id}/status (main :167-172) — jamais de 2ᵉ initiate. */
+      if (o.payment_method === "binance" && window.MGS_CRYPTO) {
+        window.MGS_CRYPTO.statusOf(o.id).then(function (s) {
+          if (s && s.payment) coPayBinance(s.payment); else coBinanceNoSlot();
+        }).catch(function () { coBinanceNoSlot(); });
+        return;
+      }
+      coPay();
     }).catch(function () { clearPendingOrderId(); done(); });
+  }
+  /* Binance sans slot actif (main OrderTrack.js:340 : « aucune preuve » sur
+     l'écran de paiement) : data-co=2, pas d'adresse, pas de preuve. */
+  function coBinanceNoSlot() {
+    var mn = $(".mgs-co-mname"); if (mn) mn.textContent = methodLabel(co.method);
+    var merch = $(".mgs-co-merchant"); if (merch) merch.hidden = true;
+    var bin = $(".mgs-co-binance"); if (bin) { bin.innerHTML = ""; bin.hidden = true; }
+    var proof = $(".mgs-co-proof"); if (proof) proof.style.display = "none";
+    var hints = $$(".mgs-co-hint"); if (hints[0]) { hints[0].textContent = t("checkout.binanceNoProof"); hints[0].style.display = ""; } if (hints[1]) hints[1].style.display = "none";
+    coShow(2);
+    var deadline = co.order && co.order.payment_deadline_at;
+    var sec = deadline ? Math.max(0, Math.floor((new Date(deadline) - new Date()) / 1000)) : ((cryptoCfg && cryptoCfg.expiryMinutes) || 30) * 60;
+    startTimer(sec); window.scrollTo(0, 0);
   }
   var RECENT_KEY = "mgs_recent_ids";
   function getRecent() { try { var a = JSON.parse(localStorage.getItem(RECENT_KEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
