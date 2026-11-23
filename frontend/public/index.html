@@ -4760,6 +4760,41 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
 
   /* ---------- points ---------- */
+  /* ---------- admin : tableau de bord RÉEL ---------- */
+  /* REF (avant PR #100) pages/admin/AdminDashboard.js : GET /admin/stats ;
+     liste des commandes : GET /admin/orders (backend routers/orders.py:737,
+     856). On peuple les slots existants du design (mgs-stat__n, table
+     .mgs-table) sans toucher au markup ni au CSS. */
+  function renderAdmin() {
+    var page = $('.mgs-page[data-page="admin"]'); if (!page) return;
+    /* Les 3 boutons du design mènent aux écrans admin non portés (PORTAGE Z6 :
+       14 écrans laissés à React) : masqués (restaurables en une ligne) et
+       listés dans PORTAGE.md « Éléments masqués ». */
+    $$('.mgs-row .button-main', page).forEach(function (b) { b.style.display = 'none'; });
+    req('/admin/stats').then(function (s) {
+      if (!s) return;
+      var daily = Array.isArray(s.daily) ? s.daily : [];
+      var cmd14 = daily.reduce(function (a, d) { return a + ((d && d.count) || 0); }, 0);
+      var sc = s.status_count || {};
+      var nums = $$('.mgs-stat__n', page);
+      if (nums[0]) nums[0].textContent = String(cmd14);
+      if (nums[1]) nums[1].textContent = arNum(s.revenue != null ? s.revenue : 0);
+      if (nums[2]) nums[2].textContent = String((sc.paid || 0) + (sc.awaiting_verification || 0));
+      if (nums[3]) nums[3].textContent = String(sc.delivered || 0);
+    }).catch(function (e) { signale(e); });
+    req('/admin/orders?limit=5').then(function (rows) {
+      rows = Array.isArray(rows) ? rows : [];
+      var tbody = $('.mgs-table tbody', page);
+      /* liste vide ou erreur : on garde le modèle du design (jamais de grille vide). */
+      if (!tbody || !rows.length) return;
+      var tpl = tbody.querySelector('tr'); var cls = tpl ? tpl.className : '';
+      tbody.innerHTML = rows.map(function (o) {
+        var b = statusBucket(o.status);
+        return '<tr class="' + cls + '"><td class="mgs-mono">' + esc(o.order_number || o.number || '') + '</td><td>' + esc(orderProductLabel(o)) + '</td><td>' + esc(orderMethodLabel(o)) + '</td><td><span class="mgs-status mgs-status--' + b + '">' + esc(statusLabel(o.status)) + '</span></td><td class="mgs-mono">' + esc(arNum(o.total)) + '</td></tr>';
+      }).join('');
+    }).catch(function (e) { signale(e); });
+  }
+
   function renderPoints() {
     if (!me) { needLogin("points"); return; }
     req("/loyalty/me").then(function (l) {
@@ -4933,10 +4968,15 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- routage : observe body[data-page] (découplé du script template) ---------- */
   var loaders = {
-    /* main App.js:82 : /admin est protégé (`ProtectedRoute admin`). Le design
-       n'a qu'un écran admin de démonstration, aucun de ses 14 écrans n'est
-       porté (PORTAGE Z6) : un visiteur non administrateur ne le voit pas. */
-    admin: function () { if (!me || (me.role !== "admin" && me.role !== "super_admin")) { needLogin("admin"); return; } },
+    /* main App.js:82 : /admin est protégé (`ProtectedRoute admin`). PAGE ADMIN
+       RÉELLE : stats + commandes récentes depuis /admin/stats et /admin/orders
+       (contrat backend routers/orders.py:737,856), injectés dans les slots
+       existants du design. Les 14 écrans du design ne sont pas portés : leurs
+       boutons sont masqués dans renderAdmin(). */
+    admin: function () {
+      if (!me || (me.role !== "admin" && me.role !== "super_admin")) { needLogin("admin"); return; }
+      renderAdmin();
+    },
     /* Panier vide sur /commande : REF n'affiche JAMAIS le tunnel (état « panier
        vide » + lien boutique, pages/Checkout.js:250-252). Le design n'a pas cet
        état sur cet écran : on renvoie à la boutique avec le message de REF.
