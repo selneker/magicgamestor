@@ -4646,7 +4646,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function skelText(el) { if (el) el.innerHTML = '<span class="mgs-skel"></span>'; }
   function skelCard(tpl) {
     var c = tpl.cloneNode(true); c.removeAttribute("id");
-    $$("p,h1,h2,h3,small,strong,td,label", c).forEach(function (e) { if (!e.children.length) e.innerHTML = '<span class="mgs-skel"></span>'; });
+    $$("*", c).forEach(function (e) { if (!e.children.length && e.textContent.trim()) e.innerHTML = '<span class="mgs-skel"></span>'; });
     return c;
   }
   function skelGrid(grid, tpl, n) { if (!grid || !tpl) return; var frag = doc.createDocumentFragment(); for (var k = 0; k < n; k++) frag.appendChild(skelCard(tpl)); grid.innerHTML = ""; grid.appendChild(frag); }
