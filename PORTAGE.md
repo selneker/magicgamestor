@@ -282,6 +282,7 @@ anciens liens `#page` continuent de fonctionner.
 | Élément | Emplacement | Pourquoi | Comment le rétablir |
 |---|---|---|---|
 | Formulaire d'abonnement du pied de page | `.footer .form-block` | aucune route backend ne l'accepte (seule l'inscription push **admin** existe, `routers/push.py:60`) | retirer la ligne `.footer .form-block` de `maskUnsupported` |
+| Pastille de date des cartes événement | `.mgs-card .mgs-chip` (page Événements) | la réponse ne porte aucune date (`starts_at` n'existe pas) et REF n'en affiche pas (`Events.js:39-52`) | remplacer `chip.style.display = "none"` par le remplissage voulu dans `renderEvents` |
 
 ## Éléments visibles manquants (besoin d'un ajout de design, remonté au propriétaire)
 
@@ -316,6 +317,37 @@ anciens liens `#page` continuent de fonctionner.
 | `POST /crypto/initiate` | réseau choisi dans `GET /crypto/config` | 400 « Réseau USDT non disponible. » (`routers/crypto.py:77-78`) | le prototype envoie le réseau choisi dans le sélecteur (`initiateBinance`) |
 | `POST /fazercards/validate-id` | codes `invalid_id`, `missing_field` (`lib/identityErrors.js:20-25`) | `routers/fazercards.py:118` | table de verdicts identique (`identityErrorKey`) |
 
+## Écarts PL-FE-019 (traités d'après l'audit du contrat déployé, PL-FE-018)
+
+Référence = PR #100 (`b34df6e`) ; contrat déployé = `~/openapi-live.json`
+(sha256 identique à `https://api.magicgame.store/openapi.json`). Un commit par
+point, sur `feat/proto-fonctionnel`.
+
+| # | Écart constaté | Décision | Source REF |
+|---|---|---|---|
+| 1 | `GET /evo/season` ne publie pas `season.product_id` : le prototype lisait un champ inexistant et n'appelait donc jamais `/evo/eligibility` | l'offre vient de `GET /products?type=evo`, et l'éligibilité porte sur SON `id` ; sans offre → état vide `evo.empty` | `pages/PackEvolutif.js:29` (liste), `:40` (éligibilité de l'offre choisie) ; la saison ne sert qu'au nom, `:30,64` |
+| 2 | la pastille de carte événement lisait `ev.starts_at`, absent de la réponse déployée | pastille **masquée** (`display:none`) : REF ne date pas ses cartes, aucun champ à reprendre | `pages/Events.js:39-52` (badge, image, titre, description, prix, CTA, j'aime/partage) |
+| 3 | `favorites` envoyé à `GET /products` alors qu'il n'est pas au contrat, et un échec (422 d'un `?sort` hors énumération) transformé en liste vide | paramètre retiré (le filtre favoris reste local) ; l'échec affiche le message du catalogue | `pages/Catalog.js:118` (REF l'envoie pour rien), `:155-157` (filtre local), `:263` (`catalog.empty`) |
+| 4 | `POST /crypto/initiate` : un réseau refusé arrive en 422 (motif `^(TRC20\|BEP20\|APTOS\|TON)$`), le code ne traitait que le 400 | le 422 suit le même code `network_unavailable` que le 400 → même message côté appelant | `Checkout.js:220` (appel) ; libellé 400 = `routers/crypto.py:77-78` |
+| 5 | `missing_field` est aussi renvoyé pour un format invalide | **aucun changement** : le prototype porte déjà la table de REF, et REF n'affiche **jamais** le message du backend | `lib/identityErrors.js:16-38` (table), `IdentityFieldsVerify.js:117-124,138` (jamais `message`/`detail`) ; preuve `pages/Loyalty.test.js:192,200` (message simulé « api message », texte attendu = clé de la table) |
+| 6 | le chat envoyait `sujet + "\n\n" + texte` | texte seul, borné à 2 000 caractères | `components/chat/ChatThread.js:86` (`{ text: draft.trim() }`), `:117` (`maxLength={2000}`) |
+| 7 | 404 de commande affichés en anglais (« Order not found ») | clé i18n `order.notFound` | `pages/OrderTrack.js:452` (`status === 404 ? t("order.notFound") : errorMessage(e)`) |
+
+Hors périmètre, faute d'affichage côté REF : « No payment for this order » — le
+sondage `GET /payments/{id}/status` avale l'erreur chez REF
+(`pages/OrderTrack.js:97`) comme dans le prototype.
+
+### Besoin backend (point 1)
+
+**Aucun.** `routers/evo.py` n'utilise la saison que pour `season['id']` et
+`season['name']` (`evo.py:35-56,64-80`) ; l'offre éligible est publiée par
+`GET /products?type=evo` (`routers/products.py:75`). En revanche, l'instance
+interrogée pendant l'audit renvoyait `[]` à `GET /games` **et** à `GET /products`
+(même avec `include_inactive=true`) : tant qu'aucun jeu ni produit n'est publié,
+la page pack affiche `evo.empty` et la boutique n'a aucun article — **données,
+pas code** (à confirmer par le propriétaire : `api.magicgame.store` porte-t-il
+bien le catalogue de production ?).
+
 ## Besoins backend
 
 Aucun bloquant : aucune route appelée par REF n'est absente du backend. Deux
@@ -342,7 +374,8 @@ sont aujourd'hui contournés sans perte de comportement).
 | `POST /auth/me/delete` | `confirmation`, `password` (si saisi) | `Account.js:148` | `routers/auth.py:436` |
 | `POST /loyalty/redeem` | `reward_id`, `pubg_id` | `Loyalty.js:148` | `routers/loyalty.py:73` |
 | `POST /chat/conversations` / `…/{id}/messages` | `{}` / `{text}` | `ChatWorkspace.js:51`, `ChatThread.js:86` | `routers/chat.py:48,80` |
-| `GET /products` | `game`, `type`, `q`, `sort`, `popular`, `favorites`, `min_price`, `max_price` | `Catalog.js:142` | `routers/products.py:75` |
+| `GET /products` | `game`, `type`, `q`, `sort`, `popular`, `min_price`, `max_price` (`favorites` retiré en PL-FE-019 : hors contrat, filtre local) | `Catalog.js:118` | `routers/products.py:75` |
+| `GET /products?type=evo` | `type` (sélecteur d'offre du pack évolutif, PL-FE-019) | `PackEvolutif.js:29` | `routers/products.py:75` |
 
 ## Configuration à poser au déploiement (inchangé)
 
@@ -395,6 +428,41 @@ Deux défauts trouvés par ce contrôle et corrigés :
 
 ## Validation de cette session (sorties brutes)
 
+### PL-FE-019 (état final, points 1 à 7)
+
+```
+$ python3 check_region.py frontend/public/index.html       # après chaque commit
+frontend/public/index.html -> …/check-index.html.js (148168 car.)  node --check exit=0
+
+$ node i18n-check.mjs                                      # script jetable, hors dépôt
+clés FR=129 EN=129
+FR sans EN : aucune
+EN sans FR : aucune
+clés citées en dur : 78 | absentes d'une langue : 0
+familles de clés concaténées : 2
+  ok order.next. FR=9 EN=9  (index.html(runtime))
+  ok order.status. FR=9 EN=9  (index.html(runtime))
+clés du dictionnaire jamais citées : aucune
+EXIT=0
+
+$ cd frontend && REACT_APP_BACKEND_URL=… yarn build
+[ok] REACT_APP_BACKEND_URL est definie (source : l'environnement de build).
+Compiled successfully.   Done in 3.88s.                        EXIT=0
+
+$ cd frontend && yarn test:ci
+Test Suites: 45 passed, 45 total
+Tests:       534 passed, 534 total
+Time:        37.736 s                                          EXIT=0
+
+$ cd frontend && node scripts/proto-logic.test.mjs          # logique crypto + captcha
+29 passed, 0 failed (29 tests)                                 EXIT=0
+```
+
+Non exécuté pour PL-FE-019 : parcours navigateur (le brief l'excluait),
+`yarn audit:contrast` (aucun `.css` ni style modifié).
+
+### PL-FE-017 (session précédente)
+
 ```
 $ node --check <runtime extrait de index.html>          # après chaque commit
 node --check OK
@@ -429,12 +497,29 @@ sur REF (PL-FE-017) : le réseau saisi part vers `POST /crypto/initiate`, le 400
 
 ## Commits de cette session (branche `feat/proto-fonctionnel`, poussés)
 
+### PL-FE-019 (un commit par point, dans l'ordre des points 1 → 7)
+
+```
+edf936f fix(proto): pack évolutif — l'offre vient de GET /products?type=evo (REF PackEvolutif.js:29,40), plus du product_id de saison inexistant au contrat déployé
+fc4fb24 fix(proto): pastille de carte événement masquée — starts_at absent du contrat déployé et REF ne date pas ses cartes (Events.js:39-52)
+e20b5d7 fix(proto): catalogue — 'favorites' retiré de GET /products (hors contrat, filtre local conservé) et échec de la requête affiché au lieu d'une liste vide
+f37b1de fix(proto): /crypto/initiate — un 422 (réseau hors de l'énumération du contrat) suit le 400 « réseau refusé », test logique aligné
+c4c4f66 fix(proto): chat — texte seul comme REF (ChatThread.js:86), borné à 2 000 caractères (MessageIn / ChatThread.js:117)
+81443af fix(proto): 404 de commande — clé order.notFound de REF (OrderTrack.js:452) au lieu du « Order not found » anglais du backend
+<ce commit> docs(proto): PORTAGE.md — écarts PL-FE-019 (point 5 : aucun changement, besoin backend : aucun)
+```
+
+Point 5 n'a produit **aucun commit** : le mapping du prototype est déjà celui de
+REF et REF n'affiche jamais le message du backend (démonstration ci-dessus).
+
+### Session précédente (PL-FE-017)
+
 ```
 b1f1c70 feat(proto): vrais liens de pages + fonctions du design rebranchées
 6586da7 feat(proto): la barre d'adresse affiche /produit/<slug> quand la fiche est ouverte
 0219c78 fix(z6): clés i18n ajoutées (11 clés de REF) — 0 clé hors REF
 e300442 fix(auth): backend = api.magicgame.store, formulaires de connexion réels (Google + gestionnaire de mots de passe)
-<ce commit> fix(proto): message d'attente et libellés = statuts réels de la commande
+2559ed5 fix(proto): test logique aligné sur REF — pas de validation locale du réseau
 ```
 
 ## Reste ouvert (remonté au propriétaire)
@@ -454,3 +539,20 @@ e300442 fix(auth): backend = api.magicgame.store, formulaires de connexion réel
 4. **`yarn audit:contrast`** n'a pas été lancé (aucun `.css` modifié).
 5. Deux fichiers non suivis n'ont pas été touchés :
    `frontend/scripts/proto-z3b-dev.mjs`, `orchestration(portage).md`.
+6. **Champ « Sujet » du formulaire de support** : le design l'affiche, REF n'a
+   pas ce champ et PL-FE-019 n'envoie que le message (`{text}`). La saisie du
+   sujet n'est donc pas transmise — à trancher : masquer le champ, ou
+   concaténer sujet et message (comportement d'avant PL-FE-019).
+7. **`ev.badge` non affiché** (« RP », « Prize Path ») : REF le rend en pastille
+   sur l'image (`pages/Events.js:42`) et le design porte pour cela une classe
+   `.mgs-card__badge` (règle CSS présente, aucun usage dans le markup).
+   L'afficher créerait un élément visible → hors périmètre de PL-FE-019.
+8. **Pastille de date des événements masquée** (voir « Éléments masqués ») :
+   aucune date dans la réponse, aucune chez REF.
+9. **Catalogue vide sur l'instance interrogée** (`GET /games` et `GET /products`
+   → `[]`) : aucune commande réelle possible tant qu'aucun jeu ni produit n'est
+   publié. Données, pas code.
+10. **Vérifications non exécutées** : `yarn build` et `yarn test:ci` ont été
+   lancés une fois sur l'état final (sorties brutes en « Validation de cette
+   session ») ; aucun parcours navigateur n'a été rejoué pour PL-FE-019 (le
+   brief l'excluait).
