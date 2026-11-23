@@ -4038,7 +4038,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     }).catch(function () { });
   }
   function initiateBinance(order) {
-    var net = co.network || (cryptoCfg && cryptoCfg.networks && cryptoCfg.networks[0] && cryptoCfg.networks[0].key) || "TRC20";
+    /* Réseau retenu = la config serveur (cryptoCfg.networks), jamais une
+       constante : le backend statue (routers/crypto.py:77-78). */
+    var net = co.network || (cryptoCfg && cryptoCfg.networks && cryptoCfg.networks[0] && cryptoCfg.networks[0].key) || "";
+    if (!net) { toast(t("checkout.papiOff"), "err"); coShow(1); return; }
     window.MGS_CRYPTO.initiate(order.id, net).then(function (r) {
       if (r.ok && r.payment) { coPayBinance(r.payment); return; }
       if (r.code === "already_open") { window.MGS_CRYPTO.statusOf(order.id).then(function (s) { if (s.payment) coPayBinance(s.payment); else { toast(t("checkout.papiOff"), "err"); coShow(1); } }); return; }

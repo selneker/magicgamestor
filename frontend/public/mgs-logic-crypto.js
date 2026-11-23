@@ -26,9 +26,10 @@
   /* Même cadence que `main` (BinancePay.js:11). */
   var POLL_MS = 8000;
 
-  /* `backend/routers/crypto.py:15` (pattern Pydantic) et
-   * `backend/services/crypto.py:13-15`. */
-  var NETWORKS = ["TRC20", "BEP20", "APTOS", "TON"];
+  /* La liste des réseaux n'est PAS codée en dur : elle vient de
+   * `GET /crypto/config` — `backend/services/crypto.py:46-47,58-62` renvoie
+   * uniquement les réseaux actifs — et le backend statue sur un réseau
+   * invalide (`routers/crypto.py:77-78`). */
   var STATUS = { WAITING: "WAITING", DETECTED: "DETECTED", CONFIRMED: "CONFIRMED", FAILED: "FAILED" };
 
   function backend() {
@@ -199,17 +200,18 @@
   /**
    * initiate(orderId, network) — POST /crypto/initiate { order_id, network }.
    * Résout { ok, code, status, detail, payment }.
-   * Codes : "ok" | "invalid_network" (aucun appel) | "network_error"
+   * Codes : "ok" | "network_error"
    * | "not_binance" | "network_unavailable" | "bad_request" | "forbidden"
    * | "order_not_found" | "already_open" | "not_pending" | "unavailable"
    * | "conflict" | "rate_limited" | "too_many" | "http_<status>".
    * `detail` est le texte brut du backend (donnée, pas une chaîne du module).
+   * Aucune validation locale du réseau : c'est le backend qui statue
+   * (`routers/crypto.py:77-78` → 400 « Réseau USDT non disponible. »).
    */
   function initiate(orderId, network) {
     var id = orderId != null ? String(orderId) : "";
     var net = network != null ? String(network) : "";
     if (!id) return Promise.resolve({ ok: false, code: "order_not_found", status: 0, detail: "", payment: null });
-    if (NETWORKS.indexOf(net) === -1) return Promise.resolve({ ok: false, code: "invalid_network", status: 0, detail: "", payment: null });
     return call("POST", "/crypto/initiate", { order_id: id, network: net }).then(function (res) {
       if (res.network) return { ok: false, code: "network_error", status: 0, detail: "", payment: null };
       if (res.status >= 200 && res.status < 300) {
@@ -322,7 +324,6 @@
   root.MGS_CRYPTO = {
     backend: backend,
     pollMs: POLL_MS,
-    networks: NETWORKS.slice(),
     status: STATUS,
     useTransport: useTransport,
     loadConfig: loadConfig,

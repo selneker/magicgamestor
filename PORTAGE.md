@@ -1,3 +1,22 @@
+RÉFÉRENCE = PR #100 = b34df6e 2026-11-14 « PL-005-FE-02: … (#100) »
+(l'état de `main` juste après la fusion de la PR #100).
+
+Preuve :
+
+```
+$ git log --first-parent --format='%h %ad %s' --date=short main | grep -E '#100([^0-9]|$)'
+b34df6e 2026-11-14 PL-005-FE-02: … (#100)
+$ git log -1 --format='%h %p' b34df6e
+b34df6e 05e35b4           # fusion « squash » : un seul parent
+$ git log -1 --format='%h %p' b34df6e^
+05e35b4 dd22cbb           # commit juste avant
+$ git log -1 --format='%h %p' 3cdf977      # commit juste après
+3cdf977 b34df6e
+```
+
+`REF` = `b34df6e` dans tout ce fichier. Toute lecture de REF se fait par
+`git show b34df6e:<fichier>` (jamais de `checkout`).
+
 # PORTAGE — application `main` → prototype statique
 
 Fichier de reprise. Il liste **chaque fonction** portée, sa source dans `main`
