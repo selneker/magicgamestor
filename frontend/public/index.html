@@ -909,12 +909,15 @@ body[data-page="connexion"] .main-w{padding-bottom:0}
 /* NAV desktop : points fidélité + actions compte/panier bold */
 .nav-desktop-actions{display:none}
 .nav-points-pill{display:none}
+.nav-avatar-d{display:none}
 @media (min-width:992px){
   .nav-desktop-actions{display:flex;align-items:center;grid-column-gap:var(--gap-xxs)}
   .nav-points-pill{display:inline-flex;align-items:center;gap:.5em;border:.125em solid var(--color--dark);border-radius:100em;background:var(--color--light);color:var(--color--dark);padding:.5em 1.15em;font-weight:700;font-size:.85em;min-height:2.9em;white-space:nowrap;transition:.3s var(--elastic-ease-out)}
   .nav-points-pill:hover{background:var(--color--yellow-700);transform:translateY(-.125em)}
   .nav-points-pill .bold-ic{width:1.3em;height:1.3em}
   .nav-points-pill .pts-n{font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;font-size:1.15em}
+  /* Photo de profil : à droite du chiffre des points (consigne du propriétaire) */
+  .nav-avatar-d{display:inline-flex;width:2.9em;height:2.9em;border-radius:100em;border:.125em solid var(--color--dark);overflow:hidden;background:var(--color--light);padding:0}
 }
 /* COMMANDES overview : carte 3 zones (concept déployé) style Slush */
 .mgs-order-list{gap:.75em}
@@ -2115,6 +2118,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
           <button type="button" class="nav-btn-circle nav-action nav-cart-btn" aria-label="Panier : 2 articles (démo)"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg><span class="nav-action-badge">2</span></button>
         </div>
         <a href="#" data-nav="points" class="nav-points-pill" aria-label="Points fidélité : 120"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h3.5a1.5 1.5 0 0 1 0 3h-2a1.5 1.5 0 0 0 0 3h3.5"/></svg><span><span class="pts-n">120</span> pts</span></a>
+        <a href="#" data-nav="compte" class="nav-avatar-d" aria-label="Compte"></a>
       </div>
       <div class="nav-mobile-panel" id="navMobilePanel" role="menu" aria-label="Menu de navigation">
         <a href="#" data-nav="boutique" role="menuitem">Boutique</a>
@@ -3782,6 +3786,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var slug = card.dataset && card.dataset.slug;
     var gname = ($(".mgs-cat-game") || {}).textContent || "";
     if (!slug) { renderProduit(pillInfo(card), gname); window.mgsShowPage("produit"); return; }
+    var pp = $(".mgs-page[data-page=produit]");
+    if (pp) { skelText($("h1", pp)); skelText($(".mgs-price", pp)); skelText($(".mgs-eyebrow", pp)); skelText($(".mgs-sub", pp)); }
     req("/products/" + encodeURIComponent(slug)).then(function (p) { renderProduit(p, gname); window.mgsShowPage("produit"); }).catch(function () { renderProduitError(); window.mgsShowPage("produit"); });
   }
   function produitItem() {
@@ -3861,6 +3867,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
          purement local (pages/Catalog.js:155-157, renderCatalog ci-dessus). */
       var params = { game: gid, type: q.type, q: q.q, sort: q.sort, popular: q.popular, min_price: q.min, max_price: q.max };
       var path = "/products" + (qs(params) ? "?" + qs(params) : "");
+      /* Fil de fer le temps du chargement — jamais de cartes du gabarit. */
+      skelGrid($(".mgs-boutique-catalog .mgs-grid") || $(".mgs-boutique-catalog"), window.__mgsCatalogTpl || $(".mgs-boutique-catalog .mgs-pcard"), 6);
       /* Échec de la requête (422 d'un `?sort` hors énumération, panne) : plus de
          liste vide silencieuse — le message du catalogue est celui de REF quand sa
          grille revient vide (`catalog.empty`, pages/Catalog.js:263). REF, lui, avale
@@ -4512,6 +4520,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     orderPaginate();
   }
   function loadOrders() {
+    /* Fil de fer le temps du chargement — jamais de lignes du gabarit. */
+    var olist = $(".mgs-order-list");
+    if (olist) { var ofrag = doc.createDocumentFragment(); for (var k = 0; k < 4; k++) { var od = doc.createElement("div"); od.className = "mgs-order"; od.innerHTML = '<span class="mgs-skel"></span><span class="mgs-skel"></span><span class="mgs-skel"></span>'; ofrag.appendChild(od); } olist.innerHTML = ""; olist.appendChild(ofrag); }
     if (!me) { renderOrders([]); return Promise.resolve([]); }
     return req("/orders/me").then(function (orders) { orders = Array.isArray(orders) ? orders : (orders && orders.orders) || []; orders.sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); }); renderOrders(orders); return orders; }).catch(function (e) { toast(errMsg(e), "err"); return []; });
   }
@@ -4544,7 +4555,22 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function updatePointsPill(pts) { loyaltyOk = pts != null; var txt = pts == null ? "—" : String(pts); $$(".pts-n").forEach(function (e) { e.textContent = txt; }); $$('[aria-label*="Points fidélité"]').forEach(function (e) { var b = $(".nav-action-badge", e); if (b) b.textContent = txt; e.setAttribute("aria-label", txt === "—" ? "Points fidélité indisponibles" : "Points fidélité : " + txt); }); syncAuthChrome(); }
   /* invité vs connecté : chrome de nav (pill points desktop + cercle points mobile) */
   var authBusy = false;
-  function syncAuthChrome() { var on = !!me && loyaltyOk; $$(".nav-points-pill").forEach(function (e) { e.style.display = on ? "" : "none"; }); $$('.nav-mobile-actions a[data-nav="points"]').forEach(function (e) { e.style.display = on ? "" : "none"; }); }
+  function syncAuthChrome() {
+    var on = !!me && loyaltyOk;
+    $$(".nav-points-pill").forEach(function (e) { e.style.display = on ? "" : "none"; });
+    $$('.nav-mobile-actions a[data-nav="points"]').forEach(function (e) { e.style.display = on ? "" : "none"; });
+    /* Photo de profil à la place de l'icône : dans la nav, à droite du chiffre
+       des points (desktop), et sur le cercle « Compte » du mobile. */
+    $$(".nav-avatar-d").forEach(function (e) {
+      if (on && !e.dataset.av) { paintAvatar(e); e.dataset.av = "1"; }
+      e.style.display = on ? "" : "none";
+    });
+    $$('.nav-mobile-actions a[data-nav="compte"]').forEach(function (e) {
+      if (!e.dataset.ic) e.dataset.ic = e.innerHTML;
+      if (on) { if (!e.dataset.av) { paintAvatar(e); e.dataset.av = "1"; } }
+      else if (e.dataset.av) { e.innerHTML = e.dataset.ic; delete e.dataset.av; }
+    });
+  }
   /* Destination après connexion : toujours la Boutique (consigne du propriétaire)
      — l'écran d'où venait l'invité n'est plus mémorisé. Tant que la session n'est
      pas connue, on ne redirige pas : l'écran demandé par l'URL s'affiche d'abord et
@@ -4570,9 +4596,71 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (st && AUTH_STATUS_KEYS[st]) return t(AUTH_STATUS_KEYS[st]);
     return t(fallback || "auth.errorGeneric");
   }
+  /* Photo de profil : le contrat déployé n'expose AUCUN champ d'avatar
+     (`GET /auth/me` = name, email, phone, saved_pubg_ids…) → la photo ne peut
+     venir que de l'email (Gravatar, MD5 standard), sinon les initiales du nom.
+     shortcut: gravatar.com = appel externe sur le hash MD5 de l'email ; image
+     absente ou réseau bloqué → on retombe sur les initiales. */
+  function md5(str) {
+    var s = unescape(encodeURIComponent(String(str))), len = s.length, blocks = Math.ceil((len + 9) / 64), w = [], i, k;
+    for (i = 0; i < blocks * 16; i++) w.push(0);
+    for (i = 0; i < len; i++) w[i >> 2] |= s.charCodeAt(i) << ((i % 4) * 8);
+    w[len >> 2] |= 0x80 << ((len % 4) * 8);
+    w[blocks * 16 - 2] = len * 8;
+    function add(x, y) { var l = (x & 0xffff) + (y & 0xffff), m = (x >> 16) + (y >> 16) + (l >> 16); return (m << 16) | (l & 0xffff); }
+    function rol(x, c) { return (x << c) | (x >>> (32 - c)); }
+    function cm(q, a, b, x, sh, t) { return (rol(add(add(a, q), add(x, t)), sh) + b) | 0; }
+    function ff(a, b, c, d, x, sh, t) { return cm((b & c) | (~b & d), a, b, x, sh, t); }
+    function gg(a, b, c, d, x, sh, t) { return cm((b & d) | (c & ~d), a, b, x, sh, t); }
+    function hh(a, b, c, d, x, sh, t) { return cm(b ^ c ^ d, a, b, x, sh, t); }
+    function ii(a, b, c, d, x, sh, t) { return cm(c ^ (b | ~d), a, b, x, sh, t); }
+    var K = [], SH = [[7, 12, 17, 22], [5, 9, 14, 20], [4, 11, 16, 23], [6, 10, 15, 21]];
+    for (k = 1; k <= 64; k++) K.push(Math.floor(Math.abs(Math.sin(k)) * 4294967296));
+    var a = 0x67452301, b = 0xefcdab89, c = 0x98badcfe, d = 0x10325476;
+    for (var blk = 0; blk < blocks; blk++) {
+      var aa = a, bb = b, cc = c, dd = d, o = blk * 16;
+      for (i = 0; i < 64; i++) {
+        var f, g, sh;
+        if (i < 16) { g = i; sh = SH[0][i % 4]; f = ff(aa, bb, cc, dd, w[o + g], sh, K[i]); }
+        else if (i < 32) { g = (5 * i + 1) % 16; sh = SH[1][i % 4]; f = gg(aa, bb, cc, dd, w[o + g], sh, K[i]); }
+        else if (i < 48) { g = (3 * i + 5) % 16; sh = SH[2][i % 4]; f = hh(aa, bb, cc, dd, w[o + g], sh, K[i]); }
+        else { g = (7 * i) % 16; sh = SH[3][i % 4]; f = ii(aa, bb, cc, dd, w[o + g], sh, K[i]); }
+        var tmp = dd; dd = cc; cc = bb; bb = f; aa = tmp;
+      }
+      a = add(a, aa); b = add(b, bb); c = add(c, cc); d = add(d, dd);
+    }
+    function hex(n) { var out = ""; for (k = 0; k < 4; k++) out += ("0" + ((n >> (k * 8)) & 255).toString(16)).slice(-2); return out; }
+    return hex(a) + hex(b) + hex(c) + hex(d);
+  }
+  function avatarSrc() { var e = String((me && me.email) || "").trim().toLowerCase(); return e ? "https://www.gravatar.com/avatar/" + md5(e) + "?s=96&d=mp" : null; }
+  function initials() { var n = ((me && (me.name || me.email)) || "").trim(); return (n ? n.slice(0, 2) : "MG").toUpperCase(); }
+  function paintAvatar(el) {
+    if (!el) return;
+    var src = avatarSrc();
+    if (!src) { el.textContent = initials(); return; }
+    el.innerHTML = '<img alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">';
+    var im = $("img", el);
+    if (im) { im.onerror = function () { el.textContent = initials(); }; im.src = src; }
+  }
+  /* Chargement = fil de fer (.mgs-skel), jamais le texte du gabarit de démo. */
+  function skelText(el) { if (el) el.innerHTML = '<span class="mgs-skel"></span>'; }
+  function skelCard(tpl) {
+    var c = tpl.cloneNode(true); c.removeAttribute("id");
+    $$("p,h1,h2,h3,small,strong,td,label", c).forEach(function (e) { if (!e.children.length) e.innerHTML = '<span class="mgs-skel"></span>'; });
+    return c;
+  }
+  function skelGrid(grid, tpl, n) { if (!grid || !tpl) return; var frag = doc.createDocumentFragment(); for (var k = 0; k < n; k++) frag.appendChild(skelCard(tpl)); grid.innerHTML = ""; grid.appendChild(frag); }
+
   function renderAccount() {
+    /* Fil de fer tant que la session et les chiffres ne sont pas là : le gabarit
+       de démo (« Mamy Gamer ») ne doit jamais être affiché comme une donnée. */
+    skelText($(".mgs-page[data-page=compte] .mgs-avatar"));
+    $$(".mgs-page[data-page=compte] .mgs-stat__n").forEach(skelText);
+    skelText($(".mgs-page[data-page=compte] .mgs-panel.mgs-row div p"));
+    skelText($(".mgs-page[data-page=compte] .mgs-panel.mgs-row .mgs-muted"));
+    ["acc-name", "acc-phone", "acc-ids"].forEach(function (id) { var f = document.getElementById(id); if (f) f.value = ""; });
     if (!me) { needLogin(); return; }
-    var name = me.name || me.email || "—"; var av = $(".mgs-avatar"); if (av) av.textContent = (name.trim().slice(0, 2) || "MG").toUpperCase();
+    var name = me.name || me.email || "—"; paintAvatar($(".mgs-avatar"));
     var head = $(".mgs-page[data-page=compte] .mgs-panel.mgs-row");
     if (head) { var nm = $("div p", head); if (nm) nm.textContent = name; var sub = $(".mgs-muted", head); if (sub) sub.textContent = (me.email || "") + (me.created_at ? " · membre depuis " + fmtDate(me.created_at).date : ""); }
     var an = $("#acc-name"); if (an) an.value = me.name || ""; var ap = $("#acc-phone"); if (ap) ap.value = me.phone || ""; var ai = $("#acc-ids"); if (ai) ai.value = (me.saved_pubg_ids || []).join(", ");
