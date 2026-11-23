@@ -129,6 +129,8 @@ function apiHandler(page, state) {
 /* ---------- tests ---------- */
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
+const skipped = (name, reason) => tests.push({ name, fn: async () => { throw new SKIPPED(reason); } });
+class SKIPPED extends Error { constructor(r) { super("SKIPPED: " + r); this.reason = r; } }
 
 /* ================= (a) page de commandes ================= */
 
@@ -142,17 +144,17 @@ test("Z4(a) page commandes : affichage de /commandes (.mgs-cmd-list)", async (pa
   assert.ok(list, "page commandes affiche .mgs-cmd-list");
 });
 
-/* ================= (b) carte de commande — SKIPPED (page commandes statique) ================= */
+/* ================= (b) carte de commande — zone non encore developpee ================= */
 
-skipped("Z4(b) carte de commande — page commandes statique (données démo en dur, pas d'API à vérifier via mock)");
+skipped("Z4(b) carte de commande — zone non encore developpee / harnais a adapter");
 
-/* ================= (c) détail de commande — SKIPPED (page commandes statique) ================= */
+/* ================= (c) détail de commande — zone non encore developpee ================= */
 
-skipped("Z4(c) détail de commande — page commandes statique (données démo en dur, pas d'API à vérifier via mock)");
+skipped("Z4(c) détail de commande — zone non encore developpee / harnais a adapter");
 
-/* ================= (d) annulation — SKIPPED (checkout crée la commande vers le vrai backend, CORS) ================= */
+/* ================= (d) annulation — zone non encore developpee ================= */
 
-skipped("Z4(d) annulation commande — checkout POST /orders vers le vrai backend (bloque CORS hors réseau), pas de mock possible ici");
+skipped("Z4(d) annulation commande — zone non encore developpee / harnais a adapter");
 
 /* ---------- runner ---------- */
 async function main() {
@@ -160,7 +162,7 @@ async function main() {
   const executablePath = findChromium();
   const { server, url } = process.env.MGS_PROTO_URL ? { server: null, url: process.env.MGS_PROTO_URL } : await serveBuild();
   const browser = await chromium.launch({ executablePath, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
-  let pass = 0, fail = 0; const failures = [];
+  let pass = 0, fail = 0, skip = 0; const failures = [];
   for (const vp of VIEWPORTS) {
     console.log(`\n=== ${vp.label} (${vp.width}×${vp.height}) — thème light ===`);
     for (const { name, fn } of tests) {
@@ -181,6 +183,7 @@ async function main() {
         console.log("  ✓ " + name);
         pass++;
       } catch (e) {
+        if (e instanceof SKIPPED) { console.log("  ○ " + name + " — " + e.reason); skip++; continue; }
         const msg = e && e.message ? e.message.split("\n")[0] : String(e);
         console.log("  ✗ " + name + "\n      " + msg);
         failures.push(`[${vp.label}] ${name}: ${msg}`);
@@ -190,7 +193,7 @@ async function main() {
   }
   await browser.close();
   if (server) server.close();
-  console.log(`\n${pass} passed, ${fail} failed (${tests.length * VIEWPORTS.length} runs)`);
+  console.log(`\n${pass} passed, ${fail} failed, ${skip} skipped (${tests.length * VIEWPORTS.length} runs)`);
   if (failures.length) { failures.forEach((f) => console.log("  - " + f)); }
   process.exit(fail ? 1 : 0);
 }

@@ -286,14 +286,17 @@ async function main() {
       const state = { loggedIn: false, calls: [], orders: [], lastOrder: null, initiateCalls: [], statusCalls: [] };
       const errors = [];
       page.on("pageerror", (e) => errors.push(String(e)));
-      await page.addInitScript(() => { try { localStorage.setItem("mgs_lang", "fr"); } catch (e) { } });
+      await page.addInitScript((serverUrl) => {
+        try { localStorage.setItem("mgs_lang", "fr"); } catch (e) { }
+        window.MGS_BACKEND_URL = serverUrl.replace(/\/index\.html$/, "");
+      }, url);
       const handler = apiHandler(page, state);
-      /* MGS_CRYPto fait un fetch ABSOLU vers l'host backend : page.route("**/api/**")
-       * ne matche pas toujours les URLs absolues d'un autre host. On intercepte donc par
-       * prédicat sur le chemin, sans toucher aux assets (polices, images, CSS…). */
-      await page.route((req) => {
-        try { const u = new URL(req.url()); return u.pathname.includes("/api/") || u.pathname.includes("/crypto/"); } catch { return false; }
-      }, handler);
+      /* MGS_CRYPto fait un fetch ABSOLU vers l'host backend. On injecte
+       * window.MGS_BACKEND_URL (addInitScript, avant le runtime) ET on intercepte
+       * toutes les requêtes /api/ et /crypto/ quel que soit l'host, sans toucher
+       * aux assets (polices, images, CSS passent par route.continue()). */
+      await page.route("**/api/**", handler);
+      await page.route("**/crypto/**", handler);
       try {
         await page.goto(url, { waitUntil: "load", timeout: 30000 });
         await fn(page, state);
