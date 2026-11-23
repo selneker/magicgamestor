@@ -95,7 +95,9 @@ Corrections Z0 de cette session (Phase V — comparaison à REF) :
 | Réinitialisation par jeton (`/reinitialiser/:token`), 8 car. min., confirmation identique, lien invalide → message | `pages/AuthExtras.js:65-78` ; `App.js:76` | `POST /auth/reset-password` (`routers/auth.py:244-253`) | `resetPassword()` `:4637`, `resetTokenFromUrl()` `:4608` | fait |
 | Vérification d'email (`/verifier-email/:token`) : jeton consommé au chargement, session rafraîchie | `pages/AuthExtras.js:90-97` ; `App.js:77` | `POST /auth/verify-email` (`routers/auth.py:213-220`) | `verifyTokenFromUrl()` `:4620`, `boot()` `:4860-4867` | fait (écran dédié absent du design → « manquants ») |
 | Connexion Google : `/auth/google/start?return_to=…` | `components/AuthCallback.js:8-11` | `GET /auth/google/start` (`routers/auth.py:288-317`) | `googleLogin()` `:4585` | fait |
-| Retour Google en échec (`?error=google`) : message + URL nettoyée | `components/AuthCallback.js:14-28` | `GET /auth/google/callback` (`routers/auth.py:319`) | `handleGoogleError()` `:4627` | fait |
+| Retour Google (échec `?error=google`) : message + URL nettoyée | `components/AuthCallback.js:14-28` | `GET /auth/google/callback` (`routers/auth.py:319-360`) | `handleGoogleError()` `:4661` | fait |
+| Adresse du backend : `https://api.magicgame.store` (confirmée par le propriétaire) | — | `GET /api/auth/google/config` → `{"enabled":true}` | `BACKEND` `:3511` | fait — l'ancien host posait le cookie `oauth_state` sur son domaine alors que le callback Google revient sur `api.magicgame.store` (state introuvable → `?error=google`) |
+| Formulaires de connexion/inscription/envoi réels (le gestionnaire de mots de passe du navigateur repropose les comptes) | `pages/AuthPage.js:83` (`<form onSubmit>`) | — | `#mgs-auth-form`, `#mgs-mdp-form`, `#mgs-reset-form` `:2533-2552,2548,2565` | fait |
 | Module captcha vérifié conforme | `components/common/CaptchaWidget.js:103-122` ↔ `mgs-logic-captcha.js:138-150` | — | — | fait |
 
 ---
@@ -159,6 +161,8 @@ Leçon des 5 commits post-REF, vérifiés un par un cette session :
 | Création de commande : payload exact + `identity_id` quand l'identité vérifiée est celle du compte | `pages/Checkout.js:165-188` | `POST /orders` (`routers/orders.py:315`, `OrderIn` `:64-82`) | `createOrder()` `:4108-4145` | fait |
 | 422 Pydantic traduite (`payment_phone` → `checkout.phoneError`, sinon `checkout.orderValidationError`) | `pages/Checkout.js:39-47` | `POST /orders` | `validationDetails()` `:4099`, `validationField()` `:4100` | fait |
 | Panier vidé DÈS la création réussie | `pages/Checkout.js:186` | — | `createOrder()` `:4138` | fait |
+| Commande transmise à l'admin dès la création | `pages/Checkout.js:185-188` | `notify_new_order` en tâche de fond (`routers/orders.py:421`) | rien à appeler côté front : le backend notifie (idem preuve envoyée `:608`, relance `:660`) | fait (backend) |
+| Message d'attente = statut réel (`order.next.<statut>`) + libellé (`order.status.<statut>`) | `pages/OrderTrack.js:264-270` | `GET /orders/{id}` (sondage 5 s) | `coWaitText()` `:4326`, appelé par `coReceipt()` `:4310`, `coReceiptBinance()` `:4251`, `pollOrder()` `:4337` | fait |
 | Turnstile à la soumission (jeton à usage unique) | `pages/Checkout.js:228-246,365-380` | `captcha.require` (ordre) | `openHuman()` `:4072`, `createOrder()` `:4140-4143` | fait |
 | Anti double-clic (une seule requête en vol) | `pages/Checkout.js:70-71,190-204` | — | `co.busy` `:4109` | fait |
 | Écran de paiement manuel : nom du marchand et numéro **issus de l'API**, compte à rebours sur `payment_deadline_at` | `pages/OrderTrack.js:272,299-324` | `GET /payments/config`, `GET /orders/{id}` | `coPay()` `:4153` | fait |
@@ -170,7 +174,7 @@ Leçon des 5 commits post-REF, vérifiés un par un cette session :
 | Reprise de commande en attente (silencieuse) : `GET /orders/{id}`, écran par statut | `pages/OrderTrack.js:156-188,266-359` | `GET /orders/{id}` (`routers/orders.py:467`) | `resumePendingOrder()` `:3890`, `hydrateCoFromOrder()` `:3870` | fait |
 | Annulation par motif : 5 raisons de REF, aucune présélectionnée, `POST /orders/{id}/cancel { reason }` seul | `components/store/checkout/CancelSheet.js:20-26,39-40,46-51,81` | `POST /orders/{id}/cancel` (`routers/orders.py:680`, `CancelIn` `:124-127`) | `openCancel()` `:4325`, `confirmCancel()` `:4344` | fait |
 | Annulation : 409 distingué (`cancel_conflict` / `cancel_not_allowed`), état réel rechargé ; succès → accueil | `CancelSheet.js:52-62` ; `OrderTrack.js:399-407` | idem | `confirmCancel()` `:4350-4358` | fait |
-| Motif `wrong_info` (1re raison de REF) | `CancelSheet.js:21` | `CancelIn` l'accepte (`routers/orders.py:126`) | — | NON FAIT (design : le sélecteur a 4 raisons, `change_method` en tête ; aucune option ajoutée) |
+| Motif `wrong_info` (1re raison de REF) | `CancelSheet.js:21` | `CancelIn` l'accepte (`routers/orders.py:126`) | radios du sélecteur `:3491-3495` (5 raisons, `wrong_info` en tête) | fait |
 | Champ « Précision (facultatif) » | — | `CancelIn.note` (`routers/orders.py:127`, max 200) | `openCancel()` `:4329`, `confirmCancel()` `:4350` | fait (envoyé en `note` seulement s'il est rempli) |
 | Binance : `POST /crypto/initiate {order_id, network}` après création, jamais de 2ᵉ initiation | `pages/Checkout.js:214-223` ; `pages/OrderTrack.js:163-169` | `POST /crypto/initiate` (`routers/crypto.py:112`) | `initiateBinance()` `:4200`, `resumePendingOrder()` `:3900` | fait |
 | Binance : sondage `GET /crypto/{id}/status` toutes les 8 s, `CONFIRMED` → relecture, `FAILED` → arrêt, aucun `POST /crypto/{id}/paid` | `components/store/checkout/BinancePay.js:9,30-45` | `GET /crypto/{id}/status` (`routers/crypto.py:123`) | `coPayBinance()` `:4211` via `MGS_CRYPTO` (`mgs-logic-crypto.js:27,237-255`) | fait |
@@ -183,8 +187,7 @@ Leçon des 5 commits post-REF, vérifiés un par un cette session :
 | Fonction | Source REF | Route backend | Prototype | État |
 |---|---|---|---|---|
 | Historique du client (liste complète, 200 dernières) | `pages/OrderHistory.js:297-304` | `GET /orders/me` (`routers/orders.py:436`) | `loadOrders()` `:4414`, `renderOrders()` `:4403` | fait |
-| Onglets « Toutes / En cours » en filtre **local** (aucun paramètre d'API) | `OrderHistory.js:100-106,172-194,318` | — | gabarit `cmdFilter()` `:3338` + `data-filter` de `renderOrders()` | fait |
-| 3ᵉ onglet de REF (« Terminées ») | `OrderHistory.js:176` | — | — | NON FAIT (design : 2 onglets) |
+| Onglets « Toutes / En cours / Terminées » en filtre **local** (aucun paramètre d'API) | `OrderHistory.js:100-106,172-194,318` | — | gabarit `cmdFilter()` `:3338` (`data-filter="all\|progress\|done"`) + `data-filter` posé par `renderOrders()` `:4400` | fait |
 | Recherche locale (numéro, ID joueur, produit), insensible à la casse | `OrderHistory.js:306-318` | — | gabarit `cmdFilter()` `:3338` | fait |
 | Pagination | — (REF n'en a aucune) | — | bloc `.mgs-cmd-pages` `:2447-2451`, `orderPaginate()` `:4396`, 10 par page | fait (pagination du design, sur la liste locale) |
 | Détail : relecture `GET /orders/{id}` à l'ouverture | `OrderHistory.js:421-429` | `GET /orders/{id}` | `refreshOrderDetail()` `:4424` | fait |
@@ -297,8 +300,6 @@ anciens liens `#page` continuent de fonctionner.
 | Champ de vérification d'ID avant échange de points | `Loyalty.js:61-79` | un champ sur l'écran points |
 | Transferts de points | `Loyalty.js:95-134` | un formulaire sur l'écran points |
 | Fil de discussion du chat | `ChatThread.js` | une liste de messages sur l'écran support |
-| 3ᵉ onglet « Terminées » | `OrderHistory.js:176` | un 3ᵉ onglet (le design en a 2) |
-| 5ᵉ motif d'annulation `wrong_info` | `CancelSheet.js:21` | une 5ᵉ raison (le design en a 4) |
 | Sélecteur de thème | `ThemeToggle.js` | le design v3 n'a pas de thème sombre |
 | Admin (14 écrans) | `pages/admin/*` | laissé à l'application React |
 
@@ -428,17 +429,11 @@ désaccord avec REF, il n'a **pas** été modifié.
 ## Commits de cette session (branche `feat/proto-fonctionnel`, poussés)
 
 ```
-7153ea7 docs(portage): PORTAGE.md réécrit contre REF (PR #100) — fait / masqué / NON FAIT
 b1f1c70 feat(proto): vrais liens de pages + fonctions du design rebranchées
 6586da7 feat(proto): la barre d'adresse affiche /produit/<slug> quand la fiche est ouverte
 0219c78 fix(z6): clés i18n ajoutées (11 clés de REF) — 0 clé hors REF
-30b7103 fix(z6): visibilité admin + formulaires de démonstration masqués
-fb434ca fix(z4): détail de commande — relecture GET /orders/{id}, preuves réelles, reçu du payé
-5ab4f1f fix(z5): compte/événements conformes à REF (PR #100)
-7d17a0a fix(z2/z5): règles sans équivalent REF retirées — i18n 100 % clés REF
-4362318 fix(z1): captcha à usage unique sur échec de connexion
-3460d6d fix(z0): client API conforme à REF (PR #100)
-eb78de0 wip(z3): identités/ID récents/vérification/preuve/annulation conformes à REF
+e300442 fix(auth): backend = api.magicgame.store, formulaires de connexion réels (Google + gestionnaire de mots de passe)
+<ce commit> fix(proto): message d'attente et libellés = statuts réels de la commande
 ```
 
 ## Reste ouvert (remonté au propriétaire)
@@ -449,8 +444,8 @@ eb78de0 wip(z3): identités/ID récents/vérification/preuve/annulation conforme
    champ ID joueur du suivi invité, écran de vérification d'email, écran de
    confirmation, pages légales, bannière email, carte joueur, identités de jeu,
    confirmation du mot de passe, vérification d'ID avant échange de points,
-   transferts de points, fil du chat, 3ᵉ onglet, 5ᵉ motif d'annulation,
-   sélecteur de thème. Le prototype les déclenche dès qu'un conteneur existe.
+   transferts de points, fil du chat, sélecteur de thème. Le prototype les
+   déclenche dès qu'un conteneur existe.
 2. **Abonnement du pied de page** : aucun endpoint backend (masqué).
 3. **Déploiement** : le serveur doit renvoyer `index.html` sur un chemin inconnu
    (repli SPA) pour que `/boutique`, `/produit/:slug`… survivent à un
