@@ -4706,6 +4706,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
      éléments du design sont donc masqués (voir PORTAGE « Éléments masqués »). */
   var chatCid = null;
   function maskUnsupported() {
+    /* Pied de page : le formulaire d'abonnement du design (« formulaire de
+       démonstration ») n'a AUCUN équivalent dans REF (son pied de page n'a que
+       des liens) : il est masqué plutôt que laissé inerte (PORTAGE). */
+    $$(".footer .form-block").forEach(function (f) { f.style.display = "none"; });
     var page = $(".mgs-page[data-page=support]"); if (!page) return;
     var cards = $$(".mgs-grid", page)[0];
     if (cards) $$(":scope > *", cards).forEach(function (c) {
@@ -4734,6 +4738,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- routage : observe body[data-page] (découplé du script template) ---------- */
   var loaders = {
+    /* main App.js:82 : /admin est protégé (`ProtectedRoute admin`). Le design
+       n'a qu'un écran admin de démonstration, aucun de ses 14 écrans n'est
+       porté (PORTAGE Z6) : un visiteur non administrateur ne le voit pas. */
+    admin: function () { if (!me || (me.role !== "admin" && me.role !== "super_admin")) { needLogin("admin"); return; } },
     boutique: function () { loadGames().then(renderGames); },
     commandes: function () { loadOrders(); },
     compte: function () { renderAccount(); },
@@ -4841,7 +4849,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- boot ---------- */
   function boot() {
-    renderCart(); renderRecent(); loadPayCfg(); syncFavs();
+    renderCart(); renderRecent(); loadPayCfg(); syncFavs(); maskUnsupported();
     /* main : « Se souvenir » est coché par défaut (AuthPage.js:25) */
     var rem = $('.mgs-page[data-page=connexion] input[type="checkbox"]'); if (rem) rem.checked = true;
     handleGoogleError();
