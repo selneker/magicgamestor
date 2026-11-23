@@ -4,7 +4,7 @@
  * Vérifie, sur build/index.html servi tel quel, avec l'API mockée :
  *   (a) compte : page /compte affichée, GET /auth/me (profil) ;
  *   (b) points : page /points affichée, GET /loyalty/me (solde) ;
- *   (c) pack évolutif : page /pack affichée, GET /evo/eligibility + GET /evo/season ;
+ *   (c) pack évolutif : page /pack affichée, GET /products?type=evo (offre) puis GET /evo/eligibility ;
  *   (d) chat : page /support affichée, POST /chat/conversations (nécessite login) ;
  *   (e) déconnexion : POST /auth/logout.
  *
