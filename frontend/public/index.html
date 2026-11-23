@@ -4415,6 +4415,29 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (!me) { renderOrders([]); return Promise.resolve([]); }
     return req("/orders/me").then(function (orders) { orders = Array.isArray(orders) ? orders : (orders && orders.orders) || []; orders.sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); }); renderOrders(orders); return orders; }).catch(function (e) { toast(errMsg(e), "err"); return []; });
   }
+  /* Détail d'une commande : main OrderDetail relit GET /orders/{id} à
+     l'ouverture (pages/OrderHistory.js:425-429). Le gabarit du design remplit
+     le détail depuis la carte ; ce runtime n'y ajoute que ce que REF y met
+     réellement : le nombre de preuves, la ligne masquée à zéro
+     (OrderHistory.js:618-622) et le bouton de reçu, réservé à une commande
+     payée au moins une fois (:469,691). */
+  function refreshOrderDetail(card) {
+    var id = card && card.dataset && card.dataset.id; if (!id) return;
+    req("/orders/" + encodeURIComponent(id)).then(function (o) {
+      var d = $(".mgs-page[data-page=commandes] .mgs-cmd-detail"); if (!o || !d) return;
+      var proofs = (o.payment_proofs || []).length;
+      $$(".mgs-kv", d).forEach(function (kv) {
+        var spans = $$("span", kv); if (!spans[0] || !/Preuves/i.test(spans[0].textContent || "")) return;
+        if (!proofs) { kv.style.display = "none"; return; }
+        kv.style.display = ""; if (spans[1]) spans[1].textContent = t("order.detail.extra.proofCount", { n: proofs });
+      });
+      var rb = $(".mgs-receipt-btn", d); if (rb) rb.style.display = o.paid_at ? "" : "none";
+    }).catch(function () { /* détail déjà rempli par la liste */ });
+  }
+  doc.addEventListener("click", function (e) {
+    var o = e.target && e.target.closest ? e.target.closest(".mgs-order") : null;
+    if (o) refreshOrderDetail(o);
+  });
 
   /* ---------- compte ---------- */
   var loyaltyOk = false;
