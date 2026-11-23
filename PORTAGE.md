@@ -238,7 +238,8 @@ Leçon des 5 commits post-REF, vérifiés un par un cette session :
 | Service worker | `public/sw.js` (push-only) ; `src/sw.test.js` | — | `frontend/public/sw.js` (copié tel quel) | fait (aucune modification nécessaire) |
 | PWA (`manifest.json`, icônes) | `public/manifest.json` | — | `frontend/public/manifest.json` (copié tel quel) | NON FAIT (le manifeste du prototype garde `start_url:"/admin"` ; hors périmètre front) |
 | SEO (titre, description, robots, sitemap) | `components/layout/SeoManager.js`, `lib/seo.js` | — | — | NON FAIT (site mono-page : aucun routeur à métadonnées) |
-| Pages légales `/terms`, `/privacy` | `pages/Legal.js` ; `App.js:70-71` | — | — | NON FAIT (design : aucune page légale, aucun lien) |
+| Pages légales `/terms`, `/privacy` | `pages/Legal.js` (TERMS/PRIVACY, `App.js:70-71`) | — | écrans `terms`/`privacy` `:2575-2590`, `renderLegal()` `:4845`, texte brut copié de REF dans `frontend/public/mgs-legal.js` (18 + 13 sections, FR/EN) | fait |
+| Liens de pied de page vers les pages légales | `components/layout/Footer.js:40-41` | — | `href="#terms"` / `href="#privacy"` `:2727-2728` (+ `MGS_HREF` `:3294`, `HM` `:5016`) | fait |
 | Frontière d'erreur | `components/ErrorBoundary.jsx` | — | — | NON FAIT (aucun équivalent dans un IIFE ; le garde non-JSON de `req()` `:3583` couvre le cas qui faisait tomber la page) |
 | Thème clair/sombre | `components/layout/ThemeToggle.js` | — | — | NON FAIT (le design v3 n'a ni `.dark` ni `prefers-color-scheme`) |
 | Audit des liens internes (`href`, `data-nav`, `data-page`, URL) | — | — | `MGS_PATHS` `:4762`, `mgsPageFromUrl()` `:4781`, `MGS_URLS`/`mgsSyncUrl()` `:4827`, `openDeepLink()` `:4864` | fait : chaque route du site (`/boutique`, `/produit/:slug`, `/commande`, `/commandes/:id`, `/suivi/:numero`, `/pack-evolutif`, `/compte`, `/compte/points`, `/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/reinitialiser/:token`, `/verifier-email/:token`, `/evenements`, `/chat`, `/support`, `/admin`) ouvre son écran, y compris par lien direct ou retour arrière |
@@ -267,6 +268,7 @@ routes de REF (`pages/App.js:49-96`) :
 | `/chat`, `/support` | support | |
 | `/compte` | compte | |
 | `/compte/points` | points | |
+| `/terms`, `/privacy` | terms, privacy | texte de REF (`pages/Legal.js`) via `frontend/public/mgs-legal.js` |
 | `/admin/**` | admin | réservé aux administrateurs (`App.js:82`) |
 
 La barre d'adresse reçoit la route réelle (`mgsSyncUrl()` `:4827`), y compris
@@ -291,7 +293,6 @@ anciens liens `#page` continuent de fonctionner.
 | Page de suivi dédiée (numéro + ID joueur) | `OrderTrack.js:434-479` | un champ ID joueur pour l'invité (aujourd'hui : dernier ID de la machine) |
 | Écran « vérification d'email » | `AuthExtras.js:90-107` | un écran de résultat (aujourd'hui : message) |
 | Écran « confirmation de commande » | `CheckoutConfirm.js` | un écran après création |
-| Pages légales `/terms`, `/privacy` | `Legal.js` | deux écrans + les liens de pied de page |
 | Page « jeux » dédiée | `Games.js` | un écran jeu (aujourd'hui `/jeux` = choix du jeu dans la boutique) |
 | Bannière « email non vérifié » + renvoi | `Account.js:35-52` | une bannière sur l'écran compte |
 | Carte joueur PUBG | `PubgPlayerCard.js` | une carte sur l'écran compte |
@@ -442,7 +443,7 @@ e300442 fix(auth): backend = api.magicgame.store, formulaires de connexion réel
    « Relancer » (`/orders/{id}/remind`), bouton « Réessayer »
    (`/payments/initiate`), sélecteur de réseau USDT, case « montant exact »,
    champ ID joueur du suivi invité, écran de vérification d'email, écran de
-   confirmation, pages légales, bannière email, carte joueur, identités de jeu,
+   confirmation, bannière email, carte joueur, identités de jeu,
    confirmation du mot de passe, vérification d'ID avant échange de points,
    transferts de points, fil du chat, sélecteur de thème. Le prototype les
    déclenche dès qu'un conteneur existe.
