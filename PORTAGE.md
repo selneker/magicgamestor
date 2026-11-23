@@ -6,477 +6,387 @@ Preuve :
 ```
 $ git log --first-parent --format='%h %ad %s' --date=short main | grep -E '#100([^0-9]|$)'
 b34df6e 2026-11-14 PL-005-FE-02: … (#100)
-$ git log -1 --format='%h %p' b34df6e
-b34df6e 05e35b4           # fusion « squash » : un seul parent
+$ git log -1 --format='%h %p' b34df6e          # fusion « squash » : un seul parent
+b34df6e 05e35b4
 $ git log -1 --format='%h %p' b34df6e^
-05e35b4 dd22cbb           # commit juste avant
-$ git log -1 --format='%h %p' 3cdf977      # commit juste après
-3cdf977 b34df6e
+05e35b4 dd22cbb                                # commit juste avant
+$ git log -1 --format='%h %p' 3cdf977
+3cdf977 b34df6e                                # commit juste après
 ```
 
 `REF` = `b34df6e` dans tout ce fichier. Toute lecture de REF se fait par
-`git show b34df6e:<fichier>` (jamais de `checkout`).
+`git show b34df6e:<fichier>` (jamais de `checkout`). Les PR suivantes et l'état
+actuel de `main` ne sont PAS une source : `git diff b34df6e main -- frontend/src`
+montre 85 fichiers et 4 142 insertions — aucune ligne de `main` postérieure à
+REF n'a été reprise. Le présent fichier remplace l'inventaire S0 établi contre
+l'état courant de `main` (ses tableaux citaient `main` sans hash et des lignes
+postérieures à REF) ; il est réécrit contre REF, avec les trois seuls états
+autorisés.
 
-# PORTAGE — application `main` → prototype statique
+# PORTAGE — application `REF` → prototype statique
 
-Fichier de reprise. Il liste **chaque fonction** portée, sa source dans `main`
-(`frontend/src/...`), la route backend qui la sert (`backend/routers/...`) et
-l'endroit du prototype qui la porte (`frontend/public/index.html`, runtime
-IIFE à la fin du fichier, ou `frontend/public/mgs-logic-*.js`).
+Chaque ligne porte exactement un état :
 
-Sources de l'inventaire S0 (lecture seule, branche `main`) :
-`git ls-tree`/`git grep` sur `main -- frontend/src frontend/public` et
-`main -- backend/routers` ; appels du prototype : `grep -n -E 'req\("…'`
-`frontend/public/index.html` (runtime : lignes 3502-4505).
+- **fait** — comportement de REF reproduit, avec `REF:fichier:ligne`, la route
+  backend (`backend/fichier:ligne`) et l'emplacement dans le prototype.
+- **masqué** — élément du design SANS équivalent dans REF : neutralisé
+  (`hidden`, `style.display`, `disabled`), défaisable en une ligne, listé en
+  § « Éléments masqués ».
+- **NON FAIT** — avec la cause exacte (design sans conteneur, écran absent,
+  fonction non déclenchable…).
 
-Règles appliquées :
+Le prototype vit dans `frontend/public/index.html` : gabarit (design v3,
+lignes 1-3500) puis runtime fonctionnel (IIFE, lignes 3501-fin). Deux modules
+hors DOM : `frontend/public/mgs-logic-captcha.js` (`MGS_CAPTCHA`) et
+`frontend/public/mgs-logic-crypto.js` (`MGS_CRYPTO`).
 
-- aucune modification de design (classes, styles, animations, ordre des blocs) ;
-- toute chaîne visible passe par `t()` avec une clé FR **et** EN ;
-- toute erreur de requête produit un message visible (aucun `.catch(function(){})` vide) ;
-- aucun script de démo, aucun faux fournisseur, aucun E2E dans les validations ;
-- le prototype n'est jamais plus strict que `main`.
-
-État : `porté` = comportement de `main` reproduit ; `à porter` = dans le design,
-pas encore repris de `main` ; `diverge` = repris mais écart documenté ;
-`absent du design` = pas d'écran dans le prototype.
-
-Plan : **PL-006** (cf. `planning-agent-rules.md` §6 — chaque rapport reprend l'ID du
-prompt reçu). Lots frontend : Z1 = **PL-006-FE-02-V1** (auth), Z2 = **PL-006-FE-03-V1**
-(catalogue, recherche, fiche produit, panier). Les commits de ces lots gardent le
-préfixe de zone (`fix(z1): …`, `fix(z2): …`).
-
-Écrans du prototype (`data-page`) : accueil, admin, boutique, commande, commandes,
-compte, connexion, evenements, mdp, pack, points, produit, reset, support.
-
----
-
-## Z0 — Socle (client API, erreurs, session, langue, redirections, invité, panier)
-
-| Fonction | Source `main` | Route backend | Auth | Prototype | État |
-|---|---|---|---|---|---|
-| Base d'URL + `withCredentials` (cookies) | `lib/api.js:3-10` | — | non | `index.html:3511-3512`, `req()` 3649 | identique |
-| Refresh silencieux 401 + liste `NO_SILENT_REFRESH` | `lib/api.js:12,40-59` | `POST /auth/refresh` (`routers/auth.py:363`) | non | `req()` + `NO_SILENT_REFRESH` | identique |
-| En-têtes langue + `mgs_session` | `lib/api.js:77,82-85` | — | non | `sessionId()` | corrigé : main n'envoie aucun en-tête de langue ; clé `mgs_session` (était `mgs_session_id`) |
-| Erreurs 401/403/409/422/429/5xx avec message visible | `lib/api.js:64` (`errorMessage`) + `lib/authErrors.js:25-54` | réponses HTTP | — | `authErr()`, `errMsg()`, `signale()` | identique (mêmes CODE_MAP / STATUS_MAP) |
-| État de connexion (équivalent `AuthContext`) | `context/AuthContext.js:27-49,58-61` | `GET /auth/me` (`routers/auth.py:387`) | oui | `loadSession()`, `me` | identique (401 silencieux, 2 reprises 3 s/8 s, hors ligne sans message) |
-| Déconnexion sans vider le panier | `context/AuthContext.js:58-61` | `POST /auth/logout` (`routers/auth.py:404`) | oui | `logout()` | identique |
-| Traductions `t()` FR/EN | `i18n/translations.js` | — | — | `t()` + `LANG` + `T` | aligné sur les clés de `main` (82 clés, 6 exceptions — voir plus bas) |
-| Redirections / pages protégées (`from`) | `components/ProtectedRoute.js:29-30` | — | — | `needLogin()`, `authReturnTo` | identique |
-| Panier (stockage `mgs_cart`) | `context/CartContext.js:10-14` | — | non | `cart`/`saveCart()` | corrigé (clé `mgs_cart`, était `mgs_cart_v3`) |
-| Favoris | `lib/favorites.js:8,45,51` | `GET /products?favorites` (`routers/products.py:75`) | non | `syncFavs()` | identique (même clé `mgs_favorites`) |
-| Commande en attente (`mgs_pending_order_id`) | `lib/pendingOrder.js:17-39` | — | non | à vérifier | à porter |
-| IDs joueur récents | `lib/recentPlayerIds.js:40,94` | — | non | `renderRecent()` | à vérifier (clé `mgs_recent_ids`) |
-
-### État de départ (Z0, commit `3c238f6`)
-
-- `yarn build` : **échec** sans `REACT_APP_BACKEND_URL` (garde-fou
-  `scripts/check-backend-url.mjs --strict`), **réussite** avec
-  `REACT_APP_BACKEND_URL=https://magicgamestore-api-v2.onrender.com` (exit 0).
-- `yarn test:ci` : **0 échec** (8 suites / 37 tests, exit 0).
-
-### Visibilité navigation — invité / connecté
-
-Source `main` : `components/layout/Header.js` (desktop 300-360, mobile 362-395,
-`LoyaltyChip` 27-52, `MobilePointsPill` 57-90, `AccountAction` 127-168) et
-`lib/bottomChrome.js:8-16,30-38`.
-
-| Élément | Invité (`main`) | Connecté (`main`) | Prototype après Z0 |
-|---|---|---|---|
-| Pilules boutique / commandes / support / compte | visibles | visibles | visibles (inchangé) |
-| Pastille points bureau `.nav-points-pill` | absente | visible si `/loyalty/me` a répondu | masquée tant que `me` ou `/loyalty/me` n'est pas connu (`loyaltyOk`) |
-| Pastille points mobile `.nav-mobile-actions a[data-nav=points]` | absente | visible si `/loyalty/me` a répondu | idem |
-| Cercle compte mobile | bouton « Connexion » → `/connexion` | icône compte → `/compte` | lien `compte` → `/compte` ; invité : `renderAccount()` renvoie vers la connexion (`needLogin`) |
-| Panier (bureau + mobile) | visible, badge 0 | visible, badge `count` | visible, badge `cartCount()` |
-| Panneau du burger | boutique, événements, suivi, chat, **connexion** | + compte, points, panier | 4 entrées fixes de la maquette (boutique, commandes, support, compte) — main n'a pas d'équivalent pour les 4 dans ce panneau |
-| Barre basse | visible | visible, masquée sur `/commande` | visible, masquée sur `commande` (CSS `index.html:1091`) |
-| Pied de page | visible | visible, absent sur `/commande` et `/admin` | visible, absent sur `connexion` (CSS `index.html:855`) |
-
-### `t()` — correspondance des clés (Z0)
-
-Toutes les clés du prototype sont maintenant des clés de `main`
-(`frontend/src/i18n/translations.js`), avec les textes FR **et** EN de `main`.
-Correspondances non triviales :
-
-| Prototype (avant) | `main` |
-|---|---|
-| `toast.added` | `product.added` |
-| `toast.saved` | `account.saved` |
-| `toast.pwchanged` | `account.passwordChanged` |
-| `toast.deleted` | `account.deleted` |
-| `toast.redeem` | `loyalty.redeemed` |
-| `toast.forgot` | `auth.forgotSent` |
-| `toast.google` | `auth.google` |
-| `toast.logout` | `nav.logout` |
-| `toast.sent` | `chat.sent` |
-| `err.generic` / `err.network` / `err.origin` / `err.auth` | `common.error` |
-| `err.login` | `auth.errorInvalidCredentials` |
-| `checkout.empty` | `cart.empty` |
-| `checkout.needId` | `checkout.verifySub` |
-| `checkout.needVerify` | `checkout.verifyRequired` |
-| `checkout.needMethod` | `checkout.selectMethod` |
-| `checkout.invalidId` | `checkout.verifyIdInvalid` |
-| `checkout.noCatalog` | `catalog.emptyGame` |
-| `checkout.binanceAmount` | `checkout.binanceExactAmount` |
-| `checkout.binanceConfirmed` | `checkout.success` |
-| `checkout.binanceDetected` | `checkout.cryptoDetected` |
-| `checkout.binanceFailed` | `checkout.cryptoFailed` |
-| `checkout.binanceOff` | `checkout.papiOff` |
-| `checkout.captchaAgain` | `captcha.verifyAgain` |
-| `checkout.needProof` | `checkout.proofCount` |
-| `checkout.proofOk` | `order.banner.proofWaiting` |
-| `checkout.uploading` | `checkout.proofSubmitting` |
-| `checkout.cancelCta` (data-i18n) | `checkout.cancelOrder` |
-| `orders.empty` | `order.none` |
-| `orders.login` | `order.loginToSee` |
-| `status.done` / `status.cancel` / `status.pending` / `status.verify` | `order.status.delivered` / `.cancelled` / `.pending_payment` / `.awaiting_verification` |
-| `status.progress` | `order.tabs.progress` |
-| `method.mvola` / `method.orange` / `method.binance` | `checkout.methodMvola` / `.methodOrange` / `.binanceTitle` |
-| `pack.checking` / `pack.eligible` / `pack.noSeason` | `evo.checking` / `evo.eligible` / `evo.noSeason` |
-| `pack.needId` | `evo.pubgLabel` |
-| `pack.notEligible` | `evo.invalidId` |
-| `points.pidPrompt` | `checkout.playerId` |
-| `points.redeem` | supprimé — main affiche `{cost_points} pts` (`pages/Loyalty.js:88`) |
-| `confirm.delete` | `account.deleteWarning` |
-| `auth.emailBad` / `auth.emailFirst` / `auth.pwShort` / `auth.googleFailed` / `err.auth` | `auth.errorGeneric` |
-| `auth.needToken` | `auth.errorInvalidLink` |
-| `auth.pwMismatch` | `auth.passwordMismatch` |
-| `auth.pwPrompt` | `auth.password` |
-| `catalog.sortPopular` / `sortPriceAll` / `sortPriceAsc` / `sortPriceDesc` | `catalog.popular` / `.sortDefault` / `.priceAsc` / `.priceDesc` |
-
-**Exceptions (6 clés, sans équivalent dans `main`)** — écrans de la maquette qui
-n'existent pas dans `main` (`/support` = page Chat dans `main`) ou libellés que
-`main` n'a pas : `support.login`, `support.needMsg`, `support.chatOpen`,
-`support.waPending`, `checkout.cancelNote`, `checkout.cancelSub`.
-
-### Invité — ce que Z0 a aligné
-
-- `/commandes` : `main` redirige vers `/suivi` (page publique,
-  `components/common/OrdersRedirect.js:8`) ; le prototype affichait l'écran de
-  connexion. Corrigé : l'invité voit l'écran `commandes` avec l'état vide
-  `order.loginToSee`.
-- `/compte` et `/compte/points` restent protégés (`needLogin`), comme
-  `components/ProtectedRoute.js:29-30`.
+Règles tenues : aucun `.css` modifié (`git diff --stat -- '*.css'` vide) ;
+aucune valeur de `class=`/`style=` changée (contrôle `git diff --unified=0`
+ligne à ligne avant chaque commit) ; aucun nouvel élément visible (les seuls
+`createElement` remplissent des conteneurs prévus par la feuille de style du
+design : `.mgs-co-recent`, `.mgs-empty`, `.mgs-pcard` clonés) ; aucun texte
+inventé (script i18n : 104 clés FR/EN, toutes présentes dans REF) ; aucune
+dépendance ajoutée ; `backend/` jamais modifié ; aucune URL de backend touchée
+(`index.html:3511`).
 
 ---
 
-## Z1 — Authentification (session, connexion, inscription, mot de passe, email)
+## Z0 — Socle (client API, session, erreurs, i18n, panier, invité)
 
-Prompt : **PL-006-FE-02-V1**.
-
-| Fonction | Source `main` | Route backend | Prototype | État |
+| Fonction | Source REF | Route backend | Prototype | État |
 |---|---|---|---|---|
-| Restauration de session au chargement (401 = déconnecté, panne = 2 reprises puis hors ligne, sans message) | `context/AuthContext.js:27-49` | `GET /auth/me` (`routers/auth.py:387`) | `loadSession()` `index.html:3587-3597` | porté |
-| Refresh silencieux sur 401, sauf liste d'endroits d'auth | `lib/api.js:12,40-59` | `POST /auth/refresh` (`routers/auth.py:363`) | `NO_SILENT_REFRESH` `index.html:3548`, `req()` `:3553` | porté |
-| Connexion : un seul `POST /auth/login`, `data.user` posé directement | `pages/AuthPage.js:38-49` | `POST /auth/login` (`routers/auth.py:195-211`) | `doAuth()` `index.html:4085` (appel `:4106`) | porté |
-| Inscription : un seul `POST /auth/register` (pas de second login), `data.user`, message « email de vérification envoyé » | `pages/AuthPage.js:42-46` | `POST /auth/register` (`routers/auth.py:166-193`) | `doAuth()` `index.html:4085` (appel `:4106`) | porté |
-| « Se souvenir » coché par défaut, envoyé en `remember` | `pages/AuthPage.js:25,111-119` | `POST /auth/login` | `boot()` `index.html:4389` ; `doAuth()` `:4097-4098` | porté |
-| Validation email / mot de passe (8 car. inscription, 6 connexion, nom requis) | `pages/AuthPage.js:100-105` | — | `doAuth()` `index.html:4088-4092` | porté |
-| Messages d'erreur d'auth : par `code`, sinon statut HTTP, sinon repli — jamais le détail anglais | `lib/authErrors.js:12-64` | réponses 400/401/403/409/422/429/5xx | `authErr()` `index.html:4020-4027` | porté |
-| Captcha Turnstile : widget monté seulement si la clé publique existe ; inscription ou connexion déjà échouée ; apparence `always` si l'API l'exige | `pages/AuthPage.js:33,51-55,120` ; `components/common/CaptchaWidget.js:110-116` | `captcha.require` / `_check_lock` (`routers/auth.py:113-133,169,199`) | `renderAuthCaptcha()` `index.html:4059-4072` / `syncAuthCaptcha()` `:4073-4080` | porté |
-| Redirection après connexion vers la page d'origine (`from`), accueil par défaut | `pages/AuthPage.js:34,36,49` ; `components/ProtectedRoute.js:29-30` | — | `authReturnTo` `index.html:4005`, `doAuth()` `:4111`, `needLogin()` `:4007`, `loaders.connexion` `:4285` | porté |
-| Déjà connecté + visite de `/connexion` → redirection vers la page d'origine | `pages/AuthPage.js:36` | — | `loaders.connexion` `index.html:4285` | porté |
-| Mot de passe oublié : envoi, message inline, captcha, erreurs traduites | `pages/AuthExtras.js:48-76` | `POST /auth/forgot-password` (`routers/auth.py:222-241`) | `forgotPassword()` `index.html:4140-4146` / `renderForgotCaptcha()` `:4128-4139` | porté |
-| Réinitialisation par jeton (`/reinitialiser/:token`), 8 car. min., confirmation identique, lien invalide → message | `pages/AuthExtras.js:78-101` ; `App.js:76` | `POST /auth/reset-password` (`routers/auth.py:244-253`) | `resetPassword()` `index.html:4178-4189` / `resetTokenFromUrl()` `:4149-4157` | porté |
-| Vérification d'email (`/verifier-email/:token`) : jeton consommé au chargement, message visible, session rafraîchie | `pages/AuthExtras.js:103-126` ; `App.js:77` | `POST /auth/verify-email` (`routers/auth.py:213-220`) | `verifyTokenFromUrl()` `index.html:4161-4164` + `boot()` `:4403-4411` | porté |
-| Connexion Google : départ vers `/auth/google/start?return_to=…` | `components/AuthCallback.js:8-11` | `GET /auth/google/start` (`routers/auth.py:288-317`) | `googleLogin()` `index.html:4126` | porté |
-| Retour Google en échec (`?error=google`) : message + URL nettoyée | `components/AuthCallback.js:14-28` | `GET /auth/google/callback` (`routers/auth.py:319-…`) | `handleGoogleError()` `index.html:4168-4177` | porté |
-| Déconnexion : `POST /auth/logout`, session vidée, retour accueil — **le panier n'est pas vidé** | `context/AuthContext.js:58-61` ; `context/CartContext.js:10-14` | `POST /auth/logout` (`routers/auth.py:404`) | `logout()` `index.html:4040` | porté |
-| Points fidélité : pastille masquée hors connexion | `components/layout/Header.js:33-35` | `GET /loyalty/me` (`routers/loyalty.py:60`) | `syncAuthChrome()` `index.html:4006` | porté |
-| Pages protégées (`/compte`, `/compte/points`) : redirection vers la connexion puis retour. `/commandes` n'est PAS protégée (`main` la redirige vers `/suivi`, `components/common/OrdersRedirect.js:8`) | `components/ProtectedRoute.js:29-30` ; `App.js:68,80-81` | — | `needLogin()` `index.html:4007` | porté |
+| Base d'URL + cookies (`withCredentials`) | `lib/api.js:3-6` | — | `index.html:3511-3512`, `req()` `:3562` | fait |
+| Refresh 401 silencieux, une seule demande partagée, bornée à 15 s, hors liste d'auth | `lib/api.js:12-38` | `POST /auth/refresh` (`routers/auth.py:363`) | `NO_SILENT_REFRESH` `:3548`, `refreshSession()` `:3552`, `req()` `:3562` | fait |
+| Un refresh 401 remonte le 401 d'origine ; toute autre panne remonte SA propre erreur (jamais de déconnexion à tort) | `lib/api.js:27-34` | — | `req()` `:3568-3574` | fait |
+| Message d'erreur affichable (detail chaîne / tableau de validation / objet) | `lib/api.js:40-46` | — | `errMsg()` `:3595` ; écart 1 ci-dessous | fait |
+| Restauration de session au chargement (401 = déconnecté ; panne = 2 reprises 3 s/8 s puis hors ligne, sans message) | `context/AuthContext.js:27-53` | `GET /auth/me` (`routers/auth.py:387`) | `loadSession()` `:3611` | fait |
+| Déconnexion (le panier N'EST PAS vidé) | `context/AuthContext.js:58-61` | `POST /auth/logout` (`routers/auth.py:404`) | `logout()` `:4494` | fait |
+| Traductions `t()` FR/EN | `i18n/translations.js` (995/995) | — | `T` `:3519`, `t()` `:3526` | fait — 104 clés, parité FR/EN, **0 clé hors REF** (script i18n) |
+| Redirection des pages protégées (`/compte`, `/compte/points`, `/admin`) | `components/ProtectedRoute.js:29-30` ; `App.js:80-82` | — | `needLogin()` `:4448`, `loaders` `:4740-4750` | fait |
+| Panier : clé `mgs_cart`, un seul jeu, un Prime + un Prime+, évo = 1, plafond 20 | `context/CartContext.js:10-34` | — | `cart` `:3663`, `addToCart()` `:3687`, `cartCap()` `:3684` | fait |
+| Favoris (`localStorage`, clé `mgs_favorites`) | `lib/favorites.js:3,41-48` | — | `getFavs()`/`toggleFav()`/`syncFavs()` `:3724-3726` | fait |
+| Commande en attente : **une** clé `mgs_pending_order_id` = `{id, createdAt}`, TTL 24 h, purge sur statut final | `lib/pendingOrder.js:13-30,37,47,63-69` | — | `PENDING_KEY` `:3844-3859` | fait |
+| IDs joueur récents : `mgs_recent_player_ids` = `{[gameId]:[{id,usedAt}]}`, 10/jeu, sans pseudo | `lib/recentPlayerIds.js:15,52-99` | — | `readRecentStore()` `:3928`, `recentIdsOf()` `:3929`, `rememberPlayerId()` `:3942` | fait |
+| Identifiant de session anonyme (`mgs_session`, forme `s_…`) | `lib/api.js:50-56` | — | `sessionId()` `:4679` | fait |
+| Pastille de points masquée sans compte **ou** sans réponse de `/loyalty/me` | `components/layout/Header.js:29-35` | `GET /loyalty/me` (`routers/loyalty.py:60`) | `syncAuthChrome()` `:4447`, `updatePointsPill()` `:4444` | fait |
+| `/commandes` n'est pas protégée : l'invité voit l'état vide `order.loginToSee` | `components/common/OrdersRedirect.js:8` ; `App.js:67` | — | `loadOrders()` `:4414`, `renderOrders()` `:4403` | fait |
 
-### Preuves de lignes (Z1) — les trois règles citées brut
+Corrections Z0 de cette session (Phase V — comparaison à REF) :
 
-- **Nom ≥ 2 caractères** : `main` `frontend/src/pages/AuthPage.js:100` — `required minLength={2}` sur
-  l'input `#name` (inscription). Prototype `frontend/public/index.html:4092` —
-  `if (authMode === "register" && (($("#reg-name") || {}).value || "").trim().length < 2)`.
-- **Apparence Turnstile** : `main` `frontend/src/components/common/CaptchaWidget.js:116` —
-  `appearance: visible ? "always" : "interaction-only"` (commentaire `:110-115`).
-  Prototype `frontend/public/index.html:4071` —
-  `cap.render(authCaptchaBox, { appearance: authCaptchaRequired ? "always" : "interaction-only", … })`.
-- **Pastille de points** : `main` `frontend/src/components/layout/Header.js:35` —
-  `if (!user || total === null) return null;` (appel `GET /loyalty/me` `:29-31`).
-  Prototype `frontend/public/index.html:4006` —
-  `function syncAuthChrome() { var on = !!me && loyaltyOk; … }`.
-
-### Modules vérifiés (aucune modification nécessaire)
-
-| Module | Référence `main` | Verdict |
-|---|---|---|
-| `mgs-logic-captcha.js` | `components/common/CaptchaWidget.js:103-122` (render, sitekey, theme, size, appearance, language, callbacks) | conforme — `mgs-logic-captcha.js:138` (`appearance`), `:147-150` (theme/size/language) |
-| `mgs-logic-crypto.js` | `pages/Checkout.js:177` (`POST /crypto/initiate`) ; `components/store/checkout/BinancePay.js:32` (`GET /crypto/{id}/status`) ; `routers/crypto.py:107,112,123,130` | conforme — `mgs-logic-crypto.js:27` (`POLL_MS = 8000`) |
-
-### Écarts connus (Z1)
-
-- Pas d'écran dédié « vérification d'email » : le jeton est consommé et le
-  résultat affiché par un toast (élément visible manquant, voir plus bas).
-- La suppression de compte passe par `confirm()` + `prompt()` et **n'envoie pas le
-  mot de passe** : régression introduite par `c5cfb41` (l'ancien code demandait le mot
-  de passe puis « SUPPRIMER »). `main` envoie `{ password, confirmation }`
-  (`pages/Account.js:150`) et le backend l'exige (`routers/auth.py:442-444`).
-- La déconnexion retourne à l'accueil avec un toast ; `main` reste sur la page
-  et laisse `ProtectedRoute` renvoyer vers `/connexion`. Navigation non touchée
-  (consigne : « ni la navigation »).
-- L'échec Google affiche `auth.errorGeneric` ; `main` a un texte dédié codé en
-  dur (`AuthCallback.js:20`), absente du dictionnaire.
+1. `errMsg` : algorithme de `REF:lib/api.js:40-46` (avant : cas particuliers 401/403/réseau inventés).
+2. `req()` : refresh partagé + délai de 15 s + remontée correcte de l'erreur (avant : renvoyait toujours le 401 d'origine).
+3. Panier vidé à la déconnexion (`224ca8c`) : plus présent ; vérifié, rien à retirer.
 
 ---
 
-## Z2 — Catalogue, recherche, fiche produit, panier
+## Z1 — Authentification
 
-Prompt : **PL-006-FE-03-V1**.
-
-| Fonction | Source `main` | Route backend | Prototype | État |
+| Fonction | Source REF | Route backend | Prototype | État |
 |---|---|---|---|---|
-| Liste des jeux (filtre `active`, tri `sort_order`, liste vide → gabarit conservé) | `context/GameContext.js:42-52` | `GET /games` (`routers/games.py:53`) | `loadGames()` `index.html:3599`, `renderGames()` `:3611` (couleur + badge par carte, repli icône cassée) | porté |
-| Catalogue : `game, type, q, sort, popular, favorites, min_price, max_price` | `pages/Catalog.js:118,142,244` | `GET /products` (`routers/products.py:75`) | `qs()` `index.html:3735`, `catalogQuery()` `:3736`, `loadCatalogFor()` `:3786`, puces `:4419` | porté |
-| Fiche produit | `pages/Product.js:81` | `GET /products/{slug}` (`routers/products.py:118`) | `openProduit()` `index.html:3717`, `renderProduit()` `:3702` | porté |
-| Fiche produit : échec (slug inconnu) | `pages/Product.js:84-93` | `GET /products/{slug}` | `renderProduitError()` `index.html:3729` (`catalog.empty`) | porté |
-| Fiche produit : `related` (4) | `pages/Product.js:145-149` | `GET /products/{slug}` (champ `related`) | aucun conteneur dans le design | non porté (design) |
-| Accueil : populaires / prime / evo | `pages/Home.js:389-391` | `GET /products` | aucun conteneur produits sur l'accueil | non porté (design) |
-| Accueil : événements | `pages/Home.js:407` | `GET /events` (`routers/events.py:46`) | `renderEvents()` `index.html:4289` (pré-chargé depuis `loaders.accueil`) | partiel |
-| Panier : un seul jeu par panier | `context/CartContext.js:16-21` | — | `addToCart()` `index.html:3653` | porté |
-| Panier : doublon Prime / Prime+ | `context/CartContext.js:23-26` ; `addFeedback` `:49-53` | — | `addToCart()` `:3653` (`product.duplicateSub`) | porté |
-| Panier : quantités (1 souscription/évo, 20 max) | `context/CartContext.js:29,34` ; `components/store/ProductCard.js:53,88` ; `components/store/CartDrawer.js:129` | — | `isSingle()` `index.html:3649`, `syncPill()` `:3672`, tiroir panier `:4393` | porté |
-| Favoris : bascule + persistance | `lib/favorites.js:3,41-48` | — | `toggleFav()` `index.html:3691`, `getFavs()` `:3690` | porté |
-| Favoris : filtre catalogue | `pages/Catalog.js:155-157` | `GET /products?favorites` | `renderCatalog()` `index.html:3748` | porté |
-| Pack évolutif intégré au catalogue (type `evo`) | `pages/Catalog.js:13,243,274` ; `pages/PackEvolutif.js:41-43` | `GET /products?type=evo`, `GET /evo/season` (`routers/evo.py:110`) | `?type=evo` accepté par le catalogue ; pack sur son écran `packVerify()` `:4265` | écarté (pas d'onglet type) |
-| Règles ajoutées sans équivalent dans `main` | commits `3a3ed0c`, `af89a88`, `224ca8c`, `5871a5b`, `5895a64` | — | tri client par prix absolu retiré (`194533a`) | traité |
+| Connexion : `POST /auth/login` `{email, password, remember, captcha_token}`, `data.user` posé tel quel | `pages/AuthPage.js:44-53` | `POST /auth/login` (`routers/auth.py:195-211`) | `doAuth()` `:4539` | fait |
+| Inscription : `POST /auth/register`, **pas** de second login, message « email de vérification envoyé » | `pages/AuthPage.js:44-53` | `POST /auth/register` (`routers/auth.py:166-193`) | `doAuth()` `:4539` | fait ; `remember` non envoyé à l'inscription — écart 2 |
+| « Se souvenir » coché par défaut, envoyé en `remember` (connexion) | `pages/AuthPage.js:22,25,102` | `POST /auth/login` | `boot()` `:4851`, `doAuth()` `:4576` | fait |
+| Validation du formulaire : nom ≥ 2, mot de passe ≥ 8 (inscription) / ≥ 6 (connexion), email | `pages/AuthPage.js:88,93,100` | — | `doAuth()` `:4542-4546` | fait (en JS : le design n'a ni `required` ni `minlength`, et la règle 1 n'autorise pas à les ajouter) |
+| Messages d'auth par code, sinon statut HTTP, sinon repli — jamais le détail anglais | `lib/authErrors.js:12-64` | réponses 400/401/403/409/422/429/5xx | `authErr()` `:4461` | fait |
+| Captcha Turnstile : monté si la clé publique existe ; inscription ou connexion déjà échouée ; `always` si l'API l'exige | `pages/AuthPage.js:26-37,108,115` ; `components/common/CaptchaWidget.js:110-116` | `captcha.require` (`routers/auth.py:113-133,169,199`) | `renderAuthCaptcha()` `:4513`, `syncAuthCaptcha()` `:4527` | fait |
+| Jeton à usage unique : tout échec rend le contrôle au client | `pages/AuthPage.js:57-61` | — | `doAuth()` `:4575-4584` | fait (corrigé cette session) |
+| Redirection après connexion vers la page d'origine (`from`), accueil par défaut ; déjà connecté → même redirection | `pages/AuthPage.js:38,40,53` | — | `authReturnTo` `:4447`, `loaders.connexion` `:4754` | fait |
+| Mot de passe oublié : envoi, message inline, captcha, erreurs traduites | `pages/AuthExtras.js:42-50` | `POST /auth/forgot-password` (`routers/auth.py:222-241`) | `forgotPassword()` `:4599`, `renderForgotCaptcha()` `:4587` | fait |
+| Réinitialisation par jeton (`/reinitialiser/:token`), 8 car. min., confirmation identique, lien invalide → message | `pages/AuthExtras.js:65-78` ; `App.js:76` | `POST /auth/reset-password` (`routers/auth.py:244-253`) | `resetPassword()` `:4637`, `resetTokenFromUrl()` `:4608` | fait |
+| Vérification d'email (`/verifier-email/:token`) : jeton consommé au chargement, session rafraîchie | `pages/AuthExtras.js:90-97` ; `App.js:77` | `POST /auth/verify-email` (`routers/auth.py:213-220`) | `verifyTokenFromUrl()` `:4620`, `boot()` `:4860-4867` | fait (écran dédié absent du design → « manquants ») |
+| Connexion Google : `/auth/google/start?return_to=…` | `components/AuthCallback.js:8-11` | `GET /auth/google/start` (`routers/auth.py:288-317`) | `googleLogin()` `:4585` | fait |
+| Retour Google en échec (`?error=google`) : message + URL nettoyée | `components/AuthCallback.js:14-28` | `GET /auth/google/callback` (`routers/auth.py:319`) | `handleGoogleError()` `:4627` | fait |
+| Module captcha vérifié conforme | `components/common/CaptchaWidget.js:103-122` ↔ `mgs-logic-captcha.js:138-150` | — | — | fait |
 
-### Preuves de lignes (Z2)
+---
 
-- **Liste des jeux** : `main` `frontend/src/context/GameContext.js:42` (`api.get("/games")`),
-  `:45` (`g.active !== false`), `:46` (`if (list.length > 0)`), `:47` (`(a.sort_order ?? 0) - (b.sort_order ?? 0)`).
-  Prototype `frontend/public/index.html:3599` (les quatre), rendu `:3611` ; le badge n'est
-  retiré que si une icône est injectée (`:3629`), la couleur `u--bg--*` tourne sur la palette
-  du design (`GAME_BG` `:3608`), icône cassée → icône du design (`GameCard.js:63-65`).
-- **Paramètres catalogue** : `main` `frontend/src/pages/Catalog.js:142` —
-  `api.get("/products", { params: { game, type, q, sort, popular, favorites, min_price, max_price } })` ;
-  tri par défaut `price_asc` (`:118`), puce « Populaire » → `popular=1` (`:244`).
-  Prototype `index.html:3786-3792` (même objet) ; `qs()` `:3735` omet les valeurs vides,
-  comme axios omet `undefined` ; puce 0 `popular=1`, puce 1 `price_asc`/`price_desc`
-  (`:4419`) — `unit_price` n'est jamais envoyé (`routers/products.py:78`).
-- **Fiche produit** : `main` `frontend/src/pages/Product.js:81` — `` api.get(`/products/${slug}`) `` ;
-  échec → état d'erreur `:84-93`. Prototype `index.html:3717` —
-  `req("/products/" + encodeURIComponent(slug))`, puis `renderProduitError()` `:3729`
-  (`catalog.empty` FR/EN, clé de main).
-- **Panier** : `main` `frontend/src/context/CartContext.js:21` (un seul jeu), `:23-26`
-  (doublon d'abonnement), `:29` (`Math.min(20, …)`, `single ? 1`). Prototype `index.html:3653-3663`.
-- **Favoris** : `main` `frontend/src/lib/favorites.js:41-48` (bascule + `mgs_favorites`),
-  `frontend/src/pages/Catalog.js:155-157` (filtre client). Prototype `index.html:3691` et `:3748`.
+## Z2 — Catalogue, recherche, fiche produit, panier, favoris
 
-### Limites du design v3 (aucun nouvel élément)
+| Fonction | Source REF | Route backend | Prototype | État |
+|---|---|---|---|---|
+| Liste des jeux (filtre `active`, tri `sort_order`, liste vide → gabarit conservé, icône cassée → icône du design) | `context/GameContext.js:42-52` ; `components/game/GameCard.js:63-65` | `GET /games` (`routers/games.py:53`) | `loadGames()` `:3623`, `renderGames()` `:3635` | fait |
+| Catalogue : `game, type, q, sort, popular, favorites, min_price, max_price` (rien d'autre) | `pages/Catalog.js:118,142,244` | `GET /products` (`routers/products.py:75`) | `qs()` `:3778`, `catalogQuery()` `:3779`, `loadCatalogFor()` `:3829` | fait |
+| Puces du design : 0 = populaire (`popular=1`), 1 = prix croissant/décroissant (`sort`) | `pages/Catalog.js:244,118` | `GET /products` | clic `:4791` (`applyCatalogQuery`) | fait |
+| Options de tri de REF sans conteneur (`sortDefault`, `unit_price` non accepté par l'API) | `pages/Catalog.js:118` | `routers/products.py:78` | — | NON FAIT (design : 2 puces, aucune liste à 4 options) |
+| Recherche `q` | `pages/Catalog.js:142` | `GET /products` | `catalogQuery()` `:3779` | fait |
+| Fiche produit + état d'erreur (slug inconnu) | `pages/Product.js:81-93` | `GET /products/{slug}` (`routers/products.py:118`) | `openProduit()` `:3760`, `renderProduit()` `:3736`, `renderProduitError()` `:3753` | fait |
+| Fiche produit : `related` (4) | `pages/Product.js:145-149` | `GET /products/{slug}` | — | NON FAIT (design : pas de conteneur « related ») |
+| Panier : règles complètes | `context/CartContext.js:16-34,49-53` | — | `addToCart()` `:3687`, `syncPill()` `:3706`, `cartCap()` `:3684`, `syncPillsFromCart()` `:3715` | fait |
+| Favoris : bascule + filtre catalogue côté client | `lib/favorites.js:41-48` ; `pages/Catalog.js:155-157` | `GET /products?favorites` | `toggleFav()` `:3725`, `renderCatalog()` `:3794` | fait |
+| Accueil : rubans populaires / abonnements | `pages/Home.js:430-457` | `GET /products` | — | NON FAIT (design : hero, deux colonnes, marquee — aucun conteneur produits) |
+| Accueil : événements | `pages/Home.js:407` | `GET /events` (`routers/events.py:46`) | `renderEvents()` `:4680` (pré-chargé par `loaders.accueil`) | fait |
+| Pack évolutif embarqué dans l'onglet `evo` du catalogue | `pages/Catalog.js:13,243,274` ; `pages/PackEvolutif.js:41-43` | `GET /products?type=evo`, `GET /evo/season` | `?type=evo` filtré par le catalogue ; pack sur son écran `packVerify()` `:4670` | NON FAIT (design : pas d'onglets de type) |
+| Règles ajoutées par d'autres agents après REF (`3a3ed0c`, `af89a88`, `224ca8c`, `5871a5b`, `5895a64`) | — | — | voir ci-dessous | traité |
 
-- **`related` (4)** : `main` `pages/Product.js:145-149` rend une grille `.mgs-grid--3` de
-  `ProductCard`. L'écran `produit` du design n'a que `.mgs-grid--2` + `.mgs-buybar` — aucun
-  conteneur « related ». Non porté plutôt que d'ajouter un élément visible.
-- **Accueil** : `main` `pages/Home.js:430-457` (sections populaires / abonnements) n'a aucun
-  conteneur equivalent dans le design (hero, deux colonnes, marquee, sécurité, logos).
-  Les événements, eux, sont chargés (`index.html:4289`) et affichés sur la page Événements.
-- **Pack évolutif** : `main` `pages/Catalog.js:274` rend `PackEvolutif embedded` dans l'onglet
-  `evo`. Le catalogue du prototype n'a pas d'onglets de type (2 puces de tri) ; `?type=evo`
-  filtre la grille, et le pack reste sur son écran dédié (`packVerify()`).
-- **Thème sombre** : le design v3 n'a ni sélecteur `.dark`, ni `prefers-color-scheme`, ni lecteur
-  de `mgs-theme` (`grep -c` = 0 dans `index.html`). L'auto-contrôle Z2 tourne donc en clair ;
-  le « sombre » de `audit-contrast` est un no-op sur ce prototype.
+Leçon des 5 commits post-REF, vérifiés un par un cette session :
+
+- `3a3ed0c` (panier : un seul jeu, plafonds) — **règle équivalente dans REF**
+  (`CartContext.js:16-34`) : conservée.
+- `af89a88` (tri client par prix absolu sur les puces) — déjà retiré par
+  `194533a` ; plus aucune trace (`sortCatalog`, `catalogSort`, `catalogOriginal`
+  absents) : rien à faire.
+- `224ca8c` — `co.busy` (anti double-clic) : équivalent REF (`Checkout.js:71`
+  `inFlight`) → conservé ; `cart = []` à la déconnexion : plus présent ;
+  compteur « Jeux liés » : masqué (voir « Éléments masqués ») ; clés
+  `points.redeem` / `points.pidPrompt` / `catalog.sort*` : déjà retirées du
+  dictionnaire.
+- `5871a5b` — favoris (équivalent REF `lib/favorites.js`) : conservés ; IDs
+  récents : remplacés par la forme de REF (`mgs_recent_player_ids`).
+- `5895a64` — pastille points invité : équivalent REF (`Header.js:33-35`) →
+  conservé ; redirection invité `/commandes` → connexion : **aucun équivalent
+  REF** (`OrderTrack.js:539-549` affiche `order.loginToSee`) → déjà retirée par
+  `b347483`, vérifié ; `mgsSetNav` forçant « boutique » sur l'accueil : **aucun
+  équivalent REF** (`Header.js:225`, `NavLink to="/boutique" end`) → **retirée
+  cette session**.
 
 ---
 
 ## Z3 — Paiement (identité, méthode, commande, preuve, annulation, attente, Binance)
 
-| Fonction | Source `main` | Route backend | Auth | Prototype | État |
-|---|---|---|---|---|---|
-| Identités joueur sauvegardées (CRUD) | `components/GameIdentities.js:44-62` | `GET/POST/PATCH/DELETE /me/game-identities` (`routers/games.py:103-152`) | oui | absent | à porter |
-| IDs récents (localStorage, 10 max) | `lib/recentPlayerIds.js:40,94` | — | non | `renderRecent()` | à porter |
-| Validation d'ID joueur | `components/store/checkout/IdentityFieldsVerify.js:102` | `POST /fazercards/validate-id` (`routers/fazercards.py:118`) | non | `req("/fazercards/validate-id")` 3876 | à porter |
-| Config paiements (méthodes, mode) | `pages/Checkout.js:78` | `GET /payments/config` (`routers/payments.py:194`) | non | `loadPayCfg()` 3691 | à porter |
-| Config Binance/USDT | `pages/Checkout.js:79` | `GET /crypto/config` (`routers/crypto.py:107`) | non | `MGS_CRYPTO` | à porter |
-| Choix de la méthode (manuel vs binance) | `pages/Checkout.js:83-84,160-180,277-278` | — | — | `coOpen()` `index.html:3918-3922` (masquage par `configured`/`available`) | porté (Z3a) |
-| Création de commande (payload exact) | `pages/Checkout.js:135-142` | `POST /orders` (`routers/orders.py:315`) | non | à vérifier | à porter |
-| Preuve de paiement (1 à 3 captures) | `components/store/checkout/ProofPay.js:119` | `POST /orders/{id}/proof` (`routers/orders.py:501`) | non | à vérifier | à porter |
-| Relance admin (3 min / 3 max) | `components/store/checkout/ProofPay.js:216-228` | `POST /orders/{id}/remind` (`routers/orders.py:615`, cooldown `:627`=180 s, max `:628`=3) | non | non porté (design) — aucun contrôle libre dans l'écran d'attente (`index.html:2628-2634`) | non porté (design) |
-| Annulation avec motif | `components/store/checkout/CancelSheet.js:46` | `POST /orders/{id}/cancel` (`routers/orders.py:680`) | non | à vérifier | à porter |
-| Initiation paiement (MVola/Orange) | `pages/OrderTrack.js:114-126` (`usePaymentRetry`, appelé `:202-205,:486`) | `POST /payments/initiate` (`routers/payments.py:214`) | non | non porté (design) — main ne l'appelle que derrière un bouton « Réessayer » réservé aux statuts `failed`/`expired` et aux méthodes ni `manual` ni `binance` (`:203,:388-391,:517-519`) ; le prototype ne crée que des commandes `manual` ou `binance` | non porté (design) |
-| Statut paiement (sondage 5 s) | `pages/OrderTrack.js:93-104` (appelant `:198-201`) | `GET /payments/{id}/status` (`routers/payments.py:294`) | non | `startPaymentPoll()` `index.html:4009-4025`, démarré dans `coPay()` `:4001` | porté (Z3a) |
-| Binance : initiate / statut / « payé » | `pages/Checkout.js:177` ; `components/store/checkout/BinancePay.js:32` | `POST /crypto/initiate` (`routers/crypto.py:112`), `GET /crypto/{id}/status` (`:123`), `POST /crypto/{id}/paid` (`:130`) | non | `MGS_CRYPTO` | à porter |
-| Écran d'attente / reprise de commande | `pages/OrderTrack.js:145-231,266-359` ; `lib/pendingOrder.js:13-30,37,47,63-69` | `GET /orders/{id}` | non | `resumePendingOrder()` `index.html:3866-3886`, `hydrateCoFromOrder()` `:3846`, écrans `data-co=2/3` (`:2617,:2628`) | porté (Z3a) |
-
-### Z3a — paiement manuel (reprise, relance, initiation, sondage)
-
-Règle de conception : le design v3 n'a aucun conteneur pour une bannière de reprise ni
-pour un bouton de relance → la reprise est **silencieuse** (aucun élément visible ajouté).
-
-- **Reprise de commande en attente — PORTÉE.** Mémoire : une seule clé
-  `mgs_pending_order_id` = `{ id, createdAt }` (`index.html:3822-3833`), try/catch
-  partout, TTL 24 h, purge sur statut final / entrée introuvable — même forme que
-  `main frontend/src/lib/pendingOrder.js:13-30,37,47`. Au rechargement :
-  `GET /orders/{id}` puis **écran par statut** comme `main pages/OrderTrack.js:266-359` :
-  `pending_payment` → `data-co=2` (`index.html:2617` : compte à rebours, marchand,
-  bouton de preuve), `proof_submitted` → `data-co=3` (`:2628` : écran d'attente),
-  `pending_payment` Binance → `data-co=2` avec l'adresse/memo et **réouverture du slot**
-  par `GET /crypto/{id}/status` (`main :167-172`), jamais de 2ᵉ `initiate`.
-- **Relance admin — NON PORTÉE (design).** `main components/store/checkout/ProofPay.js:216-228`
-  → `POST /orders/{id}/remind` (`routers/orders.py:615`, cooldown `:627`=180 s, max `:628`=3).
-  L'écran d'attente du design (`index.html:2628-2634`) n'a que « Voir ma commande » :
-  aucun contrôle libre pour porter la relance. Rien n'est câblé ; à rebrancher dans un lot
-  dédié si le propriétaire accepte un contrôle visible.
-- **Initiation paiement — NON PORTÉE (design).** `main pages/OrderTrack.js:114-126`
-  (`usePaymentRetry`) → `POST /payments/initiate` (`routers/payments.py:214`). main ne
-  l'appelle que derrière un bouton « Réessayer » rendu uniquement pour les statuts
-  `failed`/`expired` et les méthodes ni `manual` ni `binance` (`:202-205`, `:388-391`,
-  `:517-519`) ; le design n'a aucun contrôle libre (`index.html:2469` « Télécharger le
-  reçu » / « Commander encore », `:2634` « Voir ma commande ») et le prototype ne crée que
-  des commandes `manual` ou `binance` → fonction non déclenchable. Rien n'est câblé.
-- **Sondage paiement — PORTÉ.** `main pages/OrderTrack.js:93-104` reproduit exactement :
-  `GET /payments/{id}/status` immédiat puis toutes les 5 s (`:103-104`), arrêt au
-  démontage (`:105`). Conditions : `status === "pending_payment"` et méthode ni
-  `manual` (`:93`) ni `binance` (appelant `:198-201`). À noter : main ne vérifie pas la
-  visibilité de l'onglet (commentaire `:87-89` « visibilité d'écran pas concernée ici »).
-  Prototype : `startPaymentPoll()` `index.html:4009-4025`, démarré dans `coPay()` `:4001`,
-  arrêté à la sortie du tunnel (`coOpen`/`coFinish`). Un changement de `order_status`
-  (`:100`) relit la commande et rouvre l'écran de son statut.
-- **Masquage des opérateurs non configurés — PORTÉ.** `main pages/Checkout.js:83-84`
-  (`configured !== false`) et `:277-278` ; prototype `coOpen()` `index.html:3921-3922` —
-  même méthode que le masquage Binance déjà en place (`style.display`, aucun élément
-  créé). Un opérateur `configured: false` dans `GET /payments/config` n'est pas proposé.
+| Fonction | Source REF | Route backend | Prototype | État |
+|---|---|---|---|---|
+| Commander sans compte (aucune redirection vers la connexion) | `pages/Checkout.js:250-264` ; `routers/orders.py:315-321` (`get_optional_user`) | `POST /orders` | `createOrder()` `:4108` (aucun `needLogin`) | fait |
+| Point de départ de l'ID : `?pubg_id`, sinon `mgs_last_player_id`, sinon `saved_pubg_ids[0]` ; modification mémorisée | `pages/Checkout.js:56-59,80-83` | — | `coOpen()` `:3966`, écouteur `input` `:4386` | fait |
+| Validation locale du champ (requis, `min_length`, `max_length` 60, motif en correspondance totale) avant tout appel | `components/store/checkout/IdentityFieldsVerify.js:20-35,78-87` | — | `fieldLocalError()` `:4006`, `fieldMessage()` `:4014`, `verifyId()` `:4041` | fait |
+| Vérification d'ID : `POST /fazercards/validate-id {game_id, fields}`, champs tirés de `identity_fields` du jeu | `IdentityFieldsVerify.js:96-115` | `POST /fazercards/validate-id` (`routers/fazercards.py:118`) | `identitySpecOf()` `:3997`, `primaryKeyOf()` `:4002`, `verifyId()` `:4041` | fait |
+| Table des verdicts (refus / saisie / indisponible), jamais un détail brut | `lib/identityErrors.js:16-38` | codes `invalid_id`, `missing_field`, 422/429/502/503/504 | `identityErrorKey()` `:4022` | fait |
+| Suggestions d'IDs déjà utilisés : visibles tant que l'ID n'est pas vérifié, un clic **remplit sans vérifier** | `IdentityFieldsVerify.js:150-152,185-188,257-273` | — | `renderRecent()` `:3956`, clic `:4791` | fait |
+| Identité mémorisée : `POST /me/game-identities` après vérification réussie, si connecté ; échec sans conséquence | `pages/Checkout.js:132-141` | `POST /me/game-identities` (`routers/games.py:110-127`, idempotent `:122-126`) | `saveIdentity()` `:4034` | fait |
+| Liste/édition des identités sauvegardées (CRUD du compte) | `components/GameIdentities.js:44-63` | `GET/PATCH/DELETE /me/game-identities` (`routers/games.py:103-152`) | — | NON FAIT (design : l'écran compte n'a aucune section « identités ») |
+| Méthode de paiement : `mvola` / `orange` (manuel) / `binance`, selon `providers.*.configured !== false` et `crypto.available` | `pages/Checkout.js:100-106,330-341` | `GET /payments/config` (`routers/payments.py:194`), `GET /crypto/config` (`routers/crypto.py:107`) | `loadPayCfg()` `:3622`, `coOpen()` `:3973-3976` | fait |
+| Opérateur transmis (`manual_operator`) | `pages/Checkout.js:181` | `POST /orders` | `createOrder()` `:4130` | fait |
+| Sélecteur de réseau USDT (NetworkPicker) | `pages/Checkout.js:335-339` | `GET /crypto/config` | réseau par défaut = `crypto.networks[0]` (`:4219`) | NON FAIT (design : aucun sélecteur) |
+| Création de commande : payload exact + `identity_id` quand l'identité vérifiée est celle du compte | `pages/Checkout.js:165-188` | `POST /orders` (`routers/orders.py:315`, `OrderIn` `:64-82`) | `createOrder()` `:4108-4145` | fait |
+| 422 Pydantic traduite (`payment_phone` → `checkout.phoneError`, sinon `checkout.orderValidationError`) | `pages/Checkout.js:39-47` | `POST /orders` | `validationDetails()` `:4099`, `validationField()` `:4100` | fait |
+| Panier vidé DÈS la création réussie | `pages/Checkout.js:186` | — | `createOrder()` `:4138` | fait |
+| Turnstile à la soumission (jeton à usage unique) | `pages/Checkout.js:228-246,365-380` | `captcha.require` (ordre) | `openHuman()` `:4072`, `createOrder()` `:4140-4143` | fait |
+| Anti double-clic (une seule requête en vol) | `pages/Checkout.js:70-71,190-204` | — | `co.busy` `:4109` | fait |
+| Écran de paiement manuel : nom du marchand et numéro **issus de l'API**, compte à rebours sur `payment_deadline_at` | `pages/OrderTrack.js:272,299-324` | `GET /payments/config`, `GET /orders/{id}` | `coPay()` `:4153` | fait |
+| Sondage du paiement autorisé (statut `pending_payment`, méthode ni `manual` ni `binance`, toutes les 5 s, arrêt à la sortie) | `pages/OrderTrack.js:86-104,194-201` | `GET /payments/{id}/status` (`routers/payments.py:294`) | `startPaymentPoll()` `:4173`, `stopPaymentPoll()` `:4172` | fait |
+| Preuve : 1 à 3 captures **au total** (envoyées comprises), JPEG/PNG (type ou extension), 8 Mo, champ `files` | `components/store/checkout/ProofPay.js:28-30,76-101,111-128` | `POST /orders/{id}/proof` (`routers/orders.py:501-560`) | `uploadProof()` `:4274` | fait |
+| Preuve : état réel relu après l'envoi ; codes `proof_*` traduits ; 429/502/503/403/404 dédiés | `ProofPay.js:33-58,119-126` | idem | `proofErrorMessage()` `:4258`, `uploadProof()` `:4274` | fait |
+| Contrôle « J'ai payé le montant exact » avant l'envoi | `ProofPay.js:183-187` | — | — | NON FAIT (design : aucune case à cocher dans la feuille de preuve) |
+| Relance admin (3 min / 3 max) | `ProofPay.js:212-229` | `POST /orders/{id}/remind` (`routers/orders.py:615`, cooldown `:627`, max `:628`) | — | NON FAIT (design : l'écran d'attente n'a que « Voir ma commande ») |
+| Reprise de commande en attente (silencieuse) : `GET /orders/{id}`, écran par statut | `pages/OrderTrack.js:156-188,266-359` | `GET /orders/{id}` (`routers/orders.py:467`) | `resumePendingOrder()` `:3890`, `hydrateCoFromOrder()` `:3870` | fait |
+| Annulation par motif : 5 raisons de REF, aucune présélectionnée, `POST /orders/{id}/cancel { reason }` seul | `components/store/checkout/CancelSheet.js:20-26,39-40,46-51,81` | `POST /orders/{id}/cancel` (`routers/orders.py:680`, `CancelIn` `:124-127`) | `openCancel()` `:4325`, `confirmCancel()` `:4344` | fait |
+| Annulation : 409 distingué (`cancel_conflict` / `cancel_not_allowed`), état réel rechargé ; succès → accueil | `CancelSheet.js:52-62` ; `OrderTrack.js:399-407` | idem | `confirmCancel()` `:4350-4358` | fait |
+| Motif `wrong_info` (1re raison de REF) | `CancelSheet.js:21` | `CancelIn` l'accepte (`routers/orders.py:126`) | — | NON FAIT (design : le sélecteur a 4 raisons, `change_method` en tête ; aucune option ajoutée) |
+| Champ « Précision (facultatif) » | — | `CancelIn.note` (`routers/orders.py:127`), que REF n'envoie pas | `openCancel()` `:4328` | masqué |
+| Binance : `POST /crypto/initiate {order_id, network}` après création, jamais de 2ᵉ initiation | `pages/Checkout.js:214-223` ; `pages/OrderTrack.js:163-169` | `POST /crypto/initiate` (`routers/crypto.py:112`) | `initiateBinance()` `:4200`, `resumePendingOrder()` `:3900` | fait |
+| Binance : sondage `GET /crypto/{id}/status` toutes les 8 s, `CONFIRMED` → relecture, `FAILED` → arrêt, aucun `POST /crypto/{id}/paid` | `components/store/checkout/BinancePay.js:9,30-45` | `GET /crypto/{id}/status` (`routers/crypto.py:123`) | `coPayBinance()` `:4211` via `MGS_CRYPTO` (`mgs-logic-crypto.js:27,237-255`) | fait |
+| Réessai de paiement automatique (`POST /payments/initiate`) | `pages/OrderTrack.js:110-122,198-201,384-388` | `POST /payments/initiate` (`routers/payments.py:214`) | — | NON FAIT (design : aucun bouton « Réessayer » ; fonction non déclenchable) |
 
 ---
 
-## Z4 — Commandes (suivi, historique, filtres, détail, reçu)
+## Z4 — Commandes
 
-| Fonction | Source `main` | Route backend | Auth | Prototype | État |
-|---|---|---|---|---|---|
-| Suivi par numéro + ID joueur | `pages/OrderTrack.js:455` | `GET /orders/track` (`routers/orders.py:450`) | non | absent du design | absent du design |
-| Suivi par id de commande | `pages/OrderTrack.js:163` | `GET /orders/{id}` (`routers/orders.py:467`) | optionnel | `req("/orders/…")` 3993,4007,4030 | à porter |
-| Historique du client | `pages/OrderHistory.js:159` | `GET /orders/me` (`routers/orders.py:436`) | oui | `req("/orders/me")` 4091,4127 | à porter |
-| Détail + re-produit + reçu | `pages/OrderHistory.js:270,318` | `GET /orders/{id}`, `GET /products/{slug}` | oui | à vérifier | à porter |
-| Filtres / pagination de l'historique | `pages/OrderHistory.js` | `GET /orders/me` | oui | à vérifier | à porter |
-| Lien « commandes » → suivi | `components/common/OrdersRedirect.js:8` | — | — | écran `commandes` | à porter |
+| Fonction | Source REF | Route backend | Prototype | État |
+|---|---|---|---|---|
+| Historique du client (liste complète, 200 dernières) | `pages/OrderHistory.js:297-304` | `GET /orders/me` (`routers/orders.py:436`) | `loadOrders()` `:4414`, `renderOrders()` `:4403` | fait |
+| Onglets « Toutes / En cours » en filtre **local** (aucun paramètre d'API) | `OrderHistory.js:100-106,172-194,318` | — | gabarit `cmdFilter()` `:3338` + `data-filter` de `renderOrders()` | fait |
+| 3ᵉ onglet de REF (« Terminées ») | `OrderHistory.js:176` | — | — | NON FAIT (design : 2 onglets) |
+| Recherche locale (numéro, ID joueur, produit), insensible à la casse | `OrderHistory.js:306-318` | — | gabarit `cmdFilter()` `:3338` | fait |
+| Pagination | — (REF n'en a aucune) | — | bloc `.mgs-cmd-pages` `:2447-2451` | masqué |
+| Détail : relecture `GET /orders/{id}` à l'ouverture | `OrderHistory.js:421-429` | `GET /orders/{id}` | `refreshOrderDetail()` `:4424` | fait |
+| Détail : nombre de preuves réelles, ligne masquée à zéro | `OrderHistory.js:618-622` | `GET /orders/{id}` | `refreshOrderDetail()` `:4424` | fait |
+| Détail : reçu réservé à une commande payée au moins une fois (`paid_at`) | `OrderHistory.js:469,691-698` | — | `refreshOrderDetail()` `:4433` | fait |
+| Reçu (contenu : numéro, date, statut, jeu, produit, ID, méthode, montant) | `OrderHistory.js:342-374,513-525` (`window.print`) | — | bouton `.mgs-receipt-btn` : le gabarit du design produit un PNG (canvas) — mécanisme du design conservé, mêmes données | fait |
+| Détail : raison d'annulation et note traduites | `OrderHistory.js:376-384,624-635` | `GET /orders/{id}` | — | NON FAIT (design : aucune ligne « raison »/« note » dans le détail) |
+| Suivi public par numéro + ID joueur | `pages/OrderTrack.js:434-479,520-552` | `GET /orders/track` (`routers/orders.py:450`) | — | NON FAIT (design : pas d'écran de suivi ni de champ ID joueur invité) |
+| Invité : texte `order.loginToSee` | `OrderTrack.js:543-550` | — | `renderOrders()` `:4405` | fait |
+| Invité : bouton « Se connecter » de l'état vide | `OrderTrack.js:546-548` | — | — | NON FAIT (design : l'état vide n'a qu'une icône et un texte) |
+| `/commandes` → `/suivi` | `components/common/OrdersRedirect.js:8` ; `App.js:67` | — | l'écran `commandes` EST la page (site mono-page) | fait (destination identique) |
+| « Commander à nouveau » (produit relu, ID repris, `/commande?pubg_id=`) | `OrderHistory.js:486-509` | `GET /products/{slug}` | — | NON FAIT (design : aucune action de re-commande dans le détail) |
 
 ---
 
-## Z5 — Compte, points, événements, pack évolutif, notifications
+## Z5 — Compte, fidélité, événements, pack évolutif, chat
 
-| Fonction | Source `main` | Route backend | Auth | Prototype | État |
-|---|---|---|---|---|---|
-| Profil (nom, téléphone, IDs sauvegardés) | `pages/Account.js:132` | `PATCH /auth/me` (`routers/auth.py:392`) | oui | `saveProfile()` 4129 | à porter |
-| Mot de passe | `pages/Account.js:142` | `POST /auth/change-password` (`routers/auth.py:255`) | oui | `changePassword()` 4130 | à porter |
-| Suppression (`confirmation: "SUPPRIMER"`) | `pages/Account.js:150` | `POST /auth/me/delete` (`routers/auth.py:436`) | oui | `deleteAccount()` 4131 | diverge — mot de passe absent depuis `c5cfb41` |
-| Renvoyer l'email de vérification | `pages/Account.js:51` | `POST /auth/resend-verification` (`routers/auth.py:207`) | oui | absent | à porter |
-| Carte joueur PUBG | `components/PubgPlayerCard.js:141` | `PATCH /auth/me` | oui | à vérifier | à porter |
-| Points : solde, ledger, config | `pages/Loyalty.js:147` ; `components/layout/Header.js:29` | `GET /loyalty/me` (`routers/loyalty.py:60`) | oui | 4126,4172,4277,4499 | à porter |
-| Récompenses + échange | `pages/Loyalty.js:150,155` | `GET /loyalty/rewards` (`:68`), `POST /loyalty/redeem` (`:73`) | non/oui | 4286,4291 | à porter |
-| Transferts de points | `pages/Loyalty.js:103,106` | `POST /loyalty/transfers` (`:109`), `…/{id}/{action}` (`:153,165`) | oui | à vérifier | à porter |
-| Événements (liste, like, partage) | `pages/Events.js:22,30,38` | `GET /events` (`routers/events.py:46`), `POST /events/{id}/like` (`:52`), `…/share` (`:66`) | non | 4307,4314,4322 | à porter |
-| Pack évolutif (saison, éligibilité) | `pages/PackEvolutif.js:41-61` | `GET /evo/season` (`routers/evo.py:110`), `GET /evo/eligibility` (`:115`) | non | 4298,4367 | à porter |
-| Chat client (conversations, messages, non-lus) | `pages/Chat.js`, `components/chat/ChatWorkspace.js:29,54`, `ChatThread.js:25,31,86` | `GET/POST /chat/*` (`routers/chat.py:48-122`) | oui | 4355-4358 | à porter |
+| Fonction | Source REF | Route backend | Prototype | État |
+|---|---|---|---|---|
+| Profil : `PATCH /auth/me {name, phone, saved_pubg_ids}` (ID séparés par virgules **ou** espaces) | `pages/Account.js:127-133` | `PATCH /auth/me` (`routers/auth.py:392`) | `saveProfile()` `:4478` | fait (séparateur corrigé cette session) |
+| Mot de passe : `POST /auth/change-password` | `pages/Account.js:135-143` | `POST /auth/change-password` (`routers/auth.py:255`) | `changePassword()` `:4479` | fait |
+| Mot de passe : contrôle « confirmation identique » | `pages/Account.js:137,239` | — | — | NON FAIT (design : pas de champ « confirmation ») |
+| Suppression : confirmation tapée + mot de passe si le compte en a un | `pages/Account.js:145-151` | `POST /auth/me/delete` (`routers/auth.py:436-444`) | `deleteAccount()` `:4485` | fait (mot de passe ajouté cette session ; le design n'a pas de champ dédié) |
+| Bannière « email non vérifié » + renvoi | `pages/Account.js:35-52` | `POST /auth/resend-verification` (`routers/auth.py:207`) | — | NON FAIT (design : aucune bannière dans l'écran compte) |
+| Carte joueur PUBG | `components/PubgPlayerCard.js:141` | `PATCH /auth/me` | — | NON FAIT (design : aucune carte joueur) |
+| Points : solde, gagnés, historique, config | `pages/Loyalty.js:141-163` | `GET /loyalty/me` (`routers/loyalty.py:60`) | `renderPoints()` `:4651` | fait (3ᵉ compteur du design = « Utilisés », somme du journal ; REF affiche `promo` — libellé du design, données réelles) |
+| Récompenses : `GET /loyalty/rewards`, `cost_points` en libellé | `pages/Loyalty.js:80-90,143` | `GET /loyalty/rewards` (`routers/loyalty.py:68`) | `renderPoints()` `:4651` | fait |
+| Échange : `POST /loyalty/redeem {reward_id, pubg_id}` | `pages/Loyalty.js:147-149` | `POST /loyalty/redeem` (`routers/loyalty.py:73`) | `redeem()` `:4667` | fait **avec écart** : REF n'ouvre l'échange qu'après `valid:true` (`Loyalty.js:61-92`) ; le design n'a aucun champ de vérification sur l'écran points, l'ID du compte (ou une saisie) est utilisé |
+| Transferts de points | `pages/Loyalty.js:95-134` | `GET/POST /loyalty/transfers`, `…/{id}/{action}` (`routers/loyalty.py:109,153,165`) | — | NON FAIT (design : aucun formulaire de transfert) |
+| Événements : liste | `pages/Events.js:16,31-47` | `GET /events` (`routers/events.py:46`) | `renderEvents()` `:4680` | fait |
+| État vide `events.empty` | `pages/Events.js:36` | — | `renderEvents()` `:4683` | fait |
+| « J'aime » / « Partager » (compteurs, `mgs_liked`, URL `/evenements#slug`) | `pages/Events.js:14,18-29,49-52` | `POST /events/{id}/like` (`routers/events.py:52`), `…/share` (`:66`) | — | NON FAIT (design : la carte d'événement n'a aucun contrôle, `.mgs-card__like`/`.mgs-card__share` n'existent pas dans sa feuille de style) |
+| Pack évolutif : saison + éligibilité | `pages/PackEvolutif.js:41-61` | `GET /evo/season` (`routers/evo.py:110`), `GET /evo/eligibility` (`:115`) | `packVerify()` `:4670` | fait |
+| Chat : composer (création de conversation puis envoi du message) | `pages/Chat.js:1-18` ; `components/chat/ChatWorkspace.js:51` ; `ChatThread.js:86` | `POST /chat/conversations`, `…/{id}/messages` (`routers/chat.py:48,80`) | `supportSend()` `:4725`, `openChat()` `:4734` | fait |
+| Chat : invité → connexion, jamais de conversation sans compte | `pages/Chat.js:16-20` | `POST /chat/conversations` (`get_current_user`) | `supportSend()` `:4731`, `openChat()` `:4735` | fait |
+| Chat : liste des conversations, fil, non-lus, `read` | `ChatWorkspace.js:57-96` ; `ChatThread.js:25-58` | `GET /chat/conversations`, `…/{id}/messages`, `…/{id}/read` (`routers/chat.py:48-122`) | — | NON FAIT (design : l'écran support n'a qu'un formulaire d'envoi, aucun fil) |
+| `/support` = page Chat | `pages/Support.js` (réexport de `Chat.js`) | — | écran `support` + masquage des cartes sans équivalent | fait |
 
 ---
 
 ## Z6 — Hors pages clients
 
-| Fonction | Source `main` | Route backend | Auth | Prototype | État |
-|---|---|---|---|---|---|
-| Admin (14 écrans : commandes, catalogue, jeux, fournisseur, événements, messages, fidélité, utilisateurs, paiements, notifications) | `pages/admin/*` ; `lib/adminNav.js` | `routers/admin_users.py`, `orders.py`, `products.py`, `games.py`, `events.py`, `loyalty.py`, `payments.py`, `crypto.py`, `fzr_orders.py` | admin | écran `admin` | à porter / à laisser à l'appli React |
-| Statut boutique en ligne + export + audit + stockage | `pages/admin/AdminLayout.js:25-29` ; `routers/orders.py:794,890,922` | `/settings/status`, `/admin/status`, `/admin/export`, `/admin/audit`, `/admin/storage` | admin | à vérifier | à porter / à laisser à l'appli React |
-| Notifications push (abonnement, test, alerte) | `lib/pushSync.js:127-245` ; `components/admin/AdminPush.js` | `routers/push.py:48-95`, `routers/notifications.py:19-35` | admin | à vérifier | à porter / à laisser à l'appli React |
-| Service worker | `public/sw.js` (push-only) ; `src/sw.test.js` | — | — | `public/sw.js` | à vérifier |
-| PWA | `public/manifest.json`, icônes | — | — | `public/manifest.json` | à vérifier |
-| SEO | `components/layout/SeoManager.js`, `lib/seo.js`, `public/robots.txt`, `public/sitemap.xml` | — | — | à vérifier | à porter |
-| Pages légales (`/terms`, `/privacy`) | `pages/Legal.js` ; `App.js:70-71` | — | non | absent du design | absent du design |
-| Frontière d'erreur, transitions, thème | `components/ErrorBoundary.jsx`, `components/animate-ui/…`, `components/layout/ThemeToggle.js` | — | — | à vérifier | à porter |
-
----
-
-## Visiteur sans compte — ce que `main` autorise
-
-| Action | `main` sans compte | Source |
-|---|---|---|
-| Parcourir accueil, boutique, jeux, produit, événements, pack | oui | `App.js:50-56,69` (routes non protégées) |
-| Ajouter au panier | oui (localStorage) | `context/CartContext.js:10-14` |
-| Commander | oui | `POST /orders` en `get_optional_user` (`routers/orders.py:315-321`) + captcha |
-| Payer (MVola/Orange) | oui | `POST /payments/initiate` en `get_optional_user` (`routers/payments.py:214-215`) |
-| Payer en USDT Binance | oui | `POST /crypto/initiate` en `get_optional_user` (`routers/crypto.py:112-113`) |
-| Vérifier un ID joueur | oui | `POST /fazercards/validate-id` sans dépendance d'auth (`routers/fazercards.py:118-119`) |
-| Suivre une commande | oui (numéro + ID joueur) | `GET /orders/track` public (`routers/orders.py:450-451`) ; `GET /orders/{id}` en `get_optional_user` (`:467-468`) |
-| Historique des commandes | **non** | `GET /orders/me` → `get_current_user` (`routers/orders.py:436-437`) |
-| Points de fidélité (solde, échange) | **non** | `GET /loyalty/me` → `get_current_user` (`routers/loyalty.py:60-61`) |
-| Likes / partages d'événements | oui (session_id) | `routers/events.py:52,66` |
-| Chat | **non** | `POST /chat/conversations` → `get_current_user` (`routers/chat.py:59-60`) |
-| Admin | **non** | `ProtectedRoute admin` (`App.js:82`) ; `require_permission` |
-| Compte, points, préférences d'identité | **non** | `ProtectedRoute` (`App.js:80-81`) ; `get_current_user` |
-
----
-
-## Ce que `main` fournit hors pages clients
-
-- **Admin** : 14 écrans (`pages/admin/Admin{Dashboard,Orders,Products,Games,Fazercards,Events,Chat,Loyalty,Users,Payments,Binance,Notifications}.js`, `OrderProofs.js`, `AdminLayout.js`) et ~45 routes `/admin/*` + `/crypto/admin/*` + `/loyalty/admin/*` + `/payments/admin/*`.
-- **Notifications push** : `lib/pushSync.js`, `components/admin/AdminPush.js`, `routers/push.py`, `routers/notifications.py`, `public/sw.js`.
-- **PWA** : `public/manifest.json`, `icon-192/512`, `apple-touch-icon.png`, `push-icon-192.png`.
-- **SEO** : `components/layout/SeoManager.js`, `lib/seo.js`, `public/robots.txt`, `public/sitemap.xml`, `public/og-image.png`.
-- **Pages légales** : `pages/Legal.js` → `/terms`, `/privacy`.
-- **Divers** : `ErrorBoundary.jsx`, transitions de page, `ThemeToggle`, `SlushChrome`, `lib/bottomChrome.js`, `lib/catalog.js`, `lib/paymentLabels.js`, `lib/identityErrors.js`, `lib/pointsFormat.js`.
-
----
-
-## Tableau des champs (extrait — à compléter zone par zone)
-
-| Appel | Champ | Prototype | `main` | Backend |
+| Fonction | Source REF | Route backend | Prototype | État |
 |---|---|---|---|---|
-| `POST /orders` | `game_id`, `identity_id`, `pubg_id`, `identity_fields`, `pseudo`, `items[].product_id`, `items[].quantity`, `payment_method`, `manual_operator`, `captcha_token` | à vérifier | `pages/Checkout.js:135-142` | `routers/orders.py:315` (`OrderIn`) |
-| `POST /orders` | réponse `id`, `created_at` → `mgs_pending_order_id` | à vérifier | `pages/Checkout.js:144` | `routers/orders.py:315-321` |
-| `POST /payments/initiate` | `order_id` → `payment_url`, `simulated` | à vérifier | `pages/OrderTrack.js:120` | `routers/payments.py:214` |
-| `GET /payments/{id}/status` | `order_status` | à vérifier | `pages/OrderTrack.js:97` | `routers/payments.py:294` |
-| `POST /crypto/initiate` | `order_id`, `network` | à vérifier | `pages/Checkout.js:177` | `routers/crypto.py:112` |
-| `GET /products` | `game`, `type`, `q`, `sort`, `popular`, `favorites`, `min_price`, `max_price` | `req("/products?game=")` | `pages/Catalog.js:142` | `routers/products.py:75` |
-| `POST /fazercards/validate-id` | `game_id`, `fields` | `req` 3876 | `IdentityFieldsVerify.js:102` | `routers/fazercards.py:118` |
-| `POST /loyalty/redeem` | `reward_id`, `pubg_id` | 4291 | `pages/Loyalty.js:155` | `routers/loyalty.py:73` |
-| `PATCH /auth/me` | `name`, `phone`, `saved_pubg_ids` (10 max, chiffres) | 4129 | `pages/Account.js:132` | `routers/auth.py:392-396` |
-| `POST /auth/me/delete` | `password`, `confirmation` ("SUPPRIMER") | 4131 — `password` absent depuis `c5cfb41` | `pages/Account.js:150` | `routers/auth.py:436-444` |
-| `GET /me/game-identities` | `game_id` ; `fields`, `label`, `player_name` | absent | `GameIdentities.js:44-56` | `routers/games.py:103-152` |
-| `GET /orders/track` | `order_number`, `pubg_id` | absent | `OrderTrack.js:455` | `routers/orders.py:450-451` |
-| `POST /orders/{id}/cancel` | `reason` | à vérifier | `CancelSheet.js:46` | `routers/orders.py:680` |
-| `POST /orders/{id}/proof` | 1 à 3 fichiers image | à vérifier | `ProofPay.js:119` | `routers/orders.py:501-508` |
+| Admin : 14 écrans, ~45 routes | `pages/admin/*` ; `lib/adminNav.js` | `routers/admin_users.py`, `orders.py`, `products.py`, `games.py`, `events.py`, `loyalty.py`, `payments.py`, `crypto.py` | écran `admin` masqué aux non-administrateurs (`loaders.admin` `:4740`) | NON FAIT (laissé à l'application React ; le design n'a qu'un tableau de bord statique) |
+| Statut boutique, export, audit, stockage | `pages/admin/AdminLayout.js:25-29` | `/settings/status`, `/admin/status`, `/admin/export`, `/admin/audit`, `/admin/storage` (`routers/orders.py:794,890,922`) | — | NON FAIT (laissé à l'application React) |
+| Notifications push (abonnement, test, alerte) | `lib/pushSync.js:127-245` ; `components/admin/AdminPush.js` | `routers/push.py:48-95`, `routers/notifications.py:19-35` | — | NON FAIT (laissé à l'application React) |
+| Service worker | `public/sw.js` (push-only) ; `src/sw.test.js` | — | `frontend/public/sw.js` (copié tel quel) | fait (aucune modification nécessaire) |
+| PWA (`manifest.json`, icônes) | `public/manifest.json` | — | `frontend/public/manifest.json` (copié tel quel) | NON FAIT (le manifeste du prototype garde `start_url:"/admin"` ; hors périmètre front) |
+| SEO (titre, description, robots, sitemap) | `components/layout/SeoManager.js`, `lib/seo.js` | — | — | NON FAIT (site mono-page : aucun routeur à métadonnées) |
+| Pages légales `/terms`, `/privacy` | `pages/Legal.js` ; `App.js:70-71` | — | — | NON FAIT (design : aucune page légale, aucun lien) |
+| Frontière d'erreur | `components/ErrorBoundary.jsx` | — | — | NON FAIT (aucun équivalent dans un IIFE ; le garde non-JSON de `req()` `:3583` couvre le cas qui faisait tomber la page) |
+| Thème clair/sombre | `components/layout/ThemeToggle.js` | — | — | NON FAIT (le design v3 n'a ni `.dark` ni `prefers-color-scheme`) |
+| Audit des liens internes (`href`, `data-nav`, `data-page`) | — | — | `HM` `:4826-4831`, `mgsPageFromUrl()` `:4760` | fait : toutes les ancres connues (`#top`, `#jeux`, `#recharger`, `#securite`, `#commandes`, `#support`, `#produit`, `#compte`, `#boutique`, `#points`, `#connexion`, `#evenements`, `#pack`, `#mdp`, `#reset`) mènent à un écran existant ; les ancres d'icônes (`#ic-*`) ne sont pas des liens de navigation |
 
 ---
 
-## Éléments visibles manquants (repérés à S0)
+## Éléments masqués (aucun équivalent dans REF, défaisable en une ligne)
 
-| Écran / élément | Fonction `main` | Ce qu'il faudrait |
-|---|---|---|
-| Page « suivi de commande » (`data-page="suivi"` absent) | `pages/OrderTrack.js` (`/suivi`, `/suivi/:orderNumber`, `/orders/:orderId`) | un écran de suivi (numéro + ID joueur) et son bouton d'appel |
-| Pages légales | `pages/Legal.js` (`/terms`, `/privacy`) | deux écrans + liens (pied de page) |
-| Page « vérification d'email » | `pages/AuthExtras.js:103-126` (`/verifier-email/:token`) | un écran de résultat (aujourd'hui : toast) |
-| Écran « confirmation de commande » | `pages/CheckoutConfirm.js` (`/commande/confirmation`) | un écran de redirection après création |
-| Page « jeux » | `pages/Games.js` (`/jeux`) | un écran jeu |
+| Élément | Emplacement | Pourquoi | Comment le rétablir |
+|---|---|---|---|
+| Bloc de pagination de l'historique | `index.html:2447-2451` | REF n'a aucune pagination (`OrderHistory.js:294-318`) | retirer les deux lignes de `orderPaginate()` `:4381` |
+| Carte « WhatsApp » du support | écran `support` | REF : `/support` est la page Chat, aucun autre canal | retirer la boucle de `maskUnsupported()` `:4708` |
+| Carte « Email » du support | idem | idem | idem |
+| Champ « Sujet » du support | `#sj` | REF : un seul composer (`ChatThread.js`) | retirer la ligne `#sj` de `maskUnsupported()` `:4714` |
+| Section « Questions fréquentes » | écran `support` | REF n'a aucune FAQ | idem |
+| Formulaire d'abonnement du pied de page | `.footer .form-block` | « formulaire de démonstration » ; REF n'a pas de newsletter | retirer la ligne `.footer .form-block` `:4711` |
+| Champ « Précision (facultatif) » de l'annulation | `#co-cancel-note` `:3495` | REF envoie `{reason}` seul (`CancelSheet.js:46`) | retirer la ligne de `openCancel()` `:4328` |
+| 3ᵉ case « Jeux liés » du compte | écran `compte` | REF n'a aucun compteur de ce type | retirer la ligne `stats[2]` de `renderAccount()` `:4474` |
 
----
+## Éléments visibles manquants (REF les avait, le design n'a aucun conteneur — rien n'a été créé)
 
-## Configuration à poser au déploiement
+| Écran / élément | Fonction REF |
+|---|---|
+| Page « suivi de commande » (numéro + ID joueur, `/suivi/:orderNumber`, `/orders/:orderId`) | `pages/OrderTrack.js:434-552` |
+| Écran « confirmation de commande » | `pages/CheckoutConfirm.js` |
+| Page « jeux » | `pages/Games.js` |
+| Pages légales `/terms`, `/privacy` (+ liens de pied de page) | `pages/Legal.js` ; `Footer.js:40-41` |
+| Écran « vérification d'email » | `pages/AuthExtras.js:90-107` |
+| Bouton « Relancer » (relance admin, 3 min / 3 max) | `ProofPay.js:212-229` |
+| Bouton « Réessayer » (relance de paiement automatique) | `OrderTrack.js:384-388` |
+| Sélecteur de réseau USDT | `Checkout.js:335-339` |
+| Case « J'ai payé le montant exact » (feuille de preuve) | `ProofPay.js:183-187` |
+| Champ « confirmation » du mot de passe | `Account.js:239` |
+| Bannière « email non vérifié » + renvoi | `Account.js:35-52` |
+| Carte joueur PUBG | `components/PubgPlayerCard.js` |
+| Identités de jeu sauvegardées (liste, ajout, édition, suppression) | `components/GameIdentities.js` |
+| Transferts de points | `Loyalty.js:95-134` |
+| Champ de vérification d'ID avant échange de points | `Loyalty.js:61-79` |
+| « J'aime » / « Partager » d'un événement | `Events.js:49-52` |
+| 3ᵉ onglet « Terminées » de l'historique | `OrderHistory.js:176` |
+| Bouton « Se connecter » de l'état vide invité | `OrderTrack.js:546-548` |
+| Motif d'annulation `wrong_info` (5ᵉ raison) | `CancelSheet.js:21` |
+| Sélecteur de thème | `ThemeToggle.js` |
+| Fil de discussion du chat | `ChatThread.js` |
 
-- `backend/core/origins.py` : les origines autorisées (`CORS_ORIGINS`, avec l'apex/www
-  déduit, + `FRONTEND_URL`) doivent contenir l'origine exacte du site statique.
-- Adresse du backend : `window.MGS_BACKEND_URL` (défaut actuel du prototype :
-  `https://magicgamestore-api-v2.onrender.com`) — à confirmer.
-- Clé publique Turnstile : configuration de `window.MGS_CAPTCHA` (sans clé, aucun
-  widget n'est monté, conformément à `main`).
+## Écarts de contrat (backend actuel vs REF)
+
+| Appel | REF | Backend actuel | Conséquence dans le prototype |
+|---|---|---|---|
+| Erreurs métier (annulation, preuve) | `errorMessage` lit `detail.msg` (`lib/api.js:45`) | `detail = {"code", "message"}` (`routers/orders.py:474-480`) | `errMsg()` `:3595` lit aussi `message` (sinon « [object Object] ») |
+| `POST /auth/register` | REF envoie `remember` (`AuthPage.js:48`) | `RegisterIn` ne le déclare pas (`routers/auth.py:36-40`) | non envoyé : sans effet, Pydantic ignore le champ |
+| `POST /orders/{id}/cancel` | REF envoie `{reason}` seul | `CancelIn.note` existe (`routers/orders.py:127`) | `note` jamais envoyé (champ masqué) |
+| `POST /auth/me/delete` | REF envoie `password` seulement si compte local (`Account.js:148`) | mot de passe **exigé** si `password_hash` (`routers/auth.py:442-444`) | identique ; le design n'ayant pas de champ, la valeur vient de « Mot de passe actuel » ou d'une boîte de dialogue |
+| `GET /crypto/{id}/status` | REF lit `payment` (`BinancePay.js:32-39`) | projection sans `payment_deadline_at` (`routers/crypto.py:50`) | l'échéance vient de la commande (`mgs-logic-crypto.js:232-235`, `opts.deadlineAt`) |
+| `POST /crypto/initiate` | réseau choisi dans `GET /crypto/config` | 400 « Réseau USDT non disponible. » (`routers/crypto.py:77-78`) | le prototype n'envoie que la clé d'un réseau actif (`:4219`) |
+| `POST /fazercards/validate-id` | codes `invalid_id`, `missing_field` (`lib/identityErrors.js:20-25`) | `routers/fazercards.py:118` | table de verdicts identique (`identityErrorKey()` `:4022`) |
+
+## Besoins backend
+
+Aucun bloquant : aucune route appelée par REF n'est absente du backend. Deux
+conforts facultatifs : exposer `payment_deadline_at` dans
+`GET /crypto/{id}/status`, et déclarer `remember` dans `RegisterIn` (les deux
+sont aujourd'hui contournés sans perte de comportement).
+
+## Tableau des champs (appel → champs envoyés)
+
+| Appel | Champs envoyés par le prototype | Source REF | Route backend |
+|---|---|---|---|
+| `POST /orders` | `game_id`, `pubg_id`, `pseudo`, `items[{product_id, quantity}]`, `payment_method`, `manual_operator` (manuel), `identity_fields` (jeu dynamique), `identity_id` (identité du compte), `captcha_token` | `pages/Checkout.js:175-183` | `routers/orders.py:315` (`OrderIn` `:64-82`) |
+| `POST /orders` (réponse) | `id`, `created_at` → `mgs_pending_order_id` | `pages/Checkout.js:185` | `routers/orders.py:315-321` |
+| `GET /orders/me` | — | `OrderHistory.js:300` | `routers/orders.py:436` |
+| `GET /orders/{id}` | — | `OrderTrack.js:159`, `OrderHistory.js:425` | `routers/orders.py:467` |
+| `POST /orders/{id}/cancel` | `reason` | `CancelSheet.js:46` | `routers/orders.py:680` |
+| `POST /orders/{id}/proof` | `files` (1-3, multipart, sans en-tête manuel) | `ProofPay.js:117-119` | `routers/orders.py:501` |
+| `GET /payments/{id}/status` | — | `OrderTrack.js:93` | `routers/payments.py:294` |
+| `POST /crypto/initiate` | `order_id`, `network` | `Checkout.js:220` | `routers/crypto.py:112` |
+| `GET /crypto/{id}/status` | — | `BinancePay.js:32` | `routers/crypto.py:123` |
+| `POST /fazercards/validate-id` | `game_id`, `fields` | `IdentityFieldsVerify.js:102` | `routers/fazercards.py:118` |
+| `POST /me/game-identities` | `game_id`, `label`, `fields`, `player_name` | `Checkout.js:138` | `routers/games.py:110` |
+| `PATCH /auth/me` | `name`, `phone`, `saved_pubg_ids` | `Account.js:130` | `routers/auth.py:392` |
+| `POST /auth/me/delete` | `confirmation`, `password` (si saisi) | `Account.js:148` | `routers/auth.py:436` |
+| `POST /loyalty/redeem` | `reward_id`, `pubg_id` | `Loyalty.js:148` | `routers/loyalty.py:73` |
+| `POST /chat/conversations` / `…/{id}/messages` | `{}` / `{text}` | `ChatWorkspace.js:51`, `ChatThread.js:86` | `routers/chat.py:48,80` |
+| `GET /products` | `game`, `type`, `q`, `sort`, `popular`, `favorites`, `min_price`, `max_price` | `Catalog.js:142` | `routers/products.py:75` |
+
+## Configuration à poser au déploiement (inchangé)
+
+- `backend/core/origins.py` : les origines autorisées doivent contenir l'origine
+  exacte du site statique.
+- Adresse du backend : `window.MGS_BACKEND_URL` (défaut du prototype :
+  `https://magicgamestore-api-v2.onrender.com`) — à confirmer par le propriétaire.
+- Clé publique Turnstile : `window.MGS_CAPTCHA` (sans clé, aucun widget n'est monté).
 - Push admin : clé publique VAPID (`GET /admin/push/config`).
 
-## Besoins backend (repérés à S0)
+## Validation de cette session (sorties brutes)
 
-Aucun. Aucune route appelée par `main` n'est absente du backend ; les écarts
-repérés sont tous côté prototype (écrans absents, fonctions non reprises).
+```
+$ node --check <runtime extrait de index.html>          # après chaque commit
+node --check OK
 
-## NON FAIT (S0)
+$ node i18n-check.mjs                                    # script jetable, hors dépôt
+clés t()/data-i18n utilisées : 88
+dictionnaire prototype : fr 104 / en 104
+REF (b34df6e) : fr 995 / en 995
+OK — 0 échec
 
-- Aucune ligne de code du prototype écrite (session d'inventaire).
-- Z0 à Z6 non portés ; le tableau ci-dessus est un inventaire, pas une recette.
-- Les champs marqués « à vérifier » n'ont pas été relus dans le prototype.
-- `yarn build` / `yarn test:ci` non exécutés dans cette session.
+$ yarn --cwd frontend test:ci
+Test Suites: 45 passed, 45 total
+Tests:       534 passed, 534 total
 
-## Reste à faire
+$ cd frontend && REACT_APP_BACKEND_URL=… yarn build
+The build folder is ready to be deployed.   Done in 4.81s.
 
-1. Z0 — socle (client API, erreurs, session, `t()`, invité, panier).
-2. Z2 — catalogue et panier (après retrait des règles sans équivalent dans `main`).
-3. Z3 — paiement. 4. Z4 — commandes. 5. Z5 — compte et fidélité.
-6. Z6 — hors pages clients, puis audit des liens et du tableau des champs.
+$ git diff --stat -- '*.css'                             # règle 1
+(vide)
+
+$ git diff --unified=0 | grep -E '^[+-].*(class=|style=)'  # règle 1
+(seules des lignes supprimées ; aucune valeur de classe modifiée)
+```
+
+Un harnais pré-existant reste rouge, sans rapport avec ce portage :
+`node scripts/proto-logic.test.mjs` → **28 passed, 1 failed** —
+« initiate : réseau inconnu refusé sans appel réseau » attend un refus LOCAL
+(`invalid_network`) pour un réseau absent de la configuration. Le module
+`mgs-logic-crypto.js:208-209` documente le contraire (« aucune validation locale
+du réseau : c'est le backend qui statue »), et REF ne valide pas non plus côté
+client (`Checkout.js` ne propose que `crypto.networks`) : le test est en
+désaccord avec REF, il n'a **pas** été modifié.
+
+## Commits de cette session (branche `feat/proto-fonctionnel`, poussés)
+
+```
+eb78de0 wip(z3): identités/ID récents/vérification/preuve/annulation conformes à REF
+3460d6d fix(z0): client API conforme à REF (PR #100)
+4362318 fix(z1): captcha à usage unique sur échec de connexion (REF AuthPage.js:57-61)
+7d17a0a fix(z2/z5): règles sans équivalent REF retirées — i18n 100 % clés REF, support/chat de REF
+5ab4f1f fix(z5): compte/événements conformes à REF (PR #100)
+fb434ca fix(z4): détail de commande — relecture GET /orders/{id}, preuves réelles, reçu du payé
+30b7103 fix(z6): visibilité admin (ProtectedRoute de REF) + formulaires de démonstration masqués
+<commit PORTAGE> docs(portage): PORTAGE.md réécrit contre REF (fait/masqué/NON FAIT)
+```
+
+## Reste ouvert (remonté au propriétaire)
+
+1. **Sélecteur de réseau USDT**, **relance admin**, **`/payments/initiate`** :
+   trois fonctions de REF sans conteneur dans le design (voir « manquants »).
+   Les porter exige un contrôle visible → lot dédié avec validation visuelle.
+2. **Échange de points** : REF n'ouvre l'échange qu'après vérification réelle de
+   l'ID ; le design n'a pas de champ de vérification sur l'écran points. Le
+   prototype retombe sur l'ID du compte — à arbitrer.
+3. **`yarn audit:contrast`** n'a pas été lancé dans cette session (aucun `.css`
+   modifié, mais l'audit du bundle reste à faire après fusion vers `main`).
+4. Deux fichiers non suivis du dépôt n'ont pas été touchés :
+   `frontend/scripts/proto-z3b-dev.mjs`, `orchestration(portage).md`.
