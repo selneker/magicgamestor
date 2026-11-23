@@ -3839,7 +3839,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
 
   /* ---------- checkout ---------- */
-  var co = { verified: false, pid: "", pseudo: "", method: "", total: 0, items: "", game: "", game_id: "", order: null, timer: null, poll: null };
+  var co = { verified: false, pid: "", pseudo: "", method: "", total: 0, items: "", game: "", game_id: "", order: null, timer: null, poll: null, payPoll: null, payPollOn: false, payInfo: null };
   function coShow(n) { $$(".mgs-co-screen").forEach(function (sc) { sc.hidden = (+sc.dataset.co !== n); }); }
   /* Reprise silencieuse : hydrate le tunnel depuis la commande relue (aucun
      élément créé — on peuple uniquement les écrans existants). */
@@ -3911,6 +3911,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function coOpen() {
     if (!cart.length) { toast(t("cart.empty"), "err"); return; }
     if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; }
+    stopPaymentPoll();
     co.total = cartTotal(); co.items = cart.map(function (x) { return x.qty + " × " + x.name; }).join(", ");
     co.game = cart[0].game_name || cart[0].game || ""; co.game_id = cart[0].game_id || "";
     co.verified = false; co.method = ""; co.pid = ""; co.pseudo = ""; co.order = null; co.network = ""; co.payment = null;
@@ -3997,6 +3998,40 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var mins = (payCfg && payCfg.timeout_minutes) || 15; var deadline = co.order && co.order.payment_deadline_at;
     var sec = deadline ? Math.max(0, Math.floor((new Date(deadline) - new Date()) / 1000)) : mins * 60;
     startTimer(sec); window.scrollTo(0, 0);
+    startPaymentPoll(co.order);
+  }
+  /* Sondage du paiement AUTORISÉ — reproduction exacte de main
+     pages/OrderTrack.js:93-104 : statut `pending_payment` et méthode ni
+     `manual` (:93) ni `binance` (appelant :198-201), GET /payments/{id}/status
+     immédiat puis toutes les 5 s (:103-104), arrêt au démontage (:105).
+     main ne vérifie PAS la visibilité de l'onglet (commentaire :87-89). */
+  function stopPaymentPoll() { co.payPollOn = false; if (co.payPoll) { clearInterval(co.payPoll); co.payPoll = null; } }
+  function startPaymentPoll(order) {
+    stopPaymentPoll();
+    if (!order || order.status !== "pending_payment" || order.payment_method === "manual" || order.payment_method === "binance") return;
+    co.payPollOn = true;
+    var refresh = function () {
+      if (!co.payPollOn) return;
+      req("/payments/" + encodeURIComponent(order.id) + "/status").then(function (data) {
+        if (!co.payPollOn) return;
+        co.payInfo = data;
+        if (data && data.order_status !== order.status) { stopPaymentPoll(); refreshOrderAfterPayment(); }
+      }).catch(function () { /* pas encore de paiement (main :101) */ });
+    };
+    refresh();
+    co.payPoll = setInterval(refresh, 5000);
+  }
+  /* Changement de statut vu par le provider (main :100) : on relit la commande
+     et on rouvre l'écran de son statut, comme la reprise. */
+  function refreshOrderAfterPayment() {
+    if (!co.order) return;
+    req("/orders/" + encodeURIComponent(co.order.id)).then(function (o) {
+      if (!isUsablePendingOrder(o)) { clearPendingOrderId(); coFinish(); return; }
+      hydrateCoFromOrder(o);
+      if (o.status === "proof_submitted") { coReceipt(); pollOrder(); }
+      else if (o.status === "pending_payment") { coPay(); }
+      else { clearPendingOrderId(); coFinish(); }
+    }).catch(function () { });
   }
   function initiateBinance(order) {
     var net = co.network || (cryptoCfg && cryptoCfg.networks && cryptoCfg.networks[0] && cryptoCfg.networks[0].key) || "TRC20";
@@ -4066,7 +4101,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     co.poll = setInterval(function () { tries++; if (tries > 60) { clearInterval(co.poll); co.poll = null; var fb = $(".mgs-co-wait-badge"); if (fb) fb.textContent = t("common.error"); return; } req("/orders/" + co.order.id).then(function (o) { pollFails = 0; co.order = o; var b = statusBucket(o.status); var badge = $(".mgs-co-wait-badge"); var wt = $(".mgs-co-wait-t"); if (b === "done") { if (badge) badge.textContent = t("order.status.delivered"); if (wt) wt.textContent = t("order.status.delivered"); clearPendingOrderId(); clearInterval(co.poll); co.poll = null; } else if (b === "cancel") { if (badge) badge.textContent = t("order.status.cancelled"); if (wt) wt.textContent = t("order.status.cancelled"); clearPendingOrderId(); clearInterval(co.poll); co.poll = null; } }).catch(function (e) { pollFails++; if (pollFails === 3) { var fb2 = $(".mgs-co-wait-badge"); if (fb2) fb2.textContent = errMsg(e); signale(e); } }); }, 5000);
   }
   function coFinish() {
-    if (co.poll) { clearInterval(co.poll); co.poll = null; } if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } stopTimer();
+    if (co.poll) { clearInterval(co.poll); co.poll = null; } if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } stopPaymentPoll(); stopTimer();
     var num = co.order && (co.order.order_number || co.order.number); cart = []; renderCart(); syncPillsFromCart();
     loadOrders().then(function () { window.mgsShowPage("commandes"); if (num) { var card = $('.mgs-order[data-order="' + num + '"]'); if (card) card.click(); } });
   }

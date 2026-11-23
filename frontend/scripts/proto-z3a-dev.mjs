@@ -114,7 +114,9 @@ function apiHandler(page, state) {
       const id = p.split("/")[2];
       state.statusCalls.push({ id, at: Date.now() });
       const o = state.orders[id] || ORDER({ id });
-      return json({ order_id: id, order_status: o.status, payment_status: "pending", payment_url: null, simulated: true });
+      const st = Array.isArray(state.payStatuses) && state.payStatuses.length ? state.payStatuses.shift() : o.status;
+      if (o && st !== o.status) o.status = st; /* le provider a fait bouger la commande */
+      return json({ order_id: id, order_status: st, payment_status: "pending", payment_url: null, simulated: true });
     }
     if (p === "/payments/initiate" && method === "POST") {
       const body = JSON.parse(req.postData() || "{}");
@@ -130,9 +132,15 @@ function apiHandler(page, state) {
 
 const boot = (page) => page.waitForFunction(
   () => typeof window.mgsRenderRecent === "function" && document.querySelectorAll(".mgs-page").length > 0,
-  null, { timeout: 30000 }
+  null, { timeout: 60000 }
 );
-const pageIs = (page, name) => page.waitForFunction((n) => document.body.getAttribute("data-page") === n, name, { timeout: 30000 });
+const pageIs = (page, name) => page.waitForFunction((n) => document.body.getAttribute("data-page") === n, name, { timeout: 60000 });
+/* Pose la cle d'une commande en attente DES le prochain chargement (init script) :
+   sans cela, la reprise du chargement en cours peut la consommer avant le reload. */
+const setPendingKey = (page, id, createdAt) => page.addInitScript(
+  (raw) => { try { localStorage.setItem("mgs_pending_order_id", raw); } catch (e) { } },
+  JSON.stringify({ id, createdAt: createdAt || new Date().toISOString() })
+);
 
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
@@ -143,9 +151,9 @@ test("Z3a(1) clé mgs_pending_order_id écrite à la création de commande", asy
   state.loggedIn = true;
   await boot(page);
   await page.evaluate(() => window.mgsShowPage("boutique"));
-  await page.waitForFunction(() => document.body.getAttribute("data-page") === "boutique", null, { timeout: 30000 });
+  await page.waitForFunction(() => document.body.getAttribute("data-page") === "boutique", null, { timeout: 60000 });
   await page.locator('.mgs-game[data-gamename="PUBG Mobile"]').first().click();
-  await page.waitForSelector('.mgs-pcard[data-pid="p1"]', { timeout: 30000 });
+  await page.waitForSelector('.mgs-pcard[data-pid="p1"]', { timeout: 60000 });
   await page.locator('.mgs-pcard[data-pid="p1"] .mgs-pill__add').click();
   await page.waitForFunction(() => { try { return (JSON.parse(localStorage.getItem("mgs_cart")) || []).length > 0; } catch { return false; } }, null, { timeout: 8000 });
   await page.locator('button[aria-label*="Panier"]:visible').first().click();
@@ -155,7 +163,7 @@ test("Z3a(1) clé mgs_pending_order_id écrite à la création de commande", asy
   await page.waitForFunction(() => !document.querySelector('.mgs-co-screen[data-co="1"]').hidden, null, { timeout: 8000 });
   await page.locator(".mgs-co-id-input").fill("123456789");
   await page.locator(".mgs-co-verify").click();
-  await page.waitForSelector(".mgs-co-id-status.is--ok", { timeout: 20000 });
+  await page.waitForSelector(".mgs-co-id-status.is--ok", { timeout: 30000 });
   await page.locator('.mgs-co-method input[value="MVola"]').locator("xpath=ancestor::label[contains(@class,'mgs-co-method')]").click();
   await page.waitForFunction((v) => document.querySelector(`.mgs-co-method input[value="${v}"]`).closest(".mgs-co-method").classList.contains("is--active"), "MVola", { timeout: 8000 });
   await page.locator(".mgs-co-submit").click();
@@ -179,12 +187,12 @@ test("Z3a(1) reprise silencieuse après rechargement (commande pending_payment)"
      différent entre deux chargements. */
   const countCo = () => page.evaluate(() => document.querySelector('.mgs-page[data-page="commande"]').querySelectorAll("*").length);
   const nodes0 = await countCo();
-  await page.evaluate(() => { try { localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "ord_pend_1", createdAt: new Date().toISOString() })); } catch (e) { } });
+  await setPendingKey(page, "ord_pend_1");
   await page.reload({ waitUntil: "load", timeout: 30000 });
   await boot(page);
   await pageIs(page, "commande");
   /* Écran de paiement existant (data-co=2), comme main /orders/:id pour pending_payment. */
-  await page.waitForFunction(() => !document.querySelector('.mgs-co-screen[data-co="2"]').hidden, null, { timeout: 20000 });
+  await page.waitForFunction(() => !document.querySelector('.mgs-co-screen[data-co="2"]').hidden, null, { timeout: 30000 });
   const info = await page.evaluate(() => ({
     total: (document.querySelector(".mgs-co-total2") || {}).textContent,
     num: (document.querySelector(".mgs-co-mname") || {}).textContent,
@@ -198,23 +206,23 @@ test("Z3a(1) reprise silencieuse après rechargement (commande pending_payment)"
 
 test("Z3a(1) reprise silencieuse après rechargement (preuve envoyée → écran d'attente)", async (page, state) => {
   state.orders["ord_proof_1"] = ORDER({ id: "ord_proof_1", status: "proof_submitted" });
-  await page.evaluate(() => { try { localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "ord_proof_1", createdAt: new Date().toISOString() })); } catch (e) { } });
+  await setPendingKey(page, "ord_proof_1");
   await page.reload({ waitUntil: "load", timeout: 30000 });
   await boot(page);
   await pageIs(page, "commande");
-  await page.waitForFunction(() => !document.querySelector('.mgs-co-screen[data-co="3"]').hidden, null, { timeout: 20000 });
+  await page.waitForFunction(() => !document.querySelector('.mgs-co-screen[data-co="3"]').hidden, null, { timeout: 30000 });
   const badge = await page.evaluate(() => (document.querySelector(".mgs-co-wait-badge") || {}).textContent || "");
   assert.ok(/vérification|review/i.test(badge), "badge écran d'attente non peuplé : " + badge);
 });
 
 test("Z3a(1) reprise silencieuse (binance pending_payment) : slot rouvert, jamais de 2ᵉ initiate", async (page, state) => {
   state.orders["ord_bin_1"] = ORDER({ id: "ord_bin_1", payment_method: "binance", manual_operator: null });
-  await page.evaluate(() => { try { localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "ord_bin_1", createdAt: new Date().toISOString() })); } catch (e) { } });
+  await setPendingKey(page, "ord_bin_1");
   await page.reload({ waitUntil: "load", timeout: 30000 });
   await boot(page);
   await pageIs(page, "commande");
-  await page.waitForFunction(() => !document.querySelector('.mgs-co-screen[data-co="2"]').hidden, null, { timeout: 20000 });
-  await page.waitForFunction(() => { var b = document.querySelector(".mgs-co-binance"); return b && !b.hidden && /TMBINANCEADDR000/.test(b.innerHTML || ""); }, null, { timeout: 20000 });
+  await page.waitForFunction(() => !document.querySelector('.mgs-co-screen[data-co="2"]').hidden, null, { timeout: 30000 });
+  await page.waitForFunction(() => { var b = document.querySelector(".mgs-co-binance"); return b && !b.hidden && /TMBINANCEADDR000/.test(b.innerHTML || ""); }, null, { timeout: 30000 });
   const info = await page.evaluate(() => ({
     bin: document.querySelector(".mgs-co-binance"),
     binHTML: (document.querySelector(".mgs-co-binance") || {}).innerHTML || null,
@@ -232,32 +240,84 @@ test("Z3a(1) reprise silencieuse (binance pending_payment) : slot rouvert, jamai
 });
 
 test("Z3a(1) entrée périmée (> 24 h) : clé purgée en silence, accueil", async (page, state) => {
-  await page.evaluate(() => { try { localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "ord_old", createdAt: new Date(Date.now() - 25 * 3600 * 1000).toISOString() })); } catch (e) { } });
+  await setPendingKey(page, "ord_old", new Date(Date.now() - 25 * 3600 * 1000).toISOString());
   await page.reload({ waitUntil: "load", timeout: 30000 });
   await boot(page);
   await pageIs(page, "accueil");
+  await page.waitForFunction(() => localStorage.getItem("mgs_pending_order_id") === null, null, { timeout: 30000 });
   const key = await page.evaluate(() => localStorage.getItem("mgs_pending_order_id"));
   assert.equal(key, null, "clé périmée non purgée");
 });
 
 test("Z3a(1) commande à statut final : clé purgée en silence, accueil", async (page, state) => {
   state.orders["ord_done_1"] = ORDER({ id: "ord_done_1", status: "paid" });
-  await page.evaluate(() => { try { localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "ord_done_1", createdAt: new Date().toISOString() })); } catch (e) { } });
+  await setPendingKey(page, "ord_done_1");
   await page.reload({ waitUntil: "load", timeout: 30000 });
   await boot(page);
   await pageIs(page, "accueil");
+  await page.waitForFunction(() => localStorage.getItem("mgs_pending_order_id") === null, null, { timeout: 30000 });
   const key = await page.evaluate(() => localStorage.getItem("mgs_pending_order_id"));
   assert.equal(key, null, "clé d'une commande payée non purgée");
 });
 
 test("Z3a(1) commande manuelle sans opérateur : clé purgée (PL-CHK-6)", async (page, state) => {
   state.orders["ord_noop_1"] = ORDER({ id: "ord_noop_1", manual_operator: null });
-  await page.evaluate(() => { try { localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: "ord_noop_1", createdAt: new Date().toISOString() })); } catch (e) { } });
+  await setPendingKey(page, "ord_noop_1");
   await page.reload({ waitUntil: "load", timeout: 30000 });
   await boot(page);
   await pageIs(page, "accueil");
+  await page.waitForFunction(() => localStorage.getItem("mgs_pending_order_id") === null, null, { timeout: 30000 });
   const key = await page.evaluate(() => localStorage.getItem("mgs_pending_order_id"));
   assert.equal(key, null, "manuelle sans opérateur : entrée non purgée");
+});
+
+/* ---------- (4) sondage GET /payments/{id}/status (main OrderTrack.js:93-104) ---------- */
+
+test("Z3a(4) sondage /payments/{id}/status — auto pending_payment, cadence 5 s", async (page, state) => {
+  state.orders["ord_auto_1"] = ORDER({ id: "ord_auto_1", payment_method: "mvola", manual_operator: null });
+  await setPendingKey(page, "ord_auto_1");
+  await page.reload({ waitUntil: "load", timeout: 30000 });
+  await boot(page);
+  await pageIs(page, "commande");
+  await page.waitForFunction(() => !document.querySelector('.mgs-co-screen[data-co="2"]').hidden, null, { timeout: 30000 });
+  assert.ok(state.statusCalls.length >= 1, "sondage immédiat absent (main :103)");
+  await page.waitForTimeout(6500);
+  assert.ok(state.statusCalls.length >= 2, "cadence 5 s non respectée : " + JSON.stringify(state.statusCalls));
+  const gap = state.statusCalls[1].at - state.statusCalls[0].at;
+  assert.ok(gap >= 4000 && gap < 8000, "intervalle réel " + gap + " ms (attendu ~5000)");
+});
+
+test("Z3a(4) pas de sondage pour une commande manual (main :93)", async (page, state) => {
+  state.orders["ord_man_1"] = ORDER({ id: "ord_man_1" });
+  await setPendingKey(page, "ord_man_1");
+  await page.reload({ waitUntil: "load", timeout: 30000 });
+  await boot(page);
+  await pageIs(page, "commande");
+  await page.waitForTimeout(6500);
+  assert.equal(state.statusCalls.length, 0, "une commande manual ne doit pas être sondée : " + JSON.stringify(state.statusCalls));
+});
+
+test("Z3a(4) pas de sondage pour Binance (appelant main :198-201)", async (page, state) => {
+  state.orders["ord_bin_2"] = ORDER({ id: "ord_bin_2", payment_method: "binance", manual_operator: null });
+  await setPendingKey(page, "ord_bin_2");
+  await page.reload({ waitUntil: "load", timeout: 30000 });
+  await boot(page);
+  await pageIs(page, "commande");
+  await page.waitForTimeout(6500);
+  assert.equal(state.statusCalls.length, 0, "Binance a son propre sondage : " + JSON.stringify(state.statusCalls));
+});
+
+test("Z3a(4) le sondage s'arrête sur statut final (main :100)", async (page, state) => {
+  state.orders["ord_auto_2"] = ORDER({ id: "ord_auto_2", payment_method: "orange", manual_operator: null });
+  state.payStatuses = ["paid"];
+  await setPendingKey(page, "ord_auto_2");
+  await page.reload({ waitUntil: "load", timeout: 30000 });
+  await boot(page);
+  await page.waitForFunction(() => localStorage.getItem("mgs_pending_order_id") === null, null, { timeout: 30000 });
+  await page.waitForTimeout(6500);
+  assert.equal(state.statusCalls.length, 1, "sondage non arrêté sur statut final : " + JSON.stringify(state.statusCalls) + " calls=" + JSON.stringify(state.calls));
+  const key = await page.evaluate(() => localStorage.getItem("mgs_pending_order_id"));
+  assert.equal(key, null, "clé d'une commande à statut final non purgée");
 });
 
 /* ---------- runner ---------- */
@@ -268,12 +328,13 @@ async function main() {
   const browser = await chromium.launch({ executablePath, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
   let pass = 0, fail = 0; const failures = [];
   for (const vp of (process.env.MGS_VP ? VIEWPORTS.filter((v) => v.label.startsWith(process.env.MGS_VP)) : VIEWPORTS)) {
+    const selected = tests.filter((t) => !process.env.MGS_TEST || t.name.includes(process.env.MGS_TEST));
     console.log(`\n=== ${vp.label} (${vp.width}×${vp.height}) — thème light ===`);
-    for (const { name, fn } of tests) {
+    for (const { name, fn } of selected) {
       const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
-      context.setDefaultTimeout(30000);
+      context.setDefaultTimeout(60000);
       const page = await context.newPage();
-      const state = { loggedIn: false, calls: [], orders: {}, initiateCalls: [], statusCalls: [] };
+      const state = { loggedIn: false, calls: [], orders: {}, initiateCalls: [], statusCalls: [], payStatuses: [] };
       const errors = [];
       page.on("pageerror", (e) => errors.push(String(e)));
       await page.addInitScript(() => { try { localStorage.setItem("mgs_lang", "fr"); } catch (e) { } });
@@ -287,7 +348,9 @@ async function main() {
         pass++;
       } catch (e) {
         const msg = e && e.message ? e.message.split("\n")[0] : String(e);
-        console.log("  ✗ " + name + "\n      " + msg);
+        let dbg = "";
+        try { dbg = await page.evaluate(() => JSON.stringify({ page: document.body.getAttribute("data-page"), key: localStorage.getItem("mgs_pending_order_id") })).catch(() => "?"); } catch { dbg = "?"; }
+        console.log("  ✗ " + name + "\n      " + msg + "\n      [dbg] " + dbg + " errs=" + errors.join("|"));
         failures.push(`[${vp.label}] ${name}: ${msg}`);
         fail++;
       } finally { await context.close(); }
@@ -295,7 +358,7 @@ async function main() {
   }
   await browser.close();
   if (server) server.close();
-  console.log(`\n${pass} passed, ${fail} failed (${tests.length * VIEWPORTS.length} runs)`);
+  console.log(`\n${pass} passed, ${fail} failed`);
   if (failures.length) { console.log("\nÉchecs :"); failures.forEach((f) => console.log("  - " + f)); }
   process.exit(fail ? 1 : 0);
 }

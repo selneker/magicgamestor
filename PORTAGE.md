@@ -278,7 +278,7 @@ Prompt : **PL-006-FE-03-V1**.
 | Relance admin (3 min / 3 max) | `components/store/checkout/ProofPay.js:216-228` | `POST /orders/{id}/remind` (`routers/orders.py:615`, cooldown `:627`=180 s, max `:628`=3) | non | non porté (design) — aucun contrôle libre dans l'écran d'attente (`index.html:2628-2634`) | non porté (design) |
 | Annulation avec motif | `components/store/checkout/CancelSheet.js:46` | `POST /orders/{id}/cancel` (`routers/orders.py:680`) | non | à vérifier | à porter |
 | Initiation paiement (MVola/Orange) | `pages/OrderTrack.js:114-126` (`usePaymentRetry`, appelé `:202-205,:486`) | `POST /payments/initiate` (`routers/payments.py:214`) | non | non porté (design) — main ne l'appelle que derrière un bouton « Réessayer » réservé aux statuts `failed`/`expired` et aux méthodes ni `manual` ni `binance` (`:203,:388-391,:517-519`) ; le prototype ne crée que des commandes `manual` ou `binance` | non porté (design) |
-| Statut paiement (sondage 5 s) | `pages/OrderTrack.js:97` | `GET /payments/{id}/status` (`routers/payments.py:294`) | non | à vérifier | à porter |
+| Statut paiement (sondage 5 s) | `pages/OrderTrack.js:93-104` (appelant `:198-201`) | `GET /payments/{id}/status` (`routers/payments.py:294`) | non | `startPaymentPoll()` `index.html:4009-4025`, démarré dans `coPay()` `:4001` | porté (Z3a) |
 | Binance : initiate / statut / « payé » | `pages/Checkout.js:177` ; `components/store/checkout/BinancePay.js:32` | `POST /crypto/initiate` (`routers/crypto.py:112`), `GET /crypto/{id}/status` (`:123`), `POST /crypto/{id}/paid` (`:130`) | non | `MGS_CRYPTO` | à porter |
 | Écran d'attente / reprise de commande | `pages/OrderTrack.js:145-231,266-359` ; `lib/pendingOrder.js:13-30,37,47,63-69` | `GET /orders/{id}` | non | `resumePendingOrder()` `index.html:3866-3886`, `hydrateCoFromOrder()` `:3846`, écrans `data-co=2/3` (`:2617,:2628`) | porté (Z3a) |
 
@@ -308,6 +308,14 @@ pour un bouton de relance → la reprise est **silencieuse** (aucun élément vi
   `:517-519`) ; le design n'a aucun contrôle libre (`index.html:2469` « Télécharger le
   reçu » / « Commander encore », `:2634` « Voir ma commande ») et le prototype ne crée que
   des commandes `manual` ou `binance` → fonction non déclenchable. Rien n'est câblé.
+- **Sondage paiement — PORTÉ.** `main pages/OrderTrack.js:93-104` reproduit exactement :
+  `GET /payments/{id}/status` immédiat puis toutes les 5 s (`:103-104`), arrêt au
+  démontage (`:105`). Conditions : `status === "pending_payment"` et méthode ni
+  `manual` (`:93`) ni `binance` (appelant `:198-201`). À noter : main ne vérifie pas la
+  visibilité de l'onglet (commentaire `:87-89` « visibilité d'écran pas concernée ici »).
+  Prototype : `startPaymentPoll()` `index.html:4009-4025`, démarré dans `coPay()` `:4001`,
+  arrêté à la sortie du tunnel (`coOpen`/`coFinish`). Un changement de `order_status`
+  (`:100`) relit la commande et rouvre l'écran de son statut.
 
 ---
 
