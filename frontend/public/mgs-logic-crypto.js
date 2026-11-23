@@ -19,9 +19,9 @@
 (function (root) {
   "use strict";
 
-  /* Même défaut que le runtime du prototype (index.html:3455) et que
-   * `frontend/.env.example:3`. */
-  var DEFAULT_BACKEND = "https://magicgamestore-api-v2.onrender.com";
+  /* Défaut aligné sur le runtime du prototype (`index.html:3526` :
+   * `https://api.magicgame.store`, confirmée par le propriétaire). */
+  var DEFAULT_BACKEND = "https://api.magicgame.store";
 
   /* Même cadence que `main` (BinancePay.js:11). */
   var POLL_MS = 8000;

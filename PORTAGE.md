@@ -46,8 +46,8 @@ ligne à ligne avant chaque commit) ; aucun nouvel élément visible (les seuls
 `createElement` remplissent des conteneurs prévus par la feuille de style du
 design : `.mgs-co-recent`, `.mgs-empty`, `.mgs-pcard` clonés) ; aucun texte
 inventé (script i18n : 104 clés FR/EN, toutes présentes dans REF) ; aucune
-dépendance ajoutée ; `backend/` jamais modifié ; aucune URL de backend touchée
-(`index.html:3511`).
+dépendance ajoutée ; `backend/` jamais modifié ; adresse du backend alignée sur
+le runtime (`mgs-logic-crypto.js:24` ← `index.html:3526`).
 
 ---
 
@@ -349,8 +349,9 @@ sont aujourd'hui contournés sans perte de comportement).
 
 - `backend/core/origins.py` : les origines autorisées doivent contenir l'origine
   exacte du site statique.
-- Adresse du backend : `window.MGS_BACKEND_URL` (défaut du prototype :
-  `https://magicgamestore-api-v2.onrender.com`) — à confirmer par le propriétaire.
+- Adresse du backend : `window.MGS_BACKEND_URL` (défaut du prototype et de
+  `mgs-logic-crypto.js` : `https://api.magicgame.store`, confirmée par le
+  propriétaire — l'ancien littéral `onrender` est retiré).
 - Clé publique Turnstile : `window.MGS_CAPTCHA` (sans clé, aucun widget n'est monté).
 - Push admin : clé publique VAPID (`GET /admin/push/config`).
 
