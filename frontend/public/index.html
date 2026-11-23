@@ -3500,7 +3500,6 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 <div class="mgs-human-overlay mgs-co-cancel-overlay" hidden></div>
 <div class="mgs-human-popup mgs-co-cancel-popup" hidden role="dialog" aria-label="Annuler la commande">
   <div class="mgs-human-head"><p data-i18n="checkout.cancelTitle">Annuler la commande</p><button type="button" class="mgs-human-close mgs-co-cancel-close" aria-label="Fermer"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-  <p class="mgs-human-sub">Choisissez un motif (obligatoire).</p>
   <div class="mgs-field" style="display:flex;flex-direction:column;gap:.55em;margin-bottom:1em">
     <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="wrong_info" checked> <span data-i18n="checkout.cancelWrongInfo">Je me suis trompé (ID ou produit)</span></label>
     <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="change_method"> <span data-i18n="checkout.cancelChangeMethod">Je veux changer de mode de paiement</span></label>
@@ -3508,7 +3507,6 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="cannot_pay_now"> <span data-i18n="checkout.cancelCannotPayNow">Je ne peux pas payer maintenant</span></label>
     <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="other"> <span data-i18n="checkout.cancelOther">Autre raison</span></label>
   </div>
-  <div class="mgs-field"><label for="co-cancel-note">Précision (facultatif)</label><input id="co-cancel-note" class="mgs-input" maxlength="200"></div>
   <div class="mgs-human-foot"><button type="button" class="mgs-human-cancel mgs-co-cancel-close" data-i18n="common.close">Fermer</button><button type="button" class="button-main w-inline-block mgs-co-cancel-confirm" data-button-theme="dark" data-button-accent="green"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Confirmer l'annulation"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span data-i18n="checkout.cancelOrder">Confirmer l'annulation</span></span></span></span></button></div>
 </div>
 
@@ -4389,10 +4387,6 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   /* ---------- annulation : sélecteur de motif (backend/routers/orders.py — raison fermée) ---------- */
   function openCancel() {
     var o = $(".mgs-co-cancel-overlay"), p = $(".mgs-co-cancel-popup"); if (!p) return;
-    /* Le champ « Précision » du design est conservé : le backend l'accepte
-       (`CancelIn.note`, routers/orders.py:127, max 200) et il est envoyé
-       seulement s'il est rempli. */
-    var nf = $("#co-cancel-note"); if (nf) { var nfw = nf.closest(".mgs-field"); if (nfw) nfw.hidden = false; nf.value = ""; }
     var all = $$("input[name='co-cancel-reason']", p); all.forEach(function (r) { r.checked = false; });
     /* main CancelSheet.js:39-40,75-83 : chaque ouverture repart d'une feuille
        vierge (aucune raison résiduelle) et l'annulation reste inerte tant
@@ -4412,13 +4406,11 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var r = $("input[name='co-cancel-reason']:checked", p);
     if (!r) { toast(t("checkout.cancelTitle"), "err"); return; }
     var reason = r.value;
-    var noteEl = $("#co-cancel-note");
-    var note = (noteEl && noteEl.value || "").trim().slice(0, 200);
-    /* POST /orders/{id}/cancel : `reason` (raison fermée, orders.py:126) et,
-       si le client l'a écrit, la `note` libre (orders.py:127). */
+    /* POST /orders/{id}/cancel : `reason` seulement — REF envoie { reason }
+       (components/store/checkout/CancelSheet.js:48), sans note. */
     closeCancel(); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; }
     if (!co.order) { coShow(1); return; }
-    var cancelBody = { reason: reason }; if (note) cancelBody.note = note;
+    var cancelBody = { reason: reason };
     req("/orders/" + co.order.id + "/cancel", { method: "POST", body: cancelBody })
       .then(function () {
         /* main CancelSheet.js:48-51 + OrderTrack.js:406 : succès = la
