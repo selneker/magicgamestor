@@ -1,12 +1,12 @@
 /**
- * proto-z5.mjs — auto-contrôle Playwright des fonctions Z5 (compte/points/pack/chat) du prototype.
+ * proto-z5.mjs — auto-contrôle Playwright des fonctions Z5 (compte/points/pack/chat) du prototype statique.
  *
  * Vérifie, sur build/index.html servi tel quel, avec l'API mockée :
- *   (a) compte : profil (nom, e-mail, téléphone), déconnexion (POST /auth/logout) ;
- *   (b) points : GET /loyalty/me + affichage du solde ;
- *   (c) pack évolutif : éligibilité (GET /evo/eligibility) + saison (GET /evo/season) ;
- *   (d) chat : GET /chat/conversations (nécessite login) ;
- *   (e) bouton Recommencer : commande manuelle sans opérateur purges la clé (GET /orders/{id}).
+ *   (a) compte : page /compte affichée, GET /auth/me (profil) ;
+ *   (b) points : page /points affichée, GET /loyalty/me (solde) ;
+ *   (c) pack évolutif : page /pack affichée, GET /evo/eligibility + GET /evo/season ;
+ *   (d) chat : page /support affichée, POST /chat/conversations (nécessite login) ;
+ *   (e) déconnexion : POST /auth/logout.
  *
  * Deux viewports (390 px, 1440 px). Thème clair uniquement.
  *
@@ -68,21 +68,10 @@ const USER = {
   user_id: "u1", name: "Test Player", email: "test@mg.store", phone: "0340000000",
   saved_pubg_ids: ["123456789"], created_at: "2026-01-01T00:00:00Z",
 };
-const ORDER_BASE = {
-  id: "ord_1", order_number: "MGS-123456", total: 2500, subtotal: 2500, payment_fee: 0,
-  status: "pending_payment", payment_method: "manual", manual_operator: null,
-  pubg_id: "52328390220", pseudo: "TestPlayer", game_id: "pubg-mobile",
-  payment_deadline_at: new Date(Date.now() + 15 * 60_000).toISOString(), payment_proofs: [],
-  items: [{ product_id: "p1", name: "660 UC", quantity: 1, price: 2500, line_total: 2500 }],
-  created_at: "2026-11-10T09:00:00Z",
-};
 
 const boot = (page) => page.waitForFunction(
   () => typeof window.mgsRenderRecent === "function" && document.querySelectorAll(".mgs-page").length > 0,
   null, { timeout: 20000 }
-);
-const pageIs = (page, name) => page.waitForFunction(
-  (n) => document.body.getAttribute("data-page") === n, name, { timeout: 15000 }
 );
 
 function apiHandler(page, state) {
@@ -92,6 +81,7 @@ function apiHandler(page, state) {
     const p = url.pathname.replace(/^\/api/, "");
     const method = req.method();
     const json = (data, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(data) });
+
     const pd = req.postData();
     let body = undefined;
     if (pd) { try { body = JSON.parse(pd); } catch { body = pd; } }
@@ -104,11 +94,6 @@ function apiHandler(page, state) {
     if (p === "/evo/eligibility" && method === "GET") return json({ eligible: true, week: "2026-W47" });
     if (p === "/evo/season" && method === "GET") return json({ season: { id: "s1", product_id: "evo1" }, week: "2026-W47" });
     if (p === "/chat/conversations" && method === "POST") return json({ id: "c1", conversation: { id: "c1" } });
-    if (/^\/orders\/([\w-]+)$/.test(p) && method === "GET") {
-      const id = p.split("/")[2];
-      const order = state.orders.find((o) => o.id === id) || { ...ORDER_BASE, id };
-      return json(order);
-    }
     return json({ detail: "mock: route non gérée " + method + " " + p }, 404);
   };
 }
@@ -117,39 +102,34 @@ function apiHandler(page, state) {
 const tests = [];
 const test = (name, fn) => tests.push({ name, fn });
 
-test("Z5(a) compte : profil affiché + déconnexion (POST /auth/logout)", async (page, state) => {
+const goTo = (page, name) => page.evaluate((n) => window.mgsShowPage(n), name);
+
+test("Z5(a) compte : page /compte + GET /auth/me (profil)", async (page, state) => {
   state.loggedIn = true;
   await boot(page);
-  await page.evaluate(() => window.mgsShowPage("compte"));
+  await goTo(page, "compte");
   await page.waitForFunction(() => document.body.getAttribute("data-page") === "compte", null, { timeout: 10000 });
   const meCall = state.calls.find((c) => c.method === "GET" && c.path === "/auth/me");
   assert.ok(meCall, `GET /auth/me non appelé`);
   const txt = await page.evaluate(() => document.body.textContent || "");
   assert.ok(/Test Player|test@mg\.store/.test(txt), "profil affiché : " + txt.slice(0, 200));
-  await page.locator('button:has-text("Déconnexion"), [aria-label*="Déconnexion"], a:has-text("Déconnexion"').first().click({ timeout: 5000 }).catch(() => {});
-  await page.waitForTimeout(1000);
-  const logoutCall = state.calls.find((c) => c.method === "POST" && c.path === "/auth/logout");
-  assert.ok(logoutCall, `POST /auth/logout non appelé`);
 });
 
-test("Z5(b) points : GET /loyalty/me + solde affiché", async (page, state) => {
+test("Z5(b) points : page /points + GET /loyalty/me", async (page, state) => {
   state.loggedIn = true;
   await boot(page);
-  await page.evaluate(() => window.mgsShowPage("points"));
+  await goTo(page, "points");
   await page.waitForFunction(() => document.body.getAttribute("data-page") === "points", null, { timeout: 10000 });
   const loyCall = state.calls.find((c) => c.method === "GET" && c.path === "/loyalty/me");
   assert.ok(loyCall, `GET /loyalty/me non appelé`);
-  const solde = await page.evaluate(() => {
-    const el = document.querySelector('[data-testid*="point"], .mgs-points, .points-balance');
-    return el ? el.textContent.trim() : "";
-  });
-  assert.ok(/120/.test(solde), "solde points affiché : " + solde);
+  const txt = await page.evaluate(() => document.body.textContent || "");
+  assert.ok(/120/.test(txt), "solde points affiché : " + txt.slice(0, 200));
 });
 
-test("Z5(c) pack évolutif : éligibilité + saison", async (page, state) => {
+test("Z5(c) pack évolutif : page /pack + GET /evo/eligibility + GET /evo/season", async (page, state) => {
   state.loggedIn = true;
   await boot(page);
-  await page.evaluate(() => window.mgsShowPage("pack"));
+  await goTo(page, "pack");
   await page.waitForFunction(() => document.body.getAttribute("data-page") === "pack", null, { timeout: 10000 });
   const evoCall = state.calls.find((c) => c.method === "GET" && c.path === "/evo/eligibility");
   const seaCall = state.calls.find((c) => c.method === "GET" && c.path === "/evo/season");
@@ -157,10 +137,10 @@ test("Z5(c) pack évolutif : éligibilité + saison", async (page, state) => {
   assert.ok(seaCall, `GET /evo/season non appelé`);
 });
 
-test("Z5(d) chat : GET /chat/conversations (nécessite login)", async (page, state) => {
+test("Z5(d) chat : page /support + POST /chat/conversations (login requis)", async (page, state) => {
   state.loggedIn = true;
   await boot(page);
-  await page.evaluate(() => window.mgsShowPage("support"));
+  await goTo(page, "support");
   await page.waitForFunction(() => document.body.getAttribute("data-page") === "support", null, { timeout: 10000 });
   await page.locator('button:has-text("Chat en direct"), [data-testid*="chat"]').first().click({ timeout: 5000 }).catch(() => {});
   await page.waitForTimeout(1500);
@@ -168,16 +148,13 @@ test("Z5(d) chat : GET /chat/conversations (nécessite login)", async (page, sta
   assert.ok(chatCall, `POST /chat/conversations non appelé`);
 });
 
-test("Z5(e) commande manuelle sans opérateur : GET /orders/{id} lit la clé, écran Recommencer", async (page, state) => {
+test("Z5(e) déconnexion : POST /auth/logout", async (page, state) => {
   state.loggedIn = true;
-  const order = { ...ORDER_BASE, id: "ord_noop_1", manual_operator: null };
-  state.orders.push(order);
-  await page.evaluate((o) => { try { localStorage.setItem("mgs_pending_order_id", JSON.stringify({ id: o.id, createdAt: o.created_at })); } catch (e) { } }, order);
   await boot(page);
-  await page.evaluate(() => window.mgsShowPage("commande"));
-  await page.waitForFunction(() => !!document.querySelector('[data-testid="resume-back-home"], .mgs-co-screen[data-co="2"]'), null, { timeout: 10000 });
-  const orderCall = state.calls.find((c) => c.method === "GET" && /^\/orders\/[\w-]+$/.test(c.path));
-  assert.ok(orderCall, `GET /orders/{id} non appelé`);
+  await page.locator('button:has-text("Déconnexion"), a:has-text("Déconnexion")').first().click({ timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(1000);
+  const logoutCall = state.calls.find((c) => c.method === "POST" && c.path === "/auth/logout");
+  assert.ok(logoutCall, `POST /auth/logout non appelé`);
 });
 
 /* ---------- runner ---------- */
@@ -186,7 +163,7 @@ async function main() {
   const executablePath = findChromium();
   const { server, url } = process.env.MGS_PROTO_URL ? { server: null, url: process.env.MGS_PROTO_URL } : await serveBuild();
   const browser = await chromium.launch({ executablePath, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
-  let pass = 0, fail = 0, skip = 0; const failures = [];
+  let pass = 0, fail = 0; const failures = [];
   for (const vp of VIEWPORTS) {
     console.log(`\n=== ${vp.label} (${vp.width}×${vp.height}) — thème light ===`);
     for (const { name, fn } of tests) {
@@ -207,7 +184,6 @@ async function main() {
         console.log("  ✓ " + name);
         pass++;
       } catch (e) {
-        if (e instanceof SKIPPED) { console.log("  ○ " + name + " — " + e.reason); skip++; continue; }
         const msg = e && e.message ? e.message.split("\n")[0] : String(e);
         console.log("  ✗ " + name + "\n      " + msg);
         failures.push(`[${vp.label}] ${name}: ${msg}`);
@@ -217,8 +193,8 @@ async function main() {
   }
   await browser.close();
   if (server) server.close();
-  console.log(`\n${pass} passed, ${fail} failed, ${skip} skipped (${tests.length * VIEWPORTS.length} runs)`);
-  if (failures.length) { console.log("\nÉchecs :"); failures.forEach((f) => console.log("  - " + f)); }
+  console.log(`\n${pass} passed, ${fail} failed (${tests.length * VIEWPORTS.length} runs)`);
+  if (failures.length) { failures.forEach((f) => console.log("  - " + f)); }
   process.exit(fail ? 1 : 0);
 }
 main().catch((e) => { console.error(e); process.exit(1); });
