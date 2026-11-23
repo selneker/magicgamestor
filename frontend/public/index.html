@@ -3916,6 +3916,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     co.game = cart[0].game_name || cart[0].game || ""; co.game_id = cart[0].game_id || "";
     co.verified = false; co.method = ""; co.pid = ""; co.pseudo = ""; co.order = null; co.network = ""; co.payment = null;
     var bl = $('.mgs-co-method input[value="Binance"]'); if (bl) { var blbl = bl.closest(".mgs-co-method"); if (blbl) blbl.style.display = (cryptoCfg && cryptoCfg.available) ? "" : "none"; }
+    /* MVola/Orange : même masquage que Binance (main pages/Checkout.js:83-84,277-278) —
+       un opérateur non configuré dans GET /payments/config n'est pas proposé. */
+    var mv = $('.mgs-co-method input[value="MVola"]'); if (mv) { var ml = mv.closest(".mgs-co-method"); if (ml) ml.style.display = (!payCfg || !payCfg.providers || !payCfg.providers.mvola || payCfg.providers.mvola.configured !== false) ? "" : "none"; }
+    var og = $('.mgs-co-method input[value="Orange Money"]'); if (og) { var ogl = og.closest(".mgs-co-method"); if (ogl) ogl.style.display = (!payCfg || !payCfg.providers || !payCfg.providers.orange || payCfg.providers.orange.configured !== false) ? "" : "none"; }
     var cg = $(".mgs-co-game"); if (cg) cg.textContent = co.game;
     var ct = $(".mgs-co-total"); if (ct) ct.textContent = ar(co.total);
     var ci = $(".mgs-co-items"); if (ci) ci.textContent = co.items;
@@ -4539,8 +4543,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (el.closest(".mgs-co-verify")) { stop(e); verifyId(); return; }
     var m = el.closest(".mgs-co-method"); if (m) { stop(e); $$(".mgs-co-method").forEach(function (x) { x.classList.remove("is--active"); }); m.classList.add("is--active"); var r = $("input", m); if (r) r.checked = true; co.method = r ? r.value : ""; if (co.method === "Binance") co.network = (cryptoCfg && cryptoCfg.networks && cryptoCfg.networks[0] && cryptoCfg.networks[0].key) || ""; return; }
     if (el.closest(".mgs-co-submit")) { stop(e); if (!co.verified) { coStatus("is--err", esc(t("checkout.verifyRequired"))); return; } if (!co.method) { toast(t("checkout.selectMethod"), "err"); return; } if (co.method === "Binance" && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.papiOff"), "err"); return; } openHuman(); return; }
-    if (el.closest(".mgs-co-back")) { stop(e); window.mgsShowPage("boutique"); return; }
-    if (el.closest(".mgs-co-back2")) { stop(e); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } coShow(1); return; }
+    if (el.closest(".mgs-co-back")) { stop(e); stopPaymentPoll(); window.mgsShowPage("boutique"); return; }
+    if (el.closest(".mgs-co-back2")) { stop(e); stopTimer(); stopPaymentPoll(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } coShow(1); return; }
     if (el.closest(".mgs-co-proof")) { stop(e); ensureProofInput().click(); return; }
     if (el.closest(".mgs-co-cancel")) { stop(e); openCancel(); return; }
     if (el.closest(".mgs-co-cancel-close") || el.classList.contains("mgs-co-cancel-overlay")) { stop(e); closeCancel(); return; }

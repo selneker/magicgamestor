@@ -87,7 +87,7 @@ function apiHandler(page, state) {
     if (p === "/auth/login" && method === "POST") { state.loggedIn = true; return json({ user: USER, access_token: "t" }); }
     if (p === "/auth/logout" && method === "POST") { state.loggedIn = false; return json({ ok: true }); }
     if (p === "/auth/refresh" && method === "POST") return state.loggedIn ? json({ ok: true }) : json({ detail: "no refresh" }, 401);
-    if (p === "/payments/config" && method === "GET") return json(PAYMENT_CONFIG);
+    if (p === "/payments/config" && method === "GET") return json(state.payConfig || PAYMENT_CONFIG);
     if (p === "/crypto/config" && method === "GET") return json({ available: true, currency: "USDT", expiry_minutes: 30, networks: [{ key: "TRC20", label: "TRON (TRC20)", memo_required: false }] });
     if (/^\/crypto\/([\w-]+)\/status$/.test(p) && method === "GET") {
       const id = p.split("/")[2];
@@ -320,6 +320,27 @@ test("Z3a(4) le sondage s'arrête sur statut final (main :100)", async (page, st
   assert.equal(key, null, "clé d'une commande à statut final non purgée");
 });
 
+/* ---------- (5) masquage MVola/Orange si configured=false (main Checkout.js:83-84) ---------- */
+
+test("Z3a(5) masquage MVola/Orange si configured=false (main Checkout.js:83-84)", async (page, state) => {
+  state.payConfig = Object.assign({}, PAYMENT_CONFIG, { providers: { mvola: { configured: false, merchant: "0383905692", name: "Selneker Dino" }, orange: { configured: true, merchant: "0377519833", name: "Selneker Dino" } } });
+  await boot(page);
+  await page.evaluate(() => { try { localStorage.setItem("mgs_cart", JSON.stringify([{ key: "p1", id: "p1", product_id: "p1", name: "660 UC", price: 12500, qty: 1, game_id: "pubg-mobile", game_name: "PUBG Mobile" }])); } catch (e) { } });
+  await page.reload({ waitUntil: "load", timeout: 30000 });
+  await boot(page);
+  await page.locator('button[aria-label*="Panier"]:visible').first().click();
+  await page.waitForSelector(".mgs-cart-checkout", { timeout: 30000 });
+  await page.locator(".mgs-cart-checkout").click();
+  await pageIs(page, "commande");
+  await page.waitForFunction(() => !document.querySelector('.mgs-co-screen[data-co="1"]').hidden, null, { timeout: 30000 });
+  const v = await page.evaluate(() => {
+    const g = (val) => { const i = document.querySelector('.mgs-co-method input[value="' + val + '"]'); const l = i && i.closest(".mgs-co-method"); return l ? l.style.display : null; };
+    return { mvola: g("MVola"), orange: g("Orange Money"), binance: g("Binance") };
+  });
+  assert.equal(v.mvola, "none", "MVola non masqué malgré configured=false : " + JSON.stringify(v));
+  assert.equal(v.orange, "", "Orange doit rester visible : " + JSON.stringify(v));
+});
+
 /* ---------- runner ---------- */
 async function main() {
   if (!fs.existsSync(BUILD)) { console.error("[erreur] build/index.html absent : lancez `yarn build` d'abord."); process.exit(2); }
@@ -334,7 +355,7 @@ async function main() {
       const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
       context.setDefaultTimeout(60000);
       const page = await context.newPage();
-      const state = { loggedIn: false, calls: [], orders: {}, initiateCalls: [], statusCalls: [], payStatuses: [] };
+      const state = { loggedIn: false, calls: [], orders: {}, initiateCalls: [], statusCalls: [], payStatuses: [], payConfig: null };
       const errors = [];
       page.on("pageerror", (e) => errors.push(String(e)));
       await page.addInitScript(() => { try { localStorage.setItem("mgs_lang", "fr"); } catch (e) { } });

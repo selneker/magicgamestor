@@ -272,7 +272,7 @@ Prompt : **PL-006-FE-03-V1**.
 | Validation d'ID joueur | `components/store/checkout/IdentityFieldsVerify.js:102` | `POST /fazercards/validate-id` (`routers/fazercards.py:118`) | non | `req("/fazercards/validate-id")` 3876 | à porter |
 | Config paiements (méthodes, mode) | `pages/Checkout.js:78` | `GET /payments/config` (`routers/payments.py:194`) | non | `loadPayCfg()` 3691 | à porter |
 | Config Binance/USDT | `pages/Checkout.js:79` | `GET /crypto/config` (`routers/crypto.py:107`) | non | `MGS_CRYPTO` | à porter |
-| Choix de la méthode (manuel vs binance) | `pages/Checkout.js:160-180` | — | — | à vérifier | à porter |
+| Choix de la méthode (manuel vs binance) | `pages/Checkout.js:83-84,160-180,277-278` | — | — | `coOpen()` `index.html:3918-3922` (masquage par `configured`/`available`) | porté (Z3a) |
 | Création de commande (payload exact) | `pages/Checkout.js:135-142` | `POST /orders` (`routers/orders.py:315`) | non | à vérifier | à porter |
 | Preuve de paiement (1 à 3 captures) | `components/store/checkout/ProofPay.js:119` | `POST /orders/{id}/proof` (`routers/orders.py:501`) | non | à vérifier | à porter |
 | Relance admin (3 min / 3 max) | `components/store/checkout/ProofPay.js:216-228` | `POST /orders/{id}/remind` (`routers/orders.py:615`, cooldown `:627`=180 s, max `:628`=3) | non | non porté (design) — aucun contrôle libre dans l'écran d'attente (`index.html:2628-2634`) | non porté (design) |
@@ -316,6 +316,10 @@ pour un bouton de relance → la reprise est **silencieuse** (aucun élément vi
   Prototype : `startPaymentPoll()` `index.html:4009-4025`, démarré dans `coPay()` `:4001`,
   arrêté à la sortie du tunnel (`coOpen`/`coFinish`). Un changement de `order_status`
   (`:100`) relit la commande et rouvre l'écran de son statut.
+- **Masquage des opérateurs non configurés — PORTÉ.** `main pages/Checkout.js:83-84`
+  (`configured !== false`) et `:277-278` ; prototype `coOpen()` `index.html:3921-3922` —
+  même méthode que le masquage Binance déjà en place (`style.display`, aucun élément
+  créé). Un opérateur `configured: false` dans `GET /payments/config` n'est pas proposé.
 
 ---
 
