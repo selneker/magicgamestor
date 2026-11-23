@@ -79,6 +79,10 @@ function apiHandler(page, state) {
     state.urls.push(req.method() + " " + p + (url.search || ""));
     const json = (data, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(data) });
     if (p === "/auth/me" && req.method() === "GET") return state.loggedIn ? json(USER) : json({ detail: "Non authentifié" }, 401);
+    /* Le client rafraîchit silencieusement un 401 (lib/api.js:16-35). Sans ce mock,
+       /auth/refresh tombait en 404 : la session était réessayée 3 s puis 8 s et sa
+       résolution tardive écrasait le `me` du login en cours (pastille masquée). */
+    if (p === "/auth/refresh" && req.method() === "POST") return state.loggedIn ? json({ user: USER, access_token: "t" }) : json({ detail: "refresh invalide" }, 401);
     if ((p === "/auth/login" || p === "/auth/register") && req.method() === "POST") { state.loggedIn = true; return json({ user: USER, access_token: "t" }); }
     if (p === "/auth/logout" && req.method() === "POST") { state.loggedIn = false; return json({ ok: true }); }
     if (p === "/games" && req.method() === "GET") return json(GAMES);
@@ -251,7 +255,7 @@ test("Z2 invité / connecté : pastille points", async (page, state) => {
   await page.locator("#em").fill("test@mg.store");
   await page.locator("#pw").fill("password123");
   await page.locator('.mgs-page[data-page="connexion"] a[data-nav="compte"]').click();
-  await pageIs(page, "accueil");
+  await pageIs(page, "boutique");
   await page.waitForFunction(() => { const p = document.querySelector(".nav-points-pill"); return !!p && p.style.display !== "none"; }, null, { timeout: 10000 });
   const n = await page.$$eval(".nav-points-pill .pts-n", (els) => els.map((e) => e.textContent));
   assert.ok(n.indexOf("120") >= 0, "solde loyalty affiché : " + JSON.stringify(n));

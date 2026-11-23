@@ -3625,7 +3625,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function orderErrMsg(e) { return e && e.status === 404 ? t("order.notFound") : errMsg(e); }
 
   /* ---------- session ---------- */
-  var me = null, payCfg = null, gamesCache = null;
+  var me = null, payCfg = null, gamesCache = null, sessionResolved = false;
   /* Session : un 401 est une absence de session certaine (silencieux) ; une panne
      (403 origine, réseau, 5xx) est réessayée 2 fois puis laissée hors ligne, sans
      message — même politique que main (frontend/src/context/AuthContext.js:27-49). */
@@ -3638,7 +3638,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         me = null; return null;
       });
     }
-    return attempt(0);
+    return attempt(0).then(function (r) { sessionResolved = true; return r; });
   }
   function loadPayCfg() { return req("/payments/config").then(function (c) { payCfg = c; return c; }).catch(function (e) { signale(e); return null; }); }
   function loadGames() { if (gamesCache) return Promise.resolve(gamesCache); return req("/games").then(function (g) { var list = Array.isArray(g) ? g.filter(function (x) { return x.active !== false; }) : []; if (list.length) { list.sort(function (a, b) { return (a.sort_order || 0) - (b.sort_order || 0); }); gamesCache = list; } return gamesCache; }).catch(function (e) { signale(e); return gamesCache; }); }
@@ -4543,9 +4543,13 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   var loyaltyOk = false;
   function updatePointsPill(pts) { loyaltyOk = pts != null; var txt = pts == null ? "—" : String(pts); $$(".pts-n").forEach(function (e) { e.textContent = txt; }); $$('[aria-label*="Points fidélité"]').forEach(function (e) { var b = $(".nav-action-badge", e); if (b) b.textContent = txt; e.setAttribute("aria-label", txt === "—" ? "Points fidélité indisponibles" : "Points fidélité : " + txt); }); syncAuthChrome(); }
   /* invité vs connecté : chrome de nav (pill points desktop + cercle points mobile) */
-  var authReturnTo = null, authBusy = false;
+  var authBusy = false;
   function syncAuthChrome() { var on = !!me && loyaltyOk; $$(".nav-points-pill").forEach(function (e) { e.style.display = on ? "" : "none"; }); $$('.nav-mobile-actions a[data-nav="points"]').forEach(function (e) { e.style.display = on ? "" : "none"; }); }
-  function needLogin(page) { authReturnTo = page || null; window.mgsShowPage("connexion"); }
+  /* Destination après connexion : toujours la Boutique (consigne du propriétaire)
+     — l'écran d'où venait l'invité n'est plus mémorisé. Tant que la session n'est
+     pas connue, on ne redirige pas : l'écran demandé par l'URL s'affiche d'abord et
+     les loaders qui dépendent de `me` sont ré-évalués ensuite (voir boot). */
+  function needLogin() { if (!sessionResolved) return; window.mgsShowPage("connexion"); }
   function captchaToken() { try { return (window.MGS_CAPTCHA && window.MGS_CAPTCHA.enabled() && window.MGS_CAPTCHA.getToken()) || null; } catch (e) { return null; } }
   /* Messages d'authentification : traduction par CODE d'erreur, sinon par STATUT
      HTTP, sinon repli — même table que main (frontend/src/lib/authErrors.js:25-54).
@@ -4567,7 +4571,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     return t(fallback || "auth.errorGeneric");
   }
   function renderAccount() {
-    if (!me) { needLogin("compte"); return; }
+    if (!me) { needLogin(); return; }
     var name = me.name || me.email || "—"; var av = $(".mgs-avatar"); if (av) av.textContent = (name.trim().slice(0, 2) || "MG").toUpperCase();
     var head = $(".mgs-page[data-page=compte] .mgs-panel.mgs-row");
     if (head) { var nm = $("div p", head); if (nm) nm.textContent = name; var sub = $(".mgs-muted", head); if (sub) sub.textContent = (me.email || "") + (me.created_at ? " · membre depuis " + fmtDate(me.created_at).date : ""); }
@@ -4662,8 +4666,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       me = (r && r.user) || null;
       syncAuthChrome(); refreshPointsPill();
       if (authMode === "register") toast(t("auth.verifySent"));
-      var to = authReturnTo || "accueil"; authReturnTo = null;
-      window.mgsShowPage(to);
+      window.mgsShowPage("boutique");
     }).catch(function (e) {
       authBusy = false;
       /* main AuthPage.js:57-61 : jeton à usage unique — sur un échec, le
@@ -4687,11 +4690,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
      envoyé est la ROUTE RÉELLE de la page (MGS_URLS), pas son nom d'écran. */
   function googleLogin() {
     toast(t("auth.google"));
-    /* Sans page d'origine (connexion lancée depuis /connexion), le retour va à la
-       LISTE DES JEUX disponibles (demande du propriétaire, 2026-11-23) — REF
-       revenait sur /compte (AuthCallback.js:8). La page d'origine, quand elle
-       existe (needLogin), reste prioritaire. */
-    var to = MGS_URLS[authReturnTo] || MGS_URLS.boutique;
+    /* Retour TOUJOURS sur la liste des jeux (demande du propriétaire) — REF
+       revenait sur /compte (AuthCallback.js:8). */
+    var to = MGS_URLS.boutique;
     window.location.href = API + "/auth/google/start?return_to=" + encodeURIComponent(to);
   }
   var forgotCaptchaBox = null;
@@ -4797,7 +4798,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
 
   function renderPoints() {
-    if (!me) { needLogin("points"); return; }
+    if (!me) { needLogin(); return; }
     /* Chiffres en squelette pendant le chargement — pas d'éclair « 0 ». */
     var skn = $$(".mgs-page[data-page=points] .mgs-stat__n");
     for (var k = 0; k < skn.length; k++) { skn[k].innerHTML = '<span class="mgs-skel"></span>'; }
@@ -4942,13 +4943,13 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* main ChatThread : composer vide = rien à envoyer (aucun message). */
     if (!text) return;
     /* main Chat.js:16-20 : la conversation exige un compte (invité → connexion). */
-    if (!me) { needLogin("support"); return; }
+    if (!me) { needLogin(); return; }
     var p = chatCid ? Promise.resolve(chatCid) : req("/chat/conversations", { method: "POST" }).then(function (c) { chatCid = c.id || (c.conversation && c.conversation.id); return chatCid; });
     var body = { text: text };
     p.then(function (cid) { return req("/chat/conversations/" + cid + "/messages", { method: "POST", body: body }); }).then(function () { toast(t("chat.sent")); msg.value = ""; if (subj) subj.value = ""; }).catch(function (e) { toast(errMsg(e), "err"); });
   }
   function openChat() {
-    if (!me) { needLogin("support"); return; }
+    if (!me) { needLogin(); return; }
     req("/chat/conversations", { method: "POST" }).then(function (c) { chatCid = c.id || (c.conversation && c.conversation.id); var msg = $("#ms"); if (msg) msg.focus(); }).catch(function (e) { toast(errMsg(e), "err"); });
   }
 
@@ -4971,6 +4972,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
 
   /* ---------- routage : observe body[data-page] (découplé du script template) ---------- */
+  /* Loaders qui consultent la session ET redirigent : à ré-évaluer une fois la
+     session connue (voir boot). */
+  var SESSION_LOADERS = ["connexion", "compte", "points", "commandes", "support", "admin"];
   var loaders = {
     /* main App.js:82 : /admin est protégé (`ProtectedRoute admin`). PAGE ADMIN
        RÉELLE : stats + commandes récentes depuis /admin/stats et /admin/orders
@@ -4978,7 +4982,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
        existants du design. Les 14 écrans du design ne sont pas portés : leurs
        boutons sont masqués dans renderAdmin(). */
     admin: function () {
-      if (!me || (me.role !== "admin" && me.role !== "super_admin")) { needLogin("admin"); return; }
+      if (!me || (me.role !== "admin" && me.role !== "super_admin")) { needLogin(); return; }
       renderAdmin();
     },
     /* Panier vide sur /commande : REF n'affiche JAMAIS le tunnel (état « panier
@@ -4998,7 +5002,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
          /commandes (liste) et /suivi|/orders (invité) restent publics. Le
          parcours invité après commande n'utilise pas /commandes/:id : il
          passe par /commandes (liste) + détail en page, ou par /suivi|/orders. */
-      if (/^\/commandes\/[^/]+\/?$/.test(location.pathname) && !me) { needLogin("commandes"); return; }
+      if (/^\/commandes\/[^/]+\/?$/.test(location.pathname) && !me) { needLogin(); return; }
       loadOrders();
     },
     compte: function () { renderAccount(); },
@@ -5010,10 +5014,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* La borne de saisie de REF (ChatThread.js:117) est posée sur la zone de texte
        existante du design : aucun style ni élément ajouté, seul l'attribut maxlength. */
     support: function () { maskUnsupported(); var ms = $("#ms"); if (ms) ms.maxLength = CHAT_MAX_LEN; },
-    /* Déjà connecté sur /connexion : on sort vers la page demandée, sinon vers la
-       liste des jeux (le design l'affiche par défaut : .mgs-boutique-catalog est
-       hidden au chargement), jamais vers l'accueil. */
-    connexion: function () { if (me) { var to = authReturnTo || "boutique"; authReturnTo = null; window.mgsShowPage(to); return; } setAuthMode(authMode); },
+    /* Déjà connecté sur /connexion : on sort vers la liste des jeux (le design
+       l'affiche par défaut : .mgs-boutique-catalog est hidden au chargement). */
+    connexion: function () { if (me) { window.mgsShowPage("boutique"); return; } setAuthMode(authMode); },
     mdp: function () { var st = $("#mdp-status"); if (st) { st.className = "mgs-status"; st.textContent = ""; } renderForgotCaptcha(); },
     reset: function () { var st = $("#reset-status"); if (st) { st.className = "mgs-status"; st.textContent = resetTokenFromUrl() ? "" : t("auth.errorInvalidLink"); } },
     accueil: function () { loadGames().then(renderGames); renderEvents(); }
@@ -5234,14 +5237,14 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         if (me) req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; updatePointsPill(bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0))); }).catch(function (e) { updatePointsPill(null); signale(e); });
         /* La session n'est connue qu'ICI, alors que la page de l'URL est affichée
            dès le début de boot() et que le MutationObserver sur body[data-page] a
-           déjà fait tourner son loader avec `me` = null : sur /connexion — ou après
-           un needLogin qui vient d'y renvoyer — un utilisateur CONNECTÉ restait
-           bloqué sur l'écran de connexion, route() ignorant un rappel identique au
-           précédent (garde `lastPage`). On force donc UNE ré-évaluation de cet
-           écran (idiome déjà utilisé au changement de langue) : le loader
-           « connexion » en sort dès que `me` est renseigné. */
+           déjà fait tourner son loader avec `me` = null : /compte renvoyait donc un
+           éclair d'écran de connexion (un visiteur CONNECTÉ ne voyait rien d'autre,
+           puis restait bloqué), et un invité y restait à son tour. needLogin()
+           diffère la redirection tant que la session est inconnue ; on ré-évalue
+           une fois les loaders qui en dépendent (route() ignore un rappel identique,
+           garde `lastPage`). */
         var bootPage = body.getAttribute("data-page") || "accueil";
-        if (me && bootPage === "connexion") lastPage = null;
+        if (SESSION_LOADERS.indexOf(bootPage) >= 0) lastPage = null;
         route(bootPage);
       });
     });

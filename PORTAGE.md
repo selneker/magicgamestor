@@ -559,6 +559,53 @@ e300442 fix(auth): backend = api.magicgame.store, formulaires de connexion réel
 2559ed5 fix(proto): test logique aligné sur REF — pas de validation locale du réseau
 ```
 
+## Destination après connexion + éclair d'écran sur /compte (2026-11-23)
+
+Deux observations du propriétaire, sur la même session :
+- après une connexion, le client doit arriver **directement sur la Boutique**
+  (`/boutique`, la liste des jeux), pas sur `/compte` ni sur l'accueil ;
+- en ouvrant `/compte` connecté, la page de **connexion s'affichait un instant**
+  puis le compte réapparaissait.
+
+Cause (mesurée, pas supposée) : l'écran demandé par l'URL est affiché dès le début
+de `boot()` alors que la session n'est connue qu'après (`loadSession`). Les loaders
+qui consultent `me` ont donc tourné avec `me = null` et `needLogin()` a renvoyé
+immédiatement sur `/connexion` ; la résolution de la session a renvoyé ensuite sur
+la page d'origine. Trace Chromium (`body[data-page]`, horodatée) sur `/compte` avec
+session valide, témoin `git HEAD` : `accueil → compte → connexion → compte`, avec
+l'écran de connexion affiché **374 ms** (`/auth/me` immédiat) à **893 ms**
+(`/auth/me` retardé de 800 ms).
+
+Correctif (`frontend/public/index.html`) :
+- `needLogin()` ne redirige plus tant que `sessionResolved` est faux ; `boot()`
+  ré-évalue une fois les loaders qui dépendent de la session (`SESSION_LOADERS`),
+  sans quoi un invité resterait bloqué sur la page vide.
+- destination après connexion = `boutique` dans les trois cas (formulaire,
+  `/connexion` déjà connecté, retour Google). `authReturnTo` (mémorisation de
+  l'écran d'origine) supprimé : REF le fait (`AuthPage.js:38` lit `from`), mais
+  la consigne est de tomber sur la Boutique dans tous les cas.
+
+Harnais `frontend/scripts/proto-z2.mjs` :
+- `/auth/refresh` mocké (401 invité). Sans ce mock il tombait en 404 : la session
+  était réessayée 3 s puis 8 s et sa résolution tardive **écrasait le `me` du
+  login** → pastille points masquée. C'est la cause du test rouge constaté avant
+  ce correctif (24/28) ; mon scénario de reproduction le passait parce qu'il
+  mockait `/auth/refresh`.
+- assertion d'arrivée après login : `accueil` → `boutique`.
+
+Mesure (témoin `git HEAD` vs build, API mockée, 390 px) :
+
+| scénario | avant | après |
+|---|---|---|
+| formulaire depuis `/connexion` | `/` (accueil) | `/boutique` |
+| Google depuis `/points` (invité) | `return_to=/compte/points` | `return_to=/boutique` |
+| `/connexion` + session | `/boutique` | `/boutique` |
+| `/compte` + session | `compte → connexion (0,4–0,9 s) → compte` | `compte` seul |
+| `/compte` invité | `/connexion` | `/connexion` |
+
+Validation : `yarn build` OK ; `yarn test:ci` 534/534 ; `proto-z2` 28/28 (4 tailles) ;
+trace `body[data-page]` ci-dessus.
+
 ## Reste ouvert (remonté au propriétaire)
 
 1. **Éléments qui exigent un ajout de design** (un conteneur chacun) : bouton
@@ -593,10 +640,8 @@ e300442 fix(auth): backend = api.magicgame.store, formulaires de connexion réel
    lancés une fois sur l'état final (sorties brutes en « Validation de cette
    session ») ; aucun parcours navigateur n'a été rejoué pour PL-FE-019 (le
    brief l'excluait).
-11. **Connexion Google** : les deux défauts du prototype sont corrigés (retour sur
-   la liste des jeux, plus de blocage sur `/connexion` quand la session est
-   valide), mais **la boucle du retour Google n'est pas prouvée résolue** — elle
-   vient très probablement du déploiement (cookie d'état `oauth_state` ou
-   `redirect_uri`), que je ne peux pas observer sans identifiants Google. Les
-   vérifications à faire hors dépôt sont listées dans « Connexion Google — retour
-   et boucle » ci-dessus.
+11. **Connexion Google** : l'éclair d'écran de connexion sur `/compte` est corrigé et
+    mesuré, et le retour Google vise toujours `/boutique` (voir « Destination après
+    connexion + éclair d'écran sur /compte »). **Le retour Google réel n'est toujours
+    pas observé** — il faut un identifiant Google ; ce qui reste à vérifier côté
+    déploiement est listé dans « Connexion Google — retour et boucle » ci-dessus.
