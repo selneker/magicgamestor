@@ -4632,7 +4632,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     function hex(n) { var out = ""; for (k = 0; k < 4; k++) out += ("0" + ((n >> (k * 8)) & 255).toString(16)).slice(-2); return out; }
     return hex(a) + hex(b) + hex(c) + hex(d);
   }
-  function avatarSrc() { var e = String((me && me.email) || "").trim().toLowerCase(); return e ? "https://www.gravatar.com/avatar/" + md5(e) + "?s=96&d=mp" : null; }
+  function avatarSrc() { var e = String((me && me.email) || "").trim().toLowerCase(); return e ? "https://www.gravatar.com/avatar/" + md5(e) + "?s=96&d=404" : null; }
   function initials() { var n = ((me && (me.name || me.email)) || "").trim(); return (n ? n.slice(0, 2) : "MG").toUpperCase(); }
   function paintAvatar(el) {
     if (!el) return;
