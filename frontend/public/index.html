@@ -4686,7 +4686,11 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
      envoyé est la ROUTE RÉELLE de la page (MGS_URLS), pas son nom d'écran. */
   function googleLogin() {
     toast(t("auth.google"));
-    var to = MGS_URLS[authReturnTo] || "/";
+    /* Sans page d'origine (connexion lancée depuis /connexion), le retour va à la
+       LISTE DES JEUX disponibles (demande du propriétaire, 2026-11-23) — REF
+       revenait sur /compte (AuthCallback.js:8). La page d'origine, quand elle
+       existe (needLogin), reste prioritaire. */
+    var to = MGS_URLS[authReturnTo] || MGS_URLS.boutique;
     window.location.href = API + "/auth/google/start?return_to=" + encodeURIComponent(to);
   }
   var forgotCaptchaBox = null;
@@ -4962,7 +4966,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* La borne de saisie de REF (ChatThread.js:117) est posée sur la zone de texte
        existante du design : aucun style ni élément ajouté, seul l'attribut maxlength. */
     support: function () { maskUnsupported(); var ms = $("#ms"); if (ms) ms.maxLength = CHAT_MAX_LEN; },
-    connexion: function () { if (me) { var to = authReturnTo || "accueil"; authReturnTo = null; window.mgsShowPage(to); return; } setAuthMode(authMode); },
+    /* Déjà connecté sur /connexion : on sort vers la page demandée, sinon vers la
+       liste des jeux (le design l'affiche par défaut : .mgs-boutique-catalog est
+       hidden au chargement), jamais vers l'accueil. */
+    connexion: function () { if (me) { var to = authReturnTo || "boutique"; authReturnTo = null; window.mgsShowPage(to); return; } setAuthMode(authMode); },
     mdp: function () { var st = $("#mdp-status"); if (st) { st.className = "mgs-status"; st.textContent = ""; } renderForgotCaptcha(); },
     reset: function () { var st = $("#reset-status"); if (st) { st.className = "mgs-status"; st.textContent = resetTokenFromUrl() ? "" : t("auth.errorInvalidLink"); } },
     accueil: function () { loadGames().then(renderGames); renderEvents(); }
@@ -5181,7 +5188,17 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         openDeepLink();
         if (window.mgsSetNav) mgsSetNav(body.getAttribute("data-page") || "accueil");
         if (me) req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; updatePointsPill(bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0))); }).catch(function (e) { updatePointsPill(null); signale(e); });
-        route(body.getAttribute("data-page") || "accueil");
+        /* La session n'est connue qu'ICI, alors que la page de l'URL est affichée
+           dès le début de boot() et que le MutationObserver sur body[data-page] a
+           déjà fait tourner son loader avec `me` = null : sur /connexion — ou après
+           un needLogin qui vient d'y renvoyer — un utilisateur CONNECTÉ restait
+           bloqué sur l'écran de connexion, route() ignorant un rappel identique au
+           précédent (garde `lastPage`). On force donc UNE ré-évaluation de cet
+           écran (idiome déjà utilisé au changement de langue) : le loader
+           « connexion » en sort dès que `me` est renseigné. */
+        var bootPage = body.getAttribute("data-page") || "accueil";
+        if (me && bootPage === "connexion") lastPage = null;
+        route(bootPage);
       });
     });
     window.addEventListener("resize", renderRecent);
