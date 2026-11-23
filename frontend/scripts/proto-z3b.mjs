@@ -40,7 +40,7 @@ function findChromium() {
   process.exit(2);
 }
 
-function serveBuild() {
+function serveBuild(page, state) {
   const root = path.join(__dirname, "..", "build");
   const types = {
     ".html": "text/html", ".js": "text/javascript", ".css": "text/css",
@@ -48,11 +48,20 @@ function serveBuild() {
     ".woff2": "font/woff2", ".woff": "font/woff", ".ico": "image/x-icon",
     ".json": "application/json",
   };
+  const handler = apiHandler(page, state);
   const server = http.createServer((req, res) => {
-    const rel = decodeURIComponent((req.url || "/").split("?")[0]);
+    const url = new URL(req.url, "http://localhost");
+    const p = url.pathname;
+    if (p.startsWith("/api/") || p.startsWith("/crypto/")) {
+      // intercepte les requêtes API comme page.route le ferait
+      const mockReq = { method: () => req.method(), url: () => req.url(), postData: () => { const b = []; return new Promise(r => { req.on('data', c => b.push(c)); req.on('end', () => r(b.length ? Buffer.concat(b).toString() : "")); }); } };
+      handler({ request: mockReq, fulfill: (o) => { res.writeHead(o.status, { "Content-Type": o.contentType, "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Credentials": "true" }); res.end(o.body); }, continue: () => { res.writeHead(404); res.end(); } });
+      return;
+    }
+    const rel = decodeURIComponent(p.split("?")[0]);
     let fp = path.normalize(path.join(root, rel));
     if (!fp.startsWith(root)) { res.writeHead(403); res.end(); return; }
-    if (rel === "/" || !path.extname(fp)) fp = path.join(root, "index.html");
+    if (p === "/" || !path.extname(fp)) fp = path.join(root, "index.html");
     fs.readFile(fp, (err, data) => {
       if (err) { res.writeHead(404); res.end("not found"); return; }
       res.writeHead(200, { "Content-Type": (types[path.extname(fp)] || "application/octet-stream") + "; charset=utf-8" });
@@ -274,7 +283,7 @@ test("Z3b(e) arret du sondage GET /crypto/{id}/status sur statut final (CONFIRME
 async function main() {
   if (!fs.existsSync(BUILD)) { console.error("[erreur] build/index.html absent : lancez `yarn build` d'abord."); process.exit(2); }
   const executablePath = findChromium();
-  const { server, url } = process.env.MGS_PROTO_URL ? { server: null, url: process.env.MGS_PROTO_URL } : await serveBuild();
+  let srv = null, srvUrl = null;
   const browser = await chromium.launch({ executablePath, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
   let pass = 0, fail = 0; const failures = [];
   for (const vp of VIEWPORTS) {
@@ -286,17 +295,12 @@ async function main() {
       const state = { loggedIn: false, calls: [], orders: [], lastOrder: null, initiateCalls: [], statusCalls: [] };
       const errors = [];
       page.on("pageerror", (e) => errors.push(String(e)));
+      if (!srv) { const s = await serveBuild(page, state); srv = s.server; srvUrl = s.url; }
+      const url = srvUrl || process.env.MGS_PROTO_URL;
       await page.addInitScript((serverUrl) => {
         try { localStorage.setItem("mgs_lang", "fr"); } catch (e) { }
         window.MGS_BACKEND_URL = serverUrl.replace(/\/index\.html$/, "");
       }, url);
-      const handler = apiHandler(page, state);
-      /* MGS_CRYPto fait un fetch ABSOLU vers l'host backend. On injecte
-       * window.MGS_BACKEND_URL (addInitScript, avant le runtime) ET on intercepte
-       * toutes les requêtes /api/ et /crypto/ quel que soit l'host, sans toucher
-       * aux assets (polices, images, CSS passent par route.continue()). */
-      await page.route("**/api/**", handler);
-      await page.route("**/crypto/**", handler);
       try {
         await page.goto(url, { waitUntil: "load", timeout: 30000 });
         await fn(page, state);
@@ -313,7 +317,7 @@ async function main() {
     }
   }
   await browser.close();
-  if (server) server.close();
+  if (srv) srv.close();
   console.log("\n" + pass + " passed, " + fail + " failed (" + tests.length * VIEWPORTS.length + " runs)");
   if (failures.length) { failures.forEach((f) => console.log("  - " + f)); }
   process.exit(fail ? 1 : 0);
