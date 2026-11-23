@@ -171,7 +171,7 @@ Leçon des 5 commits post-REF, vérifiés un par un cette session :
 | Annulation par motif : 5 raisons de REF, aucune présélectionnée, `POST /orders/{id}/cancel { reason }` seul | `components/store/checkout/CancelSheet.js:20-26,39-40,46-51,81` | `POST /orders/{id}/cancel` (`routers/orders.py:680`, `CancelIn` `:124-127`) | `openCancel()` `:4325`, `confirmCancel()` `:4344` | fait |
 | Annulation : 409 distingué (`cancel_conflict` / `cancel_not_allowed`), état réel rechargé ; succès → accueil | `CancelSheet.js:52-62` ; `OrderTrack.js:399-407` | idem | `confirmCancel()` `:4350-4358` | fait |
 | Motif `wrong_info` (1re raison de REF) | `CancelSheet.js:21` | `CancelIn` l'accepte (`routers/orders.py:126`) | — | NON FAIT (design : le sélecteur a 4 raisons, `change_method` en tête ; aucune option ajoutée) |
-| Champ « Précision (facultatif) » | — | `CancelIn.note` (`routers/orders.py:127`), que REF n'envoie pas | `openCancel()` `:4328` | masqué |
+| Champ « Précision (facultatif) » | — | `CancelIn.note` (`routers/orders.py:127`, max 200) | `openCancel()` `:4329`, `confirmCancel()` `:4350` | fait (envoyé en `note` seulement s'il est rempli) |
 | Binance : `POST /crypto/initiate {order_id, network}` après création, jamais de 2ᵉ initiation | `pages/Checkout.js:214-223` ; `pages/OrderTrack.js:163-169` | `POST /crypto/initiate` (`routers/crypto.py:112`) | `initiateBinance()` `:4200`, `resumePendingOrder()` `:3900` | fait |
 | Binance : sondage `GET /crypto/{id}/status` toutes les 8 s, `CONFIRMED` → relecture, `FAILED` → arrêt, aucun `POST /crypto/{id}/paid` | `components/store/checkout/BinancePay.js:9,30-45` | `GET /crypto/{id}/status` (`routers/crypto.py:123`) | `coPayBinance()` `:4211` via `MGS_CRYPTO` (`mgs-logic-crypto.js:27,237-255`) | fait |
 | Réessai de paiement automatique (`POST /payments/initiate`) | `pages/OrderTrack.js:110-122,198-201,384-388` | `POST /payments/initiate` (`routers/payments.py:214`) | — | NON FAIT (design : aucun bouton « Réessayer » ; fonction non déclenchable) |
@@ -186,13 +186,13 @@ Leçon des 5 commits post-REF, vérifiés un par un cette session :
 | Onglets « Toutes / En cours » en filtre **local** (aucun paramètre d'API) | `OrderHistory.js:100-106,172-194,318` | — | gabarit `cmdFilter()` `:3338` + `data-filter` de `renderOrders()` | fait |
 | 3ᵉ onglet de REF (« Terminées ») | `OrderHistory.js:176` | — | — | NON FAIT (design : 2 onglets) |
 | Recherche locale (numéro, ID joueur, produit), insensible à la casse | `OrderHistory.js:306-318` | — | gabarit `cmdFilter()` `:3338` | fait |
-| Pagination | — (REF n'en a aucune) | — | bloc `.mgs-cmd-pages` `:2447-2451` | masqué |
+| Pagination | — (REF n'en a aucune) | — | bloc `.mgs-cmd-pages` `:2447-2451`, `orderPaginate()` `:4396`, 10 par page | fait (pagination du design, sur la liste locale) |
 | Détail : relecture `GET /orders/{id}` à l'ouverture | `OrderHistory.js:421-429` | `GET /orders/{id}` | `refreshOrderDetail()` `:4424` | fait |
 | Détail : nombre de preuves réelles, ligne masquée à zéro | `OrderHistory.js:618-622` | `GET /orders/{id}` | `refreshOrderDetail()` `:4424` | fait |
 | Détail : reçu réservé à une commande payée au moins une fois (`paid_at`) | `OrderHistory.js:469,691-698` | — | `refreshOrderDetail()` `:4433` | fait |
 | Reçu (contenu : numéro, date, statut, jeu, produit, ID, méthode, montant) | `OrderHistory.js:342-374,513-525` (`window.print`) | — | bouton `.mgs-receipt-btn` : le gabarit du design produit un PNG (canvas) — mécanisme du design conservé, mêmes données | fait |
 | Détail : raison d'annulation et note traduites | `OrderHistory.js:376-384,624-635` | `GET /orders/{id}` | — | NON FAIT (design : aucune ligne « raison »/« note » dans le détail) |
-| Suivi public par numéro + ID joueur | `pages/OrderTrack.js:434-479,520-552` | `GET /orders/track` (`routers/orders.py:450`) | — | NON FAIT (design : pas d'écran de suivi ni de champ ID joueur invité) |
+| Suivi public par numéro + ID joueur | `pages/OrderTrack.js:434-479,520-552` | `GET /orders/track` (`routers/orders.py:450`) | `openOrderLink()` `:4872` (`/suivi/:numero`, `/commandes/:id` ; ID joueur = `mgs_last_player_id`) | fait |
 | Invité : texte `order.loginToSee` | `OrderTrack.js:543-550` | — | `renderOrders()` `:4405` | fait |
 | Invité : bouton « Se connecter » de l'état vide | `OrderTrack.js:546-548` | — | — | NON FAIT (design : l'état vide n'a qu'une icône et un texte) |
 | `/commandes` → `/suivi` | `components/common/OrdersRedirect.js:8` ; `App.js:67` | — | l'écran `commandes` EST la page (site mono-page) | fait (destination identique) |
@@ -216,7 +216,7 @@ Leçon des 5 commits post-REF, vérifiés un par un cette session :
 | Transferts de points | `pages/Loyalty.js:95-134` | `GET/POST /loyalty/transfers`, `…/{id}/{action}` (`routers/loyalty.py:109,153,165`) | — | NON FAIT (design : aucun formulaire de transfert) |
 | Événements : liste | `pages/Events.js:16,31-47` | `GET /events` (`routers/events.py:46`) | `renderEvents()` `:4680` | fait |
 | État vide `events.empty` | `pages/Events.js:36` | — | `renderEvents()` `:4683` | fait |
-| « J'aime » / « Partager » (compteurs, `mgs_liked`, URL `/evenements#slug`) | `pages/Events.js:14,18-29,49-52` | `POST /events/{id}/like` (`routers/events.py:52`), `…/share` (`:66`) | — | NON FAIT (design : la carte d'événement n'a aucun contrôle, `.mgs-card__like`/`.mgs-card__share` n'existent pas dans sa feuille de style) |
+| « J'aime » / « Partager » (compteurs, `mgs_liked`, URL `/evenements#slug`) | `pages/Events.js:14,18-29,49-52` | `POST /events/{id}/like` (`routers/events.py:52`), `…/share` (`:66`) | `renderEvents()` `:4745`, `eventLike()` `:4716`, `eventShare()` `:4724` | fait (boutons-jetons `.mgs-chip` dans le pied de carte du design) |
 | Pack évolutif : saison + éligibilité | `pages/PackEvolutif.js:41-61` | `GET /evo/season` (`routers/evo.py:110`), `GET /evo/eligibility` (`:115`) | `packVerify()` `:4670` | fait |
 | Chat : composer (création de conversation puis envoi du message) | `pages/Chat.js:1-18` ; `components/chat/ChatWorkspace.js:51` ; `ChatThread.js:86` | `POST /chat/conversations`, `…/{id}/messages` (`routers/chat.py:48,80`) | `supportSend()` `:4725`, `openChat()` `:4734` | fait |
 | Chat : invité → connexion, jamais de conversation sans compte | `pages/Chat.js:16-20` | `POST /chat/conversations` (`get_current_user`) | `supportSend()` `:4731`, `openChat()` `:4735` | fait |
@@ -238,48 +238,69 @@ Leçon des 5 commits post-REF, vérifiés un par un cette session :
 | Pages légales `/terms`, `/privacy` | `pages/Legal.js` ; `App.js:70-71` | — | — | NON FAIT (design : aucune page légale, aucun lien) |
 | Frontière d'erreur | `components/ErrorBoundary.jsx` | — | — | NON FAIT (aucun équivalent dans un IIFE ; le garde non-JSON de `req()` `:3583` couvre le cas qui faisait tomber la page) |
 | Thème clair/sombre | `components/layout/ThemeToggle.js` | — | — | NON FAIT (le design v3 n'a ni `.dark` ni `prefers-color-scheme`) |
-| Audit des liens internes (`href`, `data-nav`, `data-page`) | — | — | `HM` `:4826-4831`, `mgsPageFromUrl()` `:4760` | fait : toutes les ancres connues (`#top`, `#jeux`, `#recharger`, `#securite`, `#commandes`, `#support`, `#produit`, `#compte`, `#boutique`, `#points`, `#connexion`, `#evenements`, `#pack`, `#mdp`, `#reset`) mènent à un écran existant ; les ancres d'icônes (`#ic-*`) ne sont pas des liens de navigation |
+| Audit des liens internes (`href`, `data-nav`, `data-page`, URL) | — | — | `MGS_PATHS` `:4762`, `mgsPageFromUrl()` `:4781`, `MGS_URLS`/`mgsSyncUrl()` `:4827`, `openDeepLink()` `:4864` | fait : chaque route du site (`/boutique`, `/produit/:slug`, `/commande`, `/commandes/:id`, `/suivi/:numero`, `/pack-evolutif`, `/compte`, `/compte/points`, `/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/reinitialiser/:token`, `/verifier-email/:token`, `/evenements`, `/chat`, `/support`, `/admin`) ouvre son écran, y compris par lien direct ou retour arrière |
 
 ---
 
-## Éléments masqués (aucun équivalent dans REF, défaisable en une ligne)
+## Routes servies (URL réelles du site)
+
+`mgsPageFromUrl()` `:4781-4810` et `MGS_PATHS` `:4762-4780` reconnaissent, au
+chargement, au partage de lien et au retour arrière (popstate `:4855`), les
+routes de REF (`pages/App.js:49-96`) :
+
+| URL | Écran du design | Note |
+|---|---|---|
+| `/` | accueil | |
+| `/jeux`, `/boutique` | boutique | `/jeux` ouvre le choix du jeu (`boutiqueGames()`), comme REF |
+| `/produit/:slug` | produit | la fiche est chargée par `GET /products/{slug}` (`openDeepLink()` `:4864`) |
+| `/commande`, `/commande/confirmation` | commande | |
+| `/commandes`, `/commandes/:id`, `/suivi`, `/suivi/:numero`, `/orders/:id` | commandes | `:id`/`:numero` ouvre le détail ; le suivi invité passe par `GET /orders/track` + dernier ID utilisé (`openOrderLink()` `:4872`) |
+| `/pack-evolutif` | pack | |
+| `/evenements` | evenements | |
+| `/connexion`, `/inscription` | connexion | |
+| `/mot-de-passe-oublie` | mdp | |
+| `/reinitialiser/:token` | reset | jeton lu dans le chemin |
+| `/verifier-email/:token` | connexion | jeton consommé au chargement |
+| `/chat`, `/support` | support | |
+| `/compte` | compte | |
+| `/compte/points` | points | |
+| `/admin/**` | admin | réservé aux administrateurs (`App.js:82`) |
+
+La barre d'adresse reçoit la route réelle (`mgsSyncUrl()` `:4827`), y compris
+`/produit/<slug>`. **À déployer** : le serveur doit renvoyer `index.html` pour
+tout chemin inconnu (repli SPA), sinon les liens profonds donnent un 404 ; les
+anciens liens `#page` continuent de fonctionner.
+
+## Éléments masqués (défaisable en une ligne)
 
 | Élément | Emplacement | Pourquoi | Comment le rétablir |
 |---|---|---|---|
-| Bloc de pagination de l'historique | `index.html:2447-2451` | REF n'a aucune pagination (`OrderHistory.js:294-318`) | retirer les deux lignes de `orderPaginate()` `:4381` |
-| Carte « WhatsApp » du support | écran `support` | REF : `/support` est la page Chat, aucun autre canal | retirer la boucle de `maskUnsupported()` `:4708` |
-| Carte « Email » du support | idem | idem | idem |
-| Champ « Sujet » du support | `#sj` | REF : un seul composer (`ChatThread.js`) | retirer la ligne `#sj` de `maskUnsupported()` `:4714` |
-| Section « Questions fréquentes » | écran `support` | REF n'a aucune FAQ | idem |
-| Formulaire d'abonnement du pied de page | `.footer .form-block` | « formulaire de démonstration » ; REF n'a pas de newsletter | retirer la ligne `.footer .form-block` `:4711` |
-| Champ « Précision (facultatif) » de l'annulation | `#co-cancel-note` `:3495` | REF envoie `{reason}` seul (`CancelSheet.js:46`) | retirer la ligne de `openCancel()` `:4328` |
-| 3ᵉ case « Jeux liés » du compte | écran `compte` | REF n'a aucun compteur de ce type | retirer la ligne `stats[2]` de `renderAccount()` `:4474` |
+| Formulaire d'abonnement du pied de page | `.footer .form-block` | aucune route backend ne l'accepte (seule l'inscription push **admin** existe, `routers/push.py:60`) | retirer la ligne `.footer .form-block` de `maskUnsupported()` `:4730` |
 
-## Éléments visibles manquants (REF les avait, le design n'a aucun conteneur — rien n'a été créé)
+## Éléments visibles manquants (besoin d'un ajout de design, remonté au propriétaire)
 
-| Écran / élément | Fonction REF |
-|---|---|
-| Page « suivi de commande » (numéro + ID joueur, `/suivi/:orderNumber`, `/orders/:orderId`) | `pages/OrderTrack.js:434-552` |
-| Écran « confirmation de commande » | `pages/CheckoutConfirm.js` |
-| Page « jeux » | `pages/Games.js` |
-| Pages légales `/terms`, `/privacy` (+ liens de pied de page) | `pages/Legal.js` ; `Footer.js:40-41` |
-| Écran « vérification d'email » | `pages/AuthExtras.js:90-107` |
-| Bouton « Relancer » (relance admin, 3 min / 3 max) | `ProofPay.js:212-229` |
-| Bouton « Réessayer » (relance de paiement automatique) | `OrderTrack.js:384-388` |
-| Sélecteur de réseau USDT | `Checkout.js:335-339` |
-| Case « J'ai payé le montant exact » (feuille de preuve) | `ProofPay.js:183-187` |
-| Champ « confirmation » du mot de passe | `Account.js:239` |
-| Bannière « email non vérifié » + renvoi | `Account.js:35-52` |
-| Carte joueur PUBG | `components/PubgPlayerCard.js` |
-| Identités de jeu sauvegardées (liste, ajout, édition, suppression) | `components/GameIdentities.js` |
-| Transferts de points | `Loyalty.js:95-134` |
-| Champ de vérification d'ID avant échange de points | `Loyalty.js:61-79` |
-| « J'aime » / « Partager » d'un événement | `Events.js:49-52` |
-| 3ᵉ onglet « Terminées » de l'historique | `OrderHistory.js:176` |
-| Bouton « Se connecter » de l'état vide invité | `OrderTrack.js:546-548` |
-| Motif d'annulation `wrong_info` (5ᵉ raison) | `CancelSheet.js:21` |
-| Sélecteur de thème | `ThemeToggle.js` |
-| Fil de discussion du chat | `ChatThread.js` |
+| Écran / élément | Fonction REF | Ce qu'il faut |
+|---|---|---|
+| Bouton « Relancer » | `ProofPay.js:212-229` → `POST /orders/{id}/remind` | un contrôle libre sur l'écran d'attente |
+| Bouton « Réessayer » | `OrderTrack.js:384-388` → `POST /payments/initiate` | un contrôle libre (REF ne l'affiche que pour `failed`/`expired` hors manuel/Binance — jamais le cas ici) |
+| Sélecteur de réseau USDT | `Checkout.js:335-339` | un choix parmi `crypto.networks` (aujourd'hui : clé du 1er réseau) |
+| Case « J'ai payé le montant exact » | `ProofPay.js:183-187` | une case dans la feuille de preuve |
+| Page de suivi dédiée (numéro + ID joueur) | `OrderTrack.js:434-479` | un champ ID joueur pour l'invité (aujourd'hui : dernier ID de la machine) |
+| Écran « vérification d'email » | `AuthExtras.js:90-107` | un écran de résultat (aujourd'hui : message) |
+| Écran « confirmation de commande » | `CheckoutConfirm.js` | un écran après création |
+| Pages légales `/terms`, `/privacy` | `Legal.js` | deux écrans + les liens de pied de page |
+| Page « jeux » dédiée | `Games.js` | un écran jeu (aujourd'hui `/jeux` = choix du jeu dans la boutique) |
+| Bannière « email non vérifié » + renvoi | `Account.js:35-52` | une bannière sur l'écran compte |
+| Carte joueur PUBG | `PubgPlayerCard.js` | une carte sur l'écran compte |
+| Identités de jeu sauvegardées | `GameIdentities.js` | une section sur l'écran compte |
+| Champ « confirmation » du mot de passe | `Account.js:239` | un champ de plus dans le panneau Sécurité |
+| Champ de vérification d'ID avant échange de points | `Loyalty.js:61-79` | un champ sur l'écran points |
+| Transferts de points | `Loyalty.js:95-134` | un formulaire sur l'écran points |
+| Fil de discussion du chat | `ChatThread.js` | une liste de messages sur l'écran support |
+| 3ᵉ onglet « Terminées » | `OrderHistory.js:176` | un 3ᵉ onglet (le design en a 2) |
+| 5ᵉ motif d'annulation `wrong_info` | `CancelSheet.js:21` | une 5ᵉ raison (le design en a 4) |
+| Sélecteur de thème | `ThemeToggle.js` | le design v3 n'a pas de thème sombre |
+| Admin (14 écrans) | `pages/admin/*` | laissé à l'application React |
 
 ## Écarts de contrat (backend actuel vs REF)
 
@@ -368,25 +389,33 @@ désaccord avec REF, il n'a **pas** été modifié.
 ## Commits de cette session (branche `feat/proto-fonctionnel`, poussés)
 
 ```
-eb78de0 wip(z3): identités/ID récents/vérification/preuve/annulation conformes à REF
-3460d6d fix(z0): client API conforme à REF (PR #100)
-4362318 fix(z1): captcha à usage unique sur échec de connexion (REF AuthPage.js:57-61)
-7d17a0a fix(z2/z5): règles sans équivalent REF retirées — i18n 100 % clés REF, support/chat de REF
-5ab4f1f fix(z5): compte/événements conformes à REF (PR #100)
+7153ea7 docs(portage): PORTAGE.md réécrit contre REF (PR #100) — fait / masqué / NON FAIT
+b1f1c70 feat(proto): vrais liens de pages + fonctions du design rebranchées
+6586da7 feat(proto): la barre d'adresse affiche /produit/<slug> quand la fiche est ouverte
+0219c78 fix(z6): clés i18n ajoutées (11 clés de REF) — 0 clé hors REF
+30b7103 fix(z6): visibilité admin + formulaires de démonstration masqués
 fb434ca fix(z4): détail de commande — relecture GET /orders/{id}, preuves réelles, reçu du payé
-30b7103 fix(z6): visibilité admin (ProtectedRoute de REF) + formulaires de démonstration masqués
-<commit PORTAGE> docs(portage): PORTAGE.md réécrit contre REF (fait/masqué/NON FAIT)
+5ab4f1f fix(z5): compte/événements conformes à REF (PR #100)
+7d17a0a fix(z2/z5): règles sans équivalent REF retirées — i18n 100 % clés REF
+4362318 fix(z1): captcha à usage unique sur échec de connexion
+3460d6d fix(z0): client API conforme à REF (PR #100)
+eb78de0 wip(z3): identités/ID récents/vérification/preuve/annulation conformes à REF
 ```
 
 ## Reste ouvert (remonté au propriétaire)
 
-1. **Sélecteur de réseau USDT**, **relance admin**, **`/payments/initiate`** :
-   trois fonctions de REF sans conteneur dans le design (voir « manquants »).
-   Les porter exige un contrôle visible → lot dédié avec validation visuelle.
-2. **Échange de points** : REF n'ouvre l'échange qu'après vérification réelle de
-   l'ID ; le design n'a pas de champ de vérification sur l'écran points. Le
-   prototype retombe sur l'ID du compte — à arbitrer.
-3. **`yarn audit:contrast`** n'a pas été lancé dans cette session (aucun `.css`
-   modifié, mais l'audit du bundle reste à faire après fusion vers `main`).
-4. Deux fichiers non suivis du dépôt n'ont pas été touchés :
+1. **Éléments qui exigent un ajout de design** (un conteneur chacun) : bouton
+   « Relancer » (`/orders/{id}/remind`), bouton « Réessayer »
+   (`/payments/initiate`), sélecteur de réseau USDT, case « montant exact »,
+   champ ID joueur du suivi invité, écran de vérification d'email, écran de
+   confirmation, pages légales, bannière email, carte joueur, identités de jeu,
+   confirmation du mot de passe, vérification d'ID avant échange de points,
+   transferts de points, fil du chat, 3ᵉ onglet, 5ᵉ motif d'annulation,
+   sélecteur de thème. Le prototype les déclenche dès qu'un conteneur existe.
+2. **Abonnement du pied de page** : aucun endpoint backend (masqué).
+3. **Déploiement** : le serveur doit renvoyer `index.html` sur un chemin inconnu
+   (repli SPA) pour que `/boutique`, `/produit/:slug`… survivent à un
+   rechargement. Les liens `#page` restent valables.
+4. **`yarn audit:contrast`** n'a pas été lancé (aucun `.css` modifié).
+5. Deux fichiers non suivis n'ont pas été touchés :
    `frontend/scripts/proto-z3b-dev.mjs`, `orchestration(portage).md`.
