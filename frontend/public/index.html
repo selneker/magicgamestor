@@ -4450,11 +4450,24 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (head) { var nm = $("div p", head); if (nm) nm.textContent = name; var sub = $(".mgs-muted", head); if (sub) sub.textContent = (me.email || "") + (me.created_at ? " · membre depuis " + fmtDate(me.created_at).date : ""); }
     var an = $("#acc-name"); if (an) an.value = me.name || ""; var ap = $("#acc-phone"); if (ap) ap.value = me.phone || ""; var ai = $("#acc-ids"); if (ai) ai.value = (me.saved_pubg_ids || []).join(", ");
     req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; var pts = bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0)); var sn = $(".mgs-page[data-page=compte] .mgs-stat__n"); if (sn) sn.textContent = String(pts); updatePointsPill(pts); }).catch(function (e) { var sn = $(".mgs-page[data-page=compte] .mgs-stat__n"); if (sn) sn.textContent = "—"; signale(e); });
-    req("/orders/me").then(function (o) { o = Array.isArray(o) ? o : (o && o.orders) || []; var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = String(o.length); if (stats[2]) stats[2].textContent = String((me.saved_pubg_ids || []).length); }).catch(function (e) { var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = "—"; signale(e); });
+    req("/orders/me").then(function (o) { o = Array.isArray(o) ? o : (o && o.orders) || []; var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = String(o.length); /* main Account.js: n'a AUCUN compteur de jeux liés — la 3e case du design est masquée (PORTAGE). */ if (stats[2] && stats[2].closest(".mgs-stat")) stats[2].closest(".mgs-stat").style.display = "none"; }).catch(function (e) { var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = "—"; signale(e); });
   }
-  function saveProfile() { var name = ($("#acc-name") || {}).value || ""; var phone = ($("#acc-phone") || {}).value || ""; var ids = (($("#acc-ids") || {}).value || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean); req("/auth/me", { method: "PATCH", body: { name: name, phone: phone, saved_pubg_ids: ids } }).then(function (u) { me = u || me; toast(t("account.saved")); renderAccount(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+  function saveProfile() { var name = ($("#acc-name") || {}).value || ""; var phone = ($("#acc-phone") || {}).value || ""; /* main Account.js:130 : virgules OU espaces séparent les ID. */ var ids = (($("#acc-ids") || {}).value || "").split(/[,\s]+/).filter(Boolean); req("/auth/me", { method: "PATCH", body: { name: name, phone: phone, saved_pubg_ids: ids } }).then(function (u) { me = u || me; toast(t("account.saved")); renderAccount(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
   function changePassword() { var cur = ($("#pw-cur") || {}).value || ""; var next = ($("#pw-next") || {}).value || ""; if (!cur || !next) { toast(t("common.error"), "err"); return; } req("/auth/change-password", { method: "POST", body: { current_password: cur, new_password: next } }).then(function () { toast(t("account.passwordChanged")); $("#pw-cur").value = ""; $("#pw-next").value = ""; }).catch(function (e) { toast(errMsg(e), "err"); }); }
-  function deleteAccount() { if (!window.confirm(t("account.deleteConfirm"))) return; var conf = window.prompt(t("account.deleteType")); if (conf == null || conf.trim().toUpperCase() !== "SUPPRIMER") return; req("/auth/me/delete", { method: "POST", body: { confirmation: "SUPPRIMER" } }).then(function () { me = null; toast(t("account.deleted")); window.mgsShowPage("connexion"); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+  /* main Account.js:145-151 : la confirmation tapée telle quelle + le mot de
+     passe (exigé par le backend quand le compte en a un, routers/auth.py:442-444).
+     Le design n'a pas de champ dédié à la suppression : la saisie passe par les
+     deux boîtes du navigateur et le mot de passe par le champ « Mot de passe
+     actuel » du panneau Sécurité s'il est rempli. */
+  function deleteAccount() {
+    if (!window.confirm(t("account.deleteConfirm"))) return;
+    var conf = window.prompt(t("account.deleteType"));
+    if (conf == null || conf.trim().toUpperCase() !== "SUPPRIMER") return;
+    var pw = (($("#pw-cur") || {}).value || "") || window.prompt(t("auth.password")) || "";
+    var body = { confirmation: conf.trim() };
+    if (pw) body.password = pw;
+    req("/auth/me/delete", { method: "POST", body: body }).then(function () { me = null; toast(t("account.deleted")); window.mgsShowPage("connexion"); }).catch(function (e) { toast(errMsg(e), "err"); });
+  }
   function logout() { req("/auth/logout", { method: "POST" }).catch(function () { }).then(function () { me = null; syncAuthChrome(); toast(t("nav.logout")); renderCart(); window.mgsShowPage("accueil"); }); }
 
   /* ---------- connexion / inscription ---------- */
@@ -4640,21 +4653,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- événements ---------- */
   var eventTpl = null;
-  var HEART_IC = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
-  var SHARE_IC = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>';
-  function sessionId() { try { var v = localStorage.getItem("mgs_session"); if (v) return v; v = "s-" + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem("mgs_session", v); return v; } catch (e) { return "s-anonyme"; } }
-  function eventLike(id, btn) {
-    req("/events/" + id + "/like", { method: "POST", body: { session_id: sessionId() } }).then(function (r) {
-      var n = $(".mgs-card__like-n", btn); if (n) n.textContent = String(r.likes != null ? r.likes : 0);
-      btn.setAttribute("aria-pressed", r.liked ? "true" : "false");
-    }).catch(function (e) { signale(e); });
-  }
-  function eventShare(id, btn) {
-    var url = location.origin + location.pathname + "#evenements";
-    var compte = function () { req("/events/" + id + "/share", { method: "POST", body: { session_id: sessionId() } }).then(function (r) { var n = $(".mgs-card__share-n", btn); if (n) n.textContent = String(r.shares != null ? r.shares : 0); }).catch(function (e) { signale(e); }); };
-    if (navigator.share) navigator.share({ title: document.title, url: url }).then(compte, function () { });
-    else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { toast(t("events.shared")); compte(); }, function () { });
-  }
+  function sessionId() { try { var v = localStorage.getItem("mgs_session"); if (v) return v; v = "s_" + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem("mgs_session", v); return v; } catch (e) { return "s_anonyme"; } }
   function renderEvents() {
     var grid = $(".mgs-page[data-page=evenements] .mgs-grid"); if (!grid) return;
     if (!eventTpl) eventTpl = $(".mgs-card", grid);
@@ -4669,17 +4668,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         var nm = $(".mgs-card__name", card); if (nm) nm.textContent = title; var de = $(".mgs-card__desc", card); if (de) de.textContent = desc;
         var media = $(".mgs-card__media", card); if (media) { media.className = "mgs-card__media u--bg--" + themes[i % themes.length]; if (ev.image_url) media.innerHTML = '<img src="' + esc(ev.image_url) + '" alt="' + esc(title) + '" style="width:100%;height:100%;object-fit:cover">'; }
         var chip = $(".mgs-chip", card); if (chip) chip.textContent = ev.starts_at ? fmtDate(ev.starts_at).date : (ev.slug || "");
-        /* j'aime / partage — comme main (frontend/src/pages/Events.js) : .mgs-chip + endpoints /events/{id}/like|share */
-        var foot = $(".mgs-card__foot", card);
-        if (foot) {
-          var like = doc.createElement("button"); like.type = "button"; like.className = "mgs-chip mgs-card__like"; like.dataset.ev = ev.id; like.setAttribute("aria-pressed", "false");
-          like.setAttribute("aria-label", LANG === "en" ? "Like" : "J’aime");
-          like.innerHTML = HEART_IC + '<span class="mgs-card__like-n">' + (ev.likes != null ? ev.likes : 0) + "</span>";
-          var shr = doc.createElement("button"); shr.type = "button"; shr.className = "mgs-chip mgs-card__share"; shr.dataset.ev = ev.id;
-          shr.setAttribute("aria-label", LANG === "en" ? "Share" : "Partager");
-          shr.innerHTML = SHARE_IC + '<span class="mgs-card__share-n">' + (ev.shares != null ? ev.shares : 0) + "</span>";
-          foot.appendChild(like); foot.appendChild(shr);
-        }
+        /* REF pages/Events.js:49-52 rend « j'aime » et « partager » SOUS la
+           carte ; le design v3 n'a aucun contrôle de ce type (ni .mgs-card__like
+           ni .mgs-card__share dans sa feuille de style) : ces deux fonctions ne
+           sont PAS portées ici (PORTAGE « Éléments visibles manquants »). */
         return card.outerHTML;
       }).join("");
     }).catch(function (e) { showEmpty(); signale(e); });
@@ -4809,8 +4801,6 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* connexion */
     if (el.closest(".mgs-mdp-send")) { stop(e); forgotPassword(); return; }
     if (el.closest(".mgs-reset-send")) { stop(e); resetPassword(); return; }
-    var lk = el.closest(".mgs-card__like"); if (lk) { stop(e); eventLike(lk.dataset.ev, lk); return; }
-    var sh = el.closest(".mgs-card__share"); if (sh) { stop(e); eventShare(sh.dataset.ev, sh); return; }
     if (el.closest(".mgs-page[data-page=connexion]")) { if (/Google/i.test((el.closest(".button-main") || {}).textContent || "")) { stop(e); googleLogin(); return; } var cb = el.closest('a[data-nav="compte"]'); if (cb) { stop(e); doAuth(); return; } var tab = el.closest(".mgs-tab"); if (tab) { stop(e); var idx = $$(".mgs-page[data-page=connexion] .mgs-tab").indexOf(tab); setAuthMode(idx === 0 ? "login" : "register"); return; } }
     /* points */
     var rd = el.closest(".mgs-redeem"); if (rd) { stop(e); redeem(rd.dataset.reward); return; }
