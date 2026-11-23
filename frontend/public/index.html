@@ -3546,12 +3546,32 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
      même liste que main (frontend/src/lib/api.js:12). /auth/me reste
      rafraîchissable à dessein (retour d'un visiteur après 15 min). */
   var NO_SILENT_REFRESH = /^\/auth\/(login|register|refresh|logout|google|forgot-password|reset-password|change-password|verify-email|resend-verification|me\/delete)(\/|$|\?)/;
+  /* main lib/api.js:13-23 : UNE seule demande de rafraîchissement à la fois
+     (les 401 simultanés la partagent), bornée à 15 s. */
+  var REFRESH_TIMEOUT_MS = 15000, refreshing = null;
+  function refreshSession() {
+    if (!refreshing) {
+      var ctl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+      var timer = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) { } }, REFRESH_TIMEOUT_MS) : null;
+      refreshing = fetch(API + "/auth/refresh", { method: "POST", credentials: "include", signal: ctl ? ctl.signal : undefined })
+        .then(function (rr) { if (timer) clearTimeout(timer); return rr; }, function (err) { if (timer) clearTimeout(timer); throw err; });
+      refreshing.then(function () { refreshing = null; }, function () { refreshing = null; });
+    }
+    return refreshing;
+  }
   function req(path, opts, retry) {
     opts = opts || {}; var headers = opts.headers || {}; var isForm = opts.body instanceof FormData;
     if (!isForm && opts.body != null && typeof opts.body !== "string") { opts.body = JSON.stringify(opts.body); headers["Content-Type"] = "application/json"; }
     return fetch(API + path, { method: opts.method || "GET", headers: headers, body: opts.body, credentials: "include" }).then(function (r) {
       if (r.status === 401 && !retry && !NO_SILENT_REFRESH.test(path)) {
-        return fetch(API + "/auth/refresh", { method: "POST", credentials: "include" }).then(function (rr) { if (rr.ok) return req(path, opts, true); return parse(r); });
+        return refreshSession().then(function (rr) {
+          if (rr.ok) return req(path, opts, true);
+          /* main lib/api.js:27-34 : un refresh 401 = session réellement absente
+             (on remonte le 401 d'origine) ; toute autre panne (403 origine/CSRF,
+             5xx, réseau) remonte SA propre erreur — jamais une déconnexion à
+             tort. */
+          return rr.status === 401 ? parse(r) : parse(rr);
+        });
       }
       return parse(r);
     });
@@ -3565,15 +3585,19 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       return p.then(function (data) { if (!r.ok) { var e = new Error((data && (data.detail || data.message)) || ("HTTP " + r.status)); e.status = r.status; e.data = data; throw e; } return data; });
     }
   }
+  /* main lib/api.js:40-46 — message affichable d'une erreur : le `detail` de
+     l'API d'abord (chaîne, tableau de messages de validation, objet), sinon le
+     message de l'erreur, sinon le repli.
+     ÉCART DE CONTRAT (backend actuel) : les erreurs métier de `orders.py`
+     renvoient `detail = {"code": …, "message": …}` (`_cancel_error` :474,
+     `_proof_error` :476-478) ; REF ne connaissait que `msg`, on lit donc aussi
+     `message` au lieu d'afficher « [object Object] ». */
   function errMsg(e) {
-    if (!e) return t("common.error");
-    if (e.status === 401) return t("auth.errorGeneric");
-    var d = String((e.data && (e.data.detail || e.message)) || e.message || "");
-    /* 403 « Origine non autorisée » : le navigateur parle à un backend qui refuse cette
-       origine (CORS/CSRF). Message dédié, pas le détail technique. */
-    if (e.status === 403 && /origine/i.test(d)) return t("common.error");
-    if (/Failed to fetch|NetworkError|load failed/i.test(e.message)) return t("common.error");
-    return d || t("common.error");
+    var d = e && e.data && e.data.detail;
+    if (!d) return (e && e.message) || t("common.error");
+    if (typeof d === "string") return d;
+    if (Array.isArray(d)) return d.map(function (x) { return (x && x.msg) || JSON.stringify(x); }).join(" ");
+    return d.msg || d.message || String(d);
   }
   /* Erreur visible : tout échec qui n'est pas un 401 (invité non connecté) doit se voir.
      Renvoie le message affiché, pour les appelants qui veulent aussi l'écrire ailleurs. */
