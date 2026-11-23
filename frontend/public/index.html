@@ -2444,9 +2444,9 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
     </div></div>
     <div class="mgs-empty mgs-cmd-empty" hidden><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><p style="margin:0;font-weight:600">Aucune commande ne correspond.</p></div>
     <div class="mgs-row mgs-cmd-pages" style="justify-content:center;gap:.6em;margin-top:1.2em" hidden>
-      <button type="button" class="button-main w-inline-block" data-op="prev" data-button-theme="light" data-button-accent=""><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Précédent"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span data-i18n="common.previous">Précédent</span></span></span></span></button>
+      <button type="button" class="button-main w-inline-block" data-op="prev" data-button-theme="light" data-button-accent=""><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Précédent"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Précédent</span></span></span></span></button>
       <span class="mgs-muted mgs-cmd-pages-n">1 / 1</span>
-      <button type="button" class="button-main w-inline-block" data-op="next" data-button-theme="light" data-button-accent=""><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Suivant"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span data-i18n="common.next">Suivant</span></span></span></span></button>
+      <button type="button" class="button-main w-inline-block" data-op="next" data-button-theme="light" data-button-accent=""><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Suivant"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Suivant</span></span></span></span></button>
     </div>
   </div>
   <div class="mgs-cmd-detail" hidden>
@@ -3285,7 +3285,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var h=a.getAttribute("href"); if(h&&MGS_HREF[h]) return MGS_HREF[h];
     return null;
   }
-  function mgsSetNav(id){ if(id==="accueil")id="boutique";
+  function mgsSetNav(id){
     doc.querySelectorAll(".nav-inner-li a").forEach(function(a){a.classList.toggle("w--current",mgsTarget(a)===id);});
     doc.querySelectorAll(".bottom-nav-item").forEach(function(a){
       var on=mgsTarget(a)===id; a.classList.toggle("is--active",on);
@@ -3484,7 +3484,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 <div class="mgs-human-overlay mgs-co-cancel-overlay" hidden></div>
 <div class="mgs-human-popup mgs-co-cancel-popup" hidden role="dialog" aria-label="Annuler la commande">
   <div class="mgs-human-head"><p data-i18n="checkout.cancelTitle">Annuler la commande</p><button type="button" class="mgs-human-close mgs-co-cancel-close" aria-label="Fermer"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-  <p class="mgs-human-sub" data-i18n="checkout.cancelSub">Choisissez un motif (obligatoire).</p>
+  <p class="mgs-human-sub">Choisissez un motif (obligatoire).</p>
   <div class="mgs-field" style="display:flex;flex-direction:column;gap:.55em;margin-bottom:1em">
     <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="wrong_info" checked> <span data-i18n="checkout.cancelWrongInfo">Je me suis trompé (ID ou produit)</span></label>
     <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="change_method"> <span data-i18n="checkout.cancelChangeMethod">Je veux changer de mode de paiement</span></label>
@@ -3492,7 +3492,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="cannot_pay_now"> <span data-i18n="checkout.cancelCannotPayNow">Je ne peux pas payer maintenant</span></label>
     <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="other"> <span data-i18n="checkout.cancelOther">Autre raison</span></label>
   </div>
-  <div class="mgs-field"><label for="co-cancel-note" data-i18n="checkout.cancelNote">Précision (facultatif)</label><input id="co-cancel-note" class="mgs-input" maxlength="200"></div>
+  <div class="mgs-field"><label for="co-cancel-note">Précision (facultatif)</label><input id="co-cancel-note" class="mgs-input" maxlength="200"></div>
   <div class="mgs-human-foot"><button type="button" class="mgs-human-cancel mgs-co-cancel-close" data-i18n="common.close">Fermer</button><button type="button" class="button-main w-inline-block mgs-co-cancel-confirm" data-button-theme="dark" data-button-accent="green"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Confirmer l'annulation"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span data-i18n="checkout.cancelOrder">Confirmer l'annulation</span></span></span></span></button></div>
 </div>
 
@@ -3518,10 +3518,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   var LANG = localStorage.getItem("mgs_lang") || "fr";
   var T = {
     fr: {
-      "account.deleteWarning": "Cette action est définitive : vos données personnelles seront anonymisées. L'historique des commandes est conservé de façon anonyme. Vos points seront perdus.", "account.deleteConfirm": "Supprimer définitivement", "account.deleteType": "Tapez SUPPRIMER pour confirmer", "account.deleted": "Compte supprimé.", "account.passwordChanged": "Mot de passe mis à jour.", "account.saved": "Profil mis à jour", "auth.errorGeneric": "Une erreur est survenue. Réessayez.", "auth.errorInvalidCredentials": "Identifiants invalides : vérifiez votre e-mail et votre mot de passe.", "auth.errorEmailTaken": "Un compte existe déjà avec cet e-mail.", "auth.errorTooManyAttempts": "Trop de tentatives. Réessayez dans quelques minutes.", "auth.errorAccountBlocked": "Ce compte est bloqué. Contactez le support.", "auth.errorUnavailable": "Service indisponible pour le moment. Réessayez plus tard.", "auth.errorInvalidLink": "Ce lien est invalide ou expiré.", "auth.forgotSent": "Si un compte existe pour cet email, un lien vient d'être envoyé. Vérifiez vos spams.", "auth.google": "Continuer avec Google", "auth.name": "Nom", "auth.password": "Mot de passe", "auth.passwordMismatch": "Les mots de passe ne correspondent pas.", "auth.resetDone": "Mot de passe réinitialisé. Connectez-vous.", "auth.verifyError": "Lien invalide ou expiré. Renvoyez un email depuis votre compte.", "auth.verifyOk": "Votre email est vérifié. Merci !", "auth.verifySent": "Un email de vérification vous a été envoyé.", "captcha.required": "Contrôle de sécurité requis : termine la vérification ci-dessus puis réessaie.", "captcha.verifyAgain": "Merci de refaire le contrôle de sécurité ci-dessus puis de réessayer.", "cart.empty": "Votre panier est vide.", "cart.otherGame": "Votre panier contient des offres d'un autre jeu. Finalisez ou videz-le avant d'ajouter ce pack.", "catalog.emptyGame": "Ce jeu n'a pas encore de catalogue disponible. Configurez-le dans l'administration avant l'ouverture à la vente.", "catalog.popular": "Populaire", "catalog.empty": "Aucun pack ne correspond.", "catalog.priceAsc": "Prix croissant", "catalog.priceDesc": "Prix décroissant", "catalog.sortDefault": "Par défaut", "chat.sent": "Envoyé", "checkout.binanceAddress": "Adresse", "checkout.binanceExactAmount": "Montant exact", "checkout.binanceMemo": "MEMO / Tag", "checkout.binanceNetwork": "Réseau", "checkout.binanceNoProof": "Le paiement est détecté automatiquement. Aucune preuve à envoyer.", "checkout.binanceTitle": "Binance USDT", "checkout.cancelCannotPayNow": "Je ne peux pas payer maintenant", "checkout.cancelChangeMethod": "Je veux changer de mode de paiement", "checkout.cancelNote": "", "checkout.cancelOrder": "Annuler la commande", "checkout.cancelOther": "Autre raison", "checkout.cancelSub": "", "checkout.cancelDone": "Votre commande a été annulée.", "checkout.cancelNotAllowed": "Cette commande ne peut plus être annulée (preuve envoyée ou déjà payée).", "checkout.cancelConflict": "L'état de la commande a changé. Nous avons rechargé les informations à jour.", "checkout.cancelTitle": "Pourquoi annulez-vous ?", "checkout.cancelTooShort": "Le délai est trop court", "checkout.cancelWrongInfo": "Je me suis trompé (ID ou produit)", "checkout.creating": "Création…", "checkout.cryptoDetected": "Transaction détectée — confirmation en cours…", "checkout.cryptoFailed": "Paiement USDT expiré. Aucun paiement n'a été validé pour cette commande.", "checkout.expired": "Paiement expiré", "checkout.methodMvola": "MVola", "checkout.methodOrange": "Orange Money", "checkout.papiOff": "Le paiement automatique est momentanément désactivé : réglez via USSD puis saisissez votre référence.", "checkout.playerId": "ID joueur", "checkout.proofCount": "Envoyez 1 à 3 captures d'écran.", "checkout.proofSubmitting": "Envoi de la preuve…", "checkout.proofBadType": "Format non pris en charge : JPEG ou PNG uniquement.", "checkout.proofTooLarge": "Chaque capture doit faire 8 Mo maximum.", "checkout.proofTooMany": "3 captures maximum par commande.", "checkout.proofNotPending": "Cette commande n'attend plus de preuve.", "checkout.proofAlreadyValidated": "Une preuve a déjà été validée pour cette commande.", "checkout.proofLimit": "Trois preuves maximum par commande.", "checkout.proofDeadlinePassed": "Le délai de paiement est dépassé pour cette commande.", "checkout.selectMethod": "Mode de paiement", "checkout.success": "Paiement confirmé !", "checkout.verifyIdInvalid": "Identifiant invalide. Corrigez-le et revérifiez.", "checkout.verifyRequired": "Vérifiez votre ID PUBG Mobile avant de continuer.", "checkout.verifySub": "Entrez votre ID joueur : nous vérifions le compte avant le paiement.", "checkout.verifying": "Vérification…", "common.close": "Fermer", "common.error": "Une erreur est survenue", "common.next": "Suivant", "common.previous": "Précédent", "events.empty": "Aucun événement pour le moment.", "events.shared": "Lien copié !", "evo.checking": "Vérification…", "evo.eligible": "Éligible ! Vous pouvez continuer vers le paiement.", "evo.invalidId": "ID PUBG Mobile invalide (9 à 13 chiffres).", "evo.noSeason": "Aucune saison active", "evo.pubgLabel": "ID PUBG Mobile (9–13 chiffres)", "loyalty.redeemed": "Échange enregistré ! Notre équipe le traite sous peu.", "nav.logout": "Déconnexion", "order.banner.proofWaiting": "Preuve envoyée · vérification en cours", "order.loginToSee": "Connectez-vous pour voir vos commandes", "order.none": "Aucune commande pour le moment.", "order.status.awaiting_verification": "Vérification en cours", "order.status.cancelled": "Annulée", "order.status.delivered": "Livrée", "order.status.pending_payment": "Paiement en attente", "order.tabs.progress": "En cours", "product.added": "Ajouté au panier", "product.duplicateSub": "Votre panier contient déjà un abonnement {label}. Un seul {label} par PUBG ID.", "support.chatOpen": "Chat ouvert — écrivez ci-dessous", "support.login": "Connectez-vous pour discuter.", "support.needMsg": "Écrivez un message.", "support.waPending": "Numéro WhatsApp support à confirmer."
+      "account.deleteWarning": "Cette action est définitive : vos données personnelles seront anonymisées. L'historique des commandes est conservé de façon anonyme. Vos points seront perdus.", "account.deleteConfirm": "Supprimer définitivement", "account.deleteType": "Tapez SUPPRIMER pour confirmer", "account.deleted": "Compte supprimé.", "account.passwordChanged": "Mot de passe mis à jour.", "account.saved": "Profil mis à jour", "auth.errorGeneric": "Une erreur est survenue. Réessayez.", "auth.errorInvalidCredentials": "Identifiants invalides : vérifiez votre e-mail et votre mot de passe.", "auth.errorEmailTaken": "Un compte existe déjà avec cet e-mail.", "auth.errorTooManyAttempts": "Trop de tentatives. Réessayez dans quelques minutes.", "auth.errorAccountBlocked": "Ce compte est bloqué. Contactez le support.", "auth.errorUnavailable": "Service indisponible pour le moment. Réessayez plus tard.", "auth.errorInvalidLink": "Ce lien est invalide ou expiré.", "auth.forgotSent": "Si un compte existe pour cet email, un lien vient d'être envoyé. Vérifiez vos spams.", "auth.google": "Continuer avec Google", "auth.name": "Nom", "auth.password": "Mot de passe", "auth.passwordMismatch": "Les mots de passe ne correspondent pas.", "auth.resetDone": "Mot de passe réinitialisé. Connectez-vous.", "auth.verifyError": "Lien invalide ou expiré. Renvoyez un email depuis votre compte.", "auth.verifyOk": "Votre email est vérifié. Merci !", "auth.verifySent": "Un email de vérification vous a été envoyé.", "captcha.required": "Contrôle de sécurité requis : termine la vérification ci-dessus puis réessaie.", "captcha.verifyAgain": "Merci de refaire le contrôle de sécurité ci-dessus puis de réessayer.", "cart.empty": "Votre panier est vide.", "cart.otherGame": "Votre panier contient des offres d'un autre jeu. Finalisez ou videz-le avant d'ajouter ce pack.", "catalog.emptyGame": "Ce jeu n'a pas encore de catalogue disponible. Configurez-le dans l'administration avant l'ouverture à la vente.", "catalog.popular": "Populaire", "catalog.empty": "Aucun pack ne correspond.", "catalog.priceAsc": "Prix croissant", "catalog.priceDesc": "Prix décroissant", "catalog.sortDefault": "Par défaut", "chat.sent": "Envoyé", "checkout.binanceAddress": "Adresse", "checkout.binanceExactAmount": "Montant exact", "checkout.binanceMemo": "MEMO / Tag", "checkout.binanceNetwork": "Réseau", "checkout.binanceNoProof": "Le paiement est détecté automatiquement. Aucune preuve à envoyer.", "checkout.binanceTitle": "Binance USDT", "checkout.cancelCannotPayNow": "Je ne peux pas payer maintenant", "checkout.cancelChangeMethod": "Je veux changer de mode de paiement", "checkout.cancelOrder": "Annuler la commande", "checkout.cancelOther": "Autre raison", "checkout.cancelDone": "Votre commande a été annulée.", "checkout.cancelNotAllowed": "Cette commande ne peut plus être annulée (preuve envoyée ou déjà payée).", "checkout.cancelConflict": "L'état de la commande a changé. Nous avons rechargé les informations à jour.", "checkout.cancelTitle": "Pourquoi annulez-vous ?", "checkout.cancelTooShort": "Le délai est trop court", "checkout.cancelWrongInfo": "Je me suis trompé (ID ou produit)", "checkout.creating": "Création…", "checkout.cryptoDetected": "Transaction détectée — confirmation en cours…", "checkout.cryptoFailed": "Paiement USDT expiré. Aucun paiement n'a été validé pour cette commande.", "checkout.expired": "Paiement expiré", "checkout.methodMvola": "MVola", "checkout.methodOrange": "Orange Money", "checkout.papiOff": "Le paiement automatique est momentanément désactivé : réglez via USSD puis saisissez votre référence.", "checkout.playerId": "ID joueur", "checkout.proofCount": "Envoyez 1 à 3 captures d'écran.", "checkout.proofSubmitting": "Envoi de la preuve…", "checkout.proofBadType": "Format non pris en charge : JPEG ou PNG uniquement.", "checkout.proofTooLarge": "Chaque capture doit faire 8 Mo maximum.", "checkout.proofTooMany": "3 captures maximum par commande.", "checkout.proofNotPending": "Cette commande n'attend plus de preuve.", "checkout.proofAlreadyValidated": "Une preuve a déjà été validée pour cette commande.", "checkout.proofLimit": "Trois preuves maximum par commande.", "checkout.proofDeadlinePassed": "Le délai de paiement est dépassé pour cette commande.", "checkout.selectMethod": "Mode de paiement", "checkout.success": "Paiement confirmé !", "checkout.verifyIdInvalid": "Identifiant invalide. Corrigez-le et revérifiez.", "checkout.verifyRequired": "Vérifiez votre ID PUBG Mobile avant de continuer.", "checkout.verifySub": "Entrez votre ID joueur : nous vérifions le compte avant le paiement.", "checkout.verifying": "Vérification…", "common.close": "Fermer", "common.error": "Une erreur est survenue", "events.empty": "Aucun événement pour le moment.", "events.shared": "Lien copié !", "evo.checking": "Vérification…", "evo.eligible": "Éligible ! Vous pouvez continuer vers le paiement.", "evo.invalidId": "ID PUBG Mobile invalide (9 à 13 chiffres).", "evo.noSeason": "Aucune saison active", "evo.pubgLabel": "ID PUBG Mobile (9–13 chiffres)", "loyalty.redeemed": "Échange enregistré ! Notre équipe le traite sous peu.", "nav.logout": "Déconnexion", "order.banner.proofWaiting": "Preuve envoyée · vérification en cours", "order.loginToSee": "Connectez-vous pour voir vos commandes", "order.none": "Aucune commande pour le moment.", "order.status.awaiting_verification": "Vérification en cours", "order.status.cancelled": "Annulée", "order.status.delivered": "Livrée", "order.status.pending_payment": "Paiement en attente", "order.tabs.progress": "En cours", "product.added": "Ajouté au panier", "product.duplicateSub": "Votre panier contient déjà un abonnement {label}. Un seul {label} par PUBG ID.", "checkout.recentIds": "IDs joueur déjà utilisés", "checkout.useRecentId": "Utiliser l'ID {id}", "checkout.fieldMin": "{n} caractères minimum", "checkout.fieldMax": "{n} caractères maximum", "checkout.fieldFormat": "Format incorrect pour ce champ", "checkout.fieldRequired": "Ce champ est obligatoire", "checkout.proofRateLimited": "Trop d'envois : réessayez dans quelques minutes.", "checkout.proofUnavailable": "Envoi de preuve indisponible, réessayez plus tard.", "checkout.proofDenied": "Vous n'êtes pas autorisé à envoyer une preuve pour cette commande.", "checkout.proofNotFound": "Commande introuvable.", "order.detail.extra.proofCount": "{n} preuve(s) envoyée(s)"
     },
     en: {
-      "account.deleteWarning": "This is permanent: your personal data will be anonymised. Order history is kept anonymously. Your points will be forfeited.", "account.deleteConfirm": "Delete permanently", "account.deleteType": "Type SUPPRIMER to confirm", "account.deleted": "Account deleted.", "account.passwordChanged": "Password updated.", "account.saved": "Profile updated", "auth.errorGeneric": "Something went wrong. Try again.", "auth.errorInvalidCredentials": "Invalid credentials: check your email and password.", "auth.errorEmailTaken": "An account already exists with this email.", "auth.errorTooManyAttempts": "Too many attempts. Try again in a few minutes.", "auth.errorAccountBlocked": "This account is blocked. Contact support.", "auth.errorUnavailable": "Service temporarily unavailable. Try again later.", "auth.errorInvalidLink": "This link is invalid or has expired.", "auth.forgotSent": "If an account exists for this email, a link was just sent. Check your spam folder.", "auth.google": "Continue with Google", "auth.name": "Name", "auth.password": "Password", "auth.passwordMismatch": "Passwords do not match.", "auth.resetDone": "Password reset. Please log in.", "auth.verifyError": "Invalid or expired link. Resend an email from your account.", "auth.verifyOk": "Your email is verified. Thank you!", "auth.verifySent": "A verification email has been sent to you.", "captcha.required": "Security check required: complete the verification above and try again.", "captcha.verifyAgain": "Please complete the security check above and try again.", "cart.empty": "Your cart is empty.", "cart.otherGame": "Your cart holds offers from another game. Check out or empty it before adding this pack.", "catalog.emptyGame": "This game has no catalog available yet. Configure it in the admin before opening it for sale.", "catalog.popular": "Popular", "catalog.empty": "No pack matches.", "catalog.priceAsc": "Price: low to high", "catalog.priceDesc": "Price: high to low", "catalog.sortDefault": "Default", "chat.sent": "Sent", "checkout.binanceAddress": "Address", "checkout.binanceExactAmount": "Exact amount", "checkout.binanceMemo": "MEMO / Tag", "checkout.binanceNetwork": "Network", "checkout.binanceNoProof": "The payment is detected automatically. No proof to submit.", "checkout.binanceTitle": "Binance USDT", "checkout.cancelCannotPayNow": "I can't pay right now", "checkout.cancelChangeMethod": "I want to change payment method", "checkout.cancelNote": "", "checkout.cancelOrder": "Cancel order", "checkout.cancelOther": "Other reason", "checkout.cancelSub": "", "checkout.cancelDone": "Your order has been cancelled.", "checkout.cancelNotAllowed": "This order can no longer be cancelled (proof submitted or already paid).", "checkout.cancelConflict": "The order status changed. We reloaded the up-to-date details.", "checkout.cancelTitle": "Why are you cancelling?", "checkout.cancelTooShort": "The deadline is too short", "checkout.cancelWrongInfo": "I made a mistake (ID or product)", "checkout.creating": "Creating…", "checkout.cryptoDetected": "Transaction detected — confirming…", "checkout.cryptoFailed": "USDT payment expired. No payment was validated for this order.", "checkout.expired": "Payment expired", "checkout.methodMvola": "MVola", "checkout.methodOrange": "Orange Money", "checkout.papiOff": "Automatic payment is temporarily off: pay via USSD, then enter your reference.", "checkout.playerId": "Player ID", "checkout.proofCount": "Send 1 to 3 screenshots.", "checkout.proofSubmitting": "Sending proof…", "checkout.proofBadType": "Unsupported format: JPEG or PNG only.", "checkout.proofTooLarge": "Each screenshot must be 8 MB maximum.", "checkout.proofTooMany": "Maximum 3 screenshots per order.", "checkout.proofNotPending": "This order no longer awaits a proof.", "checkout.proofAlreadyValidated": "A proof was already validated for this order.", "checkout.proofLimit": "Maximum three proofs per order.", "checkout.proofDeadlinePassed": "The payment deadline has passed for this order.", "checkout.selectMethod": "Payment method", "checkout.success": "Payment confirmed!", "checkout.verifyIdInvalid": "Invalid ID. Correct it and verify again.", "checkout.verifyRequired": "Verify your PUBG Mobile ID before continuing.", "checkout.verifySub": "Enter your player ID: we check the account before payment.", "checkout.verifying": "Verifying…", "common.close": "Close", "common.error": "Something went wrong", "common.next": "Next", "common.previous": "Previous", "events.empty": "No events yet.", "events.shared": "Link copied!", "evo.checking": "Checking…", "evo.eligible": "Eligible! You can proceed to payment.", "evo.invalidId": "Invalid PUBG Mobile ID (9 to 13 digits).", "evo.noSeason": "No active season", "evo.pubgLabel": "PUBG Mobile ID (9–13 digits)", "loyalty.redeemed": "Redemption recorded! Our team will process it shortly.", "nav.logout": "Log out", "order.banner.proofWaiting": "Proof sent · under review", "order.loginToSee": "Log in to see your orders", "order.none": "No orders yet.", "order.status.awaiting_verification": "Under verification", "order.status.cancelled": "Cancelled", "order.status.delivered": "Delivered", "order.status.pending_payment": "Payment pending", "order.tabs.progress": "In progress", "product.added": "Added to cart", "product.duplicateSub": "Your cart already contains a {label} subscription. Only one {label} per PUBG ID.", "support.chatOpen": "Chat open — type below", "support.login": "Log in to chat.", "support.needMsg": "Type a message.", "support.waPending": "Support WhatsApp number to be confirmed."
+      "account.deleteWarning": "This is permanent: your personal data will be anonymised. Order history is kept anonymously. Your points will be forfeited.", "account.deleteConfirm": "Delete permanently", "account.deleteType": "Type SUPPRIMER to confirm", "account.deleted": "Account deleted.", "account.passwordChanged": "Password updated.", "account.saved": "Profile updated", "auth.errorGeneric": "Something went wrong. Try again.", "auth.errorInvalidCredentials": "Invalid credentials: check your email and password.", "auth.errorEmailTaken": "An account already exists with this email.", "auth.errorTooManyAttempts": "Too many attempts. Try again in a few minutes.", "auth.errorAccountBlocked": "This account is blocked. Contact support.", "auth.errorUnavailable": "Service temporarily unavailable. Try again later.", "auth.errorInvalidLink": "This link is invalid or has expired.", "auth.forgotSent": "If an account exists for this email, a link was just sent. Check your spam folder.", "auth.google": "Continue with Google", "auth.name": "Name", "auth.password": "Password", "auth.passwordMismatch": "Passwords do not match.", "auth.resetDone": "Password reset. Please log in.", "auth.verifyError": "Invalid or expired link. Resend an email from your account.", "auth.verifyOk": "Your email is verified. Thank you!", "auth.verifySent": "A verification email has been sent to you.", "captcha.required": "Security check required: complete the verification above and try again.", "captcha.verifyAgain": "Please complete the security check above and try again.", "cart.empty": "Your cart is empty.", "cart.otherGame": "Your cart holds offers from another game. Check out or empty it before adding this pack.", "catalog.emptyGame": "This game has no catalog available yet. Configure it in the admin before opening it for sale.", "catalog.popular": "Popular", "catalog.empty": "No pack matches.", "catalog.priceAsc": "Price: low to high", "catalog.priceDesc": "Price: high to low", "catalog.sortDefault": "Default", "chat.sent": "Sent", "checkout.binanceAddress": "Address", "checkout.binanceExactAmount": "Exact amount", "checkout.binanceMemo": "MEMO / Tag", "checkout.binanceNetwork": "Network", "checkout.binanceNoProof": "The payment is detected automatically. No proof to submit.", "checkout.binanceTitle": "Binance USDT", "checkout.cancelCannotPayNow": "I can't pay right now", "checkout.cancelChangeMethod": "I want to change payment method", "checkout.cancelOrder": "Cancel order", "checkout.cancelOther": "Other reason", "checkout.cancelDone": "Your order has been cancelled.", "checkout.cancelNotAllowed": "This order can no longer be cancelled (proof submitted or already paid).", "checkout.cancelConflict": "The order status changed. We reloaded the up-to-date details.", "checkout.cancelTitle": "Why are you cancelling?", "checkout.cancelTooShort": "The deadline is too short", "checkout.cancelWrongInfo": "I made a mistake (ID or product)", "checkout.creating": "Creating…", "checkout.cryptoDetected": "Transaction detected — confirming…", "checkout.cryptoFailed": "USDT payment expired. No payment was validated for this order.", "checkout.expired": "Payment expired", "checkout.methodMvola": "MVola", "checkout.methodOrange": "Orange Money", "checkout.papiOff": "Automatic payment is temporarily off: pay via USSD, then enter your reference.", "checkout.playerId": "Player ID", "checkout.proofCount": "Send 1 to 3 screenshots.", "checkout.proofSubmitting": "Sending proof…", "checkout.proofBadType": "Unsupported format: JPEG or PNG only.", "checkout.proofTooLarge": "Each screenshot must be 8 MB maximum.", "checkout.proofTooMany": "Maximum 3 screenshots per order.", "checkout.proofNotPending": "This order no longer awaits a proof.", "checkout.proofAlreadyValidated": "A proof was already validated for this order.", "checkout.proofLimit": "Maximum three proofs per order.", "checkout.proofDeadlinePassed": "The payment deadline has passed for this order.", "checkout.selectMethod": "Payment method", "checkout.success": "Payment confirmed!", "checkout.verifyIdInvalid": "Invalid ID. Correct it and verify again.", "checkout.verifyRequired": "Verify your PUBG Mobile ID before continuing.", "checkout.verifySub": "Enter your player ID: we check the account before payment.", "checkout.verifying": "Verifying…", "common.close": "Close", "common.error": "Something went wrong", "events.empty": "No events yet.", "events.shared": "Link copied!", "evo.checking": "Checking…", "evo.eligible": "Eligible! You can proceed to payment.", "evo.invalidId": "Invalid PUBG Mobile ID (9 to 13 digits).", "evo.noSeason": "No active season", "evo.pubgLabel": "PUBG Mobile ID (9–13 digits)", "loyalty.redeemed": "Redemption recorded! Our team will process it shortly.", "nav.logout": "Log out", "order.banner.proofWaiting": "Proof sent · under review", "order.loginToSee": "Log in to see your orders", "order.none": "No orders yet.", "order.status.awaiting_verification": "Under verification", "order.status.cancelled": "Cancelled", "order.status.delivered": "Delivered", "order.status.pending_payment": "Payment pending", "order.tabs.progress": "In progress", "product.added": "Added to cart", "product.duplicateSub": "Your cart already contains a {label} subscription. Only one {label} per PUBG ID.", "checkout.recentIds": "Recently used player IDs", "checkout.useRecentId": "Use ID {id}", "checkout.fieldMin": "Minimum {n} characters", "checkout.fieldMax": "Maximum {n} characters", "checkout.fieldFormat": "Invalid format for this field", "checkout.fieldRequired": "This field is required", "checkout.proofRateLimited": "Too many uploads: try again in a few minutes.", "checkout.proofUnavailable": "Proof upload is unavailable, try again later.", "checkout.proofDenied": "You are not allowed to send a proof for this order.", "checkout.proofNotFound": "Order not found.", "order.detail.extra.proofCount": "{n} proof(s) submitted"
     }
   };function t(k, v) { var s = (T[LANG] && T[LANG][k]) || T.fr[k] || k; if (v) Object.keys(v).forEach(function (key) { s = s.split("{" + key + "}").join(v[key]); }); return s; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -3546,12 +3546,32 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
      même liste que main (frontend/src/lib/api.js:12). /auth/me reste
      rafraîchissable à dessein (retour d'un visiteur après 15 min). */
   var NO_SILENT_REFRESH = /^\/auth\/(login|register|refresh|logout|google|forgot-password|reset-password|change-password|verify-email|resend-verification|me\/delete)(\/|$|\?)/;
+  /* main lib/api.js:13-23 : UNE seule demande de rafraîchissement à la fois
+     (les 401 simultanés la partagent), bornée à 15 s. */
+  var REFRESH_TIMEOUT_MS = 15000, refreshing = null;
+  function refreshSession() {
+    if (!refreshing) {
+      var ctl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+      var timer = ctl ? setTimeout(function () { try { ctl.abort(); } catch (e) { } }, REFRESH_TIMEOUT_MS) : null;
+      refreshing = fetch(API + "/auth/refresh", { method: "POST", credentials: "include", signal: ctl ? ctl.signal : undefined })
+        .then(function (rr) { if (timer) clearTimeout(timer); return rr; }, function (err) { if (timer) clearTimeout(timer); throw err; });
+      refreshing.then(function () { refreshing = null; }, function () { refreshing = null; });
+    }
+    return refreshing;
+  }
   function req(path, opts, retry) {
     opts = opts || {}; var headers = opts.headers || {}; var isForm = opts.body instanceof FormData;
     if (!isForm && opts.body != null && typeof opts.body !== "string") { opts.body = JSON.stringify(opts.body); headers["Content-Type"] = "application/json"; }
     return fetch(API + path, { method: opts.method || "GET", headers: headers, body: opts.body, credentials: "include" }).then(function (r) {
       if (r.status === 401 && !retry && !NO_SILENT_REFRESH.test(path)) {
-        return fetch(API + "/auth/refresh", { method: "POST", credentials: "include" }).then(function (rr) { if (rr.ok) return req(path, opts, true); return parse(r); });
+        return refreshSession().then(function (rr) {
+          if (rr.ok) return req(path, opts, true);
+          /* main lib/api.js:27-34 : un refresh 401 = session réellement absente
+             (on remonte le 401 d'origine) ; toute autre panne (403 origine/CSRF,
+             5xx, réseau) remonte SA propre erreur — jamais une déconnexion à
+             tort. */
+          return rr.status === 401 ? parse(r) : parse(rr);
+        });
       }
       return parse(r);
     });
@@ -3565,15 +3585,19 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       return p.then(function (data) { if (!r.ok) { var e = new Error((data && (data.detail || data.message)) || ("HTTP " + r.status)); e.status = r.status; e.data = data; throw e; } return data; });
     }
   }
+  /* main lib/api.js:40-46 — message affichable d'une erreur : le `detail` de
+     l'API d'abord (chaîne, tableau de messages de validation, objet), sinon le
+     message de l'erreur, sinon le repli.
+     ÉCART DE CONTRAT (backend actuel) : les erreurs métier de `orders.py`
+     renvoient `detail = {"code": …, "message": …}` (`_cancel_error` :474,
+     `_proof_error` :476-478) ; REF ne connaissait que `msg`, on lit donc aussi
+     `message` au lieu d'afficher « [object Object] ». */
   function errMsg(e) {
-    if (!e) return t("common.error");
-    if (e.status === 401) return t("auth.errorGeneric");
-    var d = String((e.data && (e.data.detail || e.message)) || e.message || "");
-    /* 403 « Origine non autorisée » : le navigateur parle à un backend qui refuse cette
-       origine (CORS/CSRF). Message dédié, pas le détail technique. */
-    if (e.status === 403 && /origine/i.test(d)) return t("common.error");
-    if (/Failed to fetch|NetworkError|load failed/i.test(e.message)) return t("common.error");
-    return d || t("common.error");
+    var d = e && e.data && e.data.detail;
+    if (!d) return (e && e.message) || t("common.error");
+    if (typeof d === "string") return d;
+    if (Array.isArray(d)) return d.map(function (x) { return (x && x.msg) || JSON.stringify(x); }).join(" ");
+    return d.msg || d.message || String(d);
   }
   /* Erreur visible : tout échec qui n'est pas un 401 (invité non connecté) doit se voir.
      Renvoie le message affiché, pour les appelants qui veulent aussi l'écrire ailleurs. */
@@ -3839,7 +3863,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
 
   /* ---------- checkout ---------- */
-  var co = { verified: false, pid: "", pseudo: "", method: "", total: 0, items: "", game: "", game_id: "", order: null, timer: null, poll: null, payPoll: null, payPollOn: false, payInfo: null };
+  var co = { verified: false, pid: "", pseudo: "", method: "", total: 0, items: "", game: "", game_id: "", order: null, timer: null, poll: null, payPoll: null, payPollOn: false, payInfo: null, identity: null };
   function coShow(n) { $$(".mgs-co-screen").forEach(function (sc) { sc.hidden = (+sc.dataset.co !== n); }); }
   /* Reprise silencieuse : hydrate le tunnel depuis la commande relue (aucun
      élément créé — on peuple uniquement les écrans existants). */
@@ -3896,15 +3920,46 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var sec = deadline ? Math.max(0, Math.floor((new Date(deadline) - new Date()) / 1000)) : ((cryptoCfg && cryptoCfg.expiryMinutes) || 30) * 60;
     startTimer(sec); window.scrollTo(0, 0);
   }
-  var RECENT_KEY = "mgs_recent_ids";
-  function getRecent() { try { var a = JSON.parse(localStorage.getItem(RECENT_KEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
-  function addRecent(id) { id = String(id || "").slice(0, 60); if (!id) return; var a = getRecent().filter(function (x) { return x !== id; }); a.push(id); while (a.length > 10) a.shift(); try { localStorage.setItem(RECENT_KEY, JSON.stringify(a)); } catch (e) { } renderRecent(); }
+  /* IDs joueur récents — main frontend/src/lib/recentPlayerIds.js:15,52-99 :
+     UN magasin { [gameId]: [{ id, usedAt }] }, 10 par jeu, les plus récents
+     d'abord, doublons retirés, AUCUN pseudo, valeurs invalides ignorées,
+     localStorage seul, tout en try/catch. Clé `mgs_recent_player_ids`. */
+  var RECENT_KEY = "mgs_recent_player_ids", MAX_RECENT = 10, MAX_ID_LEN = 60;
+  function readRecentStore() { try { var o = JSON.parse(localStorage.getItem(RECENT_KEY)); return (o && typeof o === "object" && !Array.isArray(o)) ? o : {}; } catch (e) { return {}; } }
+  function recentIdsOf(gameId) {
+    if (!gameId) return [];
+    var list = readRecentStore()[gameId]; if (!Array.isArray(list)) return [];
+    var seen = {}, out = [];
+    list.forEach(function (e) {
+      if (!e || typeof e !== "object") return;
+      var id = typeof e.id === "string" ? e.id.trim() : "";
+      if (!id || id.length > MAX_ID_LEN || seen[id]) return;
+      seen[id] = 1; out.push({ id: id, usedAt: isFinite(e.usedAt) ? e.usedAt : 0 });
+    });
+    out.sort(function (a, b) { return b.usedAt - a.usedAt; });
+    return out.slice(0, MAX_RECENT);
+  }
+  function rememberPlayerId(gameId, id) {
+    id = typeof id === "string" ? id.trim() : "";
+    if (!gameId || !id || id.length > MAX_ID_LEN) return recentIdsOf(gameId);
+    var kept = recentIdsOf(gameId).filter(function (e) { return e.id !== id; });
+    var next = [{ id: id, usedAt: Date.now() }].concat(kept).slice(0, MAX_RECENT);
+    var store = readRecentStore(), merged = {};
+    Object.keys(store).forEach(function (k) { merged[k] = store[k]; });
+    merged[gameId] = next;
+    try { localStorage.setItem(RECENT_KEY, JSON.stringify(merged)); } catch (e) { /* stockage refusé : l'écran reste utilisable */ }
+    return next;
+  }
+  /* main IdentityFieldsVerify.js:150-152,257-273 : les suggestions portent l'ID
+     du joueur, disparaissent dès que l'ID est vérifié, et un clic REMPLIT le
+     champ sans lancer la vérification (:185-188). */
   function renderRecent() {
-    var box = $(".mgs-co-recent"); if (!box) return; var a = getRecent();
-    if (!a.length) { box.hidden = true; box.innerHTML = ""; return; }
+    var box = $(".mgs-co-recent"); if (!box) return;
+    var ids = recentIdsOf(co.game_id || "pubg-mobile").map(function (e) { return e.id; });
+    if (!ids.length || co.verified) { box.hidden = true; box.innerHTML = ""; return; }
     box.hidden = false;
     var ic = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
-    box.innerHTML = '<span class="mgs-co-recent-label">Récents</span>' + a.map(function (id) { return '<button type="button" class="mgs-co-recent-chip" data-id="' + esc(id) + '">' + ic + '<span>' + esc(id) + '</span></button>'; }).join("");
+    box.innerHTML = '<span class="mgs-co-recent-label">' + esc(t("checkout.recentIds")) + "</span>" + ids.map(function (id) { return '<button type="button" class="mgs-co-recent-chip" data-id="' + esc(id) + '" aria-label="' + esc(t("checkout.useRecentId", { id: id })) + '">' + ic + "<span>" + esc(id) + "</span></button>"; }).join("");
   }
   window.mgsRenderRecent = renderRecent;
   var cryptoCfg = null; var manualHintTexts = null;
@@ -3914,7 +3969,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     stopPaymentPoll();
     co.total = cartTotal(); co.items = cart.map(function (x) { return x.qty + " × " + x.name; }).join(", ");
     co.game = cart[0].game_name || cart[0].game || ""; co.game_id = cart[0].game_id || "";
-    co.verified = false; co.method = ""; co.pid = ""; co.pseudo = ""; co.order = null; co.network = ""; co.payment = null;
+    co.verified = false; co.method = ""; co.pid = ""; co.pseudo = ""; co.order = null; co.network = ""; co.payment = null; co.identity = null;
     var bl = $('.mgs-co-method input[value="Binance"]'); if (bl) { var blbl = bl.closest(".mgs-co-method"); if (blbl) blbl.style.display = (cryptoCfg && cryptoCfg.available) ? "" : "none"; }
     /* MVola/Orange : même masquage que Binance (main pages/Checkout.js:83-84,277-278) —
        un opérateur non configuré dans GET /payments/config n'est pas proposé. */
@@ -3923,24 +3978,96 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var cg = $(".mgs-co-game"); if (cg) cg.textContent = co.game;
     var ct = $(".mgs-co-total"); if (ct) ct.textContent = ar(co.total);
     var ci = $(".mgs-co-items"); if (ci) ci.textContent = co.items;
-    var inp = $(".mgs-co-id-input"); if (inp) inp.value = "";
+    /* main Checkout.js:56-59,80-83 : l'ID part de `?pubg_id`, sinon du dernier
+       ID utilisé sur cette machine (`mgs_last_player_id`), sinon de l'ID du
+       compte ; toute modification est mémorisée. */
+    var inp = $(".mgs-co-id-input");
+    if (inp) { try { inp.value = new URL(location.href).searchParams.get("pubg_id") || localStorage.getItem("mgs_last_player_id") || (me && me.saved_pubg_ids && me.saved_pubg_ids[0]) || ""; } catch (e) { inp.value = (me && me.saved_pubg_ids && me.saved_pubg_ids[0]) || ""; } }
     var st = $(".mgs-co-id-status"); if (st) { st.hidden = true; st.textContent = ""; }
+    renderRecent();
     $$(".mgs-co-method").forEach(function (m) { m.classList.remove("is--active"); });
     $$('input[name="comethod"]').forEach(function (r) { r.checked = false; });
     coShow(1); window.mgsShowPage("commande"); window.scrollTo(0, 0);
   }
   function coStatus(cls, html) { var st = $(".mgs-co-id-status"); if (!st) return; st.hidden = false; st.className = "mgs-co-id-status " + cls; st.innerHTML = html; }
   var CK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+  /* Contrat de saisie d'un jeu : `identity_fields` publie par GET /games
+     (main IdentityFieldsVerify.js:68,210-212). Sans declaration, PUBG Mobile
+     garde son champ historique unique. */
+  function identitySpecOf(gameId) {
+    var g = (gamesCache || []).filter(function (x) { return x.id === (gameId || "pubg-mobile"); })[0];
+    if (g && g.identity_fields && g.identity_fields.length) return g.identity_fields;
+    return [{ key: "pubg_id", label: "", primary: true, required: true }];
+  }
+  function primaryKeyOf(spec) { var p = spec.filter(function (f) { return f.primary; })[0] || spec[0]; return p && p.key ? p.key : "pubg_id"; }
+  /* Validation locale d'un champ (main IdentityFieldsVerify.js:20-35) : requis,
+     min_length, max_length (60 par defaut), motif en correspondance TOTALE
+     (re.fullmatch) — un motif inutilisable refuse par securite. */
+  function fieldLocalError(f, value) {
+    var v = String(value == null ? "" : value).trim();
+    if (!v) return f.required === false ? null : "required";
+    if (f.min_length && v.length < f.min_length) return "min";
+    if (v.length > (f.max_length || 60)) return "max";
+    if (f.pattern) { try { if (!new RegExp("^(?:" + f.pattern + ")$").test(v)) return "pattern"; } catch (e) { return "pattern"; } }
+    return null;
+  }
+  function fieldMessage(code, f) {
+    if (code === "min") return t("checkout.fieldMin", { n: f.min_length });
+    if (code === "max") return t("checkout.fieldMax", { n: f.max_length || 60 });
+    if (code === "pattern") return t("checkout.fieldFormat");
+    return t("checkout.fieldRequired");
+  }
+  /* Table des verdicts de verification (main lib/identityErrors.js:16-38) :
+     jamais un detail brut, et jamais « ID invalide » pour une panne. */
+  function identityErrorKey(valid, code, status) {
+    if (valid === true) return null;
+    if (valid === false && code === "invalid_id") return { display: "refused", key: "checkout.verifyIdInvalid" };
+    if ((valid === false && code === "missing_field") || status === 422) return { display: "invalid_input", key: "checkout.verifyMissingField" };
+    if (status === 429 || code === "rate_limited") return { display: "unavailable", key: "checkout.verifyRateLimited" };
+    if (status === 502 || status === 503 || status === 504 || code === "provider_unavailable" || code === "unsupported_game") return { display: "unavailable", key: "checkout.verifyProviderUnavailable" };
+    return { display: "unavailable", key: "checkout.verifyError" };
+  }
+  /* Identite memorisee du compte connecte (main Checkout.js:132-141) :
+     POST /me/game-identities, deduplique cote serveur (routers/games.py:122-126).
+     Invite : rien n'est memorise. L'echec est sans consequence (la commande
+     part sans `identity_id`). */
+  function saveIdentity(fields, name) {
+    if (!me) return;
+    var spec = identitySpecOf(co.game_id), pk = primaryKeyOf(spec);
+    req("/me/game-identities", { method: "POST", body: { game_id: co.game_id || "pubg-mobile", label: name || fields[pk] || "", fields: fields, player_name: name || fields[pk] || "" } })
+      .then(function (d) { co.identity = d || null; })
+      .catch(function () { co.identity = null; });
+  }
   function verifyId() {
     var inp = $(".mgs-co-id-input"); var v = (inp && inp.value || "").trim();
-    if (!v) { coStatus("is--err", esc(t("checkout.verifySub"))); return; }
+    var gid = co.game_id || "pubg-mobile";
+    var spec = identitySpecOf(gid), pk = primaryKeyOf(spec);
+    var field = spec.filter(function (f) { return f.key === pk; })[0] || { key: pk, required: true };
+    /* main IdentityFieldsVerify.js:78-87 : la saisie locale est validee AVANT
+       tout appel ; le bouton reste actif (aria-disabled), la garde est ici. */
+    var localErr = fieldLocalError(field, v);
+    if (localErr) { coStatus("is--err", esc(fieldMessage(localErr, field))); return; }
     coStatus("", esc(t("checkout.verifying")));
-    var gid = co.game_id || "pubg-mobile"; var g = (gamesCache || []).filter(function (x) { return x.id === gid; })[0];
-    var fields = {}; fields[primaryField(g)] = v;
+    var fields = {}; fields[pk] = v;
     req("/fazercards/validate-id", { method: "POST", body: { game_id: gid, fields: fields } }).then(function (r) {
-      if (r && r.valid) { co.verified = true; co.pid = v; co.pseudo = r.player_name || ""; addRecent(v); coStatus("is--ok", CK + "<span>" + esc(r.player_name || v) + (r.region ? " · " + esc(r.region) : "") + "</span>"); }
-      else { co.verified = false; coStatus("is--err", esc(t("checkout.verifyIdInvalid"))); }
-    }).catch(function (e) { co.verified = false; coStatus("is--err", esc(errMsg(e))); });
+      if (r && r.valid === true) {
+        var region = typeof r.region === "string" && r.region.trim() ? r.region.trim() : null;
+        co.verified = true; co.pid = v; co.pseudo = r.player_name || "";
+        rememberPlayerId(gid, v); renderRecent();
+        coStatus("is--ok", CK + "<span>" + esc(r.player_name || v) + (region ? " · " + esc(region) : "") + "</span>");
+        saveIdentity(fields, r.player_name || null);
+      } else {
+        co.verified = false;
+        var vd = identityErrorKey(r && r.valid, r && r.code, 0);
+        coStatus("is--err", esc(t(vd.key)));
+        renderRecent();
+      }
+    }).catch(function (e) {
+      co.verified = false;
+      var vd2 = identityErrorKey(undefined, (e && e.data && e.data.code) || null, (e && e.status) || 0);
+      coStatus("is--err", esc(t(vd2.key)));
+      renderRecent();
+    });
   }
   function openHuman(always) {
     var o = $(".mgs-human-overlay"), p = $(".mgs-human-popup"); if (o) o.hidden = false; if (p) p.hidden = false;
@@ -3966,6 +4093,18 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function stopTimer() { if (co.timer) { clearInterval(co.timer); co.timer = null; } }
   function startTimer(sec) { stopTimer(); var el = $(".mgs-co-countdown") || $(".mgs-co-timer"); function tick() { if (sec < 0) { stopTimer(); if (el) el.textContent = t("checkout.expired"); return; } var m = Math.floor(sec / 60), s = sec % 60; if (el) el.textContent = m + ":" + (s < 10 ? "0" : "") + s; sec--; } tick(); co.timer = setInterval(tick, 1000); }
   function methodLabel(m) { return m === "MVola" ? t("checkout.methodMvola") : m === "Orange Money" ? t("checkout.methodOrange") : m === "Binance" ? t("checkout.binanceTitle") : m; }
+  /* 422 Pydantic traduite en libellé lisible (main Checkout.js:39-47) : jamais
+     le tableau brut de la bibliothèque. */
+  var FIELD_TEXT_KEYS = { payment_phone: "checkout.phoneError", manual_operator: "checkout.orderValidationError" };
+  function validationDetails(e) { var d = e && e.data && e.data.detail; return e && e.status === 422 && Array.isArray(d) ? d : null; }
+  function validationField(details) {
+    var found = null;
+    (details || []).forEach(function (x) {
+      if (found || !x || !Array.isArray(x.loc) || x.loc.length < 2) return;
+      found = x.loc[x.loc.length - 1];
+    });
+    return found;
+  }
   function createOrder() {
     if (co.busy) return;
     if (!co.verified) { coStatus("is--err", esc(t("checkout.verifyRequired"))); return; }
@@ -3979,21 +4118,36 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* Contrat /orders de REF (pages/Checkout.js:135-142) : un INVITÉ peut
        commander (aucun compte requis, get_optional_user backend) ; jamais de
        champ `email` ni `manual_reference` ; `identity_fields` seulement pour un
-       jeu à champs dynamiques (hors PUBG) ; `identity_id` absent (aucune
-       identité mémorisée n'est portée). */
+       jeu à champs dynamiques (hors PUBG). `identity_id` : première fois
+       seulement, quand l'identité vérifiée est bien celle mémorisée sur le
+       compte (REF :172-176). */
     var dynGame = !!co.game_id && co.game_id !== "pubg-mobile" && !!g && !!(g.identity_fields && g.identity_fields.length);
-    var payload = { pubg_id: co.pid, pseudo: co.pseudo || co.pid, items: cart.map(function (x) { return { product_id: x.id || x.product_id, quantity: x.qty }; }), payment_method: isBinance ? "binance" : "manual", game_id: co.game_id || "pubg-mobile" };
+    var pubgValue = co.pid;
+    var savedFields = (co.identity && co.identity.fields) || null;
+    var matchesSaved = !!(me && co.identity && co.identity.id && savedFields &&
+      (dynGame ? Object.keys(idf).every(function (k) { return savedFields[k] === idf[k]; }) : savedFields[primaryField(g)] === pubgValue));
+    var payload = { pubg_id: pubgValue, pseudo: co.pseudo || pubgValue, items: cart.map(function (x) { return { product_id: x.id || x.product_id, quantity: x.qty }; }), payment_method: isBinance ? "binance" : "manual", game_id: co.game_id || "pubg-mobile" };
+    if (matchesSaved) payload.identity_id = co.identity.id;
     if (dynGame) payload.identity_fields = idf;
     if (!isBinance) { payload.manual_operator = co.method === "MVola" ? "mvola" : "orange"; }
     if (capTok) payload.captcha_token = capTok;
     var btn = $(".mgs-human-confirm"); if (btn) btn.disabled = true;
     co.busy = true;
     toast(t("checkout.creating"));
-    req("/orders", { method: "POST", body: payload }).then(function (order) { writePendingOrderId(order.id, order.created_at || new Date().toISOString()); co.order = order; co.busy = false; closeHuman(); if (isBinance) initiateBinance(order); else coPay(); }).catch(function (e) {
+    req("/orders", { method: "POST", body: payload }).then(function (order) {
+      writePendingOrderId(order.id, order.created_at || new Date().toISOString());
+      co.order = order; co.busy = false; closeHuman();
+      /* main Checkout.js:186 : le panier est vidé DÈS la commande créée (la
+         suite du tunnel ne vit plus que par la commande elle-même). */
+      cart = []; renderCart(); syncPillsFromCart();
+      if (isBinance) initiateBinance(order); else coPay();
+    }).catch(function (e) {
       if (btn) btn.disabled = false;
       co.busy = false;
       if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.isCaptchaError(e)) { window.MGS_CAPTCHA.reset(); toast(t("captcha.verifyAgain"), "err"); openHuman(true); return; }
-      toast(errMsg(e), "err"); coStatus("is--err", esc(errMsg(e)));
+      var vDetails = validationDetails(e);
+      var m = vDetails ? t(FIELD_TEXT_KEYS[validationField(vDetails)] || "checkout.orderValidationError") : errMsg(e);
+      toast(m, "err"); coStatus("is--err", esc(m));
     });
   }
   function coPay() {
@@ -4092,12 +4246,58 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
   var proofInput = null;
   function ensureProofInput() { if (proofInput) return proofInput; proofInput = doc.createElement("input"); proofInput.type = "file"; proofInput.accept = "image/jpeg,image/png"; proofInput.multiple = true; proofInput.style.display = "none"; body.appendChild(proofInput); proofInput.addEventListener("change", function () { if (proofInput.files && proofInput.files.length) uploadProof(proofInput.files); }); return proofInput; }
+  /* Codes serveur → clé i18n (main ProofPay.js:33-38) : un nom technique de
+     code n'est jamais affiché. */
+  var PROOF_CODE_KEYS = {
+    proof_not_allowed: "checkout.proofNotPending", proof_not_pending: "checkout.proofNotPending",
+    proof_already_validated: "checkout.proofAlreadyValidated", proof_limit: "checkout.proofLimit",
+    proof_count: "checkout.proofCount", proof_format: "checkout.proofBadType", proof_too_large: "checkout.proofTooLarge",
+    proof_conflict: "checkout.proofConflict"
+  };
+  function bodyCode(e) { var d = e && e.data && e.data.detail; return d && typeof d === "object" ? d.code : null; }
+  function proofErrorMessage(e) {
+    var code = bodyCode(e);
+    if (e && e.status === 400 && code === "proof_deadline_passed") return null;
+    if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.isCaptchaError(e)) return t("captcha.verifyAgain");
+    var st = e && e.status;
+    if (code && PROOF_CODE_KEYS[code]) return t(PROOF_CODE_KEYS[code]);
+    if (st === 429) return t("checkout.proofRateLimited");
+    if (st === 503 || st === 502) return t("checkout.proofUnavailable");
+    if (st === 403) return t("checkout.proofDenied");
+    if (st === 404) return t("checkout.proofNotFound");
+    return errMsg(e);
+  }
+  /* 1 à 3 captures au TOTAL, preuves déjà envoyées comprises (main
+     ProofPay.js:76-101) : JPEG/PNG réels (type ou extension), 8 Mo maximum —
+     l'autorité finale reste le serveur. La limite est re-vérifiée côté serveur
+     (routers/orders.py:537-540). */
   function uploadProof(files) {
-    if (!co.order) return; var fd = new FormData(); var n = 0;
-    for (var i = 0; i < files.length && n < 3; i++) { var f = files[i]; if (/image\/(jpeg|png)/.test(f.type) && f.size <= 8 * 1024 * 1024) { fd.append("files", f); n++; } }
-    if (!n) { toast(t("checkout.proofCount"), "err"); return; }
+    if (!co.order) return;
+    var alreadySent = ((co.order.payment_proofs || []).length);
+    var left = 3 - alreadySent; if (left <= 0) { toast(t("checkout.proofTooMany"), "err"); return; }
+    var fd = new FormData(); var n = 0; var msg = "";
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      var typeOk = /image\/(jpeg|png)/.test(f.type) || /\.(jpe?g|png)$/i.test(f.name || "");
+      if (!typeOk) { msg = t("checkout.proofBadType"); continue; }
+      if (f.size > 8 * 1024 * 1024) { msg = t("checkout.proofTooLarge"); continue; }
+      if (n >= left) { msg = t("checkout.proofTooMany"); break; }
+      fd.append("files", f); n++;
+    }
+    if (!n) { toast(msg || t("checkout.proofCount"), "err"); return; }
     toast(t("checkout.proofSubmitting"));
-    req("/orders/" + co.order.id + "/proof", { method: "POST", body: fd }).then(function (r) { if (r && r.id) co.order = r; stopTimer(); coReceipt(); pollOrder(); }).catch(function (e) { toast(errMsg(e), "err"); });
+    var id = co.order.id;
+    req("/orders/" + id + "/proof", { method: "POST", body: fd }).then(function () {
+      /* main ProofPay.js:121-123 : l'état RÉEL est relu après l'envoi. */
+      return req("/orders/" + id).then(function (fresh) { if (fresh) co.order = fresh; },
+        function () { });
+    }).then(function () {
+      stopTimer(); coReceipt(); pollOrder();
+    }).catch(function (e) {
+      var m = proofErrorMessage(e);
+      if (m === null) { req("/orders/" + id).then(function (fresh) { if (fresh) co.order = fresh; }, function () { }); return; }
+      toast(m, "err");
+    });
   }
   function coReceipt() {
     var o = co.order || {}; var set = function (sel, val) { var e = $(sel); if (e) e.textContent = val; };
@@ -4115,7 +4315,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
   function coFinish() {
     if (co.poll) { clearInterval(co.poll); co.poll = null; } if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } stopPaymentPoll(); stopTimer();
-    var num = co.order && (co.order.order_number || co.order.number); cart = []; renderCart(); syncPillsFromCart();
+    var num = co.order && (co.order.order_number || co.order.number);
+    /* main Checkout.js:186 : le panier a déjà été vidé à la création de la
+       commande — on ne le re-vide pas ici (un panier reconstruit entre-temps
+       n'est jamais perdu). */
     loadOrders().then(function () { window.mgsShowPage("commandes"); if (num) { var card = $('.mgs-order[data-order="' + num + '"]'); if (card) card.click(); } });
   }
   /* ---------- annulation : sélecteur de motif (backend/routers/orders.py — raison fermée) ---------- */
@@ -4125,7 +4328,16 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
        (CancelSheet.js : raison seule) : masqué et listé (Z3). */
     var nf = $("#co-cancel-note"); if (nf) { var nfw = nf.closest(".mgs-field"); if (nfw) nfw.hidden = true; }
     var all = $$("input[name='co-cancel-reason']", p); all.forEach(function (r) { r.checked = false; });
-    if (all[0]) all[0].checked = true;
+    /* main CancelSheet.js:39-40,75-83 : chaque ouverture repart d'une feuille
+       vierge (aucune raison résiduelle) et l'annulation reste inerte tant
+       qu'aucune raison n'est choisie. */
+    var cf = $(".mgs-co-cancel-confirm"); if (cf) cf.disabled = true;
+    if (!p.__mgsCancelBound) {
+      p.__mgsCancelBound = true;
+      p.addEventListener("change", function (ev) {
+        if (ev.target && ev.target.name === "co-cancel-reason") { var b = $(".mgs-co-cancel-confirm"); if (b) b.disabled = false; }
+      });
+    }
     if (o) o.hidden = false; p.hidden = false;
   }
   function closeCancel() { var o = $(".mgs-co-cancel-overlay"), p = $(".mgs-co-cancel-popup"); if (o) o.hidden = true; if (p) p.hidden = true; }
@@ -4139,7 +4351,12 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     closeCancel(); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; }
     if (!co.order) { coShow(1); return; }
     req("/orders/" + co.order.id + "/cancel", { method: "POST", body: { reason: reason } })
-      .then(function () { clearPendingOrderId(); toast(t("checkout.cancelDone")); coShow(1); })
+      .then(function () {
+        /* main CancelSheet.js:48-51 + OrderTrack.js:406 : succès = la
+           mémorisation de reprise meurt, message de confirmation, retour à
+           l'accueil. */
+        clearPendingOrderId(); toast(t("checkout.cancelDone")); co.order = null; window.mgsShowPage("accueil");
+      })
       .catch(function (e) {
         var code = (e && e.data && e.data.detail && typeof e.data.detail === "object") ? e.data.detail.code : null;
         toast(e && e.status === 409 ? t(code === "cancel_conflict" ? "checkout.cancelConflict" : "checkout.cancelNotAllowed") : errMsg(e), "err");
@@ -4156,35 +4373,26 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function orderMethodLabel(o) { if (o.payment_method === "binance" || o.payment_method === "crypto") return t("checkout.binanceTitle"); if (o.manual_operator === "orange" || o.payment_method === "orange") return t("checkout.methodOrange"); return t("checkout.methodMvola"); }
   var STATUS_IC = { progress: '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>', done: '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>', cancel: '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>' };
   var COPY_IC = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-  /* Pagination de l'historique (libellés « Précédent / Suivant » : design system, cf. main
-     frontend/src/components/ui/pagination.jsx + i18n common.previous/next). */
-  var ORDER_PAGE_SIZE = 10, orderPage = 1;
-  function orderVisibleCards() {
-    var p = $(".mgs-page[data-page=commandes]"); if (!p) return [];
-    var q = (($(".mgs-cmd-search", p) || {}).value || "").toLowerCase().trim();
-    var tab = $(".mgs-cmd-tab.is--active", p);
-    var f = tab ? tab.dataset.filter : "all";
-    return $$(".mgs-order", p).filter(function (o) {
-      var okf = (f === "all") || (o.dataset.filter === f);
-      var okq = !q || (o.dataset.order + " " + o.dataset.product).toLowerCase().indexOf(q) >= 0;
-      return okf && okq;
-    });
-  }
+  /* main pages/OrderHistory.js:294-318 : la liste entière est affichée, le
+     filtre est LOCAL (onglets + recherche) — REF n'a aucune pagination. Le
+     bloc de pagination du design n'a donc pas d'équivalent : il est masqué
+     (PORTAGE « Éléments masqués ») et toutes les cartes restent visibles. */
+  var orderPage = 1;
   function orderPaginate() {
     var p = $(".mgs-page[data-page=commandes]"); if (!p) return;
-    var cards = orderVisibleCards();
-    var pages = Math.max(1, Math.ceil(cards.length / ORDER_PAGE_SIZE));
-    if (orderPage > pages) orderPage = pages;
-    if (orderPage < 1) orderPage = 1;
-    cards.forEach(function (c, i) { c.style.display = (i >= (orderPage - 1) * ORDER_PAGE_SIZE && i < orderPage * ORDER_PAGE_SIZE) ? "" : "none"; });
-    var box = $(".mgs-cmd-pages", p); if (!box) return;
-    box.hidden = cards.length <= ORDER_PAGE_SIZE;
-    var prev = $('[data-op="prev"]', box), next = $('[data-op="next"]', box), lab = $(".mgs-cmd-pages-n", box);
-    if (prev) { prev.disabled = orderPage <= 1; prev.setAttribute("aria-disabled", orderPage <= 1 ? "true" : "false"); }
-    if (next) { next.disabled = orderPage >= pages; next.setAttribute("aria-disabled", orderPage >= pages ? "true" : "false"); }
-    if (lab) lab.textContent = orderPage + " / " + pages;
+    $$(".mgs-order", p).forEach(function (c) { c.style.display = ""; });
+    var box = $(".mgs-cmd-pages", p); if (box) box.hidden = true;
   }
-  doc.addEventListener("input", function (e) { if (e.target && e.target.classList && e.target.classList.contains("mgs-cmd-search")) { orderPage = 1; orderPaginate(); } });
+  doc.addEventListener("input", function (e) {
+    if (e.target && e.target.classList && e.target.classList.contains("mgs-cmd-search")) { orderPage = 1; orderPaginate(); return; }
+    /* main Checkout.js:80-83 (mémorise le dernier ID) et
+       IdentityFieldsVerify.js:71-76 (un champ modifié invalide la
+       vérification précédente : rien n'est tenu pour définitif). */
+    if (e.target && e.target.classList && e.target.classList.contains("mgs-co-id-input")) {
+      try { localStorage.setItem("mgs_last_player_id", String(e.target.value || "").trim()); } catch (err) { }
+      if (co.verified) { co.verified = false; co.pseudo = ""; co.identity = null; var st = $(".mgs-co-id-status"); if (st) { st.hidden = true; st.textContent = ""; } renderRecent(); }
+    }
+  });
   doc.addEventListener("click", function (e) {
     if (e.target.closest && e.target.closest(".mgs-cmd-tab")) { orderPage = 1; orderPaginate(); return; }
     var pg = e.target.closest && e.target.closest("[data-op]");
@@ -4207,6 +4415,29 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (!me) { renderOrders([]); return Promise.resolve([]); }
     return req("/orders/me").then(function (orders) { orders = Array.isArray(orders) ? orders : (orders && orders.orders) || []; orders.sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); }); renderOrders(orders); return orders; }).catch(function (e) { toast(errMsg(e), "err"); return []; });
   }
+  /* Détail d'une commande : main OrderDetail relit GET /orders/{id} à
+     l'ouverture (pages/OrderHistory.js:425-429). Le gabarit du design remplit
+     le détail depuis la carte ; ce runtime n'y ajoute que ce que REF y met
+     réellement : le nombre de preuves, la ligne masquée à zéro
+     (OrderHistory.js:618-622) et le bouton de reçu, réservé à une commande
+     payée au moins une fois (:469,691). */
+  function refreshOrderDetail(card) {
+    var id = card && card.dataset && card.dataset.id; if (!id) return;
+    req("/orders/" + encodeURIComponent(id)).then(function (o) {
+      var d = $(".mgs-page[data-page=commandes] .mgs-cmd-detail"); if (!o || !d) return;
+      var proofs = (o.payment_proofs || []).length;
+      $$(".mgs-kv", d).forEach(function (kv) {
+        var spans = $$("span", kv); if (!spans[0] || !/Preuves/i.test(spans[0].textContent || "")) return;
+        if (!proofs) { kv.style.display = "none"; return; }
+        kv.style.display = ""; if (spans[1]) spans[1].textContent = t("order.detail.extra.proofCount", { n: proofs });
+      });
+      var rb = $(".mgs-receipt-btn", d); if (rb) rb.style.display = o.paid_at ? "" : "none";
+    }).catch(function () { /* détail déjà rempli par la liste */ });
+  }
+  doc.addEventListener("click", function (e) {
+    var o = e.target && e.target.closest ? e.target.closest(".mgs-order") : null;
+    if (o) refreshOrderDetail(o);
+  });
 
   /* ---------- compte ---------- */
   var loyaltyOk = false;
@@ -4242,11 +4473,24 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (head) { var nm = $("div p", head); if (nm) nm.textContent = name; var sub = $(".mgs-muted", head); if (sub) sub.textContent = (me.email || "") + (me.created_at ? " · membre depuis " + fmtDate(me.created_at).date : ""); }
     var an = $("#acc-name"); if (an) an.value = me.name || ""; var ap = $("#acc-phone"); if (ap) ap.value = me.phone || ""; var ai = $("#acc-ids"); if (ai) ai.value = (me.saved_pubg_ids || []).join(", ");
     req("/loyalty/me").then(function (l) { var bal = (l && l.balance) || {}; var pts = bal.total != null ? bal.total : (bal.available != null ? bal.available : (typeof bal === "number" ? bal : 0)); var sn = $(".mgs-page[data-page=compte] .mgs-stat__n"); if (sn) sn.textContent = String(pts); updatePointsPill(pts); }).catch(function (e) { var sn = $(".mgs-page[data-page=compte] .mgs-stat__n"); if (sn) sn.textContent = "—"; signale(e); });
-    req("/orders/me").then(function (o) { o = Array.isArray(o) ? o : (o && o.orders) || []; var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = String(o.length); if (stats[2]) stats[2].textContent = String((me.saved_pubg_ids || []).length); }).catch(function (e) { var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = "—"; signale(e); });
+    req("/orders/me").then(function (o) { o = Array.isArray(o) ? o : (o && o.orders) || []; var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = String(o.length); /* main Account.js: n'a AUCUN compteur de jeux liés — la 3e case du design est masquée (PORTAGE). */ if (stats[2] && stats[2].closest(".mgs-stat")) stats[2].closest(".mgs-stat").style.display = "none"; }).catch(function (e) { var stats = $$(".mgs-page[data-page=compte] .mgs-stat__n"); if (stats[1]) stats[1].textContent = "—"; signale(e); });
   }
-  function saveProfile() { var name = ($("#acc-name") || {}).value || ""; var phone = ($("#acc-phone") || {}).value || ""; var ids = (($("#acc-ids") || {}).value || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean); req("/auth/me", { method: "PATCH", body: { name: name, phone: phone, saved_pubg_ids: ids } }).then(function (u) { me = u || me; toast(t("account.saved")); renderAccount(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+  function saveProfile() { var name = ($("#acc-name") || {}).value || ""; var phone = ($("#acc-phone") || {}).value || ""; /* main Account.js:130 : virgules OU espaces séparent les ID. */ var ids = (($("#acc-ids") || {}).value || "").split(/[,\s]+/).filter(Boolean); req("/auth/me", { method: "PATCH", body: { name: name, phone: phone, saved_pubg_ids: ids } }).then(function (u) { me = u || me; toast(t("account.saved")); renderAccount(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
   function changePassword() { var cur = ($("#pw-cur") || {}).value || ""; var next = ($("#pw-next") || {}).value || ""; if (!cur || !next) { toast(t("common.error"), "err"); return; } req("/auth/change-password", { method: "POST", body: { current_password: cur, new_password: next } }).then(function () { toast(t("account.passwordChanged")); $("#pw-cur").value = ""; $("#pw-next").value = ""; }).catch(function (e) { toast(errMsg(e), "err"); }); }
-  function deleteAccount() { if (!window.confirm(t("account.deleteConfirm"))) return; var conf = window.prompt(t("account.deleteType")); if (conf == null || conf.trim().toUpperCase() !== "SUPPRIMER") return; req("/auth/me/delete", { method: "POST", body: { confirmation: "SUPPRIMER" } }).then(function () { me = null; toast(t("account.deleted")); window.mgsShowPage("connexion"); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+  /* main Account.js:145-151 : la confirmation tapée telle quelle + le mot de
+     passe (exigé par le backend quand le compte en a un, routers/auth.py:442-444).
+     Le design n'a pas de champ dédié à la suppression : la saisie passe par les
+     deux boîtes du navigateur et le mot de passe par le champ « Mot de passe
+     actuel » du panneau Sécurité s'il est rempli. */
+  function deleteAccount() {
+    if (!window.confirm(t("account.deleteConfirm"))) return;
+    var conf = window.prompt(t("account.deleteType"));
+    if (conf == null || conf.trim().toUpperCase() !== "SUPPRIMER") return;
+    var pw = (($("#pw-cur") || {}).value || "") || window.prompt(t("auth.password")) || "";
+    var body = { confirmation: conf.trim() };
+    if (pw) body.password = pw;
+    req("/auth/me/delete", { method: "POST", body: body }).then(function () { me = null; toast(t("account.deleted")); window.mgsShowPage("connexion"); }).catch(function (e) { toast(errMsg(e), "err"); });
+  }
   function logout() { req("/auth/logout", { method: "POST" }).catch(function () { }).then(function () { me = null; syncAuthChrome(); toast(t("nav.logout")); renderCart(); window.mgsShowPage("accueil"); }); }
 
   /* ---------- connexion / inscription ---------- */
@@ -4322,14 +4566,19 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       window.mgsShowPage(to);
     }).catch(function (e) {
       authBusy = false;
-      if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.isCaptchaError(e)) {
+      /* main AuthPage.js:57-61 : jeton à usage unique — sur un échec, le
+         contrôle est rendu au client (widget neuf) dès lors qu'il était
+         affiché ; un `captcha_required` force en plus l'affichage visible. */
+      var cap = window.MGS_CAPTCHA;
+      if (cap && cap.isCaptchaError(e)) {
         authCaptchaRequired = true;
-        window.MGS_CAPTCHA.reset();
+        cap.reset();
         renderAuthCaptcha();
         toast(t("captcha.required"), "err");
         return;
       }
       if (authMode === "login") { authLoginFailed = true; syncAuthCaptcha(); }
+      if (cap && cap.enabled() && authCaptchaWant) { cap.reset(); renderAuthCaptcha(); }
       toast(authErr(e), "err");
     });
   }
@@ -4427,21 +4676,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- événements ---------- */
   var eventTpl = null;
-  var HEART_IC = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
-  var SHARE_IC = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>';
-  function sessionId() { try { var v = localStorage.getItem("mgs_session"); if (v) return v; v = "s-" + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem("mgs_session", v); return v; } catch (e) { return "s-anonyme"; } }
-  function eventLike(id, btn) {
-    req("/events/" + id + "/like", { method: "POST", body: { session_id: sessionId() } }).then(function (r) {
-      var n = $(".mgs-card__like-n", btn); if (n) n.textContent = String(r.likes != null ? r.likes : 0);
-      btn.setAttribute("aria-pressed", r.liked ? "true" : "false");
-    }).catch(function (e) { signale(e); });
-  }
-  function eventShare(id, btn) {
-    var url = location.origin + location.pathname + "#evenements";
-    var compte = function () { req("/events/" + id + "/share", { method: "POST", body: { session_id: sessionId() } }).then(function (r) { var n = $(".mgs-card__share-n", btn); if (n) n.textContent = String(r.shares != null ? r.shares : 0); }).catch(function (e) { signale(e); }); };
-    if (navigator.share) navigator.share({ title: document.title, url: url }).then(compte, function () { });
-    else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { toast(t("events.shared")); compte(); }, function () { });
-  }
+  function sessionId() { try { var v = localStorage.getItem("mgs_session"); if (v) return v; v = "s_" + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem("mgs_session", v); return v; } catch (e) { return "s_anonyme"; } }
   function renderEvents() {
     var grid = $(".mgs-page[data-page=evenements] .mgs-grid"); if (!grid) return;
     if (!eventTpl) eventTpl = $(".mgs-card", grid);
@@ -4456,42 +4691,64 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         var nm = $(".mgs-card__name", card); if (nm) nm.textContent = title; var de = $(".mgs-card__desc", card); if (de) de.textContent = desc;
         var media = $(".mgs-card__media", card); if (media) { media.className = "mgs-card__media u--bg--" + themes[i % themes.length]; if (ev.image_url) media.innerHTML = '<img src="' + esc(ev.image_url) + '" alt="' + esc(title) + '" style="width:100%;height:100%;object-fit:cover">'; }
         var chip = $(".mgs-chip", card); if (chip) chip.textContent = ev.starts_at ? fmtDate(ev.starts_at).date : (ev.slug || "");
-        /* j'aime / partage — comme main (frontend/src/pages/Events.js) : .mgs-chip + endpoints /events/{id}/like|share */
-        var foot = $(".mgs-card__foot", card);
-        if (foot) {
-          var like = doc.createElement("button"); like.type = "button"; like.className = "mgs-chip mgs-card__like"; like.dataset.ev = ev.id; like.setAttribute("aria-pressed", "false");
-          like.setAttribute("aria-label", LANG === "en" ? "Like" : "J’aime");
-          like.innerHTML = HEART_IC + '<span class="mgs-card__like-n">' + (ev.likes != null ? ev.likes : 0) + "</span>";
-          var shr = doc.createElement("button"); shr.type = "button"; shr.className = "mgs-chip mgs-card__share"; shr.dataset.ev = ev.id;
-          shr.setAttribute("aria-label", LANG === "en" ? "Share" : "Partager");
-          shr.innerHTML = SHARE_IC + '<span class="mgs-card__share-n">' + (ev.shares != null ? ev.shares : 0) + "</span>";
-          foot.appendChild(like); foot.appendChild(shr);
-        }
+        /* REF pages/Events.js:49-52 rend « j'aime » et « partager » SOUS la
+           carte ; le design v3 n'a aucun contrôle de ce type (ni .mgs-card__like
+           ni .mgs-card__share dans sa feuille de style) : ces deux fonctions ne
+           sont PAS portées ici (PORTAGE « Éléments visibles manquants »). */
         return card.outerHTML;
       }).join("");
     }).catch(function (e) { showEmpty(); signale(e); });
   }
 
-  /* ---------- support / chat ---------- */
+  /* ---------- support / chat ----------
+     REF : `/support` EST la page Chat (pages/Support.js réexporte Chat.js) ;
+     hors conversation, REF ne propose NI WhatsApp NI e-mail NI sujet — ces
+     éléments du design sont donc masqués (voir PORTAGE « Éléments masqués »). */
   var chatCid = null;
-  function supportSend() {
-    var subj = $("#sj"); var msg = $("#ms"); var text = (msg && msg.value || "").trim();
-    if (!text) { toast(t("support.needMsg"), "err"); return; }
-    if (!me) { toast(t("support.login"), "err"); window.mgsShowPage("connexion"); return; }
-    var full = (subj && subj.value ? subj.value.trim() + "\n" : "") + text;
-    var p = chatCid ? Promise.resolve(chatCid) : req("/chat/conversations", { method: "POST", body: {} }).then(function (c) { chatCid = c.id || (c.conversation && c.conversation.id); return chatCid; });
-    p.then(function (cid) { return req("/chat/conversations/" + cid + "/messages", { method: "POST", body: { text: full } }); }).then(function () { toast(t("chat.sent")); if (msg) msg.value = ""; if (subj) subj.value = ""; }).catch(function (e) { toast(errMsg(e), "err"); });
+  function maskUnsupported() {
+    /* Pied de page : le formulaire d'abonnement du design (« formulaire de
+       démonstration ») n'a AUCUN équivalent dans REF (son pied de page n'a que
+       des liens) : il est masqué plutôt que laissé inerte (PORTAGE). */
+    $$(".footer .form-block").forEach(function (f) { f.style.display = "none"; });
+    var page = $(".mgs-page[data-page=support]"); if (!page) return;
+    var cards = $$(".mgs-grid", page)[0];
+    if (cards) $$(":scope > *", cards).forEach(function (c) {
+      var txt = c.textContent || "";
+      if (/WhatsApp|Email/i.test(txt)) c.style.display = "none";
+    });
+    var sj = $("#sj"); if (sj) { var sf = sj.closest(".mgs-field"); if (sf) sf.style.display = "none"; }
+    var grids = $$(".mgs-grid--2", page);
+    if (grids[0]) $$(":scope > *", grids[0]).forEach(function (col) {
+      if (/Questions fr[ée]quentes/i.test(col.textContent || "")) col.style.display = "none";
+    });
   }
-  function openChat() { if (!me) { toast(t("support.login"), "err"); window.mgsShowPage("connexion"); return; } req("/chat/conversations", { method: "POST", body: {} }).then(function (c) { chatCid = c.id || (c.conversation && c.conversation.id); toast(t("support.chatOpen")); var msg = $("#ms"); if (msg) msg.focus(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
+  function supportSend() {
+    var msg = $("#ms"); var text = (msg && msg.value || "").trim();
+    /* main ChatThread : composer vide = rien à envoyer (aucun message). */
+    if (!text) return;
+    /* main Chat.js:16-20 : la conversation exige un compte (invité → connexion). */
+    if (!me) { needLogin("support"); return; }
+    var p = chatCid ? Promise.resolve(chatCid) : req("/chat/conversations", { method: "POST" }).then(function (c) { chatCid = c.id || (c.conversation && c.conversation.id); return chatCid; });
+    p.then(function (cid) { return req("/chat/conversations/" + cid + "/messages", { method: "POST", body: { text: text } }); }).then(function () { toast(t("chat.sent")); if (msg) msg.value = ""; }).catch(function (e) { toast(errMsg(e), "err"); });
+  }
+  function openChat() {
+    if (!me) { needLogin("support"); return; }
+    req("/chat/conversations", { method: "POST" }).then(function (c) { chatCid = c.id || (c.conversation && c.conversation.id); var msg = $("#ms"); if (msg) msg.focus(); }).catch(function (e) { toast(errMsg(e), "err"); });
+  }
 
   /* ---------- routage : observe body[data-page] (découplé du script template) ---------- */
   var loaders = {
+    /* main App.js:82 : /admin est protégé (`ProtectedRoute admin`). Le design
+       n'a qu'un écran admin de démonstration, aucun de ses 14 écrans n'est
+       porté (PORTAGE Z6) : un visiteur non administrateur ne le voit pas. */
+    admin: function () { if (!me || (me.role !== "admin" && me.role !== "super_admin")) { needLogin("admin"); return; } },
     boutique: function () { loadGames().then(renderGames); },
     commandes: function () { loadOrders(); },
     compte: function () { renderAccount(); },
     points: function () { renderPoints(); },
     evenements: function () { renderEvents(); },
     pack: function () { req("/evo/season").catch(function (e) { var st = $(".mgs-page[data-page=pack] .mgs-status"); if (st) { st.className = "mgs-status mgs-status--cancel"; st.textContent = errMsg(e); } }); },
+    support: function () { maskUnsupported(); },
     connexion: function () { if (me) { var to = authReturnTo || "accueil"; authReturnTo = null; window.mgsShowPage(to); return; } setAuthMode(authMode); },
     mdp: function () { var st = $("#mdp-status"); if (st) { st.className = "mgs-status"; st.textContent = ""; } renderForgotCaptcha(); },
     reset: function () { var st = $("#reset-status"); if (st) { st.className = "mgs-status"; st.textContent = resetTokenFromUrl() ? "" : t("auth.errorInvalidLink"); } },
@@ -4557,7 +4814,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* fiche produit */
     if (el.closest(".mgs-page[data-page=produit]")) { var ptxt = (el.closest(".button-main") || {}).textContent || ""; if (/Ajouter au panier|Add to cart/i.test(ptxt)) { stop(e); var pi = produitItem(); if (pi) addToCart(pi); return; } if (/Acheter|Buy/i.test(ptxt)) { stop(e); var pi2 = produitItem(); if (pi2) addToCart(pi2); coOpen(); return; } }
     /* checkout */
-    var rc = el.closest(".mgs-co-recent-chip"); if (rc) { stop(e); var ri = $(".mgs-co-id-input"); if (ri) ri.value = rc.dataset.id; verifyId(); return; }
+    var rc = el.closest(".mgs-co-recent-chip"); if (rc) { stop(e); var ri = $(".mgs-co-id-input"); if (ri) ri.value = rc.dataset.id; /* main IdentityFieldsVerify.js:185-188 : remplit le champ, ne vérifie PAS */ return; }
     if (el.closest(".mgs-co-verify")) { stop(e); verifyId(); return; }
     var m = el.closest(".mgs-co-method"); if (m) { stop(e); $$(".mgs-co-method").forEach(function (x) { x.classList.remove("is--active"); }); m.classList.add("is--active"); var r = $("input", m); if (r) r.checked = true; co.method = r ? r.value : ""; if (co.method === "Binance") co.network = (cryptoCfg && cryptoCfg.networks && cryptoCfg.networks[0] && cryptoCfg.networks[0].key) || ""; return; }
     if (el.closest(".mgs-co-submit")) { stop(e); if (!co.verified) { coStatus("is--err", esc(t("checkout.verifyRequired"))); return; } if (!co.method) { toast(t("checkout.selectMethod"), "err"); return; } if (co.method === "Binance" && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.papiOff"), "err"); return; } openHuman(); return; }
@@ -4575,15 +4832,13 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* connexion */
     if (el.closest(".mgs-mdp-send")) { stop(e); forgotPassword(); return; }
     if (el.closest(".mgs-reset-send")) { stop(e); resetPassword(); return; }
-    var lk = el.closest(".mgs-card__like"); if (lk) { stop(e); eventLike(lk.dataset.ev, lk); return; }
-    var sh = el.closest(".mgs-card__share"); if (sh) { stop(e); eventShare(sh.dataset.ev, sh); return; }
     if (el.closest(".mgs-page[data-page=connexion]")) { if (/Google/i.test((el.closest(".button-main") || {}).textContent || "")) { stop(e); googleLogin(); return; } var cb = el.closest('a[data-nav="compte"]'); if (cb) { stop(e); doAuth(); return; } var tab = el.closest(".mgs-tab"); if (tab) { stop(e); var idx = $$(".mgs-page[data-page=connexion] .mgs-tab").indexOf(tab); setAuthMode(idx === 0 ? "login" : "register"); return; } }
     /* points */
     var rd = el.closest(".mgs-redeem"); if (rd) { stop(e); redeem(rd.dataset.reward); return; }
     /* pack */
     if (el.closest(".mgs-page[data-page=pack]") && /Vérifier|Verify/i.test((el.closest(".button-main") || {}).textContent || "")) { stop(e); packVerify(); return; }
     /* support */
-    if (el.closest(".mgs-page[data-page=support]")) { var panel = el.closest(".mgs-panel"); if (panel && /Chat en direct|Live chat/i.test(panel.textContent || "")) { stop(e); openChat(); return; } if (panel && /WhatsApp/i.test(panel.textContent || "")) { stop(e); toast(t("support.waPending")); return; } if (panel && /Email/i.test(panel.textContent || "")) { stop(e); window.location.href = "mailto:support@magicgame.store"; return; } if (/Envoyer|Send/i.test((el.closest(".button-main") || {}).textContent || "")) { stop(e); supportSend(); return; } }
+    if (el.closest(".mgs-page[data-page=support]")) { var panel = el.closest(".mgs-panel"); if (panel && /Chat en direct|Live chat/i.test(panel.textContent || "")) { stop(e); openChat(); return; } if (/Envoyer|Send/i.test((el.closest(".button-main") || {}).textContent || "")) { stop(e); supportSend(); return; } }
     /* langue (toggle compte) — stoppe le flip démo du script template */
     var tg = el.closest(".mgs-tag-toggle"); if (tg && /^(FR|EN)$/.test(tg.textContent.trim())) { stop(e); setLang(LANG === "fr" ? "en" : "fr"); tg.textContent = LANG.toUpperCase(); return; }
   }, true);
@@ -4594,7 +4849,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- boot ---------- */
   function boot() {
-    renderCart(); renderRecent(); loadPayCfg(); syncFavs();
+    renderCart(); renderRecent(); loadPayCfg(); syncFavs(); maskUnsupported();
     /* main : « Se souvenir » est coché par défaut (AuthPage.js:25) */
     var rem = $('.mgs-page[data-page=connexion] input[type="checkbox"]'); if (rem) rem.checked = true;
     handleGoogleError();
