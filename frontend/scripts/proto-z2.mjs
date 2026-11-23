@@ -90,6 +90,10 @@ function apiHandler(page, state) {
       if (sp.get("popular")) list = list.filter((x) => x.popular);
       if (sp.get("min_price")) list = list.filter((x) => x.price >= Number(sp.get("min_price")));
       if (sp.get("max_price")) list = list.filter((x) => x.price <= Number(sp.get("max_price")));
+      // PL-FE-019 : le client n'envoie plus `favorites` — ce paramètre n'existe pas au
+      // contrat déployé (`GET /products` : type, q, min_price, max_price, popular, sort,
+      // include_inactive, game) et le filtre est purement local (pages/Catalog.js:155-157).
+      // Branche conservée pour mémoire : elle ne peut plus être déclenchée.
       if (sp.get("favorites")) { const favs = state.favorites || []; list = list.filter((x) => favs.includes(x.id)); }
       if (sp.get("sort") === "price_asc") list.sort((a, b) => a.price - b.price);
       if (sp.get("sort") === "price_desc") list.sort((a, b) => b.price - a.price);
@@ -232,8 +236,11 @@ test("Z2 favoris : bascule + filtre catalogue", async (page, state) => {
   await page.waitForFunction(() => document.querySelectorAll('.mgs-boutique-catalog .mgs-pcard[data-pid]').length === 1, null, { timeout: 10000 });
   const ids = await page.$$eval('.mgs-boutique-catalog .mgs-pcard', (els) => els.map((e) => e.dataset.pid));
   assert.deepEqual(ids, ["p1"], "filtre favoris : " + JSON.stringify(ids));
+  // PL-FE-019 : `favorites` n'est PLUS envoyé — paramètre absent du contrat déployé
+  // (un paramètre inconnu y est ignoré : 200), filtre purement local
+  // (pages/Catalog.js:155-157). REF l'envoyait pour rien (`Catalog.js:118`).
   const req = state.urls.filter((u) => u.startsWith("GET /products?")).pop();
-  assert.ok(/favorites=1/.test(req), "param favorites : " + req);
+  assert.ok(req && !/favorites=/.test(req), "aucun param favorites dans la requête : " + req);
 });
 
 test("Z2 invité / connecté : pastille points", async (page, state) => {

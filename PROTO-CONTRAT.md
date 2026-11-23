@@ -161,12 +161,22 @@ Codes : `"ok"`, `"network_error"`, `"http_<status>"`, `"bad_payload"`.
 `payment` est normalisé (voir ci-dessous) ou `null`. `detail` est le texte brut
 du backend (donnée, pas une chaîne du module).
 
-Codes : `"ok"` ; `"invalid_network"` (réseau hors
-`TRC20|BEP20|APTOS|TON`, aucun appel réseau) ; `"network_error"` ; `"not_binance"`
-(400) ; `"network_unavailable"` (400) ; `"bad_request"` (400) ;
+Codes : `"ok"` ; `"network_error"` ; `"not_binance"` (400) ;
+`"network_unavailable"` (400 et 422) ; `"bad_request"` (400) ;
 `"forbidden"` (403) ; `"order_not_found"` (404) ; `"already_open"` (409) ;
 `"not_pending"` (409) ; `"unavailable"` (409) ; `"conflict"` (409) ;
 `"rate_limited"` (429) ; `"too_many"` (503) ; `"http_<status>"`.
+
+Deux mises à jour (PL-FE-019) :
+
+- le code `"invalid_network"` (réseau hors énumération, **sans** appel réseau)
+  n'existe plus : la validation locale du réseau (liste `NETWORKS` codée en dur,
+  `9358ae0`) a été retirée par `c157044` ; c'est le backend qui statue ;
+- un réseau refusé arrive donc **400** (« Réseau USDT non disponible. »,
+  `backend/services/crypto.py:78`, levé depuis `routers/crypto.py:120`), **ou 422**
+  (`network: str = Field(pattern=r"^(TRC20|BEP20|APTOS|TON)$")`,
+  `backend/routers/crypto.py:16`) — les deux ramènent au même code
+  `"network_unavailable"` (`frontend/public/mgs-logic-crypto.js:189-194`).
 
 **Prérequis** : la commande doit avoir été créée avec
 `payment_method: "binance"` (`Checkout.js:140`) et rester `pending_payment`.
