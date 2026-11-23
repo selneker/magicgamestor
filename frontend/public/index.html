@@ -2530,9 +2530,9 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
     <div class="mgs-panel" style="background:var(--color--light)">
       <div class="mgs-tabs" style="margin-bottom:1.25em"><button class="mgs-tab is--active" type="button" style="flex:1">Connexion</button><button class="mgs-tab" type="button" style="flex:1">Inscription</button></div>
       <a href="#" style="width:100%;margin-bottom:1em" class="button-main w-inline-block " data-button-theme="light" data-button-accent=""><span style="width:100%;margin-bottom:1em" class="button-main-inner full-h"><span style="width:100%;margin-bottom:1em" class="button-main-inner__back" data-text="Continuer avec Google"></span><span style="width:100%;margin-bottom:1em" class="button-main-inner__front"><span style="width:100%;margin-bottom:1em" class="button-main-inner__bg"></span><span style="width:100%;margin-bottom:1em" class="button-main-inner__text"><span>Continuer avec Google</span></span></span></span></a>
-      <div class="mgs-field"><label for="em">Email</label><input id="em" type="email" class="mgs-input" placeholder="vous@example.mg"></div>
-      <div class="mgs-field"><label for="pw">Mot de passe</label><input id="pw" type="password" class="mgs-input" placeholder="••••••••"></div>
-      <div class="mgs-between" style="margin:.25em 0 1em;font-size:.85em"><label class="mgs-row" style="gap:.4em"><input type="checkbox"> Se souvenir</label><a href="#mdp" data-nav="mdp" class="mgs-muted" style="text-decoration:underline">Mot de passe oublié ?</a></div>
+      <form id="mgs-auth-form" method="post" action="#connexion" novalidate><div class="mgs-field"><label for="em">Email</label><input id="em" name="email" type="email" autocomplete="username" class="mgs-input" placeholder="vous@example.mg"></div>
+      <div class="mgs-field"><label for="pw">Mot de passe</label><input id="pw" name="password" type="password" autocomplete="current-password" class="mgs-input" placeholder="••••••••"></div>
+      <div class="mgs-between" style="margin:.25em 0 1em;font-size:.85em"><label class="mgs-row" style="gap:.4em"><input type="checkbox" name="remember"> Se souvenir</label><a href="#mdp" data-nav="mdp" class="mgs-muted" style="text-decoration:underline">Mot de passe oublié ?</a></div><button type="submit" hidden aria-hidden="true" tabindex="-1"></button></form>
       <a href="#" data-nav="compte" style="width:100%" class="button-main w-inline-block " data-button-theme="dark" data-button-accent="yellow"><span style="width:100%" class="button-main-inner full-h"><span style="width:100%" class="button-main-inner__back" data-text="Se connecter"></span><span style="width:100%" class="button-main-inner__front"><span style="width:100%" class="button-main-inner__bg"></span><span style="width:100%" class="button-main-inner__text"><span>Se connecter</span></span></span></span></a>
     </div>
   </div>
@@ -2546,7 +2546,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
       <p class="eyebrow">Magic Game Store</p><h1 class="mgs-title" style="font-size:2.2em">Mot de passe oublié</h1>
       <p class="mgs-sub" style="font-size:1em">Recevez un lien de réinitialisation par e-mail.</p></div>
     <div class="mgs-panel" style="background:var(--color--light)">
-      <div class="mgs-field"><label for="fpe">Email</label><input id="fpe" type="email" class="mgs-input" placeholder="vous@example.mg"></div>
+      <form id="mgs-mdp-form" method="post" action="#mdp" novalidate><div class="mgs-field"><label for="fpe">Email</label><input id="fpe" name="email" type="email" autocomplete="username" class="mgs-input" placeholder="vous@example.mg"></div><button type="submit" hidden aria-hidden="true" tabindex="-1"></button></form>
       <a href="#mdp" class="mgs-mdp-send button-main w-inline-block" style="width:100%" data-button-theme="dark" data-button-accent="yellow"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Envoyer le lien"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Envoyer le lien</span></span></span></span></a>
       <p class="mgs-muted" style="margin:1em 0 0;text-align:center"><a href="#connexion" data-nav="connexion" style="text-decoration:underline">Retour à la connexion</a></p>
       <p class="mgs-status" id="mdp-status" style="margin-top:1em" role="status"></p>
@@ -2562,14 +2562,28 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
       <p class="eyebrow">Magic Game Store</p><h1 class="mgs-title" style="font-size:2.2em">Nouveau mot de passe</h1>
       <p class="mgs-sub" style="font-size:1em">Choisissez un nouveau mot de passe (8 caractères minimum).</p></div>
     <div class="mgs-panel" style="background:var(--color--light)">
-      <div class="mgs-field"><label for="rp-pass">Nouveau mot de passe</label><input id="rp-pass" type="password" class="mgs-input" placeholder="••••••••"></div>
-      <div class="mgs-field"><label for="rp-confirm">Confirmer le mot de passe</label><input id="rp-confirm" type="password" class="mgs-input" placeholder="••••••••"></div>
+      <form id="mgs-reset-form" method="post" action="#reset" novalidate><div class="mgs-field"><label for="rp-pass">Nouveau mot de passe</label><input id="rp-pass" name="new_password" type="password" autocomplete="new-password" class="mgs-input" placeholder="••••••••"></div>
+      <div class="mgs-field"><label for="rp-confirm">Confirmer le mot de passe</label><input id="rp-confirm" name="confirm_password" type="password" autocomplete="new-password" class="mgs-input" placeholder="••••••••"></div><button type="submit" hidden aria-hidden="true" tabindex="-1"></button></form>
       <a href="#reset" class="mgs-reset-send button-main w-inline-block" style="width:100%" data-button-theme="dark" data-button-accent="yellow"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Réinitialiser"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Réinitialiser</span></span></span></span></a>
       <p class="mgs-muted" style="margin:1em 0 0;text-align:center"><a href="#connexion" data-nav="connexion" style="text-decoration:underline">Retour à la connexion</a></p>
       <p class="mgs-status" id="reset-status" style="margin-top:1em" role="status"></p>
     </div>
   </div>
 </div>
+</div>
+
+<div class="mgs-page" data-page="terms">
+<section class="section"><div class="container"><div class="mgs-shell">
+  <div class="mgs-head"><p class="eyebrow">Magic Game Store</p><h1 class="mgs-title"></h1><p class="mgs-sub"></p></div>
+  <div class="mgs-panel" data-legal="terms"></div>
+</div></div></section>
+</div>
+
+<div class="mgs-page" data-page="privacy">
+<section class="section"><div class="container"><div class="mgs-shell">
+  <div class="mgs-head"><p class="eyebrow">Magic Game Store</p><h1 class="mgs-title"></h1><p class="mgs-sub"></p></div>
+  <div class="mgs-panel" data-legal="privacy"></div>
+</div></div></section>
 </div>
 
 <div class="mgs-page" data-page="pack">
@@ -2611,6 +2625,8 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
       <label class="mgs-co-method"><input type="radio" name="comethod" value="Orange Money"><span class="mgs-co-logo mgs-co-logo--dark"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNjAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAyNjAgNDAiPgogICAgPGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj4KICAgICAgICA8cGF0aCBmaWxsPSIjRkZGIiBkPSJNMzEuMDIgNC4wODZIOC4zODNhNC41OTYgNC41OTYgMCAwIDAgMCA5LjE5aDExLjU0MUwxLjM0NiAzMS44NTdhNC41OTUgNC41OTUgMCAxIDAgNi41IDYuNWwxOC41NzgtMTguNTh2MTEuNTQyYTQuNTk2IDQuNTk2IDAgMSAwIDkuMTkyIDBWOC42ODJhNC41OTYgNC41OTYgMCAwIDAtNC41OTYtNC41OTYiLz4KICAgICAgICA8cGF0aCBmaWxsPSIjRkY3OTAwIiBkPSJNNDQuODA4IDM1LjkxNGgyMi42MzZhNC41OTYgNC41OTYgMCAxIDAgMC05LjE5aC0xMS41NGwxOC41NzgtMTguNThhNC41OTUgNC41OTUgMCAxIDAtNi41LTYuNWwtMTguNTc4IDE4LjU4VjguNjgxYTQuNTk2IDQuNTk2IDAgMSAwLTkuMTkyIDB2MjIuNjM2YTQuNTk2IDQuNTk2IDAgMCAwIDQuNTk2IDQuNTk2Ii8+CiAgICAgICAgPHBhdGggZmlsbD0iI0ZGRiIgZD0iTTk0LjI2NSAyNi4zNzRjMy43MTMgMCA1LjEwOS0zLjE2IDUuMTA5LTYuMjk0IDAtMy4yOTItMS4zOTYtNi40NTMtNS4xMS02LjQ1My0zLjcxMyAwLTUuMTEgMy4xNjEtNS4xMSA2LjQ1MyAwIDMuMTM0IDEuMzk3IDYuMjk0IDUuMTEgNi4yOTRtMC0xNi4yMjRjNS44MiAwIDkuMjQ1IDQuMzQ2IDkuMjQ1IDkuOTMgMCA1LjQyNS0zLjQyNCA5Ljc3MS05LjI0NCA5Ljc3MS01LjgyMSAwLTkuMjQ1LTQuMzQ2LTkuMjQ1LTkuNzcxIDAtNS41ODQgMy40MjQtOS45MyA5LjI0NS05LjkzTTEwNS4yNjUgMTUuNzg3aDMuNTU2djIuNTI4aC4wNTJjLjY4NS0xLjcxMiAyLjUzLTIuODk3IDQuMzQ2LTIuODk3YTIuOCAyLjggMCAwIDEgLjgxNy4xMzJ2My40NzZhNi44MzYgNi44MzYgMCAwIDAtMS4zNDQtLjEzMmMtMi43MzkgMC0zLjY4NyAxLjk3Ni0zLjY4NyA0LjM3MnY2LjEzN2gtMy43NFYxNS43ODd6TTEyMy4zMyAyMi43NGMtLjYzMi41NTMtMS45NS41OC0zLjEwOC43OS0xLjE2LjIzNi0yLjIxMi42MzItMi4yMTIgMi4wMDEgMCAxLjM5NiAxLjA4IDEuNzM4IDIuMjkgMS43MzggMi45MjUgMCAzLjAzLTIuMzE3IDMuMDMtMy4xMzNWMjIuNzR6bS04LjY0LTIuNzY2Yy4yMTItMy41MDMgMy4zNDYtNC41NTYgNi40LTQuNTU2IDIuNzE0IDAgNS45OC42MDUgNS45OCAzLjg3MnY3LjA4NGMwIDEuMjM4LjEzMiAyLjQ3NS40NzQgMy4wM2gtMy43OTNhNS42MzUgNS42MzUgMCAwIDEtLjI2My0xLjMxOGMtMS4xODUgMS4yMzgtMi45MjMgMS42ODUtNC41ODMgMS42ODUtMi41ODEgMC00LjYzNS0xLjI5LTQuNjM1LTQuMDgyIDAtMy4wOCAyLjMxOC0zLjgxOCA0LjYzNS00LjEzNSAyLjI5Mi0uMzQyIDQuNDI1LS4yNjMgNC40MjUtMS43OSAwLTEuNjA3LTEuMTA2LTEuODQ0LTIuNDIzLTEuODQ0LTEuNDIyIDAtMi4zNDQuNTgtMi40NzYgMi4wNTRoLTMuNzR6TTEyOS4yNiAxNS43ODdoMy41NTZ2MS44OTZoLjA4Yy45NDctMS41MjggMi41OC0yLjI2NSA0LjE2LTIuMjY1IDMuOTc3IDAgNC45NzcgMi4yMzggNC45NzcgNS42MXY4LjM3NWgtMy43Mzl2LTcuNjljMC0yLjIzOS0uNjU5LTMuMzQ1LTIuMzk3LTMuMzQ1LTIuMDI4IDAtMi44OTcgMS4xMzItMi44OTcgMy44OTh2Ny4xMzdoLTMuNzRWMTUuNzg3ek0xNTMuNTMyIDIyLjQyNGMwLTIuMjEyLS43NjQtNC4xODctMy4xODctNC4xODctMi4xMDcgMC0zLjAyOSAxLjg0My0zLjAyOSAzLjg3IDAgMS45NS43MzggNC4wODQgMy4wMyA0LjA4NCAyLjEzMiAwIDMuMTg2LTEuODE4IDMuMTg2LTMuNzY3em0zLjU1NiA2LjExYzAgMi4yMzktLjc5IDYuMDMyLTcuMDU5IDYuMDMyLTIuNjg2IDAtNS44Mi0xLjI2NS02LjAwNS00LjM3MmgzLjcxNGMuMzQyIDEuMzk1IDEuNDc1IDEuODcgMi43OTIgMS44NyAyLjA4IDAgMy4wMjgtMS40MjMgMy4wMDItMy4zNzF2LTEuNzkxaC0uMDUzYy0uODE2IDEuNDItMi40NDkgMi4xMDYtNC4wODIgMi4xMDYtNC4wODIgMC01LjgyLTMuMTA3LTUuODItNi44NDggMC0zLjUzIDIuMDI3LTYuNzQyIDUuODQ2LTYuNzQyIDEuNzkxIDAgMy4xNjEuNjA2IDQuMDU2IDIuMTg2aC4wNTN2LTEuODE3aDMuNTU2djEyLjc0N3pNMTY4LjQ2OCAyMS4xMzNjLS4zNDItMS44OTYtMS4xNi0yLjg5Ni0yLjk3Ni0yLjg5Ni0yLjM3MSAwLTMuMDU1IDEuODQzLTMuMTA4IDIuODk2aDYuMDg0em0tNi4wODQgMi4zN2MuMTA1IDIuMzcgMS4yNjQgMy40NSAzLjM0NSAzLjQ1IDEuNSAwIDIuNzEzLS45MjEgMi45NDktMS43NjNoMy4yOTNjLTEuMDU0IDMuMjEzLTMuMjkzIDQuNTgyLTYuMzc0IDQuNTgyLTQuMjkzIDAtNi45NTMtMi45NS02Ljk1My03LjE2MyAwLTQuMDgyIDIuODE4LTcuMTkxIDYuOTUzLTcuMTkxIDQuNjM2IDAgNi44NzQgMy44OTggNi42MSA4LjA4NmgtOS44MjN6TTE4MC45NyAxMC41OTloNS44Mmw0LjM5OSAxMi45MzJoLjA1Mmw0LjE2Mi0xMi45MzJoNS44MnYxOC44MDVoLTMuODcxVjE2LjA3N2gtLjA1M2wtNC42MSAxMy4zMjdoLTMuMTg2bC00LjYxLTEzLjE5NmgtLjA1MXYxMy4xOTZoLTMuODcyek0yMDkuOTAzIDI2Ljk1NGMyLjU1NiAwIDMuMzItMi4xODcgMy4zMi00LjM0NiAwLTIuMTg2LS43NjQtNC4zNzItMy4zMi00LjM3Mi0yLjUyOCAwLTMuMjkyIDIuMTg2LTMuMjkyIDQuMzcyIDAgMi4xNi43NjQgNC4zNDYgMy4yOTIgNC4zNDZtMC0xMS41MzZjNC4yOTMgMCA3LjA2IDIuODQ1IDcuMDYgNy4xOSAwIDQuMzItMi43NjcgNy4xNjMtNy4wNiA3LjE2My00LjI2NiAwLTcuMDMtMi44NDMtNy4wMy03LjE2MyAwLTQuMzQ1IDIuNzY0LTcuMTkgNy4wMy03LjE5TTIxOC41NjggMTUuNzg3aDMuNTU2djEuODk2aC4wOGMuOTQ3LTEuNTI4IDIuNTgtMi4yNjUgNC4xNi0yLjI2NSAzLjk3NiAwIDQuOTc3IDIuMjM4IDQuOTc3IDUuNjF2OC4zNzVoLTMuNzR2LTcuNjljMC0yLjIzOS0uNjU4LTMuMzQ1LTIuMzk2LTMuMzQ1LTIuMDI4IDAtMi44OTcgMS4xMzItMi44OTcgMy44OTh2Ny4xMzdoLTMuNzRWMTUuNzg3ek0yNDIuNjAzIDIxLjEzM2MtLjM0My0xLjg5Ni0xLjE1OS0yLjg5Ni0yLjk3Ny0yLjg5Ni0yLjM3IDAtMy4wNTQgMS44NDMtMy4xMDcgMi44OTZoNi4wODR6bS02LjA4NCAyLjM3Yy4xMDYgMi4zNyAxLjI2NCAzLjQ1IDMuMzQ1IDMuNDUgMS41MDEgMCAyLjcxMy0uOTIxIDIuOTUtMS43NjNoMy4yOTNjLTEuMDU0IDMuMjEzLTMuMjkzIDQuNTgyLTYuMzc1IDQuNTgyLTQuMjkyIDAtNi45NTItMi45NS02Ljk1Mi03LjE2MyAwLTQuMDgyIDIuODE3LTcuMTkxIDYuOTUyLTcuMTkxIDQuNjM3IDAgNi44NzUgMy44OTggNi42MSA4LjA4NmgtOS44MjN6Ii8+CiAgICAgICAgPHBhdGggZmlsbD0iI0ZGRiIgZD0iTTI1NC4zMTEgMzEuMTE1Yy0uODE2IDIuMTg2LTIuMTA3IDMuMDgxLTQuNjg4IDMuMDgxLS43NjMgMC0xLjUyOC0uMDUzLTIuMjktLjEzMnYtMy4wOGMuNzEuMDUyIDEuNDQ3LjE1NyAyLjE4NS4xMzEgMS4yOS0uMTMyIDEuNzEyLTEuNDc1IDEuMjktMi41NTVsLTQuNzkzLTEyLjc3M2g0LjAwNGwzLjA4IDkuMzIzaC4wNTRsMi45NzUtOS4zMjNIMjYwbC01LjY4OSAxNS4zMjh6Ii8+CiAgICA8L2c+Cjwvc3ZnPg==" alt="Orange Money"></span><span class="mgs-co-mtext"><b>Orange Money</b><small>Paiement manuel</small></span><span class="mgs-co-radio"></span></label>
       <label class="mgs-co-method"><input type="radio" name="comethod" value="Binance"><span class="mgs-co-logo"><img src="data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIGlkPSJMYXllcl8xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4PSIwcHgiIHk9IjBweCIgdmlld0JveD0iMCAwIDUwIDUwIiBzdHlsZT0iZW5hYmxlLWJhY2tncm91bmQ6bmV3IDAgMCA1MCA1MDsiIHhtbDpzcGFjZT0icHJlc2VydmUiPgogPHN0eWxlIHR5cGU9InRleHQvY3NzIj4KICAuc3Qwe2ZpbGw6I0YwQjkwQjt9CiA8L3N0eWxlPgogPG1ldGFkYXRhPgogIAogICAKICAgCiAgIAogICAKICAKIDwvbWV0YWRhdGE+CiA8Zz4KICA8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMTEuMywyNWwtNS42LDUuNkwwLDI1bDUuNy01LjdMMTEuMywyNXogTTI1LDExLjNsOS43LDkuN2w1LjctNS43TDI1LDBMOS43LDE1LjNsNS43LDUuN0wyNSwxMS4zeiBNNDQuMywxOS4zJiN4QTsmI3g5OyYjeDk7TDM4LjcsMjVsNS43LDUuN0w1MCwyNUw0NC4zLDE5LjN6IE0yNSwzOC43TDE1LjMsMjlsLTUuNyw1LjdMMjUsNTBsMTUuMy0xNS4zTDM0LjcsMjlMMjUsMzguN3ogTTI1LDMwLjZsNS43LTUuN0wyNSwxOS4zTDE5LjMsMjUmI3hBOyYjeDk7JiN4OTtMMjUsMzAuNkwyNSwzMC42eiI+CiAgPC9wYXRoPgogPC9nPgo8L3N2Zz4=" alt="Binance"></span><span class="mgs-co-mtext"><b>Binance</b><small>USDT · détection automatique</small></span><span class="mgs-co-radio"></span></label>
     </div>
+    <p class="eyebrow" data-i18n="checkout.binanceNetwork">Réseau</p>
+    <div class="mgs-co-methods mgs-co-networks" hidden></div>
     <p class="mgs-co-note">Envoyez le montant exact, puis gardez le SMS de confirmation pour la preuve.</p>
     <button type="button" class="button-main w-inline-block mgs-co-submit" data-button-theme="dark" data-button-accent="green" style="width:100%"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Passer la commande"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Passer la commande</span></span></span></span></button>
   </div>
@@ -2710,8 +2726,8 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
             <div class="footer-cr"><p class="p-m u--weight--bold u--text--caps">© <span data-current-year>2026</span> Magic Game Store</p></div>
             <ul class="link-list w-list-unstyled" role="list">
               <li><a href="#support" class="p-m text-link link">FAQ</a></li>
-              <li><a href="#support" class="p-m text-link link">Politique de confidentialité</a></li>
-              <li><a href="#support" class="p-m text-link link">Conditions d’utilisation</a></li>
+              <li><a href="#privacy" class="p-m text-link link">Politique de confidentialité</a></li>
+              <li><a href="#terms" class="p-m text-link link">Conditions d’utilisation</a></li>
               <li><a href="#support" class="p-m text-link link">Support</a></li>
             </ul>
           </div>
@@ -3277,7 +3293,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* --- Routeur multi-pages MGS (ajout) — partage lenis/gsap/ScrollTrigger --- */
   var MGS_LABEL = {boutique:"boutique",commandes:"commandes",support:"support",compte:"compte","événements":"evenements",points:"points"};
-  var MGS_HREF = {"#top":"accueil","#jeux":"boutique","#recharger":"evenements","#securite":"commandes","#commandes":"commandes","#support":"support"};
+  var MGS_HREF = {"#top":"accueil","#jeux":"boutique","#recharger":"evenements","#securite":"commandes","#commandes":"commandes","#support":"support","#terms":"terms","#privacy":"privacy"};
   function mgsTarget(a){
     if(a.hasAttribute("data-nav")) return a.getAttribute("data-nav");
     var lab=(a.textContent||"").trim().toLowerCase();
@@ -3484,7 +3500,6 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 <div class="mgs-human-overlay mgs-co-cancel-overlay" hidden></div>
 <div class="mgs-human-popup mgs-co-cancel-popup" hidden role="dialog" aria-label="Annuler la commande">
   <div class="mgs-human-head"><p data-i18n="checkout.cancelTitle">Annuler la commande</p><button type="button" class="mgs-human-close mgs-co-cancel-close" aria-label="Fermer"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
-  <p class="mgs-human-sub">Choisissez un motif (obligatoire).</p>
   <div class="mgs-field" style="display:flex;flex-direction:column;gap:.55em;margin-bottom:1em">
     <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="wrong_info" checked> <span data-i18n="checkout.cancelWrongInfo">Je me suis trompé (ID ou produit)</span></label>
     <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="change_method"> <span data-i18n="checkout.cancelChangeMethod">Je veux changer de mode de paiement</span></label>
@@ -3492,12 +3507,12 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="cannot_pay_now"> <span data-i18n="checkout.cancelCannotPayNow">Je ne peux pas payer maintenant</span></label>
     <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="other"> <span data-i18n="checkout.cancelOther">Autre raison</span></label>
   </div>
-  <div class="mgs-field"><label for="co-cancel-note">Précision (facultatif)</label><input id="co-cancel-note" class="mgs-input" maxlength="200"></div>
   <div class="mgs-human-foot"><button type="button" class="mgs-human-cancel mgs-co-cancel-close" data-i18n="common.close">Fermer</button><button type="button" class="button-main w-inline-block mgs-co-cancel-confirm" data-button-theme="dark" data-button-accent="green"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Confirmer l'annulation"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span data-i18n="checkout.cancelOrder">Confirmer l'annulation</span></span></span></span></button></div>
 </div>
 
 <script src="mgs-logic-captcha.js"></script>
 <script src="mgs-logic-crypto.js"></script>
+<script src="mgs-legal.js"></script>
 <script>
 /* Magic Game Store — runtime fonctionnel (prototype design-system-v3).
    Ne modifie AUCUN style / markup / animation existant : peuple les structures
@@ -3508,7 +3523,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 (function () {
   "use strict";
   var doc = document, body = doc.body;
-  var BACKEND = (window.MGS_BACKEND_URL || "https://magicgamestore-api-v2.onrender.com").replace(/\/+$/, "");
+  var BACKEND = (window.MGS_BACKEND_URL || "https://api.magicgame.store").replace(/\/+$/, "");
   var API = BACKEND + "/api";
   var $ = function (s, r) { return (r || doc).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || doc).querySelectorAll(s)); };
@@ -3518,10 +3533,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   var LANG = localStorage.getItem("mgs_lang") || "fr";
   var T = {
     fr: {
-      "account.deleteWarning": "Cette action est définitive : vos données personnelles seront anonymisées. L'historique des commandes est conservé de façon anonyme. Vos points seront perdus.", "account.deleteConfirm": "Supprimer définitivement", "account.deleteType": "Tapez SUPPRIMER pour confirmer", "account.deleted": "Compte supprimé.", "account.passwordChanged": "Mot de passe mis à jour.", "account.saved": "Profil mis à jour", "auth.errorGeneric": "Une erreur est survenue. Réessayez.", "auth.errorInvalidCredentials": "Identifiants invalides : vérifiez votre e-mail et votre mot de passe.", "auth.errorEmailTaken": "Un compte existe déjà avec cet e-mail.", "auth.errorTooManyAttempts": "Trop de tentatives. Réessayez dans quelques minutes.", "auth.errorAccountBlocked": "Ce compte est bloqué. Contactez le support.", "auth.errorUnavailable": "Service indisponible pour le moment. Réessayez plus tard.", "auth.errorInvalidLink": "Ce lien est invalide ou expiré.", "auth.forgotSent": "Si un compte existe pour cet email, un lien vient d'être envoyé. Vérifiez vos spams.", "auth.google": "Continuer avec Google", "auth.name": "Nom", "auth.password": "Mot de passe", "auth.passwordMismatch": "Les mots de passe ne correspondent pas.", "auth.resetDone": "Mot de passe réinitialisé. Connectez-vous.", "auth.verifyError": "Lien invalide ou expiré. Renvoyez un email depuis votre compte.", "auth.verifyOk": "Votre email est vérifié. Merci !", "auth.verifySent": "Un email de vérification vous a été envoyé.", "captcha.required": "Contrôle de sécurité requis : termine la vérification ci-dessus puis réessaie.", "captcha.verifyAgain": "Merci de refaire le contrôle de sécurité ci-dessus puis de réessayer.", "cart.empty": "Votre panier est vide.", "cart.otherGame": "Votre panier contient des offres d'un autre jeu. Finalisez ou videz-le avant d'ajouter ce pack.", "catalog.emptyGame": "Ce jeu n'a pas encore de catalogue disponible. Configurez-le dans l'administration avant l'ouverture à la vente.", "catalog.popular": "Populaire", "catalog.empty": "Aucun pack ne correspond.", "catalog.priceAsc": "Prix croissant", "catalog.priceDesc": "Prix décroissant", "catalog.sortDefault": "Par défaut", "chat.sent": "Envoyé", "checkout.binanceAddress": "Adresse", "checkout.binanceExactAmount": "Montant exact", "checkout.binanceMemo": "MEMO / Tag", "checkout.binanceNetwork": "Réseau", "checkout.binanceNoProof": "Le paiement est détecté automatiquement. Aucune preuve à envoyer.", "checkout.binanceTitle": "Binance USDT", "checkout.cancelCannotPayNow": "Je ne peux pas payer maintenant", "checkout.cancelChangeMethod": "Je veux changer de mode de paiement", "checkout.cancelOrder": "Annuler la commande", "checkout.cancelOther": "Autre raison", "checkout.cancelDone": "Votre commande a été annulée.", "checkout.cancelNotAllowed": "Cette commande ne peut plus être annulée (preuve envoyée ou déjà payée).", "checkout.cancelConflict": "L'état de la commande a changé. Nous avons rechargé les informations à jour.", "checkout.cancelTitle": "Pourquoi annulez-vous ?", "checkout.cancelTooShort": "Le délai est trop court", "checkout.cancelWrongInfo": "Je me suis trompé (ID ou produit)", "checkout.creating": "Création…", "checkout.cryptoDetected": "Transaction détectée — confirmation en cours…", "checkout.cryptoFailed": "Paiement USDT expiré. Aucun paiement n'a été validé pour cette commande.", "checkout.expired": "Paiement expiré", "checkout.methodMvola": "MVola", "checkout.methodOrange": "Orange Money", "checkout.papiOff": "Le paiement automatique est momentanément désactivé : réglez via USSD puis saisissez votre référence.", "checkout.playerId": "ID joueur", "checkout.proofCount": "Envoyez 1 à 3 captures d'écran.", "checkout.proofSubmitting": "Envoi de la preuve…", "checkout.proofBadType": "Format non pris en charge : JPEG ou PNG uniquement.", "checkout.proofTooLarge": "Chaque capture doit faire 8 Mo maximum.", "checkout.proofTooMany": "3 captures maximum par commande.", "checkout.proofNotPending": "Cette commande n'attend plus de preuve.", "checkout.proofAlreadyValidated": "Une preuve a déjà été validée pour cette commande.", "checkout.proofLimit": "Trois preuves maximum par commande.", "checkout.proofDeadlinePassed": "Le délai de paiement est dépassé pour cette commande.", "checkout.selectMethod": "Mode de paiement", "checkout.success": "Paiement confirmé !", "checkout.verifyIdInvalid": "Identifiant invalide. Corrigez-le et revérifiez.", "checkout.verifyRequired": "Vérifiez votre ID PUBG Mobile avant de continuer.", "checkout.verifySub": "Entrez votre ID joueur : nous vérifions le compte avant le paiement.", "checkout.verifying": "Vérification…", "common.close": "Fermer", "common.error": "Une erreur est survenue", "events.empty": "Aucun événement pour le moment.", "events.shared": "Lien copié !", "evo.checking": "Vérification…", "evo.eligible": "Éligible ! Vous pouvez continuer vers le paiement.", "evo.invalidId": "ID PUBG Mobile invalide (9 à 13 chiffres).", "evo.noSeason": "Aucune saison active", "evo.pubgLabel": "ID PUBG Mobile (9–13 chiffres)", "loyalty.redeemed": "Échange enregistré ! Notre équipe le traite sous peu.", "nav.logout": "Déconnexion", "order.banner.proofWaiting": "Preuve envoyée · vérification en cours", "order.loginToSee": "Connectez-vous pour voir vos commandes", "order.none": "Aucune commande pour le moment.", "order.status.awaiting_verification": "Vérification en cours", "order.status.cancelled": "Annulée", "order.status.delivered": "Livrée", "order.status.pending_payment": "Paiement en attente", "order.tabs.progress": "En cours", "product.added": "Ajouté au panier", "product.duplicateSub": "Votre panier contient déjà un abonnement {label}. Un seul {label} par PUBG ID.", "checkout.recentIds": "IDs joueur déjà utilisés", "checkout.useRecentId": "Utiliser l'ID {id}", "checkout.fieldMin": "{n} caractères minimum", "checkout.fieldMax": "{n} caractères maximum", "checkout.fieldFormat": "Format incorrect pour ce champ", "checkout.fieldRequired": "Ce champ est obligatoire", "checkout.proofRateLimited": "Trop d'envois : réessayez dans quelques minutes.", "checkout.proofUnavailable": "Envoi de preuve indisponible, réessayez plus tard.", "checkout.proofDenied": "Vous n'êtes pas autorisé à envoyer une preuve pour cette commande.", "checkout.proofNotFound": "Commande introuvable.", "order.detail.extra.proofCount": "{n} preuve(s) envoyée(s)"
+      "account.deleteWarning": "Cette action est définitive : vos données personnelles seront anonymisées. L'historique des commandes est conservé de façon anonyme. Vos points seront perdus.", "account.deleteConfirm": "Supprimer définitivement", "account.deleteType": "Tapez SUPPRIMER pour confirmer", "account.deleted": "Compte supprimé.", "account.passwordChanged": "Mot de passe mis à jour.", "account.saved": "Profil mis à jour", "auth.errorGeneric": "Une erreur est survenue. Réessayez.", "auth.errorInvalidCredentials": "Identifiants invalides : vérifiez votre e-mail et votre mot de passe.", "auth.errorEmailTaken": "Un compte existe déjà avec cet e-mail.", "auth.errorTooManyAttempts": "Trop de tentatives. Réessayez dans quelques minutes.", "auth.errorAccountBlocked": "Ce compte est bloqué. Contactez le support.", "auth.errorUnavailable": "Service indisponible pour le moment. Réessayez plus tard.", "auth.errorInvalidLink": "Ce lien est invalide ou expiré.", "auth.forgotSent": "Si un compte existe pour cet email, un lien vient d'être envoyé. Vérifiez vos spams.", "auth.google": "Continuer avec Google", "auth.googleError": "Connexion Google impossible. Réessayez.", "auth.name": "Nom", "auth.password": "Mot de passe", "auth.passwordMismatch": "Les mots de passe ne correspondent pas.", "auth.resetDone": "Mot de passe réinitialisé. Connectez-vous.", "auth.verifyError": "Lien invalide ou expiré. Renvoyez un email depuis votre compte.", "auth.verifyOk": "Votre email est vérifié. Merci !", "auth.verifySent": "Un email de vérification vous a été envoyé.", "captcha.required": "Contrôle de sécurité requis : termine la vérification ci-dessus puis réessaie.", "captcha.verifyAgain": "Merci de refaire le contrôle de sécurité ci-dessus puis de réessayer.", "cart.empty": "Votre panier est vide.", "cart.otherGame": "Votre panier contient des offres d'un autre jeu. Finalisez ou videz-le avant d'ajouter ce pack.", "catalog.emptyGame": "Ce jeu n'a pas encore de catalogue disponible. Configurez-le dans l'administration avant l'ouverture à la vente.", "catalog.popular": "Populaire", "catalog.empty": "Aucun pack ne correspond.", "catalog.priceAsc": "Prix croissant", "catalog.priceDesc": "Prix décroissant", "catalog.sortDefault": "Par défaut", "chat.sent": "Envoyé", "checkout.binanceAddress": "Adresse", "checkout.binanceExactAmount": "Montant exact", "checkout.binanceMemo": "MEMO / Tag", "checkout.binanceNetwork": "Réseau", "checkout.chooseNetwork": "Choisir réseau", "checkout.binanceNoProof": "Le paiement est détecté automatiquement. Aucune preuve à envoyer.", "checkout.binanceTitle": "Binance USDT", "checkout.cancelCannotPayNow": "Je ne peux pas payer maintenant", "checkout.cancelChangeMethod": "Je veux changer de mode de paiement", "checkout.cancelOrder": "Annuler la commande", "checkout.cancelOther": "Autre raison", "checkout.cancelDone": "Votre commande a été annulée.", "checkout.cancelNotAllowed": "Cette commande ne peut plus être annulée (preuve envoyée ou déjà payée).", "checkout.cancelConflict": "L'état de la commande a changé. Nous avons rechargé les informations à jour.", "checkout.cancelTitle": "Pourquoi annulez-vous ?", "checkout.cancelTooShort": "Le délai est trop court", "checkout.cancelWrongInfo": "Je me suis trompé (ID ou produit)", "checkout.creating": "Création…", "checkout.cryptoDetected": "Transaction détectée — confirmation en cours…", "checkout.cryptoFailed": "Paiement USDT expiré. Aucun paiement n'a été validé pour cette commande.", "checkout.expired": "Paiement expiré", "checkout.methodMvola": "MVola", "checkout.methodOrange": "Orange Money", "checkout.papiOff": "Le paiement automatique est momentanément désactivé : réglez via USSD puis saisissez votre référence.", "checkout.playerId": "ID joueur", "checkout.proofCount": "Envoyez 1 à 3 captures d'écran.", "checkout.proofSubmitting": "Envoi de la preuve…", "checkout.proofBadType": "Format non pris en charge : JPEG ou PNG uniquement.", "checkout.proofTooLarge": "Chaque capture doit faire 8 Mo maximum.", "checkout.proofTooMany": "3 captures maximum par commande.", "checkout.proofNotPending": "Cette commande n'attend plus de preuve.", "checkout.proofAlreadyValidated": "Une preuve a déjà été validée pour cette commande.", "checkout.proofLimit": "Trois preuves maximum par commande.", "checkout.proofDeadlinePassed": "Le délai de paiement est dépassé pour cette commande.", "checkout.selectMethod": "Mode de paiement", "checkout.success": "Paiement confirmé !", "checkout.verifyIdInvalid": "Identifiant invalide. Corrigez-le et revérifiez.", "checkout.verifyRequired": "Vérifiez votre ID PUBG Mobile avant de continuer.", "checkout.verifySub": "Entrez votre ID joueur : nous vérifions le compte avant le paiement.", "checkout.verifying": "Vérification…", "common.close": "Fermer", "common.error": "Une erreur est survenue", "events.empty": "Aucun événement pour le moment.", "events.shared": "Lien copié !", "evo.checking": "Vérification…", "evo.eligible": "Éligible ! Vous pouvez continuer vers le paiement.", "evo.invalidId": "ID PUBG Mobile invalide (9 à 13 chiffres).", "evo.noSeason": "Aucune saison active", "evo.pubgLabel": "ID PUBG Mobile (9–13 chiffres)", "loyalty.redeemed": "Échange enregistré ! Notre équipe le traite sous peu.", "nav.logout": "Déconnexion", "order.banner.proofWaiting": "Preuve envoyée · vérification en cours", "order.loginToSee": "Connectez-vous pour voir vos commandes", "order.none": "Aucune commande pour le moment.", "order.status.awaiting_verification": "Vérification en cours", "order.status.cancelled": "Annulée", "order.status.delivered": "Livrée", "order.status.pending_payment": "Paiement en attente", "order.tabs.progress": "En cours", "product.added": "Ajouté au panier", "product.duplicateSub": "Votre panier contient déjà un abonnement {label}. Un seul {label} par PUBG ID.", "checkout.recentIds": "IDs joueur déjà utilisés", "checkout.useRecentId": "Utiliser l'ID {id}", "checkout.fieldMin": "{n} caractères minimum", "checkout.fieldMax": "{n} caractères maximum", "checkout.fieldFormat": "Format incorrect pour ce champ", "checkout.fieldRequired": "Ce champ est obligatoire", "checkout.proofRateLimited": "Trop d'envois : réessayez dans quelques minutes.", "checkout.proofUnavailable": "Envoi de preuve indisponible, réessayez plus tard.", "checkout.proofDenied": "Vous n'êtes pas autorisé à envoyer une preuve pour cette commande.", "checkout.proofNotFound": "Commande introuvable.", "order.detail.extra.proofCount": "{n} preuve(s) envoyée(s)", "order.next.pending_payment": "Validez le paiement sur votre téléphone.", "order.next.awaiting_verification": "Nous vérifions votre référence. Livraison sous peu.", "order.next.proof_submitted": "Nous vérifions vos captures d'écran. Livraison sous peu.", "order.next.late_payment": "Paiement reçu après expiration, notre équipe vérifie votre commande.", "order.next.paid": "Paiement reçu. Vos UC arrivent sur votre compte.", "order.next.delivered": "C'est livré ! Bon jeu.", "order.next.cancelled": "Contactez-nous si c'est une erreur.", "order.next.failed": "Le paiement n'a pas abouti. Vous pouvez réessayer.", "order.next.expired": "Le délai de paiement est dépassé. Relancez le paiement pour obtenir un nouveau lien.", "order.status.proof_submitted": "Preuve en vérification", "order.status.late_payment": "Paiement tardif, en vérification", "order.status.paid": "Payée — livraison en cours", "order.status.failed": "Paiement échoué", "order.status.expired": "Paiement expiré", "checkout.phoneError": "Numéro à débiter invalide : vérifiez le numéro (10 chiffres).", "checkout.orderValidationError": "Impossible de créer la commande : vérifiez les informations saisies puis réessayez.", "checkout.verifyError": "Vérification impossible pour le moment. Réessayez plus tard.", "checkout.verifyMissingField": "Renseignez tous les champs", "checkout.verifyRateLimited": "Trop de tentatives. Réessayez dans quelques minutes.", "checkout.verifyProviderUnavailable": "Service momentanément indisponible, réessayez", "checkout.proofConflict": "Envoi impossible pour le moment : réessayez."
     },
     en: {
-      "account.deleteWarning": "This is permanent: your personal data will be anonymised. Order history is kept anonymously. Your points will be forfeited.", "account.deleteConfirm": "Delete permanently", "account.deleteType": "Type SUPPRIMER to confirm", "account.deleted": "Account deleted.", "account.passwordChanged": "Password updated.", "account.saved": "Profile updated", "auth.errorGeneric": "Something went wrong. Try again.", "auth.errorInvalidCredentials": "Invalid credentials: check your email and password.", "auth.errorEmailTaken": "An account already exists with this email.", "auth.errorTooManyAttempts": "Too many attempts. Try again in a few minutes.", "auth.errorAccountBlocked": "This account is blocked. Contact support.", "auth.errorUnavailable": "Service temporarily unavailable. Try again later.", "auth.errorInvalidLink": "This link is invalid or has expired.", "auth.forgotSent": "If an account exists for this email, a link was just sent. Check your spam folder.", "auth.google": "Continue with Google", "auth.name": "Name", "auth.password": "Password", "auth.passwordMismatch": "Passwords do not match.", "auth.resetDone": "Password reset. Please log in.", "auth.verifyError": "Invalid or expired link. Resend an email from your account.", "auth.verifyOk": "Your email is verified. Thank you!", "auth.verifySent": "A verification email has been sent to you.", "captcha.required": "Security check required: complete the verification above and try again.", "captcha.verifyAgain": "Please complete the security check above and try again.", "cart.empty": "Your cart is empty.", "cart.otherGame": "Your cart holds offers from another game. Check out or empty it before adding this pack.", "catalog.emptyGame": "This game has no catalog available yet. Configure it in the admin before opening it for sale.", "catalog.popular": "Popular", "catalog.empty": "No pack matches.", "catalog.priceAsc": "Price: low to high", "catalog.priceDesc": "Price: high to low", "catalog.sortDefault": "Default", "chat.sent": "Sent", "checkout.binanceAddress": "Address", "checkout.binanceExactAmount": "Exact amount", "checkout.binanceMemo": "MEMO / Tag", "checkout.binanceNetwork": "Network", "checkout.binanceNoProof": "The payment is detected automatically. No proof to submit.", "checkout.binanceTitle": "Binance USDT", "checkout.cancelCannotPayNow": "I can't pay right now", "checkout.cancelChangeMethod": "I want to change payment method", "checkout.cancelOrder": "Cancel order", "checkout.cancelOther": "Other reason", "checkout.cancelDone": "Your order has been cancelled.", "checkout.cancelNotAllowed": "This order can no longer be cancelled (proof submitted or already paid).", "checkout.cancelConflict": "The order status changed. We reloaded the up-to-date details.", "checkout.cancelTitle": "Why are you cancelling?", "checkout.cancelTooShort": "The deadline is too short", "checkout.cancelWrongInfo": "I made a mistake (ID or product)", "checkout.creating": "Creating…", "checkout.cryptoDetected": "Transaction detected — confirming…", "checkout.cryptoFailed": "USDT payment expired. No payment was validated for this order.", "checkout.expired": "Payment expired", "checkout.methodMvola": "MVola", "checkout.methodOrange": "Orange Money", "checkout.papiOff": "Automatic payment is temporarily off: pay via USSD, then enter your reference.", "checkout.playerId": "Player ID", "checkout.proofCount": "Send 1 to 3 screenshots.", "checkout.proofSubmitting": "Sending proof…", "checkout.proofBadType": "Unsupported format: JPEG or PNG only.", "checkout.proofTooLarge": "Each screenshot must be 8 MB maximum.", "checkout.proofTooMany": "Maximum 3 screenshots per order.", "checkout.proofNotPending": "This order no longer awaits a proof.", "checkout.proofAlreadyValidated": "A proof was already validated for this order.", "checkout.proofLimit": "Maximum three proofs per order.", "checkout.proofDeadlinePassed": "The payment deadline has passed for this order.", "checkout.selectMethod": "Payment method", "checkout.success": "Payment confirmed!", "checkout.verifyIdInvalid": "Invalid ID. Correct it and verify again.", "checkout.verifyRequired": "Verify your PUBG Mobile ID before continuing.", "checkout.verifySub": "Enter your player ID: we check the account before payment.", "checkout.verifying": "Verifying…", "common.close": "Close", "common.error": "Something went wrong", "events.empty": "No events yet.", "events.shared": "Link copied!", "evo.checking": "Checking…", "evo.eligible": "Eligible! You can proceed to payment.", "evo.invalidId": "Invalid PUBG Mobile ID (9 to 13 digits).", "evo.noSeason": "No active season", "evo.pubgLabel": "PUBG Mobile ID (9–13 digits)", "loyalty.redeemed": "Redemption recorded! Our team will process it shortly.", "nav.logout": "Log out", "order.banner.proofWaiting": "Proof sent · under review", "order.loginToSee": "Log in to see your orders", "order.none": "No orders yet.", "order.status.awaiting_verification": "Under verification", "order.status.cancelled": "Cancelled", "order.status.delivered": "Delivered", "order.status.pending_payment": "Payment pending", "order.tabs.progress": "In progress", "product.added": "Added to cart", "product.duplicateSub": "Your cart already contains a {label} subscription. Only one {label} per PUBG ID.", "checkout.recentIds": "Recently used player IDs", "checkout.useRecentId": "Use ID {id}", "checkout.fieldMin": "Minimum {n} characters", "checkout.fieldMax": "Maximum {n} characters", "checkout.fieldFormat": "Invalid format for this field", "checkout.fieldRequired": "This field is required", "checkout.proofRateLimited": "Too many uploads: try again in a few minutes.", "checkout.proofUnavailable": "Proof upload is unavailable, try again later.", "checkout.proofDenied": "You are not allowed to send a proof for this order.", "checkout.proofNotFound": "Order not found.", "order.detail.extra.proofCount": "{n} proof(s) submitted"
+      "account.deleteWarning": "This is permanent: your personal data will be anonymised. Order history is kept anonymously. Your points will be forfeited.", "account.deleteConfirm": "Delete permanently", "account.deleteType": "Type SUPPRIMER to confirm", "account.deleted": "Account deleted.", "account.passwordChanged": "Password updated.", "account.saved": "Profile updated", "auth.errorGeneric": "Something went wrong. Try again.", "auth.errorInvalidCredentials": "Invalid credentials: check your email and password.", "auth.errorEmailTaken": "An account already exists with this email.", "auth.errorTooManyAttempts": "Too many attempts. Try again in a few minutes.", "auth.errorAccountBlocked": "This account is blocked. Contact support.", "auth.errorUnavailable": "Service temporarily unavailable. Try again later.", "auth.errorInvalidLink": "This link is invalid or has expired.", "auth.forgotSent": "If an account exists for this email, a link was just sent. Check your spam folder.", "auth.google": "Continue with Google", "auth.googleError": "Google sign-in impossible. Try again.", "auth.name": "Name", "auth.password": "Password", "auth.passwordMismatch": "Passwords do not match.", "auth.resetDone": "Password reset. Please log in.", "auth.verifyError": "Invalid or expired link. Resend an email from your account.", "auth.verifyOk": "Your email is verified. Thank you!", "auth.verifySent": "A verification email has been sent to you.", "captcha.required": "Security check required: complete the verification above and try again.", "captcha.verifyAgain": "Please complete the security check above and try again.", "cart.empty": "Your cart is empty.", "cart.otherGame": "Your cart holds offers from another game. Check out or empty it before adding this pack.", "catalog.emptyGame": "This game has no catalog available yet. Configure it in the admin before opening it for sale.", "catalog.popular": "Popular", "catalog.empty": "No pack matches.", "catalog.priceAsc": "Price: low to high", "catalog.priceDesc": "Price: high to low", "catalog.sortDefault": "Default", "chat.sent": "Sent", "checkout.binanceAddress": "Address", "checkout.binanceExactAmount": "Exact amount", "checkout.binanceMemo": "MEMO / Tag", "checkout.binanceNetwork": "Network", "checkout.chooseNetwork": "Choose network", "checkout.binanceNoProof": "The payment is detected automatically. No proof to submit.", "checkout.binanceTitle": "Binance USDT", "checkout.cancelCannotPayNow": "I can't pay right now", "checkout.cancelChangeMethod": "I want to change payment method", "checkout.cancelOrder": "Cancel order", "checkout.cancelOther": "Other reason", "checkout.cancelDone": "Your order has been cancelled.", "checkout.cancelNotAllowed": "This order can no longer be cancelled (proof submitted or already paid).", "checkout.cancelConflict": "The order status changed. We reloaded the up-to-date details.", "checkout.cancelTitle": "Why are you cancelling?", "checkout.cancelTooShort": "The deadline is too short", "checkout.cancelWrongInfo": "I made a mistake (ID or product)", "checkout.creating": "Creating…", "checkout.cryptoDetected": "Transaction detected — confirming…", "checkout.cryptoFailed": "USDT payment expired. No payment was validated for this order.", "checkout.expired": "Payment expired", "checkout.methodMvola": "MVola", "checkout.methodOrange": "Orange Money", "checkout.papiOff": "Automatic payment is temporarily off: pay via USSD, then enter your reference.", "checkout.playerId": "Player ID", "checkout.proofCount": "Send 1 to 3 screenshots.", "checkout.proofSubmitting": "Sending proof…", "checkout.proofBadType": "Unsupported format: JPEG or PNG only.", "checkout.proofTooLarge": "Each screenshot must be 8 MB maximum.", "checkout.proofTooMany": "Maximum 3 screenshots per order.", "checkout.proofNotPending": "This order no longer awaits a proof.", "checkout.proofAlreadyValidated": "A proof was already validated for this order.", "checkout.proofLimit": "Maximum three proofs per order.", "checkout.proofDeadlinePassed": "The payment deadline has passed for this order.", "checkout.selectMethod": "Payment method", "checkout.success": "Payment confirmed!", "checkout.verifyIdInvalid": "Invalid ID. Correct it and verify again.", "checkout.verifyRequired": "Verify your PUBG Mobile ID before continuing.", "checkout.verifySub": "Enter your player ID: we check the account before payment.", "checkout.verifying": "Verifying…", "common.close": "Close", "common.error": "Something went wrong", "events.empty": "No events yet.", "events.shared": "Link copied!", "evo.checking": "Checking…", "evo.eligible": "Eligible! You can proceed to payment.", "evo.invalidId": "Invalid PUBG Mobile ID (9 to 13 digits).", "evo.noSeason": "No active season", "evo.pubgLabel": "PUBG Mobile ID (9–13 digits)", "loyalty.redeemed": "Redemption recorded! Our team will process it shortly.", "nav.logout": "Log out", "order.banner.proofWaiting": "Proof sent · under review", "order.loginToSee": "Log in to see your orders", "order.none": "No orders yet.", "order.status.awaiting_verification": "Under verification", "order.status.cancelled": "Cancelled", "order.status.delivered": "Delivered", "order.status.pending_payment": "Payment pending", "order.tabs.progress": "In progress", "product.added": "Added to cart", "product.duplicateSub": "Your cart already contains a {label} subscription. Only one {label} per PUBG ID.", "checkout.recentIds": "Recently used player IDs", "checkout.useRecentId": "Use ID {id}", "checkout.fieldMin": "Minimum {n} characters", "checkout.fieldMax": "Maximum {n} characters", "checkout.fieldFormat": "Invalid format for this field", "checkout.fieldRequired": "This field is required", "checkout.proofRateLimited": "Too many uploads: try again in a few minutes.", "checkout.proofUnavailable": "Proof upload is unavailable, try again later.", "checkout.proofDenied": "You are not allowed to send a proof for this order.", "checkout.proofNotFound": "Order not found.", "order.detail.extra.proofCount": "{n} proof(s) submitted", "order.next.pending_payment": "Validate the payment on your phone.", "order.next.awaiting_verification": "We are checking your reference. Delivery shortly.", "order.next.proof_submitted": "We are reviewing your screenshots. Delivery shortly.", "order.next.late_payment": "Payment received after expiry, our team is reviewing your order.", "order.next.paid": "Payment received. Your UC are on the way.", "order.next.delivered": "Delivered! Enjoy the game.", "order.next.cancelled": "Contact us if this is a mistake.", "order.next.failed": "Payment did not go through. You can retry.", "order.next.expired": "The payment window has passed. Retry to get a new payment link.", "order.status.proof_submitted": "Proof under review", "order.status.late_payment": "Late payment, under review", "order.status.paid": "Paid — delivering", "order.status.failed": "Payment failed", "order.status.expired": "Payment expired", "checkout.phoneError": "Invalid payment number: please check the number (10 digits).", "checkout.orderValidationError": "Could not create the order: please check the entered information and try again.", "checkout.verifyError": "Verification unavailable right now. Try again later.", "checkout.verifyMissingField": "Fill in all the fields", "checkout.verifyRateLimited": "Too many attempts. Try again in a few minutes.", "checkout.verifyProviderUnavailable": "Service temporarily unavailable, please try again", "checkout.proofConflict": "Upload is not possible right now: try again."
     }
   };function t(k, v) { var s = (T[LANG] && T[LANG][k]) || T.fr[k] || k; if (v) Object.keys(v).forEach(function (key) { s = s.split("{" + key + "}").join(v[key]); }); return s; }
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -3971,6 +3986,22 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
   window.mgsRenderRecent = renderRecent;
   var cryptoCfg = null; var manualHintTexts = null;
+  /* Sélecteur de réseau USDT (REF pages/Checkout.js:335-339, PaymentFlow.js:32-50) :
+     réseaux = GET /crypto/config uniquement ; le bloc apparaît dès que Binance
+     est choisi ET qu'au moins un réseau existe ; AUCUNE présélection — la
+     commande reste refusée tant qu'aucun réseau n'est choisi (canSubmit,
+     Checkout.js:248). */
+  function renderNetworks() {
+    var box = $(".mgs-co-networks"); if (!box) return;
+    var list = (cryptoCfg && cryptoCfg.networks) || [];
+    var show = co.method === "Binance" && list.length > 0;
+    box.hidden = !show;
+    if (!show) return;
+    box.innerHTML = list.map(function (n) {
+      var on = co.network === n.key;
+      return '<label class="mgs-co-method' + (on ? " is--active" : "") + '" data-net="' + esc(n.key) + '"><input type="radio" name="conetwork" value="' + esc(n.key) + '"' + (on ? " checked" : "") + '><span class="mgs-co-mtext"><b>' + esc(n.label || n.key) + "</b></span><span class=\"mgs-co-radio\"></span></label>";
+    }).join("");
+  }
   function coOpen() {
     if (!cart.length) { toast(t("cart.empty"), "err"); return; }
     if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; }
@@ -3979,6 +4010,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     co.game = cart[0].game_name || cart[0].game || ""; co.game_id = cart[0].game_id || "";
     co.verified = false; co.method = ""; co.pid = ""; co.pseudo = ""; co.order = null; co.network = ""; co.payment = null; co.identity = null;
     var bl = $('.mgs-co-method input[value="Binance"]'); if (bl) { var blbl = bl.closest(".mgs-co-method"); if (blbl) blbl.style.display = (cryptoCfg && cryptoCfg.available) ? "" : "none"; }
+    renderNetworks();
     /* MVola/Orange : même masquage que Binance (main pages/Checkout.js:83-84,277-278) —
        un opérateur non configuré dans GET /payments/config n'est pas proposé. */
     var mv = $('.mgs-co-method input[value="MVola"]'); if (mv) { var ml = mv.closest(".mgs-co-method"); if (ml) ml.style.display = (!payCfg || !payCfg.providers || !payCfg.providers.mvola || payCfg.providers.mvola.configured !== false) ? "" : "none"; }
@@ -4119,6 +4151,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (!co.method) { toast(t("checkout.selectMethod"), "err"); return; }
     var isBinance = co.method === "Binance";
     if (isBinance && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.papiOff"), "err"); return; }
+    /* REF Checkout.js:248 : canSubmit = … || !!network — la commande Binance
+       sans réseau choisi reste impossible (message visible). */
+    if (isBinance && !co.network) { toast(t("checkout.chooseNetwork"), "err"); return; }
     if (cart.some(function (x) { return !(x.id || x.product_id); })) { coStatus("is--err", esc(t("catalog.emptyGame"))); toast(t("catalog.emptyGame"), "err"); return; }
     var g = (gamesCache || []).filter(function (x) { return x.id === co.game_id; })[0];
     var idf = {}; idf[primaryField(g)] = co.pid;
@@ -4206,10 +4241,11 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     }).catch(function () { });
   }
   function initiateBinance(order) {
-    /* Réseau retenu = la config serveur (cryptoCfg.networks), jamais une
-       constante : le backend statue (routers/crypto.py:77-78). */
-    var net = co.network || (cryptoCfg && cryptoCfg.networks && cryptoCfg.networks[0] && cryptoCfg.networks[0].key) || "";
-    if (!net) { toast(t("checkout.papiOff"), "err"); coShow(1); return; }
+    /* Réseau retenu = celui choisi dans le sélecteur ; jamais un défaut
+       (REF Checkout.js:248 : canSubmit refuse sans réseau) : le backend
+       statue (routers/crypto.py:77-78). */
+    var net = co.network || "";
+    if (!net) { toast(t("checkout.chooseNetwork"), "err"); coShow(1); return; }
     window.MGS_CRYPTO.initiate(order.id, net).then(function (r) {
       if (r.ok && r.payment) { coPayBinance(r.payment); return; }
       if (r.code === "already_open") { window.MGS_CRYPTO.statusOf(order.id).then(function (s) { if (s.payment) coPayBinance(s.payment); else { toast(t("checkout.papiOff"), "err"); coShow(1); } }); return; }
@@ -4248,8 +4284,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     set(".mgs-co-r-product", co.items); set(".mgs-co-r-pid", co.pid); set(".mgs-co-r-method", "Binance USDT");
     set(".mgs-co-r-total", ar(o.total != null ? o.total : co.total)); set(".mgs-co-r-num", o.order_number || o.number || "—");
     $$(".mgs-co-recap div").forEach(function (d) { var span = $("span", d); if (span && /Pseudo/i.test(span.textContent)) { var b = $("b", d); if (b) b.textContent = co.pseudo || "—"; } });
-    var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = t("checkout.success");
-    var wt = $(".mgs-co-wait-t"); if (wt) wt.textContent = t("checkout.success");
+    coWaitText(o);
     coShow(3); window.scrollTo(0, 0);
   }
   var proofInput = null;
@@ -4312,14 +4347,34 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     set(".mgs-co-r-product", co.items); set(".mgs-co-r-pid", co.pid); set(".mgs-co-r-method", methodLabel(co.method));
     set(".mgs-co-r-total", ar(o.total != null ? o.total : co.total)); set(".mgs-co-r-num", o.order_number || o.number || "—");
     $$(".mgs-co-recap div").forEach(function (d) { var span = $("span", d); if (span && /Pseudo/i.test(span.textContent)) { var b = $("b", d); if (b) b.textContent = co.pseudo || "—"; } });
-    var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = t("order.banner.proofWaiting");
+    coWaitText(o);
     coShow(3); window.scrollTo(0, 0);
   }
   function statusBucket(s) { s = String(s || "").toLowerCase(); if (s === "delivered" || s === "done" || s === "completed") return "done"; if (s === "cancelled" || s === "canceled" || s === "expired" || s === "failed" || s === "refunded") return "cancel"; return "progress"; }
-  function statusLabel(s) { var b = statusBucket(s); if (b === "done") return t("order.status.delivered"); if (b === "cancel") return t("order.status.cancelled"); var sl = String(s || "").toLowerCase(); if (sl === "pending_payment") return t("order.status.pending_payment"); if (sl === "awaiting_verification") return t("order.status.awaiting_verification"); return t("order.tabs.progress"); }
+  /* main pages/OrderHistory.js:70-80 : le libellé vient de `order.status.<statut>`
+     pour les 9 statuts du backend (routers/orders.py:38-39). */
+  function statusLabel(s) {
+    var sl = String(s || "").toLowerCase();
+    if (sl) { var k = "order.status." + sl, v = t(k); if (v !== k) return v; }
+    var b = statusBucket(s); if (b === "done") return t("order.status.delivered"); if (b === "cancel") return t("order.status.cancelled"); return t("order.tabs.progress");
+  }
+  /* main OrderTrack.js:264-270 : le message d'attente suit le STATUT RÉEL
+     (`order.next.<statut>`) et le titre reprend le libellé du statut
+     (`order.status.<statut>`) — jamais un texte figé : le client lit « quand
+     ça vient » (« Nous vérifions vos captures d'écran. Livraison sous peu. »). */
+  function coWaitText(o) {
+    var st = String((o && o.status) || (co.order && co.order.status) || "").toLowerCase();
+    var kNext = "order.next." + st, kLabel = "order.status." + st;
+    var next = st ? t(kNext) : "";
+    if (!st || next === kNext) next = t("order.banner.proofWaiting");
+    var label = st ? t(kLabel) : "";
+    if (!st || label === kLabel) label = statusLabel(st);
+    var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = next;
+    var wt = $(".mgs-co-wait-t"); if (wt) wt.textContent = label;
+  }
   function pollOrder() {
     if (co.poll) clearInterval(co.poll); if (!co.order) return; var tries = 0, pollFails = 0;
-    co.poll = setInterval(function () { tries++; if (tries > 60) { clearInterval(co.poll); co.poll = null; var fb = $(".mgs-co-wait-badge"); if (fb) fb.textContent = t("common.error"); return; } req("/orders/" + co.order.id).then(function (o) { pollFails = 0; co.order = o; var b = statusBucket(o.status); var badge = $(".mgs-co-wait-badge"); var wt = $(".mgs-co-wait-t"); if (b === "done") { if (badge) badge.textContent = t("order.status.delivered"); if (wt) wt.textContent = t("order.status.delivered"); clearPendingOrderId(); clearInterval(co.poll); co.poll = null; } else if (b === "cancel") { if (badge) badge.textContent = t("order.status.cancelled"); if (wt) wt.textContent = t("order.status.cancelled"); clearPendingOrderId(); clearInterval(co.poll); co.poll = null; } }).catch(function (e) { pollFails++; if (pollFails === 3) { var fb2 = $(".mgs-co-wait-badge"); if (fb2) fb2.textContent = errMsg(e); signale(e); } }); }, 5000);
+    co.poll = setInterval(function () { tries++; if (tries > 60) { clearInterval(co.poll); co.poll = null; var fb = $(".mgs-co-wait-badge"); if (fb) fb.textContent = t("common.error"); return; } req("/orders/" + co.order.id).then(function (o) { pollFails = 0; co.order = o; coWaitText(o); var b = statusBucket(o.status); var badge = $(".mgs-co-wait-badge"); if (b === "done") { clearPendingOrderId(); clearInterval(co.poll); co.poll = null; } else if (b === "cancel") { clearPendingOrderId(); clearInterval(co.poll); co.poll = null; } }).catch(function (e) { pollFails++; if (pollFails === 3) { var fb2 = $(".mgs-co-wait-badge"); if (fb2) fb2.textContent = errMsg(e); signale(e); } }); }, 5000);
   }
   function coFinish() {
     if (co.poll) { clearInterval(co.poll); co.poll = null; } if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } stopPaymentPoll(); stopTimer();
@@ -4332,10 +4387,6 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   /* ---------- annulation : sélecteur de motif (backend/routers/orders.py — raison fermée) ---------- */
   function openCancel() {
     var o = $(".mgs-co-cancel-overlay"), p = $(".mgs-co-cancel-popup"); if (!p) return;
-    /* Le champ « Précision » du design est conservé : le backend l'accepte
-       (`CancelIn.note`, routers/orders.py:127, max 200) et il est envoyé
-       seulement s'il est rempli. */
-    var nf = $("#co-cancel-note"); if (nf) { var nfw = nf.closest(".mgs-field"); if (nfw) nfw.hidden = false; nf.value = ""; }
     var all = $$("input[name='co-cancel-reason']", p); all.forEach(function (r) { r.checked = false; });
     /* main CancelSheet.js:39-40,75-83 : chaque ouverture repart d'une feuille
        vierge (aucune raison résiduelle) et l'annulation reste inerte tant
@@ -4355,13 +4406,11 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var r = $("input[name='co-cancel-reason']:checked", p);
     if (!r) { toast(t("checkout.cancelTitle"), "err"); return; }
     var reason = r.value;
-    var noteEl = $("#co-cancel-note");
-    var note = (noteEl && noteEl.value || "").trim().slice(0, 200);
-    /* POST /orders/{id}/cancel : `reason` (raison fermée, orders.py:126) et,
-       si le client l'a écrit, la `note` libre (orders.py:127). */
+    /* POST /orders/{id}/cancel : `reason` seulement — REF envoie { reason }
+       (components/store/checkout/CancelSheet.js:48), sans note. */
     closeCancel(); stopTimer(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; }
     if (!co.order) { coShow(1); return; }
-    var cancelBody = { reason: reason }; if (note) cancelBody.note = note;
+    var cancelBody = { reason: reason };
     req("/orders/" + co.order.id + "/cancel", { method: "POST", body: cancelBody })
       .then(function () {
         /* main CancelSheet.js:48-51 + OrderTrack.js:406 : succès = la
@@ -4439,7 +4488,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (!orders || !orders.length) { list.innerHTML = ""; if (empty) { empty.hidden = false; var p = $("p", empty); if (p) p.textContent = me ? t("order.none") : t("order.loginToSee"); } var bx = $(".mgs-cmd-pages"); if (bx) bx.hidden = true; return; }
     if (empty) empty.hidden = true;
     list.innerHTML = orders.map(function (o) {
-      var b = statusBucket(o.status); var d = fmtDate(o.created_at); var product = orderProductLabel(o); var total = ar(o.total); var method = orderMethodLabel(o); var label = statusLabel(o.status); var filter = b === "progress" ? "progress" : "done";
+      var b = statusBucket(o.status); var d = fmtDate(o.created_at); var product = orderProductLabel(o); var total = ar(o.total); var method = orderMethodLabel(o); var label = statusLabel(o.status); /* onglets du design : all / progress / done — une commande annulée n'apparaît que sous « Toutes » (main OrderHistory.js:100-106) */ var filter = b === "progress" ? "progress" : (b === "done" ? "done" : "");
       return '<div class="mgs-order" role="button" tabindex="0" data-order="' + esc(o.order_number || o.number) + '" data-product="' + esc(product) + '" data-pid="' + esc(o.pubg_id || "") + '" data-total="' + esc(total) + '" data-method="' + esc(method) + '" data-status="' + b + '" data-statuslabel="' + esc(label) + '" data-date="' + esc(d.date) + '" data-time="' + esc(d.time) + '" data-filter="' + filter + '" data-id="' + esc(o.id) + '"><div class="mgs-order__main"><p class="mgs-order__title">' + esc(product) + '</p><p class="mgs-order__meta"><span class="mgs-mono">' + esc(o.order_number || o.number) + '</span><button type="button" class="mgs-order__copy" aria-label="Copier le numéro">' + COPY_IC + '</button><span>· ' + esc(d.date) + ' · ' + esc(d.time) + '</span><span class="mgs-order__method">· ' + esc(method) + '</span></p></div><div class="mgs-order__right"><p class="mgs-order__price">' + esc(total) + '</p><span class="mgs-status mgs-status--' + b + '">' + STATUS_IC[b] + esc(label) + '</span></div></div>';
     }).join("");
     orderPage = 1;
@@ -4511,11 +4560,11 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
   function saveProfile() { var name = ($("#acc-name") || {}).value || ""; var phone = ($("#acc-phone") || {}).value || ""; /* main Account.js:130 : virgules OU espaces séparent les ID. */ var ids = (($("#acc-ids") || {}).value || "").split(/[,\s]+/).filter(Boolean); req("/auth/me", { method: "PATCH", body: { name: name, phone: phone, saved_pubg_ids: ids } }).then(function (u) { me = u || me; toast(t("account.saved")); renderAccount(); }).catch(function (e) { toast(errMsg(e), "err"); }); }
   function changePassword() { var cur = ($("#pw-cur") || {}).value || ""; var next = ($("#pw-next") || {}).value || ""; if (!cur || !next) { toast(t("common.error"), "err"); return; } req("/auth/change-password", { method: "POST", body: { current_password: cur, new_password: next } }).then(function () { toast(t("account.passwordChanged")); $("#pw-cur").value = ""; $("#pw-next").value = ""; }).catch(function (e) { toast(errMsg(e), "err"); }); }
-  /* main Account.js:145-151 : la confirmation tapée telle quelle + le mot de
+  /* main Account.js:150 : la confirmation tapée telle quelle + le mot de
      passe (exigé par le backend quand le compte en a un, routers/auth.py:442-444).
      Le design n'a pas de champ dédié à la suppression : la saisie passe par les
      deux boîtes du navigateur et le mot de passe par le champ « Mot de passe
-     actuel » du panneau Sécurité s'il est rempli. */
+     actuel » du panneau Sécurité s'il est rempli. Succès → logout(). */
   function deleteAccount() {
     if (!window.confirm(t("account.deleteConfirm"))) return;
     var conf = window.prompt(t("account.deleteType"));
@@ -4523,7 +4572,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var pw = (($("#pw-cur") || {}).value || "") || window.prompt(t("auth.password")) || "";
     var body = { confirmation: conf.trim() };
     if (pw) body.password = pw;
-    req("/auth/me/delete", { method: "POST", body: body }).then(function () { me = null; toast(t("account.deleted")); window.mgsShowPage("connexion"); }).catch(function (e) { toast(errMsg(e), "err"); });
+    req("/auth/me/delete", { method: "POST", body: body }).then(function () { toast(t("account.deleted")); logout(); }).catch(function (e) { toast(errMsg(e), "err"); });
   }
   function logout() { req("/auth/logout", { method: "POST" }).catch(function () { }).then(function () { me = null; syncAuthChrome(); toast(t("nav.logout")); renderCart(); window.mgsShowPage("accueil"); }); }
 
@@ -4535,7 +4584,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var title = $(".mgs-page[data-page=connexion] .mgs-title"); if (title) title.textContent = mode === "login" ? (LANG === "en" ? "Sign in" : "Connexion") : (LANG === "en" ? "Sign up" : "Inscription");
     var btn = $('.mgs-page[data-page=connexion] a[data-nav="compte"] .button-main-inner__text span'); if (btn) btn.textContent = mode === "login" ? (LANG === "en" ? "Sign in" : "Se connecter") : (LANG === "en" ? "Create account" : "Créer le compte");
     var nameField = $("#reg-name-field");
-    if (mode === "register" && !nameField) { var em = $("#em"); if (em && em.closest(".mgs-field")) { nameField = doc.createElement("div"); nameField.className = "mgs-field"; nameField.id = "reg-name-field"; nameField.innerHTML = '<label for="reg-name">' + (LANG === "en" ? "Name" : "Nom") + '</label><input id="reg-name" type="text" class="mgs-input" placeholder="' + (LANG === "en" ? "Your name" : "Votre nom") + '">'; em.closest(".mgs-field").parentNode.insertBefore(nameField, em.closest(".mgs-field")); } }
+    if (mode === "register" && !nameField) { var em = $("#em"); if (em && em.closest(".mgs-field")) { nameField = doc.createElement("div"); nameField.className = "mgs-field"; nameField.id = "reg-name-field"; nameField.innerHTML = '<label for="reg-name">' + (LANG === "en" ? "Name" : "Nom") + '</label><input id="reg-name" name="name" type="text" autocomplete="name" class="mgs-input" placeholder="' + (LANG === "en" ? "Your name" : "Votre nom") + '">'; em.closest(".mgs-field").parentNode.insertBefore(nameField, em.closest(".mgs-field")); } }
     else if (mode === "login" && nameField) { nameField.remove(); }
     syncAuthCaptcha();
   }
@@ -4616,7 +4665,14 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       toast(authErr(e), "err");
     });
   }
-  function googleLogin() { toast(t("auth.google")); var to = authReturnTo ? "/" + authReturnTo : "/"; window.location.href = API + "/auth/google/start?return_to=" + encodeURIComponent(to); }
+  /* main AuthPage.js:38,53 + AuthCallback.js:8-11 : /auth/google/start?return_to=<chemin>
+     et retour sur `<site>/<chemin>` (backend routers/auth.py:288-360). Le chemin
+     envoyé est la ROUTE RÉELLE de la page (MGS_URLS), pas son nom d'écran. */
+  function googleLogin() {
+    toast(t("auth.google"));
+    var to = MGS_URLS[authReturnTo] || "/";
+    window.location.href = API + "/auth/google/start?return_to=" + encodeURIComponent(to);
+  }
   var forgotCaptchaBox = null;
   function renderForgotCaptcha() {
     var cap = window.MGS_CAPTCHA; if (!cap || !cap.enabled()) return;
@@ -4657,12 +4713,14 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
   /* Callback Google en échec : le backend redirige /connexion?error=google
      (backend/routers/auth.py:321) ; main affiche un message et nettoie l'URL
-     (frontend/src/components/AuthCallback.js:18-27). */
+     (frontend/src/components/AuthCallback.js:18-27). Le texte est codé en dur
+     dans REF (« Connexion Google impossible. Réessayez. ») : porté ici via la
+     clé auth.googleError (FR identique, EN = traduction littérale). */
   function handleGoogleError() {
     try {
       var u = new URL(location.href);
       if (u.searchParams.get("error") !== "google") return;
-      toast(t("auth.errorGeneric"), "err");
+      toast(t("auth.googleError"), "err");
       u.searchParams.delete("error");
       var q = u.searchParams.toString();
       history.replaceState({}, "", u.pathname + (q ? "?" + q : "") + u.hash);
@@ -4801,6 +4859,24 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     req("/chat/conversations", { method: "POST" }).then(function (c) { chatCid = c.id || (c.conversation && c.conversation.id); var msg = $("#ms"); if (msg) msg.focus(); }).catch(function (e) { toast(errMsg(e), "err"); });
   }
 
+  /* Pages légales : main App.js:70-71 (`/terms`, `/privacy`). Titres, ligne de
+     mise à jour et sections sont EXACTEMENT ceux de REF (pages/Legal.js:83-104)
+     — le texte vient de mgs-legal.js, lui-même copié de REF. */
+  function renderLegal(kind) {
+    var L = window.MGS_LEGAL; var page = $('.mgs-page[data-page="' + kind + '"]'); if (!page || !L) return;
+    var data = kind === "terms" ? L.terms : L.privacy;
+    var secs = (data && (data[LANG] || data.fr)) || [];
+    var en = LANG === "en";
+    var title = kind === "terms" ? (en ? "Terms of use" : "Conditions d'utilisation") : (en ? "Privacy policy" : "Politique de confidentialité");
+    var h1 = $("h1", page); if (h1) h1.textContent = title;
+    var sub = $(".mgs-sub", page); if (sub) sub.textContent = (en ? "Last updated" : "Mise à jour") + " : " + ((L.updated && L.updated[LANG]) || L.updated.fr);
+    var box = $('[data-legal="' + kind + '"]', page);
+    if (box) box.innerHTML = secs.map(function (sec) {
+      var paras = (sec[1] || []).map(function (p) { return "<p>" + esc(p) + "</p>"; }).join("");
+      return '<section><h2 class="mgs-section-h">' + esc(sec[0]) + "</h2>" + paras + "</section>";
+    }).join("");
+  }
+
   /* ---------- routage : observe body[data-page] (découplé du script template) ---------- */
   var loaders = {
     /* main App.js:82 : /admin est protégé (`ProtectedRoute admin`). Le design
@@ -4819,11 +4895,20 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       if (!co.order) coOpen();
     },
     boutique: function () { loadGames().then(renderGames); },
-    commandes: function () { loadOrders(); },
+    commandes: function () {
+      /* main App.js:66 : /commandes/:orderId est protégée (ProtectedRoute) ;
+         /commandes (liste) et /suivi|/orders (invité) restent publics. Le
+         parcours invité après commande n'utilise pas /commandes/:id : il
+         passe par /commandes (liste) + détail en page, ou par /suivi|/orders. */
+      if (/^\/commandes\/[^/]+\/?$/.test(location.pathname) && !me) { needLogin("commandes"); return; }
+      loadOrders();
+    },
     compte: function () { renderAccount(); },
     points: function () { renderPoints(); },
     evenements: function () { renderEvents(); },
     pack: function () { req("/evo/season").catch(function (e) { var st = $(".mgs-page[data-page=pack] .mgs-status"); if (st) { st.className = "mgs-status mgs-status--cancel"; st.textContent = errMsg(e); } }); },
+    terms: function () { renderLegal("terms"); },
+    privacy: function () { renderLegal("privacy"); },
     support: function () { maskUnsupported(); },
     connexion: function () { if (me) { var to = authReturnTo || "accueil"; authReturnTo = null; window.mgsShowPage(to); return; } setAuthMode(authMode); },
     mdp: function () { var st = $("#mdp-status"); if (st) { st.className = "mgs-status"; st.textContent = ""; } renderForgotCaptcha(); },
@@ -4857,6 +4942,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     [/^\/support\/?$/, "support"],
     [/^\/compte\/points\/?$/, "points"],
     [/^\/compte\/?$/, "compte"],
+    [/^\/terms\/?$/, "terms"],
+    [/^\/privacy\/?$/, "privacy"],
     [/^\/admin(\/.*)?$/, "admin"]
   ];
   function mgsPageFromUrl() {
@@ -4865,11 +4952,11 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var p = path.replace(/^\/+|\/+$/g, "");
     if (p && doc.querySelector('.mgs-page[data-page="' + p + '"]')) return p;
     var h = String(location.hash || "").replace(/^#/, "");
-    var H = { top: "accueil", jeux: "boutique", recharger: "evenements", securite: "commandes", commandes: "commandes", support: "support" };
+    var H = { top: "accueil", jeux: "boutique", recharger: "evenements", securite: "commandes", commandes: "commandes", support: "support", terms: "terms", privacy: "privacy" };
     return H[h] || "accueil";
   }
   /* La route écrite dans la barre d'adresse est celle de REF. */
-  var MGS_URLS = { accueil: "/", boutique: "/boutique", commande: "/commande", commandes: "/commandes", compte: "/compte", points: "/compte/points", connexion: "/connexion", evenements: "/evenements", pack: "/pack-evolutif", support: "/support", admin: "/admin", mdp: "/mot-de-passe-oublie" };
+  var MGS_URLS = { accueil: "/", boutique: "/boutique", commande: "/commande", commandes: "/commandes", compte: "/compte", points: "/compte/points", connexion: "/connexion", evenements: "/evenements", pack: "/pack-evolutif", support: "/support", admin: "/admin", mdp: "/mot-de-passe-oublie", terms: "/terms", privacy: "/privacy" };
   function mgsSyncUrl(id, replace) {
     try {
       var want = MGS_URLS[id] || (id === "produit" ? "/produit" : "/" + id);
@@ -4915,6 +5002,18 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     req("/orders/track?" + qs({ order_number: ref, pubg_id: pid })).then(open).catch(function (e) { toast(errMsg(e), "err"); });
   }
 
+  /* Formulaires d'authentification : ce sont de VRAIS formulaires (comme main,
+     AuthPage.js:83 « <form onSubmit=…> ») pour que le gestionnaire de mots de
+     passe du navigateur reconnaisse la connexion et propose les comptes
+     enregistrés. La soumission (Entrée ou bouton) passe par les mêmes fonctions. */
+  doc.addEventListener("submit", function (e) {
+    var f = e.target;
+    if (!f || !f.id) return;
+    if (f.id === "mgs-auth-form") { e.preventDefault(); doAuth(); }
+    else if (f.id === "mgs-reset-form") { e.preventDefault(); resetPassword(); }
+    else if (f.id === "mgs-mdp-form") { e.preventDefault(); forgotPassword(); }
+  }, true);
+
   /* ---------- Entrée au clavier : valide les formulaires, comme dans main ---------- */
   doc.addEventListener("keydown", function (e) {
     if (e.key !== "Enter" || !e.target || e.target.tagName === "TEXTAREA") return;
@@ -4938,7 +5037,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* liens internes du template (#jeux, #securite, #support, #top…) : le sélecteur du script
        template (a[data-nav], .nav-inner-li a, …) ne les couvrait pas — ces boutons ne faisaient rien */
     var la = el.closest('a[href^="#"]');
-    if (la) { var hh = la.getAttribute("href"); var HM = { "#top": "accueil", "#jeux": "boutique", "#recharger": "evenements", "#securite": "commandes", "#commandes": "commandes", "#support": "support", "#produit": "produit", "#compte": "compte", "#boutique": "boutique", "#points": "points", "#connexion": "connexion", "#evenements": "evenements", "#pack": "pack" }; if (HM[hh]) { stop(e); window.mgsShowPage(HM[hh]); return; } }
+    if (la) { var hh = la.getAttribute("href"); var HM = { "#top": "accueil", "#jeux": "boutique", "#recharger": "evenements", "#securite": "commandes", "#commandes": "commandes", "#support": "support", "#terms": "terms", "#privacy": "privacy", "#produit": "produit", "#compte": "compte", "#boutique": "boutique", "#points": "points", "#connexion": "connexion", "#evenements": "evenements", "#pack": "pack" }; if (HM[hh]) { stop(e); window.mgsShowPage(HM[hh]); return; } }
     /* panier (drawer) */
     if ((el.closest(".nav-cart-btn") || el.closest('[aria-label*="Panier"]')) && !el.closest(".mgs-cart-drawer")) { stop(e); openCart(); return; }
     if (el.closest(".mgs-cart-close") || el.classList.contains("mgs-cart-overlay")) { stop(e); closeCart(); return; }
@@ -4955,8 +5054,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     /* checkout */
     var rc = el.closest(".mgs-co-recent-chip"); if (rc) { stop(e); var ri = $(".mgs-co-id-input"); if (ri) ri.value = rc.dataset.id; /* main IdentityFieldsVerify.js:185-188 : remplit le champ, ne vérifie PAS */ return; }
     if (el.closest(".mgs-co-verify")) { stop(e); verifyId(); return; }
-    var m = el.closest(".mgs-co-method"); if (m) { stop(e); $$(".mgs-co-method").forEach(function (x) { x.classList.remove("is--active"); }); m.classList.add("is--active"); var r = $("input", m); if (r) r.checked = true; co.method = r ? r.value : ""; if (co.method === "Binance") co.network = (cryptoCfg && cryptoCfg.networks && cryptoCfg.networks[0] && cryptoCfg.networks[0].key) || ""; return; }
-    if (el.closest(".mgs-co-submit")) { stop(e); if (!co.verified) { coStatus("is--err", esc(t("checkout.verifyRequired"))); return; } if (!co.method) { toast(t("checkout.selectMethod"), "err"); return; } if (co.method === "Binance" && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.papiOff"), "err"); return; } openHuman(); return; }
+    var m = el.closest(".mgs-co-method"); if (m) { stop(e); var netBox = el.closest(".mgs-co-networks"); if (netBox) { /* choix du réseau USDT (REF Checkout.js:335-339) */ $$(".mgs-co-method", netBox).forEach(function (x) { x.classList.remove("is--active"); }); m.classList.add("is--active"); var nr = $("input", m); if (nr) nr.checked = true; co.network = nr ? nr.value : ""; return; } $$(".mgs-co-method").forEach(function (x) { x.classList.remove("is--active"); }); m.classList.add("is--active"); var r = $("input", m); if (r) r.checked = true; co.method = r ? r.value : ""; renderNetworks(); return; }
+    if (el.closest(".mgs-co-submit")) { stop(e); if (!co.verified) { coStatus("is--err", esc(t("checkout.verifyRequired"))); return; } if (!co.method) { toast(t("checkout.selectMethod"), "err"); return; } if (co.method === "Binance" && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.papiOff"), "err"); return; } if (co.method === "Binance" && !co.network) { toast(t("checkout.chooseNetwork"), "err"); return; } openHuman(); return; }
     if (el.closest(".mgs-co-back")) { stop(e); stopPaymentPoll(); window.mgsShowPage("boutique"); return; }
     if (el.closest(".mgs-co-back2")) { stop(e); stopTimer(); stopPaymentPoll(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } coShow(1); return; }
     if (el.closest(".mgs-co-proof")) { stop(e); ensureProofInput().click(); return; }
@@ -4987,7 +5086,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   doc.addEventListener("change", function (e) { if (e.target.classList.contains("mgs-human-cb")) { var cf = $(".mgs-human-confirm"); if (cf) cf.disabled = !e.target.checked; } });
 
-  function setLang(l) { LANG = l; try { localStorage.setItem("mgs_lang", l); } catch (e) { } doc.documentElement.lang = l; /* data-i18n : les libellés ajoutés dynamiquement aussi */ $$("[data-i18n]").forEach(function (e) { var k = e.getAttribute("data-i18n"); var v = t(k); if (typeof v === "string" && v !== k) e.textContent = v; }); if (lastPage) { var p = lastPage; lastPage = null; route(p); } renderCart(); }
+  function setLang(l) { LANG = l; try { localStorage.setItem("mgs_lang", l); } catch (e) { } doc.documentElement.lang = l; /* data-i18n : les libellés ajoutés dynamiquement aussi */ $$("[data-i18n]").forEach(function (e) { var k = e.getAttribute("data-i18n"); var v = t(k); if (typeof v === "string" && v !== k) e.textContent = v; }); if (lastPage) { var p = lastPage; lastPage = null; route(p); } renderCart(); if (window.MGS_LEGAL) { renderLegal("terms"); renderLegal("privacy"); } }
 
   /* ---------- boot ---------- */
   function boot() {

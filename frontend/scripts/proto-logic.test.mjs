@@ -342,12 +342,20 @@ await test("initiate : POST /crypto/initiate avec { order_id, network } et paiem
   assert.ok(r.payment.expiresInMs > 0 && r.payment.expiresInMs <= 10 * 60000);
 });
 
-await test("initiate : réseau inconnu refusé sans appel réseau", async () => {
-  const { api, calls } = cryptoModule();
+await test("initiate : aucun contrôle local du réseau (le backend statue)", async () => {
+  // REF ne valide pas le réseau côté client (Checkout.js ne propose que
+  // crypto.networks ; mgs-logic-crypto.js documente « aucune validation locale »)
+  // : le réseau saisi part tel quel vers /crypto/initiate, et c'est le backend
+  // qui répond 400 « Réseau USDT non disponible. »
+  const { ctx, api, calls } = cryptoModule();
+  ctx.MGS_CRYPTO.useTransport((method, p, body) => {
+    calls.push({ method, path: p, body });
+    return Promise.resolve({ status: 400, data: { detail: "Réseau USDT non disponible." } });
+  });
   const r = await api.initiate("o1", "DOGE");
   assert.equal(r.ok, false);
-  assert.equal(r.code, "invalid_network");
-  assert.equal(calls.length, 0);
+  assert.equal(r.code, "network_unavailable");
+  same(calls, [{ method: "POST", path: "/crypto/initiate", body: { order_id: "o1", network: "DOGE" } }]);
 });
 
 await test("initiate : codes d'erreur du backend", async () => {

@@ -14,8 +14,8 @@ Sources : `backend/routers/*.py` et `backend/services/*.py` sur `feat/proto-fonc
 
 ## 0. Conventions
 
-- Base : `window.MGS_BACKEND_URL` (défaut `https://magicgamestore-api-v2.onrender.com`),
-  préfixe `/api` — déjà géré par `req()` (`index.html:3511-3512`).
+- Base : `window.MGS_BACKEND_URL` (défaut `https://api.magicgame.store`),
+  préfixe `/api` — déjà géré par `req()` (`index.html:3526-3527`).
 - Cookies HttpOnly : `credentials: "include"` (déjà dans `req()`).
 - Colonne **Auth** : `public` = sans compte, `optionnel` = `get_optional_user` (le porteur
   de l'UUID de commande suffit), `oui` = `get_current_user` (401 sinon), `admin` = hors
