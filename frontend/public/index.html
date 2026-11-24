@@ -677,6 +677,17 @@ html.reduced-motion svg.footer-row-col-img, html.reduced-motion .marquee-cta-dot
 @media(max-width:991px){.mgs-grid.mgs-grid--5{grid-template-columns:repeat(2,1fr)}.mgs-grid.mgs-grid--2b{grid-template-columns:1fr}}
 .mgs-chip[data-sec]{cursor:pointer}
 .mgs-chip.is--active{background:var(--color--dark);color:var(--color--light)}
+/* admin : sidebar fixe à gauche (REF AdminLayout.js) — chips en dessous de 1024px */
+.mgs-admin-grid{display:grid;grid-template-columns:1fr}
+.mgs-admin-main{min-width:0}
+.mgs-admin-side{display:none}
+.mgs-admin-side-inner{border:.125em solid var(--color--dark);border-radius:1em;background:var(--color--light);padding:.7em}
+.mgs-admin-group+.mgs-admin-group{margin-top:1.1em}
+.mgs-admin-group-t{font-size:.62em;text-transform:uppercase;letter-spacing:.1em;opacity:.6;margin:0 0 .4em;padding-left:.8em}
+.mgs-admin-nav-item{display:flex;align-items:center;min-height:2.5em;padding:0 .8em;border-radius:.6em;font-size:.8em;font-weight:700;color:var(--color--dark);text-decoration:none}
+.mgs-admin-nav-item:hover{background:rgba(0,0,0,.06)}
+.mgs-admin-nav-item.is--active{background:var(--color--dark);color:var(--color--light)}
+@media(min-width:1024px){.mgs-admin-grid{grid-template-columns:240px minmax(0,1fr);gap:2em;align-items:start}.mgs-admin-side{display:block;position:sticky;top:5.5em;max-height:calc(100dvh - 6.5em);overflow:auto}#admin-subnav{display:none}}
 .mgs-stat__l{font-size:.75em;font-weight:700;text-transform:uppercase;letter-spacing:.08em;opacity:.65}
 
 /* table */
@@ -2624,7 +2635,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
 </div>
 
 <div class="mgs-page" data-page="admin">
-<section class="section"><div class="container"><div class="mgs-shell"><div class="mgs-head"><p class="eyebrow">Administration</p><h1 class="mgs-title">Tableau de bord</h1><p class="mgs-sub">Vue d’ensemble de la boutique.</p></div><div id="admin-sec-dash"><div class="mgs-grid mgs-grid--5" style="margin-bottom:2em"><div class="mgs-stat" data-admin-stat="revenue"><span class="mgs-stat__n">—</span><span class="mgs-stat__l">Revenu</span></div><div class="mgs-stat" data-admin-stat="total"><span class="mgs-stat__n">—</span><span class="mgs-stat__l">Commandes</span></div><div class="mgs-stat" data-admin-stat="pending"><span class="mgs-stat__n">—</span><span class="mgs-stat__l">À livrer</span></div><div class="mgs-stat" data-admin-stat="delivered"><span class="mgs-stat__n">—</span><span class="mgs-stat__l">Livrées</span></div><div class="mgs-stat" data-admin-stat="customers"><span class="mgs-stat__n">—</span><span class="mgs-stat__l">Clients</span></div></div><div class="mgs-panel" style="margin-bottom:2em"><div class="mgs-between"><div><p class="mgs-muted" style="margin:0">Paiements en attente</p><p class="mgs-admin-big" id="admin-pending-count" style="margin-top:.1em">0</p></div><div style="text-align:right"><p class="mgs-muted" style="margin:0">Total en attente</p><p class="mgs-admin-big" id="admin-pending-usd" style="margin-top:.1em">$0.00</p></div></div></div><div class="mgs-grid mgs-grid--2b"><div class="mgs-panel"><h2 class="mgs-section-h" style="margin:0 0 1em">14 derniers jours</h2><div class="mgs-bars" id="admin-chart"><p class="mgs-muted">—</p></div></div><div class="mgs-panel"><h2 class="mgs-section-h" style="margin:0 0 1em">Top produits</h2><ul class="mgs-list" id="admin-top"><li class="mgs-list-item mgs-muted">—</li></ul><div class="mgs-row" style="margin-top:1em;flex-wrap:wrap"><span class="mgs-chip" id="chip-mvola">MVola 0</span><span class="mgs-chip" id="chip-orange">Orange 0</span><span class="mgs-chip" id="chip-ussd">USSD 0</span><span class="mgs-chip" id="chip-binance">USDT 0</span></div></div></div></div><div class="mgs-row" id="admin-subnav" style="margin:2em 0 1em;flex-wrap:wrap"></div><div id="admin-sec-body"></div></div></div></div></section>
+<section class="section"><div class="container"><div class="mgs-shell"><div class="mgs-head"><p class="eyebrow">Administration</p><h1 class="mgs-title">Tableau de bord</h1><p class="mgs-sub">Vue d’ensemble de la boutique.</p></div><div class="mgs-admin-grid"><aside class="mgs-admin-side" id="admin-side" aria-label="Administration"></aside><div class="mgs-admin-main"><div id="admin-sec-dash"><div class="mgs-grid mgs-grid--5" style="margin-bottom:2em"><div class="mgs-stat" data-admin-stat="revenue"><span class="mgs-stat__n">—</span><span class="mgs-stat__l">Revenu</span></div><div class="mgs-stat" data-admin-stat="total"><span class="mgs-stat__n">—</span><span class="mgs-stat__l">Commandes</span></div><div class="mgs-stat" data-admin-stat="pending"><span class="mgs-stat__n">—</span><span class="mgs-stat__l">À livrer</span></div><div class="mgs-stat" data-admin-stat="delivered"><span class="mgs-stat__n">—</span><span class="mgs-stat__l">Livrées</span></div><div class="mgs-stat" data-admin-stat="customers"><span class="mgs-stat__n">—</span><span class="mgs-stat__l">Clients</span></div></div><div class="mgs-panel" style="margin-bottom:2em"><div class="mgs-between"><div><p class="mgs-muted" style="margin:0">Paiements en attente</p><p class="mgs-admin-big" id="admin-pending-count" style="margin-top:.1em">0</p></div><div style="text-align:right"><p class="mgs-muted" style="margin:0">Total en attente</p><p class="mgs-admin-big" id="admin-pending-usd" style="margin-top:.1em">$0.00</p></div></div></div><div class="mgs-grid mgs-grid--2b"><div class="mgs-panel"><h2 class="mgs-section-h" style="margin:0 0 1em">14 derniers jours</h2><div class="mgs-bars" id="admin-chart"><p class="mgs-muted">—</p></div></div><div class="mgs-panel"><h2 class="mgs-section-h" style="margin:0 0 1em">Top produits</h2><ul class="mgs-list" id="admin-top"><li class="mgs-list-item mgs-muted">—</li></ul><div class="mgs-row" style="margin-top:1em;flex-wrap:wrap"><span class="mgs-chip" id="chip-mvola">MVola 0</span><span class="mgs-chip" id="chip-orange">Orange 0</span><span class="mgs-chip" id="chip-ussd">USSD 0</span><span class="mgs-chip" id="chip-binance">USDT 0</span></div></div></div></div><div class="mgs-row" id="admin-subnav" style="margin:2em 0 1em;flex-wrap:wrap"></div><div id="admin-sec-body"></div></div></div></div></div></div></section>
 </div>
 
 <div class="mgs-page" data-page="commande">
@@ -4905,17 +4916,28 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     function setSec(k) {
       if (dash) dash.style.display = (k === 'dash') ? '' : 'none';
       if (body) body.innerHTML = (k === 'dash') ? '' : body.innerHTML;
-      $$('#admin-subnav [data-sec]').forEach(function (c) { c.classList.toggle('is--active', c.getAttribute('data-sec') === k); });
+      $$('#admin-subnav [data-sec], #admin-side [data-sec]').forEach(function (c) { c.classList.toggle('is--active', c.getAttribute('data-sec') === k); });
       if (k !== 'dash') loadSec(k);
     }
-    if (nav) {
-      nav.innerHTML = [['dash', 'Tableau de bord'], ['orders', 'Commandes'], ['products', 'Produits'], ['users', 'Clients'], ['loyalty', 'Fidélité'], ['events', 'Événements'], ['games', 'Jeux'], ['payments', 'Paiements'], ['crypto', 'Crypto'], ['fzr', 'Fazercards']]
-        .map(function (x) { return '<a href="#admin" class="mgs-chip' + (x[0] === 'dash' ? ' is--active' : '') + '" data-sec="' + x[0] + '">' + esc(x[1]) + '</a>'; }).join('');
-      nav.addEventListener('click', function (ev) {
-        var a = ev.target && ev.target.closest ? ev.target.closest('[data-sec]') : null; if (!a) return;
-        ev.preventDefault(); setSec(a.getAttribute('data-sec'));
-      });
-    }
+    /* REF lib/adminNav.js : mêmes entrées, 3 groupes (ops/shop/system). */
+    var side = document.getElementById('admin-side');
+    var ITEMS = [['dash', 'Tableau de bord', 'ops'], ['orders', 'Commandes', 'ops'], ['payments', 'Paiements', 'ops'], ['crypto', 'Crypto', 'ops'],
+                 ['products', 'Catalogue', 'shop'], ['games', 'Jeux', 'shop'], ['events', 'Événements', 'shop'], ['loyalty', 'Fidélité', 'shop'],
+                 ['users', 'Utilisateurs', 'system'], ['fzr', 'Fournisseur', 'system']];
+    var GROUPS = [['ops', 'Opérations'], ['shop', 'Boutique'], ['system', 'Système']];
+    if (nav) nav.innerHTML = ITEMS.map(function (x) { return '<a href="#admin" class="mgs-chip' + (x[0] === 'dash' ? ' is--active' : '') + '" data-sec="' + x[0] + '">' + esc(x[1]) + '</a>'; }).join('');
+    if (side) side.innerHTML = '<div class="mgs-admin-side-inner">' + GROUPS.map(function (g) {
+      var its = ITEMS.filter(function (x) { return x[2] === g[0]; });
+      return '<div class="mgs-admin-group"><p class="mgs-admin-group-t">' + esc(g[1]) + '</p>' + its.map(function (x) {
+        return '<a href="#admin" class="mgs-admin-nav-item' + (x[0] === 'dash' ? ' is--active' : '') + '" data-sec="' + x[0] + '">' + esc(x[1]) + '</a>';
+      }).join('') + '</div>';
+    }).join('') + '</div>';
+    var onNavClick = function (ev) {
+      var a = ev.target && ev.target.closest ? ev.target.closest('[data-sec]') : null; if (!a) return;
+      ev.preventDefault(); setSec(a.getAttribute('data-sec'));
+    };
+    if (nav) nav.addEventListener('click', onNavClick);
+    if (side) side.addEventListener('click', onNavClick);
     req('/admin/stats').then(function (s) {
       if (!s) return;
       var sc = s.status_count || {};
