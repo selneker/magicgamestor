@@ -666,6 +666,15 @@ html.reduced-motion svg.footer-row-col-img, html.reduced-motion .marquee-cta-dot
    flashé). currentColor = sûr en clair comme en sombre. */
 .mgs-skel{display:inline-block;width:58%;height:.62em;border-radius:.35em;background:currentColor;animation:mgsSkel 1.1s ease-in-out infinite}
 @keyframes mgsSkel{0%,100%{opacity:.18}50%{opacity:.38}}
+/* admin : grille 5 cartes + panneau graphe / top produits (REF pages/admin/AdminDashboard.js) */
+.mgs-grid.mgs-grid--5{display:grid;grid-template-columns:repeat(5,1fr);gap:1em}
+.mgs-grid.mgs-grid--2b{display:grid;grid-template-columns:1.4fr 1fr;gap:1.5em}
+.mgs-admin-big{font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;font-size:2.4em;line-height:1;margin:.2em 0 0}
+.mgs-bars{display:flex;align-items:flex-end;gap:.35em;margin-top:1em}
+.mgs-bars__col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:12em}
+.mgs-bars__bar{background:var(--color--yellow-700);border:.125em solid var(--color--dark);border-bottom:0;min-height:.15em}
+.mgs-bars__x{font-size:.62em;text-align:center;opacity:.6;padding-top:.3em}
+@media(max-width:991px){.mgs-grid.mgs-grid--5{grid-template-columns:repeat(2,1fr)}.mgs-grid.mgs-grid--2b{grid-template-columns:1fr}}
 .mgs-stat__l{font-size:.75em;font-weight:700;text-transform:uppercase;letter-spacing:.08em;opacity:.65}
 
 /* table */
@@ -2108,11 +2117,12 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
     <nav class="nav-inner" aria-label="Navigation principale">
       <a href="#top" class="nav-btn-circle is--nav-logo w-inline-block" aria-label="Magic Game Store"><svg class="nav-button-logo nav-logo-desktop" viewBox="0 0 830 830" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M415 0A415 415 0 1 1 415 830A415 415 0 1 1 415 0ZM415 0A415 415 0 0 0 830 415A415 415 0 0 0 415 830A415 415 0 0 0 0 415A415 415 0 0 0 415 0Z"/></svg><svg class="nav-logo-mobile" viewBox="0 0 830 830" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M415 0A415 415 0 1 1 415 830A415 415 0 1 1 415 0ZM415 0A415 415 0 0 0 830 415A415 415 0 0 0 415 830A415 415 0 0 0 0 415A415 415 0 0 0 415 0Z"/></svg></a>
       <div class="nav-inner-right">
-        <ul class="nav-inner-list" role="list"><li class="nav-inner-li"><a href="#" data-nav="boutique" class="button-main w-inline-block" data-button-theme="light" data-button-accent="yellow"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="boutique"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>boutique</span></span></span></span></a></li><li class="nav-inner-li"><a href="#" data-nav="commandes" class="button-main w-inline-block" data-button-theme="light" data-button-accent="green"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="commandes"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>commandes</span></span></span></span></a></li><li class="nav-inner-li"><a href="#" data-nav="support" class="button-main w-inline-block" data-button-theme="light" data-button-accent="violet"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="support"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>support</span></span></span></span></a></li><li class="nav-inner-li"><a href="#" data-nav="compte" class="button-main w-inline-block" data-button-theme="light" data-button-accent="orange"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="compte"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>compte</span></span></span></span></a></li></ul>
+        <ul class="nav-inner-list" role="list"><li class="nav-inner-li"><a href="#" data-nav="boutique" class="button-main w-inline-block" data-button-theme="light" data-button-accent="yellow"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="boutique"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>boutique</span></span></span></span></a></li><li class="nav-inner-li"><a href="#" data-nav="commandes" class="button-main w-inline-block" data-button-theme="light" data-button-accent="green"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="commandes"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>commandes</span></span></span></span></a></li><li class="nav-inner-li"><a href="#" data-nav="support" class="button-main w-inline-block" data-button-theme="light" data-button-accent="violet"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="support"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>support</span></span></span></span></a></li><li class="nav-inner-li"><a href="#" data-nav="compte" class="button-main w-inline-block" data-button-theme="light" data-button-accent="orange"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="compte"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>compte</span></span></span></span></a></li><li class="nav-inner-li" data-admin-only style="display:none"><a href="#admin" data-nav="admin" class="button-main w-inline-block" data-button-theme="light" data-button-accent="blue"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="admin"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>admin</span></span></span></span></a></li></ul>
         <div class="nav-mobile-actions">
           <a href="#" data-nav="points" class="nav-btn-circle nav-action" aria-label="Points fidélité : 120 (démo)"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span class="nav-action-badge">120</span></a>
           <a href="#" data-nav="compte" class="nav-btn-circle nav-action" aria-label="Compte"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></a>
           <button type="button" class="nav-btn-circle nav-action" aria-label="Panier : 2 articles (démo)"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span class="nav-action-badge">2</span></button>
+          <a href="#" data-nav="admin" data-admin-only style="display:none" class="nav-btn-circle nav-action" aria-label="Administration"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></a>
         </div>
         <div class="nav-desktop-actions">
           <button type="button" class="nav-btn-circle nav-action nav-cart-btn" aria-label="Panier : 2 articles (démo)"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg><span class="nav-action-badge">2</span></button>
@@ -2612,7 +2622,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
 </div>
 
 <div class="mgs-page" data-page="admin">
-<section class="section"><div class="container"><div class="mgs-shell"><div class="mgs-head"><p class="eyebrow">Administration</p><h1 class="mgs-title">Tableau de bord</h1><p class="mgs-sub">Vue d’ensemble de la boutique · données de démonstration.</p></div><div class="mgs-grid" style="margin-bottom:2em"><div class="mgs-stat mgs-panel--yellow" style="background:var(--color--yellow-700)"><span class="mgs-stat__n">142</span><span class="mgs-stat__l">Commandes (14 j)</span></div><div class="mgs-stat"><span class="mgs-stat__n">1,8M</span><span class="mgs-stat__l">Revenu Ar</span></div><div class="mgs-stat"><span class="mgs-stat__n">7</span><span class="mgs-stat__l">À livrer</span></div><div class="mgs-stat"><span class="mgs-stat__n">98%</span><span class="mgs-stat__l">Livrées</span></div></div><div class="mgs-panel" style="margin-bottom:2em"><div class="mgs-between" style="margin-bottom:1em"><h2 class="mgs-section-h" style="margin:0">Commandes récentes</h2><div class="mgs-row"><span class="mgs-chip">Toutes</span><span class="mgs-chip">À livrer</span><span class="mgs-chip">Payées</span></div></div><div style="overflow-x:auto"><table class="mgs-table"><thead><tr><th>Commande</th><th>Produit</th><th>Paiement</th><th>Statut</th><th>Total</th></tr></thead><tbody><tr><td class="mgs-mono">MGS-0142</td><td>660 UC</td><td>MVola</td><td><span class="mgs-status mgs-status--progress">En cours</span></td><td class="mgs-mono">12 500</td></tr><tr><td class="mgs-mono">MGS-0141</td><td>Prime+</td><td>Orange</td><td><span class="mgs-status mgs-status--pending">À livrer</span></td><td class="mgs-mono">12 000</td></tr><tr><td class="mgs-mono">MGS-0140</td><td>100 Diam.</td><td>USDT</td><td><span class="mgs-status mgs-status--done">Livrée</span></td><td class="mgs-mono">2 000</td></tr><tr><td class="mgs-mono">MGS-0139</td><td>Prime</td><td>MVola</td><td><span class="mgs-status mgs-status--done">Livrée</span></td><td class="mgs-mono">4 500</td></tr><tr><td class="mgs-mono">MGS-0138</td><td>1800 UC</td><td>MVola</td><td><span class="mgs-status mgs-status--cancel">Annulée</span></td><td class="mgs-mono">32 000</td></tr></tbody></table></div></div><div class="mgs-row"><a href="#" data-nav="admin" class="button-main w-inline-block " data-button-theme="dark" data-button-accent="blue"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Gérer les produits"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Gérer les produits</span></span></span></span></a><a href="#" data-nav="admin" class="button-main w-inline-block " data-button-theme="light" data-button-accent=""><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Voir les paiements"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Voir les paiements</span></span></span></span></a><a href="#" data-nav="admin" class="button-main w-inline-block " data-button-theme="light" data-button-accent=""><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Notifications"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Notifications</span></span></span></span></a></div></div></div></section>
+<section class="section"><div class="container"><div class="mgs-shell"><div class="mgs-head"><p class="eyebrow">Administration</p><h1 class="mgs-title">Tableau de bord</h1><p class="mgs-sub">Vue d’ensemble de la boutique.</p></div><div class="mgs-grid mgs-grid--5" style="margin-bottom:2em"><div class="mgs-stat" data-admin-stat="revenue"><span class="mgs-stat__n">—</span><span class="mgs-stat__l">Revenu</span></div><div class="mgs-stat" data-admin-stat="total"><span class="mgs-stat__n">—</span><span class="mgs-stat__l">Commandes</span></div><div class="mgs-stat" data-admin-stat="pending"><span class="mgs-stat__n">—</span><span class="mgs-stat__l">À livrer</span></div><div class="mgs-stat" data-admin-stat="delivered"><span class="mgs-stat__n">—</span><span class="mgs-stat__l">Livrées</span></div><div class="mgs-stat" data-admin-stat="customers"><span class="mgs-stat__n">—</span><span class="mgs-stat__l">Clients</span></div></div><div class="mgs-panel" style="margin-bottom:2em"><div class="mgs-between"><div><p class="mgs-muted" style="margin:0">Paiements en attente</p><p class="mgs-admin-big" id="admin-pending-count" style="margin-top:.1em">0</p></div><div style="text-align:right"><p class="mgs-muted" style="margin:0">Total en attente</p><p class="mgs-admin-big" id="admin-pending-usd" style="margin-top:.1em">$0.00</p></div></div></div><div class="mgs-grid mgs-grid--2b"><div class="mgs-panel"><h2 class="mgs-section-h" style="margin:0 0 1em">14 derniers jours</h2><div class="mgs-bars" id="admin-chart"><p class="mgs-muted">—</p></div></div><div class="mgs-panel"><h2 class="mgs-section-h" style="margin:0 0 1em">Top produits</h2><ul class="mgs-list" id="admin-top"><li class="mgs-list-item mgs-muted">—</li></ul><div class="mgs-row" style="margin-top:1em;flex-wrap:wrap"><span class="mgs-chip" id="chip-mvola">MVola 0</span><span class="mgs-chip" id="chip-orange">Orange 0</span><span class="mgs-chip" id="chip-ussd">USSD 0</span><span class="mgs-chip" id="chip-binance">USDT 0</span></div></div></div></div></div></div></section>
 </div>
 
 <div class="mgs-page" data-page="commande">
@@ -2760,6 +2770,10 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
     <a href="#support" class="bottom-nav-item">
       <span class="bottom-nav-pill" aria-hidden="true"></span>
       <span class="bottom-nav-content"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg><span class="bottom-nav-label">Support</span></span>
+    </a>
+    <a href="#admin" data-nav="admin" data-admin-only style="display:none" class="bottom-nav-item">
+      <span class="bottom-nav-pill" aria-hidden="true"></span>
+      <span class="bottom-nav-content"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="bottom-nav-label">Admin</span></span>
     </a>
   </nav>
 </div>
@@ -4557,6 +4571,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   var authBusy = false;
   function syncAuthChrome() {
     var on = !!me && loyaltyOk;
+    /* Accès à l'administration : visible seulement pour un compte admin connecté. */
+    var isAdm = !!me && (me.role === "admin" || me.role === "super_admin");
+    $$("[data-admin-only]").forEach(function (e) { e.style.display = isAdm ? "" : "none"; });
     $$(".nav-points-pill").forEach(function (e) { e.style.display = on ? "" : "none"; });
     $$('.nav-mobile-actions a[data-nav="points"]').forEach(function (e) { e.style.display = on ? "" : "none"; });
     /* Photo de profil à la place de l'icône : dans la nav, à droite du chiffre
@@ -4857,31 +4874,33 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
      .mgs-table) sans toucher au markup ni au CSS. */
   function renderAdmin() {
     var page = $('.mgs-page[data-page="admin"]'); if (!page) return;
-    /* Les 3 boutons du design mènent aux écrans admin non portés (PORTAGE Z6 :
-       14 écrans laissés à React) : masqués (restaurables en une ligne) et
-       listés dans PORTAGE.md « Éléments masqués ». */
-    $$('.mgs-row .button-main', page).forEach(function (b) { b.style.display = 'none'; });
+    /* REF pages/admin/AdminDashboard.js (b34df6e) : 5 cartes + paiements en attente
+       + graphe 14 j + top produits. Données = GET /admin/stats. */
     req('/admin/stats').then(function (s) {
       if (!s) return;
-      var daily = Array.isArray(s.daily) ? s.daily : [];
-      var cmd14 = daily.reduce(function (a, d) { return a + ((d && d.count) || 0); }, 0);
       var sc = s.status_count || {};
-      var nums = $$('.mgs-stat__n', page);
-      if (nums[0]) nums[0].textContent = String(cmd14);
-      if (nums[1]) nums[1].textContent = arNum(s.revenue != null ? s.revenue : 0);
-      if (nums[2]) nums[2].textContent = String((sc.paid || 0) + (sc.awaiting_verification || 0));
-      if (nums[3]) nums[3].textContent = String(sc.delivered || 0);
-    }).catch(function (e) { signale(e); });
-    req('/admin/orders?limit=5').then(function (rows) {
-      rows = Array.isArray(rows) ? rows : [];
-      var tbody = $('.mgs-table tbody', page);
-      /* liste vide ou erreur : on garde le modèle du design (jamais de grille vide). */
-      if (!tbody || !rows.length) return;
-      var tpl = tbody.querySelector('tr'); var cls = tpl ? tpl.className : '';
-      tbody.innerHTML = rows.map(function (o) {
-        var b = statusBucket(o.status);
-        return '<tr class="' + cls + '"><td class="mgs-mono">' + esc(o.order_number || o.number || '') + '</td><td>' + esc(orderProductLabel(o)) + '</td><td>' + esc(orderMethodLabel(o)) + '</td><td><span class="mgs-status mgs-status--' + b + '">' + esc(statusLabel(o.status)) + '</span></td><td class="mgs-mono">' + esc(arNum(o.total)) + '</td></tr>';
-      }).join('');
+      var num = function (k, v) { var e = $('[data-admin-stat="' + k + '"] .mgs-stat__n', page); if (e) e.textContent = v; };
+      num('revenue', arNum(s.revenue != null ? s.revenue : 0));
+      num('total', String(s.total_orders != null ? s.total_orders : 0));
+      num('pending', String((sc.paid || 0) + (sc.awaiting_verification || 0)));
+      num('delivered', String(sc.delivered || 0));
+      num('customers', String(s.customers != null ? s.customers : 0));
+      var pc = document.getElementById('admin-pending-count'); if (pc) pc.textContent = String(s.pending_payment_count != null ? s.pending_payment_count : 0);
+      var pu = document.getElementById('admin-pending-usd'); if (pu) pu.textContent = '$' + Number(s.pending_payment_usd || 0).toFixed(2);
+      var daily = Array.isArray(s.daily) ? s.daily.slice(-14) : [];
+      var chart = document.getElementById('admin-chart');
+      if (chart) {
+        var max = daily.reduce(function (a, d) { return Math.max(a, (d && d.revenue) || 0); }, 0) || 1;
+        chart.innerHTML = daily.map(function (d) {
+          var r = (d && d.revenue) || 0; var lbl = String((d && d._id) || '').slice(5);
+          return '<div class="mgs-bars__col"><div class="mgs-bars__bar" style="height:' + Math.round(r / max * 100) + '%"></div><div class="mgs-bars__x">' + esc(lbl) + '</div></div>';
+        }).join('') || '<p class="mgs-muted">—</p>';
+      }
+      var top = Array.isArray(s.top_products) ? s.top_products : [];
+      var box = document.getElementById('admin-top');
+      if (box) box.innerHTML = top.length ? top.map(function (p) { return '<li class="mgs-list-item"><span style="font-weight:700">' + esc(p._id || '') + '</span><span class="mgs-muted">×' + esc(String(p.qty != null ? p.qty : 0)) + '</span></li>'; }).join('') : '<li class="mgs-list-item mgs-muted">—</li>';
+      var bm = s.by_method || {};
+      [['chip-mvola','MVola',bm.mvola],['chip-orange','Orange',bm.orange],['chip-ussd','USSD',bm.manual],['chip-binance','USDT',bm.binance]].forEach(function (c) { var e = document.getElementById(c[0]); if (e) e.textContent = c[1] + ' ' + (c[2] || 0); });
     }).catch(function (e) { signale(e); });
   }
 
