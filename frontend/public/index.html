@@ -714,6 +714,34 @@ html.reduced-motion svg.footer-row-col-img, html.reduced-motion .marquee-cta-dot
 .mgs-form__rows{display:grid;grid-template-columns:repeat(auto-fit,minmax(5.5em,1fr));gap:.35em;align-items:end}
 .mgs-form__rows input{margin-top:0}
 .mgs-form__rows .is--del{justify-self:end}
+.mgs-form select{width:100%;margin-top:.35em;padding:.55em .7em;border:.09em solid var(--color--dark);border-radius:.5em;background:#fff;font:inherit;font-size:.85em}
+.mgs-cat-bar{border:.09em solid var(--color--dark);border-radius:1em;padding:.8em;background:var(--color--light)}
+.mgs-gtabs{display:flex;gap:.4em;overflow-x:auto;margin-top:.6em;padding-bottom:.2em}
+.mgs-gtab{flex:0 0 auto;display:inline-flex;align-items:center;gap:.3em;border:.09em solid var(--color--dark);background:var(--color--light);color:var(--color--dark);padding:.5em .8em;font-size:.62em;font-weight:800;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;border-radius:0}
+.mgs-gtab.is--active{background:var(--color--dark);color:var(--color--light)}
+.mgs-cat-tools{display:flex;flex-wrap:wrap;gap:.6em;align-items:center;justify-content:space-between;margin-top:1em}
+.mgs-cat-tools input{width:100%;max-width:18em;padding:.5em .8em;border:.09em solid var(--color--dark);border-radius:999px;background:#fff;font:inherit;font-size:.8em}
+.mgs-apgrid{display:grid;grid-template-columns:1fr;gap:.7em;margin-top:1em}
+@media(min-width:640px){.mgs-apgrid{grid-template-columns:1fr 1fr}}
+@media(min-width:1024px){.mgs-apgrid{grid-template-columns:1fr 1fr 1fr}}
+.mgs-apcard{display:flex;align-items:center;gap:.6em;border:.09em solid var(--color--dark);background:var(--color--light);padding:.65em;border-radius:0;min-width:0}
+.mgs-apcard.is--off{border-style:dashed;opacity:.6}
+.mgs-apcard__b{min-width:0;flex:1}
+.mgs-apcard__n{font-family:var(--font--display);font-weight:800;font-size:.82em;margin:0;overflow-wrap:anywhere;line-height:1.2}
+.mgs-apcard__m{display:flex;flex-wrap:wrap;align-items:center;gap:.35em;margin:.35em 0 0;font-size:.64em}
+.mgs-apcard__type{border:.09em solid currentColor;border-radius:999px;padding:.1em .5em;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.8}
+.mgs-apcard__price{font-weight:800}
+.mgs-apcard__star{background:var(--color--dark);color:var(--color--light);border-radius:999px;padding:0 .35em;font-weight:800}
+.mgs-apcard__state{border:.09em solid currentColor;border-radius:999px;padding:.1em .5em;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.75}
+.mgs-apcard__a{display:flex;flex-direction:column;gap:.25em;flex:0 0 auto}
+.mgs-seasons{border:.09em solid var(--color--dark);border-radius:1em;padding:.8em;margin-top:1em;background:var(--color--light)}
+.mgs-seasons h3{margin:0;font-family:var(--font--display);font-size:.95em;font-weight:800}
+.mgs-seasons form{display:flex;flex-wrap:wrap;gap:.4em;margin-top:.6em}
+.mgs-seasons input{flex:1 1 10em;padding:.5em .7em;border:.09em solid var(--color--dark);border-radius:.5em;background:#fff;font:inherit;font-size:.8em}
+.mgs-seasons__list{display:flex;flex-wrap:wrap;gap:.35em;margin-top:.6em}
+.mgs-season{border:.09em solid var(--color--dark);border-radius:999px;padding:.2em .7em;font-size:.66em;font-weight:700}
+.mgs-season.is--on{background:var(--color--dark);color:var(--color--light)}
+.mgs-season button{border:0;background:none;font:inherit;color:inherit;text-decoration:underline;cursor:pointer;padding:0 0 0 .3em}
 .mgs-form__box{border:.09em solid var(--color--dark);border-radius:.8em;padding:.7em;grid-column:1/-1}
 .mgs-form__box-t{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.4em;font-size:.72em;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
 .mgs-form__empty{margin:.4em 0 0;font-size:.72em;opacity:.75}
@@ -4930,9 +4958,6 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       orders: { t: 'Commandes', ep: '/admin/orders?limit=50', c: ['N°','Client','Produit','Paiement','Statut','Total'],
         r: function (o) { return [o.order_number || o.number || '', o.customer_name || o.email || '', orderProductLabel(o), orderMethodLabel(o), statusLabel(o.status), arNum(o.total)]; },
         a: function (i) { return '<button type="button" class="mgs-chip" data-act="o-status" data-i="' + i + '">Statut</button> <button type="button" class="mgs-chip" data-act="o-del" data-i="' + i + '">Suppr</button>'; } },
-      products: { t: 'Catalogue', ep: '/products?include_inactive=true', c: ['Nom','Jeu','Prix','Actif'],
-        r: function (x) { return [x.name || '', x.game_id || x.game || '', arNum(x.price != null ? x.price : x.amount), x.active === false ? 'non' : 'oui']; },
-        a: function (i) { return '<button type="button" class="mgs-chip" data-act="p-toggle" data-i="' + i + '">Activer/Désactiver</button> <button type="button" class="mgs-chip" data-act="p-del" data-i="' + i + '">Suppr</button>'; } },
       users: { t: 'Utilisateurs', ep: '/admin/users', c: ['Nom','Email','Rôle','Bloqué'],
         r: function (u) { return [u.name || '', u.email || '', u.role || '', u.blocked ? 'oui' : 'non']; },
         a: function (i) { return '<button type="button" class="mgs-chip" data-act="u-block" data-i="' + i + '">Bloquer/Débloquer</button>'; } },
@@ -5089,8 +5114,158 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       if (editing) req('/admin/games/' + id, { method: 'PUT', body: body }).then(done).catch(fail);
       else req('/admin/games', { method: 'POST', body: body }).then(done).catch(fail);
     }
+
+    /* ---- Produits : porté de pages/admin/AdminProducts.js (PR #100 b34df6e) ---- */
+    var PRODUCTS = [], PRODUCTS_VIS = [], PGAMES = [], PGAME = 'pubg-mobile', PDOM = null, PQ = '';
+    var P_EMPTY = { slug: '', type: '', game_id: 'pubg-mobile', name: '', name_en: '', uc_amount: '', duration_months: '', price: '', old_price: '', popular: false, badge: '', evo_limit: '', image_url: '', description_fr: '', description_en: '', active: false, requires_mapping: true, sort_order: 0 };
+    function pTypesOf(gid) { var g = PGAMES.filter(function (x) { return x.id === (gid || 'pubg-mobile'); })[0]; return (g && g.product_types) || []; }
+    function pTypeName(pr) { var t = pTypesOf(pr.game_id).filter(function (x) { return x.key === pr.type; })[0]; return (t && t.label) || pr.type || ''; }
+    function renderProducts(host) {
+      PDOM = host; PQ = '';
+      host.innerHTML = '<div class="mgs-panel"><p class="mgs-muted">Chargement…</p></div>';
+      Promise.all([req('/admin/games'), req('/products?include_inactive=true')]).then(function (r) {
+        PGAMES = Array.isArray(r[0]) ? r[0] : [];
+        PRODUCTS = Array.isArray(r[1]) ? r[1] : [];
+        if (!PGAMES.some(function (g) { return g.id === PGAME; })) PGAME = PGAMES.length ? PGAMES[0].id : 'pubg-mobile';
+        paintProductsShell();
+      }).catch(function (e) { signale(e); host.innerHTML = '<div class="mgs-panel"><p class="mgs-muted">Indisponible</p></div>'; });
+    }
+    function paintProductsShell() {
+      var host = PDOM; if (!host) return;
+      host.innerHTML = '<div class="mgs-cat-bar"><p class="mgs-muted" style="margin:0;font-size:.62em;text-transform:uppercase;letter-spacing:.1em;opacity:.7">Catalogue</p>' +
+        '<p class="mgs-muted" style="margin:.3em 0 0;font-size:.72em">Choisissez le jeu : tout l\'écran est limité à ce catalogue, jamais mélangé.</p>' +
+        '<div class="mgs-gtabs" role="tablist">' + PGAMES.map(function (g) {
+          return '<button type="button" role="tab" aria-selected="' + (g.id === PGAME) + '" class="mgs-gtab' + (g.id === PGAME ? ' is--active' : '') + '" data-act="p-game" data-g="' + esc(g.id) + '">' + esc(g.name) + (g.active ? '' : ' · inactif') + '</button>';
+        }).join('') + '</div></div>' +
+        '<div class="mgs-cat-tools"><div style="display:flex;align-items:center;gap:.6em;flex-wrap:wrap">' +
+        '<button type="button" class="mgs-chip" data-act="p-new">+ Nouveau produit</button>' +
+        '<span class="mgs-muted" id="p-count" style="font-size:.64em;text-transform:uppercase;letter-spacing:.1em"></span></div>' +
+        '<input id="p-search" placeholder="Rechercher un produit" value="' + esc(PQ) + '"></div>' +
+        '<div id="p-seasons"></div><div class="mgs-apgrid" id="p-grid"></div>';
+      var inp = document.getElementById('p-search');
+      if (inp) inp.addEventListener('input', function () { PQ = inp.value; paintProducts(); });
+      if (PGAME === 'pubg-mobile') renderSeasons(); else { var b = document.getElementById('p-seasons'); if (b) b.innerHTML = ''; }
+      paintProducts();
+    }
+    function paintProducts() {
+      var grid = document.getElementById('p-grid'); if (!grid) return;
+      var term = String(PQ || '').trim().toLowerCase();
+      PRODUCTS_VIS = PRODUCTS.filter(function (x) { return (x.game_id || 'pubg-mobile') === PGAME; })
+        .filter(function (x) { return !term || [x.name, x.name_en, x.slug].some(function (v) { return String(v || '').toLowerCase().indexOf(term) >= 0; }); });
+      var cnt = document.getElementById('p-count'); if (cnt) cnt.textContent = PRODUCTS_VIS.length + ' produit(s)';
+      if (!PRODUCTS_VIS.length) {
+        var g = PGAMES.filter(function (x) { return x.id === PGAME; })[0] || {};
+        grid.innerHTML = '<div class="mgs-apcard" style="grid-column:1/-1;flex-direction:column;align-items:flex-start;border-style:dashed;padding:1.5em"><p class="mgs-apcard__n">' + esc(g.name || '') + '</p>' +
+          '<p class="mgs-muted" style="font-size:.72em;margin:.3em 0 0">Aucun produit dans le catalogue de ce jeu.</p>' +
+          '<button type="button" class="mgs-chip" data-act="p-new" style="margin-top:.7em">+ Nouveau produit</button></div>';
+        return;
+      }
+      grid.innerHTML = PRODUCTS_VIS.map(function (x, i) {
+        return '<div class="mgs-apcard' + (x.active ? '' : ' is--off') + '"><div class="mgs-apcard__b"><p class="mgs-apcard__n">' + esc(x.name || '') + '</p><p class="mgs-apcard__m">' +
+          '<span class="mgs-apcard__type">' + esc(pTypeName(x)) + '</span>' +
+          '<span class="mgs-apcard__price">' + arNum(x.price) + '</span>' +
+          (x.old_price ? '<span style="text-decoration:line-through;opacity:.7">' + arNum(x.old_price) + '</span>' : '') +
+          (x.popular ? '<span class="mgs-apcard__star">★</span>' : '') +
+          '<span class="mgs-apcard__state">' + (x.active ? 'actif' : 'inactif') + '</span></p></div>' +
+          '<div class="mgs-apcard__a"><button type="button" class="mgs-chip" data-act="p-edit" data-i="' + i + '">Modifier</button>' +
+          '<button type="button" class="mgs-chip" data-act="p-del" data-i="' + i + '">Suppr</button></div></div>';
+      }).join('');
+    }
+    function renderSeasons() {
+      var box = document.getElementById('p-seasons'); if (!box) return;
+      box.innerHTML = '<div class="mgs-seasons"><h3>Saisons</h3><p class="mgs-muted" style="margin:.3em 0 0;font-size:.7em">Une seule saison active à la fois.</p>' +
+        '<form id="season-form"><input name="sname" placeholder="Nom de la saison" required><button type="submit" class="mgs-chip">Nouvelle saison</button></form>' +
+        '<div class="mgs-seasons__list" id="season-list">…</div></div>';
+      var f = document.getElementById('season-form');
+      if (f) f.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var nm = (f.querySelector('[name="sname"]').value || '').trim(); if (!nm) return;
+        req('/admin/seasons', { method: 'POST', body: { name: nm, activate: true } })
+          .then(function () { f.reset(); renderSeasons(); })
+          .catch(function (e) { signale(e); alert('Échec : ' + (e && e.message ? e.message : e)); });
+      });
+      req('/admin/seasons').then(function (arr) {
+        var list = document.getElementById('season-list'); if (!list) return;
+        arr = Array.isArray(arr) ? arr : [];
+        list.innerHTML = arr.length ? arr.map(function (se) {
+          return '<span class="mgs-season' + (se.active ? ' is--on' : '') + '">' + esc(se.name) + (se.active ? ' · active' : '<button type="button" data-act="season-activate" data-s="' + esc(se.id) + '">activer</button>') + '</span>';
+        }).join('') : '<span class="mgs-muted" style="font-size:.68em">Aucune saison</span>';
+      }).catch(function () { var l = document.getElementById('season-list'); if (l) l.innerHTML = ''; });
+    }
+    function openProductForm(src) {
+      var pr = Object.assign({}, P_EMPTY, src || {});
+      var isEdit = !!(src && src.id);
+      var gid = pr.game_id || 'pubg-mobile';
+      var m = adminModal(); var box = document.getElementById('mgs-modal-box');
+      var curLabel = (PGAMES.filter(function (g) { return g.id === gid; })[0] || {}).currency_label || (gid === 'pubg-mobile' ? 'UC' : 'Quantité de monnaie');
+      box.innerHTML = '<p class="mgs-modal__t">' + (isEdit ? 'Modifier le produit' : 'Nouveau produit') + '</p>' +
+        '<form class="mgs-form" id="product-form">' +
+        '<label>Nom (FR)<input name="name" value="' + esc(pr.name || '') + '"></label>' +
+        '<label>Name (EN)<input name="name_en" value="' + esc(pr.name_en || '') + '"></label>' +
+        '<label>Slug<input name="slug" value="' + esc(pr.slug || '') + '"></label>' +
+        '<label>Jeu associé<select name="game_id">' + PGAMES.map(function (g) { return '<option value="' + esc(g.id) + '"' + (g.id === gid ? ' selected' : '') + '>' + esc(g.name) + (g.active ? '' : ' · inactif') + '</option>'; }).join('') + '</select></label>' +
+        '<label>Type<select name="type"></select><span class="mgs-form__hint" id="p-type-hint" style="display:none">Configurez les types de produit de ce jeu dans Admin → Jeux.</span></label>' +
+        '<label id="p-evo">' + 'Limite évo<select name="evo_limit"><option value="season">Par saison</option><option value="lifetime">À vie</option><option value="week">Par semaine</option></select></label>' +
+        '<label>Prix (Ar)<input name="price" type="number" value="' + esc(pr.price == null ? '' : pr.price) + '"></label>' +
+        '<label>Ancien prix (Ar)<input name="old_price" type="number" value="' + esc(pr.old_price == null ? '' : pr.old_price) + '"></label>' +
+        '<label>' + esc(curLabel) + '<input name="uc_amount" type="number" value="' + esc(pr.uc_amount == null ? '' : pr.uc_amount) + '"></label>' +
+        '<label>Mois<input name="duration_months" type="number" value="' + esc(pr.duration_months == null ? '' : pr.duration_months) + '"></label>' +
+        '<label>Badge<input name="badge" value="' + esc(pr.badge || '') + '"></label>' +
+        '<label>Ordre<input name="sort_order" type="number" value="' + esc(pr.sort_order == null ? 0 : pr.sort_order) + '"></label>' +
+        '<label class="is--full">Logo URL<input name="image_url" type="url" placeholder="https://example.com/60uc.png" value="' + esc(pr.image_url || '') + '"></label>' +
+        '<label class="is--full">Description FR<textarea name="description_fr">' + esc(pr.description_fr || '') + '</textarea></label>' +
+        '<label class="is--full">Description EN<textarea name="description_en">' + esc(pr.description_en || '') + '</textarea></label>' +
+        '<label style="display:flex;align-items:center;gap:.4em">Populaire<input name="popular" type="checkbox"' + (pr.popular ? ' checked' : '') + ' style="width:auto;margin:0"></label>' +
+        '<p class="mgs-form__hint is--full" style="text-transform:none;font-weight:400">Mapping fournisseur obligatoire pour tout nouveau pack. Un pack reste inactif jusqu\'à ce que tu confirmes son offre dans Admin → Fournisseur.</p>' +
+        '<label style="display:flex;align-items:center;gap:.4em">Actif<input name="active" type="checkbox"' + (pr.active ? ' checked' : '') + ' style="width:auto;margin:0"></label>' +
+        '<p class="mgs-form__hint is--full" style="text-transform:none;font-weight:400">Pour un nouveau jeu, créez d\'abord le produit inactif, configurez son mapping dans Fournisseur, puis activez-le.</p>' +
+        '<button type="submit" class="mgs-chip is--full" style="padding:.6em;font-size:.8em">Enregistrer</button></form>';
+      var f = box.querySelector('#product-form');
+      var gameSel = f.querySelector('[name="game_id"]');
+      var typeSel = f.querySelector('[name="type"]');
+      var evoBox = f.querySelector('#p-evo');
+      var typeHint = f.querySelector('#p-type-hint');
+      function fillTypes(want) {
+        var ts = pTypesOf(gameSel.value);
+        typeSel.innerHTML = (ts.length ? '<option value="">Choisir un type</option>' : '<option value="">Aucun type configuré</option>') +
+          ts.map(function (t) { return '<option value="' + esc(t.key) + '">' + esc(t.label) + '</option>'; }).join('');
+        var valid = ts.some(function (t) { return t.key === want; });
+        typeSel.value = valid ? want : '';
+        typeHint.style.display = ts.length ? 'none' : '';
+      }
+      function toggleEvo() { evoBox.style.display = (typeSel.value === 'evo' && gameSel.value === 'pubg-mobile') ? '' : 'none'; }
+      fillTypes(pr.type || '');
+      toggleEvo();
+      gameSel.addEventListener('change', function () { fillTypes(''); toggleEvo(); });
+      typeSel.addEventListener('change', toggleEvo);
+      f.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var val = function (n) { var el = f.querySelector('[name="' + n + '"]'); return el ? el.value : ''; };
+        var chk = function (n) { var el = f.querySelector('[name="' + n + '"]'); return !!(el && el.checked); };
+        var g = val('game_id') || 'pubg-mobile'; var ty = val('type');
+        if (!pTypesOf(g).some(function (x) { return x.key === ty; })) { alert('Choisissez un type de produit valide pour ce jeu.'); return; }
+        var num = function (v) { return (v === '' || v === null) ? null : Number(v); };
+        var body = {
+          slug: val('slug'), type: ty, game_id: g, name: val('name'), name_en: val('name_en') || null,
+          uc_amount: num(val('uc_amount')), duration_months: num(val('duration_months')),
+          price: Number(val('price')), old_price: num(val('old_price')), popular: chk('popular'), badge: val('badge') || null,
+          evo_limit: (ty === 'evo') ? (val('evo_limit') || 'season') : null,
+          image_url: val('image_url').trim() || null, description_fr: val('description_fr'), description_en: val('description_en') || null,
+          active: chk('active'),
+          requires_mapping: ((g !== 'pubg-mobile') || !isEdit) ? true : (pr.requires_mapping !== false),
+          sort_order: Number(val('sort_order') || 0)
+        };
+        if (isEdit) body.id = src.id;
+        var done = function () { closeAdminModal(); renderProducts(PDOM); };
+        var fail = function (e) { signale(e); alert('Échec : ' + (e && e.message ? e.message : e)); };
+        if (isEdit) req('/admin/products/' + src.id, { method: 'PUT', body: body }).then(done).catch(fail);
+        else req('/admin/products', { method: 'POST', body: body }).then(done).catch(fail);
+      });
+      m.classList.add('is--open');
+    }
     function loadSec(k) {
       if (k === 'games' && body) { cur = k; renderGames(body); return; }
+      if (k === 'products' && body) { cur = k; renderProducts(body); return; }
       var d = SEC[k]; if (!d || !body) return; cur = k;
       var hasA = !!d.a;
       body.innerHTML = '<div class="mgs-panel"><h2 class="mgs-section-h">' + esc(d.t) + '</h2>' + (d.top || '') + '<div style="overflow-x:auto"><table class="mgs-table"><thead><tr>' + d.c.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + (hasA ? '<th></th>' : '') + '</tr></thead><tbody><tr><td colspan="' + (d.c.length + (hasA ? 1 : 0)) + '" class="mgs-muted">Chargement…</td></tr></tbody></table></div></div>';
@@ -5103,14 +5278,23 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         var tb = body.querySelector('tbody'); if (tb) tb.innerHTML = trs.length ? trs.join('') : '<tr><td colspan="' + (d.c.length + (hasA ? 1 : 0)) + '" class="mgs-muted">Aucun élément</td></tr>';
       }).catch(function (e) { signale(e); var tb = body.querySelector('tbody'); if (tb) tb.innerHTML = '<tr><td colspan="' + (d.c.length + (hasA ? 1 : 0)) + '" class="mgs-muted">Indisponible</td></tr>'; });
     }
-    function doAct(action, i, key) {
+    function doAct(action, i, key, b) {
       var rows = ROWS[cur] || {}; var row = (SEC[cur] && SEC[cur].flat) ? null : rows[i];
       var done = function () { loadSec(cur); };
       var fail = function (e) { signale(e); alert('Échec : ' + (e && e.message ? e.message : e)); };
       if (action === 'o-status') { var st = prompt('Nouveau statut (pending_payment, paid, awaiting_verification, delivered, cancelled) ?', row && row.status || ''); if (!st) return; req('/admin/orders/' + row.id, { method: 'PATCH', body: { status: st } }).then(done).catch(fail); return; }
       if (action === 'o-del') { if (!confirm('Supprimer cette commande ?')) return; req('/admin/orders/' + row.id, { method: 'DELETE' }).then(done).catch(fail); return; }
-      if (action === 'p-toggle') { req('/admin/products/' + row.id, { method: 'PUT', body: Object.assign({}, row, { active: !row.active, price: Number(row.price) || 0 }) }).then(done).catch(fail); return; }
-      if (action === 'p-del') { if (!confirm('Supprimer ce produit ?')) return; req('/admin/products/' + row.id, { method: 'DELETE' }).then(done).catch(fail); return; }
+      if (action === 'p-game') { PGAME = b.getAttribute('data-g') || 'pubg-mobile'; paintProductsShell(); return; }
+      if (action === 'p-new') { openProductForm(null); return; }
+      if (action === 'p-edit') { openProductForm(PRODUCTS_VIS[i]); return; }
+      if (action === 'p-del') {
+        var pr = PRODUCTS_VIS[i] || {};
+        if (!confirm('Supprimer ' + (pr.name || '') + ' ?')) return;
+        req('/admin/products/' + pr.id, { method: 'DELETE' }).then(function () { renderProducts(PDOM); }).catch(fail); return;
+      }
+      if (action === 'season-activate') {
+        req('/admin/seasons/' + b.getAttribute('data-s') + '/activate', { method: 'POST' }).then(renderSeasons).catch(fail); return;
+      }
       if (action === 'u-block') { req('/admin/users/' + (row.user_id || row.id), { method: 'PATCH', body: { blocked: !row.blocked } }).then(done).catch(fail); return; }
       if (action === 'l-toggle') { req('/loyalty/admin/rewards/' + row.id, { method: 'PATCH', body: { name: row.name, type: row.type, cost_points: row.cost_points, value: row.value, description: row.description, active: !row.active, stock: row.stock != null ? row.stock : null } }).then(done).catch(fail); return; }
       if (action === 'e-del') { if (!confirm('Supprimer cet événement ?')) return; req('/admin/events/' + row.id, { method: 'DELETE' }).then(done).catch(fail); return; }
@@ -5121,7 +5305,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       if (action === 'pay-edit') { var cur2 = (ROWS[cur] || {})[key]; var v = prompt('Valeur pour ' + key + ' ?', cur2 == null ? '' : String(cur2)); if (v === null) return; var pl = {}; pl[key] = v; req('/payments/admin/settings', { method: 'PATCH', body: pl }).then(done).catch(fail); return; }
     }
     if (body && !body.getAttribute('data-bound')) { body.setAttribute('data-bound', '1');
-      body.addEventListener('click', function (ev) { var b = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null; if (!b) return; ev.preventDefault(); doAct(b.getAttribute('data-act'), Number(b.getAttribute('data-i')), b.getAttribute('data-key')); }); }
+      body.addEventListener('click', function (ev) { var b = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null; if (!b) return; ev.preventDefault(); doAct(b.getAttribute('data-act'), Number(b.getAttribute('data-i')), b.getAttribute('data-key'), b); }); }
     function setSec(k) {
       if (dash) dash.style.display = (k === 'dash') ? '' : 'none';
       if (body) body.innerHTML = (k === 'dash') ? '' : body.innerHTML;
