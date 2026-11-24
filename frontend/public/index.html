@@ -689,6 +689,84 @@ html.reduced-motion svg.footer-row-col-img, html.reduced-motion .marquee-cta-dot
 .mgs-admin-nav-item.is--active{background:var(--color--dark);color:var(--color--light)}
 .mgs-admin-acts{white-space:nowrap}
 .mgs-admin-acts .mgs-chip{font-size:.68em;padding:.2em .55em;cursor:pointer;margin-right:.2em}
+.mgs-admin-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:.8em;border-bottom:.09em solid var(--color--dark);padding-bottom:.7em;margin-bottom:1em}
+.mgs-games-grid{display:grid;grid-template-columns:1fr;gap:.8em}
+@media(min-width:640px){.mgs-games-grid{grid-template-columns:1fr 1fr}}
+@media(min-width:1024px){.mgs-games-grid{grid-template-columns:1fr 1fr 1fr}}
+.mgs-game-card{display:flex;align-items:center;gap:.7em;border:.09em solid var(--color--dark);border-radius:1em;padding:.7em;min-width:0;background:var(--color--light)}
+.mgs-game-card.is--off{opacity:.55;border-style:dashed}
+.mgs-game-card__ico{display:flex;align-items:center;justify-content:center;width:2.6em;height:2.6em;border-radius:999px;background:var(--color--dark);color:var(--color--light);overflow:hidden;flex:0 0 auto}
+.mgs-game-card__ico img{width:100%;height:100%;object-fit:cover}
+.mgs-game-card__b{min-width:0;flex:1}
+.mgs-game-card__n{font-weight:700;font-size:.85em;margin:0;overflow-wrap:anywhere}
+.mgs-game-card__a{display:flex;flex-direction:column;gap:.3em;flex:0 0 auto}
+.mgs-modal{position:fixed;inset:0;z-index:80;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;background:rgba(0,0,0,.55);padding:1.5em 1em}
+.mgs-modal.is--open{display:flex}
+.mgs-modal__box{background:var(--color--light);border:.125em solid var(--color--dark);border-radius:1.2em;width:min(46em,100%);padding:1.2em;margin:auto}
+.mgs-modal__t{font-family:var(--font--display);font-size:1.1em;font-weight:800;margin:0 0 .8em}
+.mgs-form{display:grid;grid-template-columns:1fr;gap:.8em}
+@media(min-width:640px){.mgs-form{grid-template-columns:1fr 1fr}}
+.mgs-form label{display:block;font-size:.68em;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.mgs-form input,.mgs-form textarea{width:100%;margin-top:.35em;padding:.55em .7em;border:.09em solid var(--color--dark);border-radius:.5em;background:#fff;font:inherit;font-size:.85em;text-transform:none;letter-spacing:0}
+.mgs-form textarea{min-height:4em;resize:vertical}
+.mgs-form .is--full{grid-column:1/-1}
+.mgs-form__hint{display:block;margin-top:.3em;font-size:.62em;font-weight:400;opacity:.7;text-transform:none;letter-spacing:0}
+.mgs-form__rows{display:grid;grid-template-columns:repeat(auto-fit,minmax(5.5em,1fr));gap:.35em;align-items:end}
+.mgs-form__rows input{margin-top:0}
+.mgs-form__rows .is--del{justify-self:end}
+.mgs-form select{width:100%;margin-top:.35em;padding:.55em .7em;border:.09em solid var(--color--dark);border-radius:.5em;background:#fff;font:inherit;font-size:.85em}
+.mgs-cat-bar{border:.09em solid var(--color--dark);border-radius:1em;padding:.8em;background:var(--color--light)}
+.mgs-gtabs{display:flex;gap:.4em;overflow-x:auto;margin-top:.6em;padding-bottom:.2em}
+.mgs-gtab{flex:0 0 auto;display:inline-flex;align-items:center;gap:.3em;border:.09em solid var(--color--dark);background:var(--color--light);color:var(--color--dark);padding:.5em .8em;font-size:.62em;font-weight:800;text-transform:uppercase;letter-spacing:.08em;cursor:pointer;border-radius:0}
+.mgs-gtab.is--active{background:var(--color--dark);color:var(--color--light)}
+.mgs-cat-tools{display:flex;flex-wrap:wrap;gap:.6em;align-items:center;justify-content:space-between;margin-top:1em}
+.mgs-cat-tools input{width:100%;max-width:18em;padding:.5em .8em;border:.09em solid var(--color--dark);border-radius:999px;background:#fff;font:inherit;font-size:.8em}
+.mgs-apgrid{display:grid;grid-template-columns:1fr;gap:.7em;margin-top:1em}
+@media(min-width:640px){.mgs-apgrid{grid-template-columns:1fr 1fr}}
+@media(min-width:1024px){.mgs-apgrid{grid-template-columns:1fr 1fr 1fr}}
+.mgs-apcard{display:flex;align-items:center;gap:.6em;border:.09em solid var(--color--dark);background:var(--color--light);padding:.65em;border-radius:0;min-width:0}
+.mgs-apcard.is--off{border-style:dashed;opacity:.6}
+.mgs-apcard__b{min-width:0;flex:1}
+.mgs-apcard__n{font-family:var(--font--display);font-weight:800;font-size:.82em;margin:0;overflow-wrap:anywhere;line-height:1.2}
+.mgs-apcard__m{display:flex;flex-wrap:wrap;align-items:center;gap:.35em;margin:.35em 0 0;font-size:.64em}
+.mgs-apcard__type{border:.09em solid currentColor;border-radius:999px;padding:.1em .5em;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.8}
+.mgs-apcard__price{font-weight:800}
+.mgs-apcard__star{background:var(--color--dark);color:var(--color--light);border-radius:999px;padding:0 .35em;font-weight:800}
+.mgs-apcard__state{border:.09em solid currentColor;border-radius:999px;padding:.1em .5em;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.75}
+.mgs-apcard__a{display:flex;flex-direction:column;gap:.25em;flex:0 0 auto}
+.mgs-seasons{border:.09em solid var(--color--dark);border-radius:1em;padding:.8em;margin-top:1em;background:var(--color--light)}
+.mgs-seasons h3{margin:0;font-family:var(--font--display);font-size:.95em;font-weight:800}
+.mgs-seasons form{display:flex;flex-wrap:wrap;gap:.4em;margin-top:.6em}
+.mgs-seasons input{flex:1 1 10em;padding:.5em .7em;border:.09em solid var(--color--dark);border-radius:.5em;background:#fff;font:inherit;font-size:.8em}
+.mgs-seasons__list{display:flex;flex-wrap:wrap;gap:.35em;margin-top:.6em}
+.mgs-season{border:.09em solid var(--color--dark);border-radius:999px;padding:.2em .7em;font-size:.66em;font-weight:700}
+.mgs-season.is--on{background:var(--color--dark);color:var(--color--light)}
+.mgs-season button{border:0;background:none;font:inherit;color:inherit;text-decoration:underline;cursor:pointer;padding:0 0 0 .3em}
+.mgs-evgrid{display:grid;grid-template-columns:1fr;gap:.7em}
+@media(min-width:768px){.mgs-evgrid{grid-template-columns:1fr 1fr}}
+.mgs-evcard{display:flex;align-items:center;gap:.6em;border:.09em solid var(--color--dark);background:var(--color--light);padding:.6em;border-radius:.8em;min-width:0}
+.mgs-evcard__b{display:flex;align-items:center;gap:.6em;min-width:0;flex:1}
+.mgs-evcard__img{width:3.4em;height:2.4em;object-fit:cover;border-radius:.5em;flex:0 0 auto}
+.mgs-evcard__t{margin:0;font-family:var(--font--display);font-weight:800;font-size:.8em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mgs-evcard__a{display:flex;flex-direction:column;gap:.25em;flex:0 0 auto}
+.mgs-payrow{display:flex;align-items:flex-start;justify-content:space-between;gap:.7em;border-top:.09em solid rgba(0,0,0,.18);padding:.7em 0}
+.mgs-payrow__t{margin:0;font-family:var(--font--display);font-weight:800;font-size:.78em;line-height:1.25}
+.mgs-payrow__badge{border:.09em solid currentColor;border-radius:999px;padding:.1em .5em;font-size:.6em;font-weight:800;text-transform:uppercase;letter-spacing:.06em;align-self:flex-start}
+.mgs-fee{border:.09em solid var(--color--dark);border-radius:.7em;padding:.6em;margin-top:.5em}
+.mgs-fee__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.4em}
+.mgs-fee__grid label{font-size:.62em;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.mgs-fee__grid input{width:100%;margin-top:.25em;padding:.4em .5em;border:.09em solid var(--color--dark);border-radius:.4em;background:#fff;font:inherit;font-size:.85em}
+.mgs-wallet{display:grid;grid-template-columns:1fr;gap:.35em;border-top:.06em solid rgba(0,0,0,.15);padding:.5em 0}
+@media(min-width:768px){.mgs-wallet{grid-template-columns:6em 1fr 10em auto;align-items:center}}
+.mgs-wallet input:not([type="checkbox"]){width:100%;padding:.45em .55em;border:.09em solid var(--color--dark);border-radius:.4em;background:#fff;font:inherit;font-size:.72em}
+.mgs-wallet__n{margin:0;font-weight:800;font-size:.72em}
+.mgs-wallet__code{display:block;font-weight:400;font-size:.85em;opacity:.65}
+.mgs-form__box{border:.09em solid var(--color--dark);border-radius:.8em;padding:.7em;grid-column:1/-1}
+.mgs-form__box-t{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.4em;font-size:.72em;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.mgs-form__empty{margin:.4em 0 0;font-size:.72em;opacity:.75}
+.mgs-ready{list-style:none;margin:.4em 0 0;padding:0;font-size:.66em;text-transform:none;letter-spacing:0;font-weight:400}
+.mgs-ready li{margin:.15em 0}
+.mgs-ready .is--ok{color:#1a7f37}.mgs-ready .is--no{color:#b42318}
 @media(min-width:1024px){.mgs-admin-grid{grid-template-columns:240px minmax(0,1fr);gap:2em;align-items:start}.mgs-admin-side{display:block;position:sticky;top:5.5em;max-height:calc(100dvh - 6.5em);overflow:auto}#admin-subnav{display:none}}
 .mgs-stat__l{font-size:.75em;font-weight:700;text-transform:uppercase;letter-spacing:.08em;opacity:.65}
 
@@ -3399,6 +3477,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var a=e.target.closest("a[data-nav],.nav-inner-li a,.nav-mobile-panel a,.bottom-nav-item,a.is--nav-logo");
     if(!a) return;
     var id=mgsTarget(a); if(!id) return;
+    /* PL-007 : l'admin est la page React de la PR #100, servie à part. */
+    if(id==="admin"){ e.preventDefault(); window.location.assign("/admin.html"); return; }
     e.preventDefault(); showPage(id);
   });
   /* boutique : choix jeu -> catalogue */
@@ -4899,30 +4979,485 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       orders: { t: 'Commandes', ep: '/admin/orders?limit=50', c: ['N°','Client','Produit','Paiement','Statut','Total'],
         r: function (o) { return [o.order_number || o.number || '', o.customer_name || o.email || '', orderProductLabel(o), orderMethodLabel(o), statusLabel(o.status), arNum(o.total)]; },
         a: function (i) { return '<button type="button" class="mgs-chip" data-act="o-status" data-i="' + i + '">Statut</button> <button type="button" class="mgs-chip" data-act="o-del" data-i="' + i + '">Suppr</button>'; } },
-      products: { t: 'Catalogue', ep: '/products?include_inactive=true', c: ['Nom','Jeu','Prix','Actif'],
-        r: function (x) { return [x.name || '', x.game_id || x.game || '', arNum(x.price != null ? x.price : x.amount), x.active === false ? 'non' : 'oui']; },
-        a: function (i) { return '<button type="button" class="mgs-chip" data-act="p-toggle" data-i="' + i + '">Activer/Désactiver</button> <button type="button" class="mgs-chip" data-act="p-del" data-i="' + i + '">Suppr</button>'; } },
       users: { t: 'Utilisateurs', ep: '/admin/users', c: ['Nom','Email','Rôle','Bloqué'],
         r: function (u) { return [u.name || '', u.email || '', u.role || '', u.blocked ? 'oui' : 'non']; },
         a: function (i) { return '<button type="button" class="mgs-chip" data-act="u-block" data-i="' + i + '">Bloquer/Débloquer</button>'; } },
       loyalty: { t: 'Fidélité', ep: '/loyalty/admin/rewards', c: ['Récompense','Coût','Actif'],
         r: function (x) { return [x.name || '', String(x.cost_points != null ? x.cost_points : 0), x.active === false ? 'non' : 'oui']; },
         a: function (i) { return '<button type="button" class="mgs-chip" data-act="l-toggle" data-i="' + i + '">Activer/Désactiver</button>'; } },
-      events: { t: 'Événements', ep: '/admin/events', c: ['Titre','Début','Fin'],
-        r: function (e) { return [e.title || e.name || '', e.starts_at || e.start || '', e.ends_at || e.end || '']; },
-        a: function (i) { return '<button type="button" class="mgs-chip" data-act="e-del" data-i="' + i + '">Suppr</button>'; } },
       games: { t: 'Jeux', ep: '/admin/games', c: ['Nom','Clé','Actif'],
         r: function (g) { return [g.name || '', g.key || g.slug || g.id || '', g.active === false ? 'non' : 'oui']; },
         a: function (i) { return '<button type="button" class="mgs-chip" data-act="g-toggle" data-i="' + i + '">Activer/Désactiver</button>'; } },
-      crypto: { t: 'Crypto', ep: '/crypto/admin/payments', c: ['Montant','Devise','Statut'],
-        top: '<button type="button" class="mgs-chip" data-act="crypto-check" style="margin-bottom:1em">Vérifier les dépôts maintenant</button>',
-        r: function (x) { return [String(x.amount != null ? x.amount : ''), x.currency || '', x.status || '']; } },
-      payments: { t: 'Paiements', ep: '/payments/admin/settings', c: ['Paramètre','Valeur'], flat: true,
-        a: function (i, key) { return '<button type="button" class="mgs-chip" data-act="pay-edit" data-key="' + esc(key) + '">Modifier</button>'; } },
       fzr: { t: 'Fournisseur', ep: '/admin/fazercards/coverage', c: ['Couverture'],
         r: function (x) { return [typeof x === 'string' ? x : JSON.stringify(x).slice(0, 90)]; } }
     };
+
+    /* ---- Jeux : porté de pages/admin/AdminGames.js (PR #100 b34df6e) ---- */
+    var GAMES = [];
+    var EMPTY_GAME = { id: '', name: '', slug: '', icon_url: '', currency_label: '', description: '', description_en: '', active: false, sort_order: 0, identity_fields: [], product_types: [], fazercards_validation_category: '' };
+    var CHECK_LABELS = { identity: 'Identité joueur', product_types: 'Types de produit', provider_categories: 'Catégories FazerCards', catalog: 'Catalogue livrable', type_compat: 'Types des produits', mapping_scope: 'Périmètre des mappings' };
+    function adminModal() {
+      var m = document.getElementById('mgs-modal');
+      if (!m) {
+        m = document.createElement('div'); m.id = 'mgs-modal'; m.className = 'mgs-modal';
+        m.innerHTML = '<div class="mgs-modal__box" id="mgs-modal-box"></div>';
+        m.addEventListener('click', function (ev) { if (ev.target === m) m.classList.remove('is--open'); });
+        document.body.appendChild(m);
+      }
+      return m;
+    }
+    function closeAdminModal() { var m = document.getElementById('mgs-modal'); if (m) m.classList.remove('is--open'); }
+    function readinessBadge(r) {
+      if (!r || !Array.isArray(r.checks)) return '';
+      var missing = r.checks.filter(function (c) { return !c.ok; }).length;
+      return '<span style="display:inline-block;margin-top:.3em;font-size:.6em;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-radius:999px;padding:.15em .5em;' + (r.ready ? 'background:var(--color--dark);color:var(--color--light)' : 'border:.09em solid currentColor;opacity:.7') + '">' + (r.ready ? 'Prêt à la vente' : missing + ' étape(s) manquante(s)') + '</span>';
+    }
+    function readinessList(r) {
+      if (!r || !Array.isArray(r.checks)) return '';
+      return '<ul class="mgs-ready"><li style="font-weight:700">Préparation à la vente ' + (r.ready ? '— complète' : '— incomplète') + '</li>' + r.checks.map(function (c) {
+        return '<li><span class="' + (c.ok ? 'is--ok' : 'is--no') + '">' + (c.ok ? '✓' : '✗') + '</span> <b>' + esc(CHECK_LABELS[c.key] || c.key) + '</b> — ' + esc(String(c.detail || '')) + '</li>';
+      }).join('') + '</ul>';
+    }
+    function renderGames(host) {
+      host.innerHTML = '<div class="mgs-panel"><div class="mgs-admin-head"><div><p class="mgs-eyebrow" style="margin:0;font-size:.6em;text-transform:uppercase;letter-spacing:.1em;opacity:.7">Administration</p><h2 class="mgs-section-h" style="margin:.2em 0 0">Jeux</h2><p class="mgs-muted" style="margin:.3em 0 0;font-size:.72em">Le jeu ne peut être activé que lorsque sa configuration ET son catalogue livrable sont réels.</p></div><button type="button" class="mgs-chip" data-act="g-new">+ Nouveau jeu</button></div><div id="games-grid" class="mgs-games-grid"><p class="mgs-muted">Chargement…</p></div></div>';
+      req('/admin/games').then(function (arr) {
+        GAMES = Array.isArray(arr) ? arr : [];
+        ROWS.games = GAMES;
+        var grid = document.getElementById('games-grid'); if (!grid) return;
+        grid.innerHTML = GAMES.length ? GAMES.map(function (g, i) {
+          return '<div class="mgs-game-card' + (g.active ? '' : ' is--off') + '">' +
+            '<span class="mgs-game-card__ico">' + (g.icon_url ? '<img src="' + esc(g.icon_url) + '" alt="">' : '◈') + '</span>' +
+            '<div class="mgs-game-card__b"><p class="mgs-game-card__n">' + esc(g.name || '') + '</p>' +
+            '<p class="mgs-muted" style="margin:.2em 0 0;font-size:.68em">' + esc(g.id || '') + ' · ' + (g.active ? 'actif' : 'inactif') + '</p>' + readinessBadge(g.readiness) + '</div>' +
+            '<div class="mgs-game-card__a"><button type="button" class="mgs-chip" data-act="g-toggle" data-i="' + i + '">' + (g.active ? 'Désactiver' : 'Activer') + '</button>' +
+            '<button type="button" class="mgs-chip" data-act="g-edit" data-i="' + i + '">Modifier</button></div></div>';
+        }).join('') : '<p class="mgs-muted">Aucun jeu</p>';
+      }).catch(function (e) { signale(e); var grid = document.getElementById('games-grid'); if (grid) grid.innerHTML = '<p class="mgs-muted">Indisponible</p>'; });
+    }
+    function ifRowHtml(f) {
+      return '<div class="mgs-form__rows" data-if-row>' +
+        '<input data-k="key" placeholder="player_id" aria-label="Clé" value="' + esc(f.key || '') + '">' +
+        '<input data-k="label" placeholder="ID joueur" aria-label="Libellé" value="' + esc(f.label || '') + '">' +
+        '<input data-k="pattern" placeholder="^[0-9]{6,12}$" aria-label="Motif" value="' + esc(f.pattern || '') + '">' +
+        '<input data-k="min" type="number" placeholder="min" aria-label="Longueur min" value="' + esc(f.min_length == null ? '' : f.min_length) + '">' +
+        '<input data-k="max" type="number" placeholder="max" aria-label="Longueur max" value="' + esc(f.max_length == null ? '' : f.max_length) + '">' +
+        '<label style="display:flex;align-items:center;gap:.3em;font-size:.62em;text-transform:none;letter-spacing:0"><input type="radio" data-k="primary" name="identity-primary"' + (f.primary ? ' checked' : '') + ' style="width:auto;margin:0">principale</label>' +
+        '<button type="button" class="mgs-chip is--del" data-act="g-if-del" aria-label="Supprimer">✕</button></div>';
+    }
+    function ptRowHtml(pt) {
+      return '<div class="mgs-form__rows" data-pt-row>' +
+        '<input data-k="key" placeholder="cp" aria-label="Clé" value="' + esc(pt.key || '') + '">' +
+        '<input data-k="label" placeholder="CP" aria-label="Libellé" value="' + esc(pt.label || '') + '">' +
+        '<input data-k="label_en" placeholder="CP" aria-label="Label EN" value="' + esc(pt.label_en || '') + '">' +
+        '<button type="button" class="mgs-chip is--del" data-act="g-pt-del" aria-label="Supprimer">✕</button></div>';
+    }
+    function openGameForm(src) {
+      var g = Object.assign({}, EMPTY_GAME, src || {});
+      var editing = !!(src && src._existing);
+      var m = adminModal();
+      var box = document.getElementById('mgs-modal-box');
+      box.innerHTML = '<p class="mgs-modal__t">' + (editing ? 'Modifier le jeu' : 'Nouveau jeu') + '</p>' +
+        '<p class="mgs-muted" style="font-size:.7em;border:.09em solid var(--color--dark);border-radius:.6em;padding:.6em;margin:0 0 .8em">Pour préparer un nouveau jeu : définissez ses champs d\'identité joueur, son unité de monnaie, associez ses catégories FazerCards et liez chaque pack dans Admin → Fournisseur.</p>' +
+        '<form class="mgs-form" id="game-form">' +
+        '<label>ID<input name="id" value="' + esc(g.id) + '"' + (editing ? ' disabled' : '') + '></label>' +
+        '<label>Nom<input name="name" value="' + esc(g.name) + '"></label>' +
+        '<label>Slug<input name="slug" value="' + esc(g.slug) + '"></label>' +
+        '<label>Ordre<input name="sort_order" type="number" value="' + esc(g.sort_order == null ? 0 : g.sort_order) + '"></label>' +
+        '<label>Unité de monnaie<input name="currency_label" maxlength="24" placeholder="UC, Diamants, Coins…" value="' + esc(g.currency_label || '') + '"><span class="mgs-form__hint">Utilisée pour nommer la monnaie des packs dans la boutique.</span></label>' +
+        '<label>Catégorie de validation FazerCards<input name="fazercards_validation_category" placeholder="ex: ff_validation_cat" value="' + esc(g.fazercards_validation_category || '') + '"><span class="mgs-form__hint">Vide = validation d\'identité indisponible pour ce jeu.</span></label>' +
+        '<label>Logo URL<input name="icon_url" type="url" placeholder="https://example.com/logo.png" value="' + esc(g.icon_url || '') + '"></label>' +
+        '<label style="display:flex;align-items:center;gap:.4em">Actif<input name="active" type="checkbox"' + (g.active ? ' checked' : '') + ' style="width:auto;margin:0"></label>' +
+        '<label class="is--full">Description FR<textarea name="description">' + esc(g.description || '') + '</textarea></label>' +
+        '<label class="is--full">Description EN<textarea name="description_en">' + esc(g.description_en || '') + '</textarea></label>' +
+        '<div class="mgs-form__box" id="game-if-box"><div class="mgs-form__box-t"><span>Champs d\'identité joueur</span><button type="button" class="mgs-chip" data-act="g-if-add">+ Ajouter un champ</button></div>' +
+        '<p class="mgs-form__hint">Exigés par le fournisseur (ex. player_id, zone_id, server). Le checkout affiche exactement ces champs.</p>' +
+        '<div id="game-if-rows" style="display:grid;gap:.35em;margin-top:.5em">' + (g.identity_fields || []).map(ifRowHtml).join('') + '</div>' +
+        '<p class="mgs-form__empty"' + ((g.identity_fields || []).length ? ' style="display:none"' : '') + ' data-if-empty>Aucun champ défini : l\'activation publique de ce jeu sera refusée.</p></div>' +
+        '<div class="mgs-form__box" id="game-pt-box"><div class="mgs-form__box-t"><span>Types de produit (boutique MGS)</span><button type="button" class="mgs-chip" data-act="g-pt-add">+ Ajouter un type</button></div>' +
+        '<p class="mgs-form__hint">Classement interne des packs (cp, battle_pass, diamonds…). Distinct des catégories FazerCards : chaque pack reste lié à une offre réelle dans Admin → Fournisseur.' + (g.id === 'pubg-mobile' ? '' : ' Les clés prime, prime_plus et evo sont réservées à PUBG Mobile.') + '</p>' +
+        '<div id="game-pt-rows" style="display:grid;gap:.35em;margin-top:.5em">' + (g.product_types || []).map(ptRowHtml).join('') + '</div>' +
+        '<p class="mgs-form__empty"' + ((g.product_types || []).length ? ' style="display:none"' : '') + ' data-pt-empty>Aucun type : aucun pack ne pourra être créé pour ce jeu.</p></div>' +
+        (editing ? readinessList(g.readiness) : '') +
+        '<button type="submit" class="mgs-chip is--full" style="padding:.6em;font-size:.8em">Enregistrer</button>' +
+        '</form>';
+      box.querySelector('#game-form').addEventListener('submit', function (ev) { ev.preventDefault(); saveGame(ev.target, editing, g.id); });
+      box.querySelectorAll('[data-act]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var a = btn.getAttribute('data-act');
+          if (a === 'g-if-add') { box.querySelector('#game-if-rows').insertAdjacentHTML('beforeend', ifRowHtml({ primary: !box.querySelector('[data-if-row]') })); }
+          else if (a === 'g-pt-add') { box.querySelector('#game-pt-rows').insertAdjacentHTML('beforeend', ptRowHtml({})); }
+          else if (a === 'g-if-del') { btn.closest('[data-if-row]').remove(); }
+          else if (a === 'g-pt-del') { btn.closest('[data-pt-row]').remove(); }
+          box.querySelectorAll('[data-if-empty]').forEach(function (e) { e.style.display = box.querySelector('[data-if-row]') ? 'none' : ''; });
+          box.querySelectorAll('[data-pt-empty]').forEach(function (e) { e.style.display = box.querySelector('[data-pt-row]') ? 'none' : ''; });
+        });
+      });
+      m.classList.add('is--open');
+    }
+    function saveGame(form, editing, id) {
+      var val = function (n) { var el = form.querySelector('[name="' + n + '"]'); return el ? el.value : ''; };
+      var fields = [].map.call(form.querySelectorAll('[data-if-row]'), function (r) {
+        var v = function (k) { var el = r.querySelector('[data-k="' + k + '"]'); return el ? el.value : ''; };
+        var o = { key: v('key').trim(), label: v('label').trim() };
+        if (v('pattern')) o.pattern = v('pattern');
+        if (v('min') !== '') o.min_length = Number(v('min'));
+        if (v('max') !== '') o.max_length = Number(v('max'));
+        o.required = true;
+        var rad = r.querySelector('[data-k="primary"]');
+        o.primary = !!(rad && rad.checked);
+        return o;
+      });
+      var bad = fields.filter(function (f) { return !/^[a-z][a-z0-9_]{0,31}$/.test(f.key) || !f.label; })[0];
+      if (bad) { alert('Champ d\'identité invalide : clé (minuscules/chiffres/_) et libellé requis (' + (bad.key || '?') + ').'); return; }
+      var types = [].map.call(form.querySelectorAll('[data-pt-row]'), function (r) {
+        var v = function (k) { var el = r.querySelector('[data-k="' + k + '"]'); return el ? el.value : ''; };
+        return { key: v('key').trim(), label: v('label').trim(), label_en: v('label_en').trim() || null };
+      });
+      var badType = types.filter(function (pt) { return !/^[a-z][a-z0-9_]{0,31}$/.test(pt.key) || !pt.label; })[0];
+      if (badType) { alert('Type de produit invalide : clé (minuscules/chiffres/_) et libellé requis (' + (badType.key || '?') + ').'); return; }
+      var body = {
+        product_types: types, id: editing ? id : val('id'), name: val('name'), slug: val('slug') || (editing ? id : val('id')),
+        icon_url: val('icon_url').trim() || null, currency_label: val('currency_label').trim() || null,
+        identity_fields: fields, description: val('description'), description_en: val('description_en') || null,
+        active: !!form.querySelector('[name="active"]').checked, sort_order: Number(val('sort_order') || 0),
+        fazercards_validation_category: val('fazercards_validation_category').trim() || null
+      };
+      var done = function () { closeAdminModal(); loadSec('games'); };
+      var fail = function (e) { signale(e); alert('Échec : ' + (e && e.message ? e.message : e)); };
+      if (editing) req('/admin/games/' + id, { method: 'PUT', body: body }).then(done).catch(fail);
+      else req('/admin/games', { method: 'POST', body: body }).then(done).catch(fail);
+    }
+
+    /* ---- Produits : porté de pages/admin/AdminProducts.js (PR #100 b34df6e) ---- */
+    var PRODUCTS = [], PRODUCTS_VIS = [], PGAMES = [], PGAME = 'pubg-mobile', PDOM = null, PQ = '';
+    var P_EMPTY = { slug: '', type: '', game_id: 'pubg-mobile', name: '', name_en: '', uc_amount: '', duration_months: '', price: '', old_price: '', popular: false, badge: '', evo_limit: '', image_url: '', description_fr: '', description_en: '', active: false, requires_mapping: true, sort_order: 0 };
+    function pTypesOf(gid) { var g = PGAMES.filter(function (x) { return x.id === (gid || 'pubg-mobile'); })[0]; return (g && g.product_types) || []; }
+    function pTypeName(pr) { var t = pTypesOf(pr.game_id).filter(function (x) { return x.key === pr.type; })[0]; return (t && t.label) || pr.type || ''; }
+    function renderProducts(host) {
+      PDOM = host; PQ = '';
+      host.innerHTML = '<div class="mgs-panel"><p class="mgs-muted">Chargement…</p></div>';
+      Promise.all([req('/admin/games'), req('/products?include_inactive=true')]).then(function (r) {
+        PGAMES = Array.isArray(r[0]) ? r[0] : [];
+        PRODUCTS = Array.isArray(r[1]) ? r[1] : [];
+        if (!PGAMES.some(function (g) { return g.id === PGAME; })) PGAME = PGAMES.length ? PGAMES[0].id : 'pubg-mobile';
+        paintProductsShell();
+      }).catch(function (e) { signale(e); host.innerHTML = '<div class="mgs-panel"><p class="mgs-muted">Indisponible</p></div>'; });
+    }
+    function paintProductsShell() {
+      var host = PDOM; if (!host) return;
+      host.innerHTML = '<div class="mgs-cat-bar"><p class="mgs-muted" style="margin:0;font-size:.62em;text-transform:uppercase;letter-spacing:.1em;opacity:.7">Catalogue</p>' +
+        '<p class="mgs-muted" style="margin:.3em 0 0;font-size:.72em">Choisissez le jeu : tout l\'écran est limité à ce catalogue, jamais mélangé.</p>' +
+        '<div class="mgs-gtabs" role="tablist">' + PGAMES.map(function (g) {
+          return '<button type="button" role="tab" aria-selected="' + (g.id === PGAME) + '" class="mgs-gtab' + (g.id === PGAME ? ' is--active' : '') + '" data-act="p-game" data-g="' + esc(g.id) + '">' + esc(g.name) + (g.active ? '' : ' · inactif') + '</button>';
+        }).join('') + '</div></div>' +
+        '<div class="mgs-cat-tools"><div style="display:flex;align-items:center;gap:.6em;flex-wrap:wrap">' +
+        '<button type="button" class="mgs-chip" data-act="p-new">+ Nouveau produit</button>' +
+        '<span class="mgs-muted" id="p-count" style="font-size:.64em;text-transform:uppercase;letter-spacing:.1em"></span></div>' +
+        '<input id="p-search" placeholder="Rechercher un produit" value="' + esc(PQ) + '"></div>' +
+        '<div id="p-seasons"></div><div class="mgs-apgrid" id="p-grid"></div>';
+      var inp = document.getElementById('p-search');
+      if (inp) inp.addEventListener('input', function () { PQ = inp.value; paintProducts(); });
+      if (PGAME === 'pubg-mobile') renderSeasons(); else { var b = document.getElementById('p-seasons'); if (b) b.innerHTML = ''; }
+      paintProducts();
+    }
+    function paintProducts() {
+      var grid = document.getElementById('p-grid'); if (!grid) return;
+      var term = String(PQ || '').trim().toLowerCase();
+      PRODUCTS_VIS = PRODUCTS.filter(function (x) { return (x.game_id || 'pubg-mobile') === PGAME; })
+        .filter(function (x) { return !term || [x.name, x.name_en, x.slug].some(function (v) { return String(v || '').toLowerCase().indexOf(term) >= 0; }); });
+      var cnt = document.getElementById('p-count'); if (cnt) cnt.textContent = PRODUCTS_VIS.length + ' produit(s)';
+      if (!PRODUCTS_VIS.length) {
+        var g = PGAMES.filter(function (x) { return x.id === PGAME; })[0] || {};
+        grid.innerHTML = '<div class="mgs-apcard" style="grid-column:1/-1;flex-direction:column;align-items:flex-start;border-style:dashed;padding:1.5em"><p class="mgs-apcard__n">' + esc(g.name || '') + '</p>' +
+          '<p class="mgs-muted" style="font-size:.72em;margin:.3em 0 0">Aucun produit dans le catalogue de ce jeu.</p>' +
+          '<button type="button" class="mgs-chip" data-act="p-new" style="margin-top:.7em">+ Nouveau produit</button></div>';
+        return;
+      }
+      grid.innerHTML = PRODUCTS_VIS.map(function (x, i) {
+        return '<div class="mgs-apcard' + (x.active ? '' : ' is--off') + '"><div class="mgs-apcard__b"><p class="mgs-apcard__n">' + esc(x.name || '') + '</p><p class="mgs-apcard__m">' +
+          '<span class="mgs-apcard__type">' + esc(pTypeName(x)) + '</span>' +
+          '<span class="mgs-apcard__price">' + arNum(x.price) + '</span>' +
+          (x.old_price ? '<span style="text-decoration:line-through;opacity:.7">' + arNum(x.old_price) + '</span>' : '') +
+          (x.popular ? '<span class="mgs-apcard__star">★</span>' : '') +
+          '<span class="mgs-apcard__state">' + (x.active ? 'actif' : 'inactif') + '</span></p></div>' +
+          '<div class="mgs-apcard__a"><button type="button" class="mgs-chip" data-act="p-edit" data-i="' + i + '">Modifier</button>' +
+          '<button type="button" class="mgs-chip" data-act="p-del" data-i="' + i + '">Suppr</button></div></div>';
+      }).join('');
+    }
+    function renderSeasons() {
+      var box = document.getElementById('p-seasons'); if (!box) return;
+      box.innerHTML = '<div class="mgs-seasons"><h3>Saisons</h3><p class="mgs-muted" style="margin:.3em 0 0;font-size:.7em">Une seule saison active à la fois.</p>' +
+        '<form id="season-form"><input name="sname" placeholder="Nom de la saison" required><button type="submit" class="mgs-chip">Nouvelle saison</button></form>' +
+        '<div class="mgs-seasons__list" id="season-list">…</div></div>';
+      var f = document.getElementById('season-form');
+      if (f) f.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var nm = (f.querySelector('[name="sname"]').value || '').trim(); if (!nm) return;
+        req('/admin/seasons', { method: 'POST', body: { name: nm, activate: true } })
+          .then(function () { f.reset(); renderSeasons(); })
+          .catch(function (e) { signale(e); alert('Échec : ' + (e && e.message ? e.message : e)); });
+      });
+      req('/admin/seasons').then(function (arr) {
+        var list = document.getElementById('season-list'); if (!list) return;
+        arr = Array.isArray(arr) ? arr : [];
+        list.innerHTML = arr.length ? arr.map(function (se) {
+          return '<span class="mgs-season' + (se.active ? ' is--on' : '') + '">' + esc(se.name) + (se.active ? ' · active' : '<button type="button" data-act="season-activate" data-s="' + esc(se.id) + '">activer</button>') + '</span>';
+        }).join('') : '<span class="mgs-muted" style="font-size:.68em">Aucune saison</span>';
+      }).catch(function () { var l = document.getElementById('season-list'); if (l) l.innerHTML = ''; });
+    }
+    function openProductForm(src) {
+      var pr = Object.assign({}, P_EMPTY, src || {});
+      var isEdit = !!(src && src.id);
+      var gid = pr.game_id || 'pubg-mobile';
+      var m = adminModal(); var box = document.getElementById('mgs-modal-box');
+      var curLabel = (PGAMES.filter(function (g) { return g.id === gid; })[0] || {}).currency_label || (gid === 'pubg-mobile' ? 'UC' : 'Quantité de monnaie');
+      box.innerHTML = '<p class="mgs-modal__t">' + (isEdit ? 'Modifier le produit' : 'Nouveau produit') + '</p>' +
+        '<form class="mgs-form" id="product-form">' +
+        '<label>Nom (FR)<input name="name" value="' + esc(pr.name || '') + '"></label>' +
+        '<label>Name (EN)<input name="name_en" value="' + esc(pr.name_en || '') + '"></label>' +
+        '<label>Slug<input name="slug" value="' + esc(pr.slug || '') + '"></label>' +
+        '<label>Jeu associé<select name="game_id">' + PGAMES.map(function (g) { return '<option value="' + esc(g.id) + '"' + (g.id === gid ? ' selected' : '') + '>' + esc(g.name) + (g.active ? '' : ' · inactif') + '</option>'; }).join('') + '</select></label>' +
+        '<label>Type<select name="type"></select><span class="mgs-form__hint" id="p-type-hint" style="display:none">Configurez les types de produit de ce jeu dans Admin → Jeux.</span></label>' +
+        '<label id="p-evo">' + 'Limite évo<select name="evo_limit"><option value="season">Par saison</option><option value="lifetime">À vie</option><option value="week">Par semaine</option></select></label>' +
+        '<label>Prix (Ar)<input name="price" type="number" value="' + esc(pr.price == null ? '' : pr.price) + '"></label>' +
+        '<label>Ancien prix (Ar)<input name="old_price" type="number" value="' + esc(pr.old_price == null ? '' : pr.old_price) + '"></label>' +
+        '<label>' + esc(curLabel) + '<input name="uc_amount" type="number" value="' + esc(pr.uc_amount == null ? '' : pr.uc_amount) + '"></label>' +
+        '<label>Mois<input name="duration_months" type="number" value="' + esc(pr.duration_months == null ? '' : pr.duration_months) + '"></label>' +
+        '<label>Badge<input name="badge" value="' + esc(pr.badge || '') + '"></label>' +
+        '<label>Ordre<input name="sort_order" type="number" value="' + esc(pr.sort_order == null ? 0 : pr.sort_order) + '"></label>' +
+        '<label class="is--full">Logo URL<input name="image_url" type="url" placeholder="https://example.com/60uc.png" value="' + esc(pr.image_url || '') + '"></label>' +
+        '<label class="is--full">Description FR<textarea name="description_fr">' + esc(pr.description_fr || '') + '</textarea></label>' +
+        '<label class="is--full">Description EN<textarea name="description_en">' + esc(pr.description_en || '') + '</textarea></label>' +
+        '<label style="display:flex;align-items:center;gap:.4em">Populaire<input name="popular" type="checkbox"' + (pr.popular ? ' checked' : '') + ' style="width:auto;margin:0"></label>' +
+        '<p class="mgs-form__hint is--full" style="text-transform:none;font-weight:400">Mapping fournisseur obligatoire pour tout nouveau pack. Un pack reste inactif jusqu\'à ce que tu confirmes son offre dans Admin → Fournisseur.</p>' +
+        '<label style="display:flex;align-items:center;gap:.4em">Actif<input name="active" type="checkbox"' + (pr.active ? ' checked' : '') + ' style="width:auto;margin:0"></label>' +
+        '<p class="mgs-form__hint is--full" style="text-transform:none;font-weight:400">Pour un nouveau jeu, créez d\'abord le produit inactif, configurez son mapping dans Fournisseur, puis activez-le.</p>' +
+        '<button type="submit" class="mgs-chip is--full" style="padding:.6em;font-size:.8em">Enregistrer</button></form>';
+      var f = box.querySelector('#product-form');
+      var gameSel = f.querySelector('[name="game_id"]');
+      var typeSel = f.querySelector('[name="type"]');
+      var evoBox = f.querySelector('#p-evo');
+      var typeHint = f.querySelector('#p-type-hint');
+      function fillTypes(want) {
+        var ts = pTypesOf(gameSel.value);
+        typeSel.innerHTML = (ts.length ? '<option value="">Choisir un type</option>' : '<option value="">Aucun type configuré</option>') +
+          ts.map(function (t) { return '<option value="' + esc(t.key) + '">' + esc(t.label) + '</option>'; }).join('');
+        var valid = ts.some(function (t) { return t.key === want; });
+        typeSel.value = valid ? want : '';
+        typeHint.style.display = ts.length ? 'none' : '';
+      }
+      function toggleEvo() { evoBox.style.display = (typeSel.value === 'evo' && gameSel.value === 'pubg-mobile') ? '' : 'none'; }
+      fillTypes(pr.type || '');
+      toggleEvo();
+      gameSel.addEventListener('change', function () { fillTypes(''); toggleEvo(); });
+      typeSel.addEventListener('change', toggleEvo);
+      f.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        var val = function (n) { var el = f.querySelector('[name="' + n + '"]'); return el ? el.value : ''; };
+        var chk = function (n) { var el = f.querySelector('[name="' + n + '"]'); return !!(el && el.checked); };
+        var g = val('game_id') || 'pubg-mobile'; var ty = val('type');
+        if (!pTypesOf(g).some(function (x) { return x.key === ty; })) { alert('Choisissez un type de produit valide pour ce jeu.'); return; }
+        var num = function (v) { return (v === '' || v === null) ? null : Number(v); };
+        var body = {
+          slug: val('slug'), type: ty, game_id: g, name: val('name'), name_en: val('name_en') || null,
+          uc_amount: num(val('uc_amount')), duration_months: num(val('duration_months')),
+          price: Number(val('price')), old_price: num(val('old_price')), popular: chk('popular'), badge: val('badge') || null,
+          evo_limit: (ty === 'evo') ? (val('evo_limit') || 'season') : null,
+          image_url: val('image_url').trim() || null, description_fr: val('description_fr'), description_en: val('description_en') || null,
+          active: chk('active'),
+          requires_mapping: ((g !== 'pubg-mobile') || !isEdit) ? true : (pr.requires_mapping !== false),
+          sort_order: Number(val('sort_order') || 0)
+        };
+        if (isEdit) body.id = src.id;
+        var done = function () { closeAdminModal(); renderProducts(PDOM); };
+        var fail = function (e) { signale(e); alert('Échec : ' + (e && e.message ? e.message : e)); };
+        if (isEdit) req('/admin/products/' + src.id, { method: 'PUT', body: body }).then(done).catch(fail);
+        else req('/admin/products', { method: 'POST', body: body }).then(done).catch(fail);
+      });
+      m.classList.add('is--open');
+    }
+
+    /* ---- Événements : porté de pages/admin/AdminEvents.js (PR #100 2242ea8) ---- */
+    var EVENTS = [];
+    var E_EMPTY = { slug: '', title_fr: '', title_en: '', description_fr: '', description_en: '', image_url: '', badge: 'promo', product_slug: '', price_label: '', old_price_label: '', active: true };
+    function renderEvents(host) {
+      host.innerHTML = '<div class="mgs-admin-head"><div><p class="mgs-muted" style="margin:0;font-size:.6em;text-transform:uppercase;letter-spacing:.1em;opacity:.7">Administration</p><h2 class="mgs-section-h" style="margin:.2em 0 0">Événements</h2></div><button type="button" class="mgs-chip" data-act="ev-new">+ Nouvel événement</button></div><div class="mgs-evgrid" id="ev-grid"><p class="mgs-muted">Chargement…</p></div>';
+      req('/admin/events').then(function (arr) {
+        EVENTS = Array.isArray(arr) ? arr : [];
+        paintEvents();
+      }).catch(function (e) { signale(e); var g = document.getElementById('ev-grid'); if (g) g.innerHTML = '<p class="mgs-muted">Indisponible</p>'; });
+    }
+    function paintEvents() {
+      var g = document.getElementById('ev-grid'); if (!g) return;
+      g.innerHTML = EVENTS.length ? EVENTS.map(function (ev, i) {
+        return '<div class="mgs-evcard"><div class="mgs-evcard__b">' +
+          (ev.image_url ? '<img src="' + esc(ev.image_url) + '" alt="" class="mgs-evcard__img">' : '') +
+          '<div style="min-width:0"><p class="mgs-evcard__t">' + esc(ev.title_fr || '') + '</p>' +
+          '<p class="mgs-muted" style="margin:.2em 0 0;font-size:.66em">♥ ' + esc(String(ev.likes == null ? 0 : ev.likes)) + ' · ↗ ' + esc(String(ev.shares == null ? 0 : ev.shares)) + ' · ' + esc(ev.product_slug || '—') + '</p></div></div>' +
+          '<div class="mgs-evcard__a"><button type="button" class="mgs-chip" data-act="ev-edit" data-i="' + i + '">Modifier</button>' +
+          '<button type="button" class="mgs-chip" data-act="ev-del" data-i="' + i + '">Suppr</button></div></div>';
+      }).join('') : '<p class="mgs-muted">Aucun événement</p>';
+    }
+    function openEventForm(src) {
+      var ev = Object.assign({}, E_EMPTY, src || {});
+      var isEdit = !!(src && src.id);
+      var m = adminModal(); var box = document.getElementById('mgs-modal-box');
+      var fld = function (k, lab) { return '<label>' + esc(lab) + '<input name="' + k + '" value="' + esc(ev[k] == null ? '' : ev[k]) + '"></label>'; };
+      box.innerHTML = '<p class="mgs-modal__t">' + (isEdit ? 'Modifier l\'événement' : 'Nouvel événement') + '</p>' +
+        '<form class="mgs-form" id="event-form">' +
+        fld('title_fr', 'Titre (FR)') + fld('title_en', 'Title (EN)') + fld('slug', 'Slug') + fld('badge', 'Badge') +
+        fld('image_url', 'Image URL') + fld('product_slug', 'Produit lié (slug)') + fld('price_label', 'Prix affiché') + fld('old_price_label', 'Ancien prix affiché') +
+        '<label class="is--full">Description FR<textarea name="description_fr">' + esc(ev.description_fr || '') + '</textarea></label>' +
+        '<label class="is--full">Description EN<textarea name="description_en">' + esc(ev.description_en || '') + '</textarea></label>' +
+        '<label style="display:flex;align-items:center;gap:.4em">Actif<input name="active" type="checkbox"' + (ev.active ? ' checked' : '') + ' style="width:auto;margin:0"></label>' +
+        '<button type="submit" class="mgs-chip is--full" style="padding:.6em;font-size:.8em">Enregistrer</button></form>';
+      box.querySelector('#event-form').addEventListener('submit', function (e2) {
+        e2.preventDefault();
+        var f = e2.target;
+        var body = {};
+        Object.keys(E_EMPTY).forEach(function (k) {
+          if (k === 'active') return;
+          var el = f.querySelector('[name="' + k + '"]');
+          var v = el ? el.value : '';
+          body[k] = (v === '' ? null : v);
+        });
+        body.active = !!(f.querySelector('[name="active"]') || {}).checked;
+        body.description_fr = body.description_fr || '';
+        body.description_en = body.description_en || '';
+        var done = function () { closeAdminModal(); renderEvents(PDOMEV); };
+        var fail = function (er) { signale(er); alert('Échec : ' + (er && er.message ? er.message : er)); };
+        if (isEdit) req('/admin/events/' + src.id, { method: 'PUT', body: body }).then(done).catch(fail);
+        else req('/admin/events', { method: 'POST', body: body }).then(done).catch(fail);
+      });
+      m.classList.add('is--open');
+    }
+    var PDOMEV = null;
+
+    /* ---- Paiements : porté de pages/admin/AdminPayments.js (PR #100 2242ea8) ---- */
+    var PSET = null, PFEES = null, PFEES_OPEN = false, PDOM_PAY = null;
+    function isSuper() { return !!(me && me.role === 'super_admin'); }
+    function renderPayments(host) {
+      PDOM_PAY = host;
+      host.innerHTML = '<div class="mgs-panel"><p class="mgs-muted">Chargement…</p></div>';
+      req('/payments/admin/settings').then(function (st) {
+        PSET = st || {}; PFEES = PSET.payment_fees || {};
+        paintPayments();
+      }).catch(function (e) { signale(e); host.innerHTML = '<div class="mgs-panel"><p class="mgs-muted">Indisponible</p></div>'; });
+    }
+    function paintPayments() {
+      var host = PDOM_PAY; if (!host) return;
+      var sup = isSuper();
+      var row = function (key, label, hint, ok, sandbox) {
+        return '<div class="mgs-payrow"><div style="min-width:0;flex:1"><p class="mgs-payrow__t">' + esc(label) +
+          (sandbox ? ' <span class="mgs-payrow__badge">sandbox</span>' : '') + '</p>' +
+          '<p class="mgs-muted" style="margin:.2em 0 0;font-size:.68em">' + esc(hint) + '</p>' +
+          (ok ? '' : '<p style="margin:.2em 0 0;font-size:.68em;font-weight:700;color:#b42318">FiveOne Pay n\'est pas configuré côté serveur.</p>') + '</div>' +
+          '<div style="display:flex;align-items:center;gap:.5em;flex:0 0 auto"><span style="font-size:.66em;font-weight:800;letter-spacing:.1em">' + (PSET[key] ? 'ON' : 'OFF') + '</span>' +
+          '<input type="checkbox"' + (PSET[key] ? ' checked' : '') + (sup ? '' : ' disabled') + ' data-act="pay-toggle" data-k="' + key + '" style="width:1.2em;height:1.2em;cursor:pointer"></div></div>';
+      };
+      var fees = PFEES || {};
+      var feeBox = function (key, label, hint) {
+        var f = fees[key] || {};
+        var input = function (k, lab, step) { return '<label>' + lab + '<input type="number" min="0" step="' + step + '" data-fee="' + key + '.' + k + '" value="' + esc(f[k] == null ? '' : f[k]) + '"' + (isSuper() ? '' : ' disabled') + '></label>'; };
+        return '<div class="mgs-fee"><p class="mgs-payrow__t">' + esc(label) + '</p><p class="mgs-muted" style="margin:.2em 0 .5em;font-size:.66em">' + esc(hint) + '</p>' +
+          '<div class="mgs-fee__grid">' + input('percent', 'Taux', '0.05') + input('min', 'Min', '50') + input('max', 'Max', '50') + '</div></div>';
+      };
+      host.innerHTML = '<div class="mgs-panel"><div class="mgs-admin-head" style="border:0;padding:0;margin-bottom:.6em"><div><p class="mgs-muted" style="margin:0;font-size:.6em;text-transform:uppercase;letter-spacing:.1em;opacity:.7">Magic Game Store</p>' +
+        '<h2 class="mgs-section-h" style="margin:.2em 0 0">Paiements</h2></div></div>' +
+        '<p class="mgs-muted" style="font-size:.72em;margin:0 0 .8em">Passerelles Mobile Money et frais. Aucun secret n\'est affiché, seulement l\'état « configuré » côté serveur.</p>' +
+        '<p class="mgs-muted" style="font-size:.68em;margin:0 0 .6em">Mode serveur : <b>' + esc(String(PSET.payment_mode == null ? '…' : PSET.payment_mode)) + '</b></p>' +
+        row('papi_auto', 'Papi (Mobile Money auto)', 'Encaissement automatique Mobile Money.', true, false) +
+        row('fiveone_enabled', 'FiveOne Pay', 'Passerelle bancaire / Mobile Money.', PSET.fiveone_configured !== false, !!PSET.fiveone_sandbox) +
+        '<div style="border-top:.09em solid var(--color--dark);margin-top:.4em;padding-top:.6em">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:.6em"><p class="mgs-payrow__t" style="margin:0">Frais de paiement</p>' +
+        '<button type="button" class="mgs-chip" data-act="pay-fees-toggle">' + (PFEES_OPEN ? 'Réduire' : 'Afficher') + '</button></div>' +
+        (PFEES_OPEN ? '<div style="margin-top:.6em"><div class="mgs-fee"><p class="mgs-payrow__t">Espèces / manuel</p><p class="mgs-muted" style="margin:.2em 0 0;font-size:.66em">Aucun frais : le montant affiché est celui payé.</p></div>' +
+          feeBox('papi', 'Papi', 'Frais appliqués aux paiements Papi.') +
+          feeBox('fiveone', 'FiveOne Pay', 'Frais appliqués aux paiements FiveOne Pay.') +
+          '<button type="button" class="mgs-chip" data-act="pay-fees-save"' + (isSuper() && PFEES_OPEN ? '' : ' disabled') + ' style="margin-top:.6em">Enregistrer</button></div>' : '') +
+        '</div></div>' +
+        '<div id="pay-binance" style="margin-top:1.4em"></div>';
+      renderBinance(document.getElementById('pay-binance'));
+    }
+
+    /* ---- Crypto / Binance : porté de pages/admin/AdminBinance.js (PR #100 2242ea8) ---- */
+    var BN = null, BN_PAY = [], BN_UNM = [], BNETS = null, BN_PANEL = null;
+    var BNETS_KEYS = ['TRC20', 'BEP20', 'APTOS', 'TON'];
+    function renderBinance(host) {
+      if (!host) return;
+      BN_PANEL = host;
+      host.innerHTML = '<div class="mgs-panel"><p class="mgs-muted">Chargement…</p></div>';
+      req('/crypto/admin/settings').then(function (st) {
+        BN = st || { wallets: {} };
+        req('/crypto/admin/payments').then(function (x) { BN_PAY = Array.isArray(x) ? x : []; paintBinance(); }).catch(function () { BN_PAY = []; paintBinance(); });
+        req('/crypto/admin/unmatched').then(function (x) { BN_UNM = Array.isArray(x) ? x : []; paintBinance(); }).catch(function () { BN_UNM = []; paintBinance(); });
+      }).catch(function (e) {
+        signale(e);
+        host.innerHTML = '<div class="mgs-panel"><p class="mgs-muted">Réglages crypto indisponibles</p></div>';
+      });
+    }
+    function paintBinance() {
+      var host = BN_PANEL; if (!host || !BN) return;
+      var sup = isSuper();
+      var w = BN.wallets || {};
+      var codes = BN.binance_codes || {};
+      var wallets = BNETS_KEYS.map(function (n) {
+        var cur = w[n] || {};
+        return '<div class="mgs-wallet"><p class="mgs-wallet__n">' + n + '<span class="mgs-wallet__code">Binance : ' + esc(String(codes[n] == null ? '' : codes[n])) + '</span></p>' +
+          '<input placeholder="Adresse" data-wal="' + n + '.address" value="' + esc(cur.address || '') + '"' + (sup ? '' : ' disabled') + '>' +
+          '<input placeholder="MEMO (si requis)" data-wal="' + n + '.memo" value="' + esc(cur.memo || '') + '"' + (sup ? '' : ' disabled') + '>' +
+          '<label style="display:flex;align-items:center;gap:.3em;font-size:.62em;text-transform:none;letter-spacing:0"><input type="checkbox" data-wal="' + n + '.active"' + (cur.active ? ' checked' : '') + (sup ? '' : ' disabled') + ' style="width:auto;margin:0">actif</label></div>';
+      }).join('');
+      host.innerHTML = '<div class="mgs-panel"><div class="mgs-payrow" style="border-top:0;padding-top:0"><div style="min-width:0;flex:1">' +
+        '<p class="mgs-muted" style="margin:0;font-size:.6em;text-transform:uppercase;letter-spacing:.1em;opacity:.7">Paiements · Binance USDT (dépôts CEX)</p>' +
+        '<p class="mgs-muted" style="margin:.3em 0 0;font-size:.68em">Détection automatique via l\'API Binance (lecture seule). Aucun retrait, aucun trading.</p>' +
+        '<p style="margin:.3em 0 0;font-size:.68em;font-weight:700;color:' + (BN.api_configured ? '#1a7f37' : '#b42318') + '">' + (BN.api_configured ? '✓ Clés API configurées côté serveur' : '⚠ BINANCE_API_KEY / BINANCE_API_SECRET absentes côté serveur') + '</p></div>' +
+        '<label style="display:flex;align-items:center;gap:.3em;flex:0 0 auto;font-size:.66em;font-weight:800"><input type="checkbox" data-act="bn-toggle"' + (BN.enabled ? ' checked' : '') + (sup ? '' : ' disabled') + ' style="width:1.2em;height:1.2em">actif</label></div>' +
+        '<div class="mgs-form" style="margin-top:.8em"><label>Taux (Ar pour 1 USDT)<input type="number" min="1" data-bn="rate_ar_per_usdt" value="' + esc(BN.rate_ar_per_usdt == null ? '' : BN.rate_ar_per_usdt) + '"' + (sup ? '' : ' disabled') + '></label>' +
+        '<label>Validité d\'un paiement (minutes)<input type="number" min="10" max="180" data-bn="expiry_minutes" value="' + esc(BN.expiry_minutes == null ? '' : BN.expiry_minutes) + '"' + (sup ? '' : ' disabled') + '></label></div>' +
+        '<p class="mgs-muted" style="margin:.5em 0 0;font-size:.66em">Le taux et le montant USDT exact sont figés dans chaque paiement : modifier le taux n\'affecte pas les paiements existants.</p>' +
+        '<p class="mgs-payrow__t" style="margin:1em 0 .3em">Wallets de dépôt Binance</p>' +
+        '<p class="mgs-muted" style="margin:0 0 .5em;font-size:.66em">Collez l\'adresse exacte affichée par Binance (Dépôt → USDT → réseau). MEMO uniquement si Binance en affiche un.</p>' +
+        wallets +
+        (sup ? '<button type="button" class="mgs-chip" data-act="bn-save" style="margin-top:.7em">Enregistrer</button>' : '') +
+        '<div style="display:flex;flex-wrap:wrap;gap:.4em;margin-top:1em;border-top:.09em solid var(--color--dark);padding-top:.7em">' +
+        '<button type="button" class="mgs-chip" data-act="bn-check">Vérifier les dépôts maintenant</button>' +
+        '<button type="button" class="mgs-chip" data-act="bn-networks">Réseaux USDT Binance (live)</button></div>' +
+        (BNETS ? '<div style="margin-top:.6em;font-size:.66em">' + BNETS.map(function (n) { return '<p style="margin:.15em 0"><b>' + esc(n.network) + '</b> ' + esc(n.name) + ' · dépôt ' + (n.depositEnable ? 'ON' : 'OFF') + ' · memo ' + (n.memoRegex ? 'oui' : 'non') + ' · ' + esc(String(n.minConfirm)) + ' conf.' + (n.mgs_key ? ' · MGS ' + esc(n.mgs_key) : '') + '</p>'; }).join('') + '</div>' : '') +
+        '<p class="mgs-payrow__t" style="margin:1em 0 .3em">Dépôts non associés (revue manuelle) · ' + BN_UNM.length + '</p>' +
+        (BN_UNM.length === 0 ? '<p class="mgs-muted" style="font-size:.7em;margin:0">Aucun dépôt à revoir.</p>' : BN_UNM.map(function (u) {
+          return '<div class="mgs-payrow" style="padding:.4em 0"><div style="min-width:0;flex:1"><p class="mgs-payrow__t" style="font-size:.7em">' + esc(String(u.amount)) + ' USDT · ' + esc(u.network || '') + ' · <span style="color:#b42318">' + esc(u.reason || '') + '</span></p>' +
+            '<p class="mgs-muted" style="margin:.15em 0 0;font-size:.62em;overflow-wrap:anywhere">' + esc(u.tx_hash || '') + '</p></div>' +
+            '<button type="button" class="mgs-chip" data-act="bn-unmatched" data-id="' + esc(u.id) + '">Marquer revu</button></div>';
+        }).join('')) +
+        '<p class="mgs-payrow__t" style="margin:1em 0 .3em">Paiements USDT récents</p>' +
+        (BN_PAY.length === 0 ? '<p class="mgs-muted" style="font-size:.7em;margin:0">Aucun paiement USDT.</p>' : BN_PAY.map(function (x) {
+          return '<div class="mgs-payrow" style="padding:.4em 0"><div style="min-width:0;flex:1"><p class="mgs-payrow__t" style="font-size:.7em">' + esc(x.order_number || '') + ' · ' + esc(String(x.amount_usdt == null ? '' : x.amount_usdt)) + ' USDT · ' + esc(x.network || '') + ' · taux ' + esc(String(x.rate_ar_per_usdt == null ? '' : x.rate_ar_per_usdt)) + ' Ar</p>' +
+            (x.tx_hash ? '<p class="mgs-muted" style="margin:.15em 0 0;font-size:.62em;overflow-wrap:anywhere">' + esc(x.tx_hash) + '</p>' : '') + '</div>' +
+            '<span class="mgs-payrow__badge">' + esc(x.status || '') + '</span></div>';
+        }).join('')) +
+        '</div>';
+      var bind = function (sel, fn) { host.querySelectorAll(sel).forEach(fn); };
+      bind('[data-wal]', function (el) {
+        el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', function () {
+          var k = el.getAttribute('data-wal').split('.'); BN.wallets = BN.wallets || {}; BN.wallets[k[0]] = BN.wallets[k[0]] || {};
+          BN.wallets[k[0]][k[1]] = el.type === 'checkbox' ? el.checked : el.value;
+        });
+      });
+      bind('[data-bn]', function (el) { el.addEventListener('input', function () { BN[el.getAttribute('data-bn')] = el.value; }); });
+      bind('[data-fee]', function (el) {
+        el.addEventListener('input', function () {
+          var k = el.getAttribute('data-fee').split('.'); PFEES = PFEES || {}; PFEES[k[0]] = PFEES[k[0]] || {};
+          PFEES[k[0]][k[1]] = el.value;
+        });
+      });
+    }
     function loadSec(k) {
+      if (k === 'games' && body) { cur = k; renderGames(body); return; }
+      if (k === 'products' && body) { cur = k; renderProducts(body); return; }
+      if (k === 'events' && body) { cur = k; renderEvents(body); return; }
+      if (k === 'payments' && body) { cur = k; renderPayments(body); return; }
+      if (k === 'crypto' && body) { cur = k; renderBinance(body); return; }
       var d = SEC[k]; if (!d || !body) return; cur = k;
       var hasA = !!d.a;
       body.innerHTML = '<div class="mgs-panel"><h2 class="mgs-section-h">' + esc(d.t) + '</h2>' + (d.top || '') + '<div style="overflow-x:auto"><table class="mgs-table"><thead><tr>' + d.c.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + (hasA ? '<th></th>' : '') + '</tr></thead><tbody><tr><td colspan="' + (d.c.length + (hasA ? 1 : 0)) + '" class="mgs-muted">Chargement…</td></tr></tbody></table></div></div>';
@@ -4935,23 +5470,58 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         var tb = body.querySelector('tbody'); if (tb) tb.innerHTML = trs.length ? trs.join('') : '<tr><td colspan="' + (d.c.length + (hasA ? 1 : 0)) + '" class="mgs-muted">Aucun élément</td></tr>';
       }).catch(function (e) { signale(e); var tb = body.querySelector('tbody'); if (tb) tb.innerHTML = '<tr><td colspan="' + (d.c.length + (hasA ? 1 : 0)) + '" class="mgs-muted">Indisponible</td></tr>'; });
     }
-    function doAct(action, i, key) {
+    function doAct(action, i, key, b) {
       var rows = ROWS[cur] || {}; var row = (SEC[cur] && SEC[cur].flat) ? null : rows[i];
       var done = function () { loadSec(cur); };
       var fail = function (e) { signale(e); alert('Échec : ' + (e && e.message ? e.message : e)); };
       if (action === 'o-status') { var st = prompt('Nouveau statut (pending_payment, paid, awaiting_verification, delivered, cancelled) ?', row && row.status || ''); if (!st) return; req('/admin/orders/' + row.id, { method: 'PATCH', body: { status: st } }).then(done).catch(fail); return; }
       if (action === 'o-del') { if (!confirm('Supprimer cette commande ?')) return; req('/admin/orders/' + row.id, { method: 'DELETE' }).then(done).catch(fail); return; }
-      if (action === 'p-toggle') { req('/admin/products/' + row.id, { method: 'PUT', body: Object.assign({}, row, { active: !row.active, price: Number(row.price) || 0 }) }).then(done).catch(fail); return; }
-      if (action === 'p-del') { if (!confirm('Supprimer ce produit ?')) return; req('/admin/products/' + row.id, { method: 'DELETE' }).then(done).catch(fail); return; }
+      if (action === 'p-game') { PGAME = b.getAttribute('data-g') || 'pubg-mobile'; paintProductsShell(); return; }
+      if (action === 'p-new') { openProductForm(null); return; }
+      if (action === 'p-edit') { openProductForm(PRODUCTS_VIS[i]); return; }
+      if (action === 'p-del') {
+        var pr = PRODUCTS_VIS[i] || {};
+        if (!confirm('Supprimer ' + (pr.name || '') + ' ?')) return;
+        req('/admin/products/' + pr.id, { method: 'DELETE' }).then(function () { renderProducts(PDOM); }).catch(fail); return;
+      }
+      if (action === 'ev-new') { PDOMEV = document.getElementById('admin-sec-body'); openEventForm(null); return; }
+      if (action === 'ev-edit') { PDOMEV = document.getElementById('admin-sec-body'); openEventForm(EVENTS[i]); return; }
+      if (action === 'ev-del') {
+        if (!confirm('Supprimer cet événement ?')) return;
+        req('/admin/events/' + (EVENTS[i] || {}).id, { method: 'DELETE' }).then(function () { renderEvents(document.getElementById('admin-sec-body')); }).catch(fail); return;
+      }
+      if (action === 'pay-toggle') {
+        var pk = b.getAttribute('data-k'); var patch = {}; patch[pk] = !!b.checked;
+        req('/payments/admin/settings', { method: 'PATCH', body: patch }).then(function (st) { PSET = st || {}; PFEES = PSET.payment_fees || {}; paintPayments(); }).catch(fail); return;
+      }
+      if (action === 'pay-fees-toggle') { PFEES_OPEN = !PFEES_OPEN; paintPayments(); return; }
+      if (action === 'pay-fees-save') {
+        var body2 = { payment_fees: {} };
+        ['papi', 'fiveone'].forEach(function (kk) {
+          var cur = (PFEES || {})[kk] || {};
+          body2.payment_fees[kk] = { percent: Math.max(0, Number(cur.percent) || 0), min: Math.max(0, Number(cur.min) || 0), max: Math.max(0, Number(cur.max) || 0) };
+        });
+        req('/payments/admin/settings', { method: 'PATCH', body: body2 }).then(function (st) { PSET = st || {}; PFEES = PSET.payment_fees || {}; paintPayments(); }).catch(fail); return;
+      }
+      if (action === 'bn-toggle') { req('/crypto/admin/settings', { method: 'PATCH', body: { enabled: !!b.checked, rate_ar_per_usdt: Number(BN.rate_ar_per_usdt) || undefined, expiry_minutes: Number(BN.expiry_minutes), wallets: BN.wallets } }).then(function (st) { BN = st || BN; paintBinance(); }).catch(fail); return; }
+      if (action === 'bn-save') { req('/crypto/admin/settings', { method: 'PATCH', body: { enabled: BN.enabled, rate_ar_per_usdt: Number(BN.rate_ar_per_usdt) || undefined, expiry_minutes: Number(BN.expiry_minutes), wallets: BN.wallets } }).then(function (st) { BN = st || BN; paintBinance(); }).catch(fail); return; }
+      if (action === 'bn-check') { req('/crypto/admin/check', { method: 'POST' }).then(function (d) { alert(d && d.ran ? 'Vérification effectuée : ' + JSON.stringify(d.results) : 'Non exécutée (' + ((d && d.reason) || 'raison inconnue') + ')'); }).catch(fail); return; }
+      if (action === 'bn-networks') { req('/crypto/admin/networks').then(function (d) { BNETS = Array.isArray(d && d.networks) ? d.networks : []; paintBinance(); }).catch(fail); return; }
+      if (action === 'bn-unmatched') { req('/crypto/admin/unmatched/' + b.getAttribute('data-id'), { method: 'PATCH' }).then(function () { renderBinance(BN_PANEL); }).catch(fail); return; }
+      if (action === 'season-activate') {
+        req('/admin/seasons/' + b.getAttribute('data-s') + '/activate', { method: 'POST' }).then(renderSeasons).catch(fail); return;
+      }
       if (action === 'u-block') { req('/admin/users/' + (row.user_id || row.id), { method: 'PATCH', body: { blocked: !row.blocked } }).then(done).catch(fail); return; }
       if (action === 'l-toggle') { req('/loyalty/admin/rewards/' + row.id, { method: 'PATCH', body: { name: row.name, type: row.type, cost_points: row.cost_points, value: row.value, description: row.description, active: !row.active, stock: row.stock != null ? row.stock : null } }).then(done).catch(fail); return; }
       if (action === 'e-del') { if (!confirm('Supprimer cet événement ?')) return; req('/admin/events/' + row.id, { method: 'DELETE' }).then(done).catch(fail); return; }
+      if (action === 'g-new') { openGameForm(null); return; }
+      if (action === 'g-edit') { openGameForm(Object.assign({}, row, { _existing: true })); return; }
       if (action === 'g-toggle') { req('/admin/games/' + row.id, { method: 'PUT', body: { id: row.id, name: row.name, slug: row.slug || row.id, icon_url: row.icon_url || null, currency_label: row.currency_label || null, description: row.description || '', description_en: row.description_en || null, active: !row.active, sort_order: Number(row.sort_order || 0), fazercards_validation_category: row.fazercards_validation_category || null } }).then(done).catch(fail); return; }
       if (action === 'crypto-check') { req('/crypto/admin/check', { method: 'POST' }).then(function (d) { alert(d && d.ran ? 'Vérification effectuée : ' + JSON.stringify(d.results) : 'Non exécutée (' + ((d && d.reason) || 'raison inconnue') + ')'); }).catch(fail); return; }
       if (action === 'pay-edit') { var cur2 = (ROWS[cur] || {})[key]; var v = prompt('Valeur pour ' + key + ' ?', cur2 == null ? '' : String(cur2)); if (v === null) return; var pl = {}; pl[key] = v; req('/payments/admin/settings', { method: 'PATCH', body: pl }).then(done).catch(fail); return; }
     }
     if (body && !body.getAttribute('data-bound')) { body.setAttribute('data-bound', '1');
-      body.addEventListener('click', function (ev) { var b = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null; if (!b) return; ev.preventDefault(); doAct(b.getAttribute('data-act'), Number(b.getAttribute('data-i')), b.getAttribute('data-key')); }); }
+      body.addEventListener('click', function (ev) { var b = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null; if (!b) return; ev.preventDefault(); doAct(b.getAttribute('data-act'), Number(b.getAttribute('data-i')), b.getAttribute('data-key'), b); }); }
     function setSec(k) {
       if (dash) dash.style.display = (k === 'dash') ? '' : 'none';
       if (body) body.innerHTML = (k === 'dash') ? '' : body.innerHTML;
