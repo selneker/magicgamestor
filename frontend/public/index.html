@@ -905,41 +905,51 @@ textarea.mgs-input{height:auto;min-height:6em;border-radius:1.25em;padding:1em 1
 
 <style>
 /* ===== Carte catalogue fidèle au site déployé (ProductCard) : montant vedette, badge, cœur, pastille prix + stepper ===== */
-.mgs-pcard{position:relative;border:.125em solid var(--color--dark);border-radius:1.75em;background:var(--color--light);padding:1em;display:flex;flex-direction:column;color:var(--color--dark);transition:transform .4s var(--elastic-ease-out),box-shadow .4s var(--elastic-ease-out);min-width:0}
+.mgs-pcard{position:relative;border:.125em solid var(--color--dark);border-radius:1.75em;background:var(--color--light);padding:.85em;display:flex;flex-direction:column;color:var(--color--dark);transition:transform .4s var(--elastic-ease-out),box-shadow .4s var(--elastic-ease-out);min-width:0}
 .mgs-pcard:hover{transform:translateY(-.3em);box-shadow:.4em .4em 0 var(--color--dark)}
 .mgs-pcard__link{position:absolute;inset:0;z-index:0;border-radius:1.75em}
-.mgs-pcard__top{position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:.5em;min-height:2.6em}
-.mgs-pcard__badge{display:inline-flex;align-items:center;gap:.35em;border:.1em solid var(--color--dark);border-radius:100em;background:var(--color--yellow-100);padding:.35em .7em;font-size:.6em;font-weight:800;text-transform:uppercase;letter-spacing:.08em;line-height:1}
+.mgs-pcard__top{position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:.5em;min-height:2.75em}
+.mgs-pcard__badge{display:inline-flex;align-items:center;gap:.35em;border:.1em solid var(--color--dark);border-radius:100em;background:var(--color--yellow-100);padding:.3em .65em;font-size:.55em;font-weight:800;text-transform:uppercase;letter-spacing:.08em;line-height:1}
 .mgs-pcard__badge .bold-ic{width:1.1em;height:1.1em}
 .mgs-pcard__badge--disc{background:var(--color--yellow-700)}
-.mgs-pcard__fav{position:relative;z-index:1;flex:none;width:2.6em;height:2.6em;border-radius:100em;border:.125em solid var(--color--dark);background:var(--color--dark);color:var(--color--light);display:grid;place-items:center;cursor:pointer;transition:.2s}
+.mgs-pcard__fav{position:relative;z-index:1;flex:none;width:2.75em;height:2.75em;border-radius:100em;border:.125em solid var(--color--dark);background:var(--color--dark);color:var(--color--light);display:grid;place-items:center;cursor:pointer;transition:.2s}
 .mgs-pcard__fav .bold-ic{width:1.2em;height:1.2em}
 .mgs-pcard__fav:hover{transform:scale(1.06)}
 .mgs-pcard__fav[aria-pressed="true"]{background:#ff4d4d;border-color:#ff4d4d}
 .mgs-pcard__fav[aria-pressed="true"] .bold-ic{fill:currentColor}
-.mgs-pcard__figure{position:relative;z-index:1;margin:.35em 0 0;display:flex;align-items:baseline;gap:.12em;font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;letter-spacing:-.03em;line-height:.85}
-.mgs-pcard__amount{font-size:3.1em}
-.mgs-pcard__amount.is--long{font-size:2.5em}
-.mgs-pcard__unit{font-family:'Onest',Arial,sans-serif;font-size:.8em;font-weight:700;text-transform:uppercase;letter-spacing:0;opacity:.6}
-.mgs-pcard__cat{position:relative;z-index:1;margin:.7em 0 0;font-size:.6em;font-weight:800;text-transform:uppercase;letter-spacing:.08em;opacity:.6}
-.mgs-pcard__title{position:relative;z-index:1;margin:.15em 0 0;font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;text-transform:uppercase;font-size:1.5em;line-height:.9}
-.mgs-pcard__bottom{position:relative;z-index:1;margin-top:auto;padding-top:.9em}
-.mgs-pcard__old{display:flex;align-items:center;gap:.5em;padding-bottom:.4em;font-size:.75em}
+.mgs-pcard__figure{position:relative;z-index:1;margin:.3em 0 0;display:flex;align-items:baseline;gap:.12em;font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;letter-spacing:-.03em;line-height:.85}
+.mgs-pcard__amount{font-size:2.5em}
+.mgs-pcard__amount.is--long{font-size:2em}
+.mgs-pcard__unit{font-family:'Onest',Arial,sans-serif;font-size:.7em;font-weight:700;text-transform:uppercase;letter-spacing:0;opacity:.6}
+.mgs-pcard__cat{position:relative;z-index:1;margin:.5em 0 0;font-size:.55em;font-weight:800;text-transform:uppercase;letter-spacing:.08em;opacity:.6}
+.mgs-pcard__title{position:relative;z-index:1;margin:.12em 0 0;font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;text-transform:uppercase;font-size:1.2em;line-height:.9}
+.mgs-pcard__bottom{position:relative;z-index:1;margin-top:auto;padding-top:.7em}
+.mgs-pcard__old{display:flex;align-items:center;gap:.5em;padding-bottom:.35em;font-size:.7em}
 .mgs-pcard__old s{opacity:.55;font-weight:600}
-/* /boutique : cartes un peu carrées + espacement marqué (feedback propriétaire).
-   Mobile : 175 × 193 (0,91) déjà quasi carré -> seuls le gap et le desktop changent. */
-@media(min-width:992px){.mgs-boutique-catalog .mgs-grid{gap:1.5em}.mgs-boutique-catalog .mgs-pcard{min-height:21em}}
-.mgs-pill{display:flex;align-items:center;justify-content:space-between;gap:.4em;height:3.3em;border:.125em solid var(--color--dark);border-radius:100em;background:var(--color--light);padding:.3em .35em .3em 1.1em;transition:background .25s}
-.mgs-pill__price{font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;font-size:1.3em;white-space:nowrap;line-height:1}
-.mgs-pill__add{flex:none;width:2.6em;height:2.6em;border-radius:100em;background:var(--color--dark);color:var(--color--light);display:grid;place-items:center;cursor:pointer;transition:.2s}
+/* /boutique : l'espacement demandé est ENTRE les cartes (gap), pas dans la carte —
+   le `min-height:21em` qui creusait un vide au milieu est supprimé. Cartes et
+   textes réduits (feedback propriétaire). */
+.mgs-boutique-catalog .mgs-grid{gap:1.5em}
+@media(min-width:992px){.mgs-boutique-catalog .mgs-grid{gap:2em}}
+/* Fil de fer des cartes pendant la charge : gabarit structurel (.mgs-skel),
+   pas la carte de démo vidée de son texte. */
+.mgs-pcard--skel{padding:.85em;display:flex;flex-direction:column;gap:.65em}
+.mgs-pcard--skel .mgs-skel{display:block;width:100%;height:.6em}
+.mgs-pcard--skel .mgs-skel--badge{width:34%;height:1.5em;border-radius:100em}
+.mgs-pcard--skel .mgs-skel--amount{width:58%;height:2.4em}
+.mgs-pcard--skel .mgs-skel--line{width:42%}
+.mgs-pcard--skel .mgs-skel--pill{height:3.1em;border-radius:100em;margin-top:auto}
+.mgs-pill{display:flex;align-items:center;justify-content:space-between;gap:.4em;height:3.1em;border:.125em solid var(--color--dark);border-radius:100em;background:var(--color--light);padding:.3em .35em .3em 1.1em;transition:background .25s}
+.mgs-pill__price{font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;font-size:1.1em;white-space:nowrap;line-height:1}
+.mgs-pill__add{flex:none;width:2.75em;height:2.75em;border-radius:100em;background:var(--color--dark);color:var(--color--light);display:grid;place-items:center;cursor:pointer;transition:.2s}
 .mgs-pill__add .bold-ic{width:1.3em;height:1.3em}
 .mgs-pill__add:hover{transform:scale(1.07)}
 .mgs-stepper{display:none;align-items:center;justify-content:space-between;width:100%;gap:.3em}
-.mgs-stepper__btn{flex:none;width:2.6em;height:2.6em;border-radius:100em;background:var(--color--yellow-700);color:var(--color--dark);display:grid;place-items:center;cursor:pointer;transition:.2s}
+.mgs-stepper__btn{flex:none;width:2.75em;height:2.75em;border-radius:100em;background:var(--color--yellow-700);color:var(--color--dark);display:grid;place-items:center;cursor:pointer;transition:.2s}
 .mgs-stepper__btn .bold-ic{width:1.3em;height:1.3em}
 .mgs-stepper__btn:hover{transform:scale(1.07)}
 .mgs-stepper__btn:disabled{opacity:.4;cursor:default}
-.mgs-stepper__qty{flex:1;text-align:center;font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;font-size:1.6em;color:var(--color--yellow-700);line-height:1}
+.mgs-stepper__qty{flex:1;text-align:center;font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;font-size:1.3em;color:var(--color--yellow-700);line-height:1}
 .mgs-pill.is--incart{background:var(--color--dark);padding:.35em}
 .mgs-pill.is--incart .mgs-pill__price,.mgs-pill.is--incart .mgs-pill__add{display:none}
 .mgs-pill.is--incart .mgs-stepper{display:flex}
@@ -1044,6 +1054,12 @@ body[data-page="connexion"] .main-w{padding-bottom:0}
 .mgs-order__right{grid-area:right;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:.35em}
 .mgs-order__price{font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;font-size:1.2em;margin:0;line-height:1}
 .mgs-order__right .mgs-status{font-size:.62em}
+/* Fil de fer des lignes de commandes pendant la charge : titre + méta à gauche,
+   prix + pastille de statut à droite (statut en fil de fer, quelle que soit sa
+   valeur — en cours comme terminée). */
+.mgs-order--skel .mgs-skel{display:block;height:.62em}
+.mgs-order--skel .mgs-order__main{display:flex;flex-direction:column;gap:.5em}
+.mgs-order--skel .mgs-skel--status{width:5.5em;height:1.9em;border-radius:100em}
 @media (max-width:767px){
   .mgs-order{grid-template-columns:1fr auto;grid-template-areas:"main main" "method right";gap:.6em 1em;padding:.9em 1em}
   .mgs-order__method{align-self:end}
@@ -3935,8 +3951,11 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   function renderCatalog(products, game, emptyKey) {
     var grid = $(".mgs-boutique-catalog .mgs-grid") || $(".mgs-boutique-catalog");
     if (!grid) return;
-    var tpl = $(".mgs-boutique-catalog .mgs-pcard");
-    if (!tpl && window.__mgsCatalogTpl) { grid.appendChild(window.__mgsCatalogTpl); tpl = window.__mgsCatalogTpl; }
+    /* Le gabarit, c'est le vrai .mgs-pcard mis en cache à l'entrée du catalogue.
+       La grille contient alors des fils de fer .mgs-pcard--skel, qui n'ont pas la
+       structure d'une carte : les prendre comme gabarit clonerait des cartes
+       vides. */
+    var tpl = window.__mgsCatalogTpl || $(".mgs-boutique-catalog .mgs-pcard:not(.mgs-pcard--skel)") || $(".mgs-boutique-catalog .mgs-pcard");
     if (tpl) window.__mgsCatalogTpl = tpl;
     if (!tpl) return;
     /* main filtre les favoris côté client (pages/Catalog.js:155-157) */
@@ -4005,7 +4024,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
        skelGrid, qui vide la grille (renderCatalog le réclame ensuite). */
     var tpl0 = window.__mgsCatalogTpl || $(".mgs-boutique-catalog .mgs-pcard");
     if (tpl0) window.__mgsCatalogTpl = tpl0;
-    skelGrid($(".mgs-boutique-catalog .mgs-grid") || $(".mgs-boutique-catalog"), tpl0, 6);
+    skelGrid($(".mgs-boutique-catalog .mgs-grid") || $(".mgs-boutique-catalog"), 6);
     return loadGames().then(function () {
       var g = gameByName(gameName); var gid = g ? g.id : gameIdFromSlug(gameSlug);
       if (g && Array.isArray(g.product_types)) { catalogGame.types = g.product_types.slice(); }
@@ -4669,12 +4688,22 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     orderPage = 1;
     orderPaginate();
   }
+  /* Fil de fer d'une ligne de commande : même structure que .mgs-order, avec la
+     pastille de statut en fil de fer elle aussi — pour une commande en cours
+     comme pour une commande terminée. */
+  function skelOrder() {
+    var d = doc.createElement("div");
+    d.className = "mgs-order mgs-order--skel";
+    d.setAttribute("aria-hidden", "true");
+    d.innerHTML = '<div class="mgs-order__main"><span class="mgs-skel" style="width:66%"></span><span class="mgs-skel" style="width:44%"></span></div><div class="mgs-order__right"><span class="mgs-skel" style="width:4.5em"></span><span class="mgs-skel mgs-skel--status"></span></div>';
+    return d;
+  }
   function loadOrders() {
     /* Fil de fer le temps du chargement — jamais de lignes du gabarit. */
     var olist = $(".mgs-order-list");
-    if (olist) { var ofrag = doc.createDocumentFragment(); for (var k = 0; k < 4; k++) { var od = doc.createElement("div"); od.className = "mgs-order"; od.innerHTML = '<span class="mgs-skel"></span><span class="mgs-skel"></span><span class="mgs-skel"></span>'; ofrag.appendChild(od); } olist.innerHTML = ""; olist.appendChild(ofrag); }
+    if (olist) { var ofrag = doc.createDocumentFragment(); for (var k = 0; k < 4; k++) ofrag.appendChild(skelOrder()); olist.innerHTML = ""; olist.appendChild(ofrag); }
     if (!me) { renderOrders([]); return Promise.resolve([]); }
-    return req("/orders/me").then(function (orders) { orders = Array.isArray(orders) ? orders : (orders && orders.orders) || []; orders.sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); }); renderOrders(orders); return orders; }).catch(function (e) { toast(errMsg(e), "err"); return []; });
+    return req("/orders/me").then(function (orders) { orders = Array.isArray(orders) ? orders : (orders && orders.orders) || []; orders.sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); }); renderOrders(orders); return orders; }).catch(function (e) { toast(errMsg(e), "err"); renderOrders([]); return []; });
   }
   /* Détail d'une commande : main OrderDetail relit GET /orders/{id} à
      l'ouverture (pages/OrderHistory.js:425-429). Le gabarit du design remplit
@@ -4797,12 +4826,17 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
   /* Chargement = fil de fer (.mgs-skel), jamais le texte du gabarit de démo. */
   function skelText(el) { if (el) el.innerHTML = '<span class="mgs-skel"></span>'; }
-  function skelCard(tpl) {
-    var c = tpl.cloneNode(true); c.removeAttribute("id");
-    $$("*", c).forEach(function (e) { if (!e.children.length && e.textContent.trim()) e.innerHTML = '<span class="mgs-skel"></span>'; });
+  /* Fil de fer structurel : des blocs .mgs-skel qui épousent la forme de la carte
+     (badge, montant, ligne, pastille prix) — pas la carte de démo vidée de son
+     texte, qui laissait un cœur et un badge pleins visibles. */
+  function skelCard() {
+    var c = doc.createElement("div");
+    c.className = "mgs-pcard mgs-pcard--skel";
+    c.setAttribute("aria-hidden", "true");
+    c.innerHTML = '<span class="mgs-skel mgs-skel--badge"></span><span class="mgs-skel mgs-skel--amount"></span><span class="mgs-skel mgs-skel--line"></span><span class="mgs-skel mgs-skel--pill"></span>';
     return c;
   }
-  function skelGrid(grid, tpl, n) { if (!grid || !tpl) return; var frag = doc.createDocumentFragment(); for (var k = 0; k < n; k++) frag.appendChild(skelCard(tpl)); grid.innerHTML = ""; grid.appendChild(frag); }
+  function skelGrid(grid, n) { if (!grid) return; var frag = doc.createDocumentFragment(); for (var k = 0; k < n; k++) frag.appendChild(skelCard()); grid.innerHTML = ""; grid.appendChild(frag); }
 
   function renderAccount() {
     /* Fil de fer tant que la session et les chiffres ne sont pas là : le gabarit
