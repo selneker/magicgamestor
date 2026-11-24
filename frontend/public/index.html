@@ -3477,6 +3477,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var a=e.target.closest("a[data-nav],.nav-inner-li a,.nav-mobile-panel a,.bottom-nav-item,a.is--nav-logo");
     if(!a) return;
     var id=mgsTarget(a); if(!id) return;
+    /* PL-007 : l'admin est la page React de la PR #100, servie à part. */
+    if(id==="admin"){ e.preventDefault(); window.location.assign("/admin.html"); return; }
     e.preventDefault(); showPage(id);
   });
   /* boutique : choix jeu -> catalogue */

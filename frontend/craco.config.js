@@ -134,6 +134,37 @@ let webpackConfig = {
         }
       });
 
+      // PL-007-ADMIN-RESTORE — seconde page : l'admin de la PR #100 monté seul
+      // sur /admin.html. La page utilisateur (public/index.html, prototype
+      // statique) n'est pas touchée : ni son HTML, ni son CSS.
+      try {
+        const HtmlWebpackPlugin = require("html-webpack-plugin");
+        const baseEntry = webpackConfig.entry;
+        webpackConfig.entry = {
+          main: baseEntry,
+          admin: path.resolve(__dirname, "src/admin-entry.js"),
+        };
+        webpackConfig.plugins.forEach((plugin) => {
+          if (
+            plugin && plugin.constructor && plugin.constructor.name === "HtmlWebpackPlugin" &&
+            plugin.options && plugin.options.filename === "index.html"
+          ) {
+            plugin.options.excludeChunks = ["admin"];
+          }
+        });
+        webpackConfig.plugins.push(
+          new HtmlWebpackPlugin({
+            filename: "admin.html",
+            template: path.resolve(__dirname, "public/admin.template.html"),
+            inject: true,
+            minify: false,
+            excludeChunks: ["main"],
+          }),
+        );
+      } catch (err) {
+        console.warn("[admin-page] non configuree :", err instanceof Error ? err.message : err);
+      }
+
       // Add health check plugin to webpack if enabled
       if (config.enableHealthCheck && healthPluginInstance) {
         webpackConfig.plugins.push(healthPluginInstance);
