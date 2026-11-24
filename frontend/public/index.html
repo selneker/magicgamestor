@@ -689,6 +689,37 @@ html.reduced-motion svg.footer-row-col-img, html.reduced-motion .marquee-cta-dot
 .mgs-admin-nav-item.is--active{background:var(--color--dark);color:var(--color--light)}
 .mgs-admin-acts{white-space:nowrap}
 .mgs-admin-acts .mgs-chip{font-size:.68em;padding:.2em .55em;cursor:pointer;margin-right:.2em}
+.mgs-admin-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:.8em;border-bottom:.09em solid var(--color--dark);padding-bottom:.7em;margin-bottom:1em}
+.mgs-games-grid{display:grid;grid-template-columns:1fr;gap:.8em}
+@media(min-width:640px){.mgs-games-grid{grid-template-columns:1fr 1fr}}
+@media(min-width:1024px){.mgs-games-grid{grid-template-columns:1fr 1fr 1fr}}
+.mgs-game-card{display:flex;align-items:center;gap:.7em;border:.09em solid var(--color--dark);border-radius:1em;padding:.7em;min-width:0;background:var(--color--light)}
+.mgs-game-card.is--off{opacity:.55;border-style:dashed}
+.mgs-game-card__ico{display:flex;align-items:center;justify-content:center;width:2.6em;height:2.6em;border-radius:999px;background:var(--color--dark);color:var(--color--light);overflow:hidden;flex:0 0 auto}
+.mgs-game-card__ico img{width:100%;height:100%;object-fit:cover}
+.mgs-game-card__b{min-width:0;flex:1}
+.mgs-game-card__n{font-weight:700;font-size:.85em;margin:0;overflow-wrap:anywhere}
+.mgs-game-card__a{display:flex;flex-direction:column;gap:.3em;flex:0 0 auto}
+.mgs-modal{position:fixed;inset:0;z-index:80;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;background:rgba(0,0,0,.55);padding:1.5em 1em}
+.mgs-modal.is--open{display:flex}
+.mgs-modal__box{background:var(--color--light);border:.125em solid var(--color--dark);border-radius:1.2em;width:min(46em,100%);padding:1.2em;margin:auto}
+.mgs-modal__t{font-family:var(--font--display);font-size:1.1em;font-weight:800;margin:0 0 .8em}
+.mgs-form{display:grid;grid-template-columns:1fr;gap:.8em}
+@media(min-width:640px){.mgs-form{grid-template-columns:1fr 1fr}}
+.mgs-form label{display:block;font-size:.68em;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.mgs-form input,.mgs-form textarea{width:100%;margin-top:.35em;padding:.55em .7em;border:.09em solid var(--color--dark);border-radius:.5em;background:#fff;font:inherit;font-size:.85em;text-transform:none;letter-spacing:0}
+.mgs-form textarea{min-height:4em;resize:vertical}
+.mgs-form .is--full{grid-column:1/-1}
+.mgs-form__hint{display:block;margin-top:.3em;font-size:.62em;font-weight:400;opacity:.7;text-transform:none;letter-spacing:0}
+.mgs-form__rows{display:grid;grid-template-columns:repeat(auto-fit,minmax(5.5em,1fr));gap:.35em;align-items:end}
+.mgs-form__rows input{margin-top:0}
+.mgs-form__rows .is--del{justify-self:end}
+.mgs-form__box{border:.09em solid var(--color--dark);border-radius:.8em;padding:.7em;grid-column:1/-1}
+.mgs-form__box-t{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.4em;font-size:.72em;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.mgs-form__empty{margin:.4em 0 0;font-size:.72em;opacity:.75}
+.mgs-ready{list-style:none;margin:.4em 0 0;padding:0;font-size:.66em;text-transform:none;letter-spacing:0;font-weight:400}
+.mgs-ready li{margin:.15em 0}
+.mgs-ready .is--ok{color:#1a7f37}.mgs-ready .is--no{color:#b42318}
 @media(min-width:1024px){.mgs-admin-grid{grid-template-columns:240px minmax(0,1fr);gap:2em;align-items:start}.mgs-admin-side{display:block;position:sticky;top:5.5em;max-height:calc(100dvh - 6.5em);overflow:auto}#admin-subnav{display:none}}
 .mgs-stat__l{font-size:.75em;font-weight:700;text-transform:uppercase;letter-spacing:.08em;opacity:.65}
 
@@ -4922,7 +4953,144 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       fzr: { t: 'Fournisseur', ep: '/admin/fazercards/coverage', c: ['Couverture'],
         r: function (x) { return [typeof x === 'string' ? x : JSON.stringify(x).slice(0, 90)]; } }
     };
+
+    /* ---- Jeux : porté de pages/admin/AdminGames.js (PR #100 b34df6e) ---- */
+    var GAMES = [];
+    var EMPTY_GAME = { id: '', name: '', slug: '', icon_url: '', currency_label: '', description: '', description_en: '', active: false, sort_order: 0, identity_fields: [], product_types: [], fazercards_validation_category: '' };
+    var CHECK_LABELS = { identity: 'Identité joueur', product_types: 'Types de produit', provider_categories: 'Catégories FazerCards', catalog: 'Catalogue livrable', type_compat: 'Types des produits', mapping_scope: 'Périmètre des mappings' };
+    function adminModal() {
+      var m = document.getElementById('mgs-modal');
+      if (!m) {
+        m = document.createElement('div'); m.id = 'mgs-modal'; m.className = 'mgs-modal';
+        m.innerHTML = '<div class="mgs-modal__box" id="mgs-modal-box"></div>';
+        m.addEventListener('click', function (ev) { if (ev.target === m) m.classList.remove('is--open'); });
+        document.body.appendChild(m);
+      }
+      return m;
+    }
+    function closeAdminModal() { var m = document.getElementById('mgs-modal'); if (m) m.classList.remove('is--open'); }
+    function readinessBadge(r) {
+      if (!r || !Array.isArray(r.checks)) return '';
+      var missing = r.checks.filter(function (c) { return !c.ok; }).length;
+      return '<span style="display:inline-block;margin-top:.3em;font-size:.6em;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border-radius:999px;padding:.15em .5em;' + (r.ready ? 'background:var(--color--dark);color:var(--color--light)' : 'border:.09em solid currentColor;opacity:.7') + '">' + (r.ready ? 'Prêt à la vente' : missing + ' étape(s) manquante(s)') + '</span>';
+    }
+    function readinessList(r) {
+      if (!r || !Array.isArray(r.checks)) return '';
+      return '<ul class="mgs-ready"><li style="font-weight:700">Préparation à la vente ' + (r.ready ? '— complète' : '— incomplète') + '</li>' + r.checks.map(function (c) {
+        return '<li><span class="' + (c.ok ? 'is--ok' : 'is--no') + '">' + (c.ok ? '✓' : '✗') + '</span> <b>' + esc(CHECK_LABELS[c.key] || c.key) + '</b> — ' + esc(String(c.detail || '')) + '</li>';
+      }).join('') + '</ul>';
+    }
+    function renderGames(host) {
+      host.innerHTML = '<div class="mgs-panel"><div class="mgs-admin-head"><div><p class="mgs-eyebrow" style="margin:0;font-size:.6em;text-transform:uppercase;letter-spacing:.1em;opacity:.7">Administration</p><h2 class="mgs-section-h" style="margin:.2em 0 0">Jeux</h2><p class="mgs-muted" style="margin:.3em 0 0;font-size:.72em">Le jeu ne peut être activé que lorsque sa configuration ET son catalogue livrable sont réels.</p></div><button type="button" class="mgs-chip" data-act="g-new">+ Nouveau jeu</button></div><div id="games-grid" class="mgs-games-grid"><p class="mgs-muted">Chargement…</p></div></div>';
+      req('/admin/games').then(function (arr) {
+        GAMES = Array.isArray(arr) ? arr : [];
+        ROWS.games = GAMES;
+        var grid = document.getElementById('games-grid'); if (!grid) return;
+        grid.innerHTML = GAMES.length ? GAMES.map(function (g, i) {
+          return '<div class="mgs-game-card' + (g.active ? '' : ' is--off') + '">' +
+            '<span class="mgs-game-card__ico">' + (g.icon_url ? '<img src="' + esc(g.icon_url) + '" alt="">' : '◈') + '</span>' +
+            '<div class="mgs-game-card__b"><p class="mgs-game-card__n">' + esc(g.name || '') + '</p>' +
+            '<p class="mgs-muted" style="margin:.2em 0 0;font-size:.68em">' + esc(g.id || '') + ' · ' + (g.active ? 'actif' : 'inactif') + '</p>' + readinessBadge(g.readiness) + '</div>' +
+            '<div class="mgs-game-card__a"><button type="button" class="mgs-chip" data-act="g-toggle" data-i="' + i + '">' + (g.active ? 'Désactiver' : 'Activer') + '</button>' +
+            '<button type="button" class="mgs-chip" data-act="g-edit" data-i="' + i + '">Modifier</button></div></div>';
+        }).join('') : '<p class="mgs-muted">Aucun jeu</p>';
+      }).catch(function (e) { signale(e); var grid = document.getElementById('games-grid'); if (grid) grid.innerHTML = '<p class="mgs-muted">Indisponible</p>'; });
+    }
+    function ifRowHtml(f) {
+      return '<div class="mgs-form__rows" data-if-row>' +
+        '<input data-k="key" placeholder="player_id" aria-label="Clé" value="' + esc(f.key || '') + '">' +
+        '<input data-k="label" placeholder="ID joueur" aria-label="Libellé" value="' + esc(f.label || '') + '">' +
+        '<input data-k="pattern" placeholder="^[0-9]{6,12}$" aria-label="Motif" value="' + esc(f.pattern || '') + '">' +
+        '<input data-k="min" type="number" placeholder="min" aria-label="Longueur min" value="' + esc(f.min_length == null ? '' : f.min_length) + '">' +
+        '<input data-k="max" type="number" placeholder="max" aria-label="Longueur max" value="' + esc(f.max_length == null ? '' : f.max_length) + '">' +
+        '<label style="display:flex;align-items:center;gap:.3em;font-size:.62em;text-transform:none;letter-spacing:0"><input type="radio" data-k="primary" name="identity-primary"' + (f.primary ? ' checked' : '') + ' style="width:auto;margin:0">principale</label>' +
+        '<button type="button" class="mgs-chip is--del" data-act="g-if-del" aria-label="Supprimer">✕</button></div>';
+    }
+    function ptRowHtml(pt) {
+      return '<div class="mgs-form__rows" data-pt-row>' +
+        '<input data-k="key" placeholder="cp" aria-label="Clé" value="' + esc(pt.key || '') + '">' +
+        '<input data-k="label" placeholder="CP" aria-label="Libellé" value="' + esc(pt.label || '') + '">' +
+        '<input data-k="label_en" placeholder="CP" aria-label="Label EN" value="' + esc(pt.label_en || '') + '">' +
+        '<button type="button" class="mgs-chip is--del" data-act="g-pt-del" aria-label="Supprimer">✕</button></div>';
+    }
+    function openGameForm(src) {
+      var g = Object.assign({}, EMPTY_GAME, src || {});
+      var editing = !!(src && src._existing);
+      var m = adminModal();
+      var box = document.getElementById('mgs-modal-box');
+      box.innerHTML = '<p class="mgs-modal__t">' + (editing ? 'Modifier le jeu' : 'Nouveau jeu') + '</p>' +
+        '<p class="mgs-muted" style="font-size:.7em;border:.09em solid var(--color--dark);border-radius:.6em;padding:.6em;margin:0 0 .8em">Pour préparer un nouveau jeu : définissez ses champs d\'identité joueur, son unité de monnaie, associez ses catégories FazerCards et liez chaque pack dans Admin → Fournisseur.</p>' +
+        '<form class="mgs-form" id="game-form">' +
+        '<label>ID<input name="id" value="' + esc(g.id) + '"' + (editing ? ' disabled' : '') + '></label>' +
+        '<label>Nom<input name="name" value="' + esc(g.name) + '"></label>' +
+        '<label>Slug<input name="slug" value="' + esc(g.slug) + '"></label>' +
+        '<label>Ordre<input name="sort_order" type="number" value="' + esc(g.sort_order == null ? 0 : g.sort_order) + '"></label>' +
+        '<label>Unité de monnaie<input name="currency_label" maxlength="24" placeholder="UC, Diamants, Coins…" value="' + esc(g.currency_label || '') + '"><span class="mgs-form__hint">Utilisée pour nommer la monnaie des packs dans la boutique.</span></label>' +
+        '<label>Catégorie de validation FazerCards<input name="fazercards_validation_category" placeholder="ex: ff_validation_cat" value="' + esc(g.fazercards_validation_category || '') + '"><span class="mgs-form__hint">Vide = validation d\'identité indisponible pour ce jeu.</span></label>' +
+        '<label>Logo URL<input name="icon_url" type="url" placeholder="https://example.com/logo.png" value="' + esc(g.icon_url || '') + '"></label>' +
+        '<label style="display:flex;align-items:center;gap:.4em">Actif<input name="active" type="checkbox"' + (g.active ? ' checked' : '') + ' style="width:auto;margin:0"></label>' +
+        '<label class="is--full">Description FR<textarea name="description">' + esc(g.description || '') + '</textarea></label>' +
+        '<label class="is--full">Description EN<textarea name="description_en">' + esc(g.description_en || '') + '</textarea></label>' +
+        '<div class="mgs-form__box" id="game-if-box"><div class="mgs-form__box-t"><span>Champs d\'identité joueur</span><button type="button" class="mgs-chip" data-act="g-if-add">+ Ajouter un champ</button></div>' +
+        '<p class="mgs-form__hint">Exigés par le fournisseur (ex. player_id, zone_id, server). Le checkout affiche exactement ces champs.</p>' +
+        '<div id="game-if-rows" style="display:grid;gap:.35em;margin-top:.5em">' + (g.identity_fields || []).map(ifRowHtml).join('') + '</div>' +
+        '<p class="mgs-form__empty"' + ((g.identity_fields || []).length ? ' style="display:none"' : '') + ' data-if-empty>Aucun champ défini : l\'activation publique de ce jeu sera refusée.</p></div>' +
+        '<div class="mgs-form__box" id="game-pt-box"><div class="mgs-form__box-t"><span>Types de produit (boutique MGS)</span><button type="button" class="mgs-chip" data-act="g-pt-add">+ Ajouter un type</button></div>' +
+        '<p class="mgs-form__hint">Classement interne des packs (cp, battle_pass, diamonds…). Distinct des catégories FazerCards : chaque pack reste lié à une offre réelle dans Admin → Fournisseur.' + (g.id === 'pubg-mobile' ? '' : ' Les clés prime, prime_plus et evo sont réservées à PUBG Mobile.') + '</p>' +
+        '<div id="game-pt-rows" style="display:grid;gap:.35em;margin-top:.5em">' + (g.product_types || []).map(ptRowHtml).join('') + '</div>' +
+        '<p class="mgs-form__empty"' + ((g.product_types || []).length ? ' style="display:none"' : '') + ' data-pt-empty>Aucun type : aucun pack ne pourra être créé pour ce jeu.</p></div>' +
+        (editing ? readinessList(g.readiness) : '') +
+        '<button type="submit" class="mgs-chip is--full" style="padding:.6em;font-size:.8em">Enregistrer</button>' +
+        '</form>';
+      box.querySelector('#game-form').addEventListener('submit', function (ev) { ev.preventDefault(); saveGame(ev.target, editing, g.id); });
+      box.querySelectorAll('[data-act]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var a = btn.getAttribute('data-act');
+          if (a === 'g-if-add') { box.querySelector('#game-if-rows').insertAdjacentHTML('beforeend', ifRowHtml({ primary: !box.querySelector('[data-if-row]') })); }
+          else if (a === 'g-pt-add') { box.querySelector('#game-pt-rows').insertAdjacentHTML('beforeend', ptRowHtml({})); }
+          else if (a === 'g-if-del') { btn.closest('[data-if-row]').remove(); }
+          else if (a === 'g-pt-del') { btn.closest('[data-pt-row]').remove(); }
+          box.querySelectorAll('[data-if-empty]').forEach(function (e) { e.style.display = box.querySelector('[data-if-row]') ? 'none' : ''; });
+          box.querySelectorAll('[data-pt-empty]').forEach(function (e) { e.style.display = box.querySelector('[data-pt-row]') ? 'none' : ''; });
+        });
+      });
+      m.classList.add('is--open');
+    }
+    function saveGame(form, editing, id) {
+      var val = function (n) { var el = form.querySelector('[name="' + n + '"]'); return el ? el.value : ''; };
+      var fields = [].map.call(form.querySelectorAll('[data-if-row]'), function (r) {
+        var v = function (k) { var el = r.querySelector('[data-k="' + k + '"]'); return el ? el.value : ''; };
+        var o = { key: v('key').trim(), label: v('label').trim() };
+        if (v('pattern')) o.pattern = v('pattern');
+        if (v('min') !== '') o.min_length = Number(v('min'));
+        if (v('max') !== '') o.max_length = Number(v('max'));
+        o.required = true;
+        var rad = r.querySelector('[data-k="primary"]');
+        o.primary = !!(rad && rad.checked);
+        return o;
+      });
+      var bad = fields.filter(function (f) { return !/^[a-z][a-z0-9_]{0,31}$/.test(f.key) || !f.label; })[0];
+      if (bad) { alert('Champ d\'identité invalide : clé (minuscules/chiffres/_) et libellé requis (' + (bad.key || '?') + ').'); return; }
+      var types = [].map.call(form.querySelectorAll('[data-pt-row]'), function (r) {
+        var v = function (k) { var el = r.querySelector('[data-k="' + k + '"]'); return el ? el.value : ''; };
+        return { key: v('key').trim(), label: v('label').trim(), label_en: v('label_en').trim() || null };
+      });
+      var badType = types.filter(function (pt) { return !/^[a-z][a-z0-9_]{0,31}$/.test(pt.key) || !pt.label; })[0];
+      if (badType) { alert('Type de produit invalide : clé (minuscules/chiffres/_) et libellé requis (' + (badType.key || '?') + ').'); return; }
+      var body = {
+        product_types: types, id: editing ? id : val('id'), name: val('name'), slug: val('slug') || (editing ? id : val('id')),
+        icon_url: val('icon_url').trim() || null, currency_label: val('currency_label').trim() || null,
+        identity_fields: fields, description: val('description'), description_en: val('description_en') || null,
+        active: !!form.querySelector('[name="active"]').checked, sort_order: Number(val('sort_order') || 0),
+        fazercards_validation_category: val('fazercards_validation_category').trim() || null
+      };
+      var done = function () { closeAdminModal(); loadSec('games'); };
+      var fail = function (e) { signale(e); alert('Échec : ' + (e && e.message ? e.message : e)); };
+      if (editing) req('/admin/games/' + id, { method: 'PUT', body: body }).then(done).catch(fail);
+      else req('/admin/games', { method: 'POST', body: body }).then(done).catch(fail);
+    }
     function loadSec(k) {
+      if (k === 'games' && body) { cur = k; renderGames(body); return; }
       var d = SEC[k]; if (!d || !body) return; cur = k;
       var hasA = !!d.a;
       body.innerHTML = '<div class="mgs-panel"><h2 class="mgs-section-h">' + esc(d.t) + '</h2>' + (d.top || '') + '<div style="overflow-x:auto"><table class="mgs-table"><thead><tr>' + d.c.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + (hasA ? '<th></th>' : '') + '</tr></thead><tbody><tr><td colspan="' + (d.c.length + (hasA ? 1 : 0)) + '" class="mgs-muted">Chargement…</td></tr></tbody></table></div></div>';
@@ -4946,6 +5114,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       if (action === 'u-block') { req('/admin/users/' + (row.user_id || row.id), { method: 'PATCH', body: { blocked: !row.blocked } }).then(done).catch(fail); return; }
       if (action === 'l-toggle') { req('/loyalty/admin/rewards/' + row.id, { method: 'PATCH', body: { name: row.name, type: row.type, cost_points: row.cost_points, value: row.value, description: row.description, active: !row.active, stock: row.stock != null ? row.stock : null } }).then(done).catch(fail); return; }
       if (action === 'e-del') { if (!confirm('Supprimer cet événement ?')) return; req('/admin/events/' + row.id, { method: 'DELETE' }).then(done).catch(fail); return; }
+      if (action === 'g-new') { openGameForm(null); return; }
+      if (action === 'g-edit') { openGameForm(Object.assign({}, row, { _existing: true })); return; }
       if (action === 'g-toggle') { req('/admin/games/' + row.id, { method: 'PUT', body: { id: row.id, name: row.name, slug: row.slug || row.id, icon_url: row.icon_url || null, currency_label: row.currency_label || null, description: row.description || '', description_en: row.description_en || null, active: !row.active, sort_order: Number(row.sort_order || 0), fazercards_validation_category: row.fazercards_validation_category || null } }).then(done).catch(fail); return; }
       if (action === 'crypto-check') { req('/crypto/admin/check', { method: 'POST' }).then(function (d) { alert(d && d.ran ? 'Vérification effectuée : ' + JSON.stringify(d.results) : 'Non exécutée (' + ((d && d.reason) || 'raison inconnue') + ')'); }).catch(fail); return; }
       if (action === 'pay-edit') { var cur2 = (ROWS[cur] || {})[key]; var v = prompt('Valeur pour ' + key + ' ?', cur2 == null ? '' : String(cur2)); if (v === null) return; var pl = {}; pl[key] = v; req('/payments/admin/settings', { method: 'PATCH', body: pl }).then(done).catch(fail); return; }
