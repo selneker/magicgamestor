@@ -1,9 +1,12 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <!-- Cloudflare Turnstile : coller ici la SITE KEY publique (0x4AAAAA…).
-       Vide = widget désactivé et case de vérification simulée affichée. -->
-  <meta name="mgs-turnstile-sitekey" content="">
+  <!-- Cloudflare Turnstile : SITE KEY publique (0x4AAAAA…).
+       1x00000000000000000000AA = clé de TEST officielle Cloudflare : le vrai widget
+       s'affiche et délivre un vrai jeton, mais elle accepte tout le monde.
+       Pour une protection réelle : créer le widget dans Cloudflare et remplacer
+       cette valeur (puis poser TURNSTILE_SECRET_KEY côté serveur). -->
+  <meta name="mgs-turnstile-sitekey" content="1x00000000000000000000AA">
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Magic Game Store — Design System (reproduction fidèle du template Slush « Defi »)</title>
