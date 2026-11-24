@@ -687,6 +687,8 @@ html.reduced-motion svg.footer-row-col-img, html.reduced-motion .marquee-cta-dot
 .mgs-admin-nav-item{display:flex;align-items:center;min-height:2.5em;padding:0 .8em;border-radius:.6em;font-size:.8em;font-weight:700;color:var(--color--dark);text-decoration:none}
 .mgs-admin-nav-item:hover{background:rgba(0,0,0,.06)}
 .mgs-admin-nav-item.is--active{background:var(--color--dark);color:var(--color--light)}
+.mgs-admin-acts{white-space:nowrap}
+.mgs-admin-acts .mgs-chip{font-size:.68em;padding:.2em .55em;cursor:pointer;margin-right:.2em}
 @media(min-width:1024px){.mgs-admin-grid{grid-template-columns:240px minmax(0,1fr);gap:2em;align-items:start}.mgs-admin-side{display:block;position:sticky;top:5.5em;max-height:calc(100dvh - 6.5em);overflow:auto}#admin-subnav{display:none}}
 .mgs-stat__l{font-size:.75em;font-weight:700;text-transform:uppercase;letter-spacing:.08em;opacity:.65}
 
@@ -4890,29 +4892,66 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var dash = document.getElementById('admin-sec-dash');
     var body = document.getElementById('admin-sec-body');
     var nav = document.getElementById('admin-subnav');
-    /* REF pages/admin/AdminDashboard.js (b34df6e) pour le tableau de bord ;
-       les autres écrans admin sont des listes lues sur les endpoints de la REF. */
+    var side = document.getElementById('admin-side');
+    var ROWS = {}; var cur = 'dash';
+    /* REF : boutons d'action de chaque écran admin (AdminOrders/Products/Users/Loyalty/Events/Games/Binance/Payments). */
     var SEC = {
-      orders:   { t: 'Commandes', ep: '/admin/orders?limit=50', c: ['N°', 'Client', 'Produit', 'Paiement', 'Statut', 'Total'], r: function (o) { return [o.order_number || o.number || '', o.customer_name || o.email || '', orderProductLabel(o), orderMethodLabel(o), statusLabel(o.status), arNum(o.total)]; } },
-      products: { t: 'Produits', ep: '/products?include_inactive=true', c: ['Nom', 'Jeu', 'Prix', 'Actif'], r: function (p) { return [p.name || '', p.game_id || p.game || '', arNum(p.price != null ? p.price : p.amount), p.active === false ? 'non' : 'oui']; } },
-      users:    { t: 'Clients', ep: '/admin/users', c: ['Nom', 'Email', 'Rôle', 'Bloqué'], r: function (u) { return [u.name || '', u.email || '', u.role || '', u.blocked ? 'oui' : 'non']; } },
-      loyalty:  { t: 'Fidélité', ep: '/loyalty/admin/rewards', c: ['Récompense', 'Coût', 'Actif'], r: function (r) { return [r.name || '', String(r.cost_points != null ? r.cost_points : 0), r.active === false ? 'non' : 'oui']; } },
-      events:   { t: 'Événements', ep: '/admin/events', c: ['Titre', 'Début', 'Fin'], r: function (e) { return [e.title || e.name || '', e.starts_at || e.start || '', e.ends_at || e.end || '']; } },
-      games:    { t: 'Jeux', ep: '/admin/games', c: ['Nom', 'Clé', 'Actif'], r: function (g) { return [g.name || '', g.key || g.slug || g.id || '', g.active === false ? 'non' : 'oui']; } },
-      crypto:   { t: 'Crypto', ep: '/crypto/admin/payments', c: ['Montant', 'Devise', 'Statut'], r: function (x) { return [String(x.amount != null ? x.amount : ''), x.currency || '', x.status || '']; } },
-      fzr:      { t: 'Fazercards', ep: '/admin/fazercards/coverage', c: ['Couverture'], r: function (x) { return [typeof x === 'string' ? x : JSON.stringify(x).slice(0, 90)]; } },
-      payments: { t: 'Paiements', ep: '/payments/admin/settings', c: ['Paramètre', 'Valeur'], flat: true }
+      orders: { t: 'Commandes', ep: '/admin/orders?limit=50', c: ['N°','Client','Produit','Paiement','Statut','Total'],
+        r: function (o) { return [o.order_number || o.number || '', o.customer_name || o.email || '', orderProductLabel(o), orderMethodLabel(o), statusLabel(o.status), arNum(o.total)]; },
+        a: function (i) { return '<button type="button" class="mgs-chip" data-act="o-status" data-i="' + i + '">Statut</button> <button type="button" class="mgs-chip" data-act="o-del" data-i="' + i + '">Suppr</button>'; } },
+      products: { t: 'Catalogue', ep: '/products?include_inactive=true', c: ['Nom','Jeu','Prix','Actif'],
+        r: function (x) { return [x.name || '', x.game_id || x.game || '', arNum(x.price != null ? x.price : x.amount), x.active === false ? 'non' : 'oui']; },
+        a: function (i) { return '<button type="button" class="mgs-chip" data-act="p-toggle" data-i="' + i + '">Activer/Désactiver</button> <button type="button" class="mgs-chip" data-act="p-del" data-i="' + i + '">Suppr</button>'; } },
+      users: { t: 'Utilisateurs', ep: '/admin/users', c: ['Nom','Email','Rôle','Bloqué'],
+        r: function (u) { return [u.name || '', u.email || '', u.role || '', u.blocked ? 'oui' : 'non']; },
+        a: function (i) { return '<button type="button" class="mgs-chip" data-act="u-block" data-i="' + i + '">Bloquer/Débloquer</button>'; } },
+      loyalty: { t: 'Fidélité', ep: '/loyalty/admin/rewards', c: ['Récompense','Coût','Actif'],
+        r: function (x) { return [x.name || '', String(x.cost_points != null ? x.cost_points : 0), x.active === false ? 'non' : 'oui']; },
+        a: function (i) { return '<button type="button" class="mgs-chip" data-act="l-toggle" data-i="' + i + '">Activer/Désactiver</button>'; } },
+      events: { t: 'Événements', ep: '/admin/events', c: ['Titre','Début','Fin'],
+        r: function (e) { return [e.title || e.name || '', e.starts_at || e.start || '', e.ends_at || e.end || '']; },
+        a: function (i) { return '<button type="button" class="mgs-chip" data-act="e-del" data-i="' + i + '">Suppr</button>'; } },
+      games: { t: 'Jeux', ep: '/admin/games', c: ['Nom','Clé','Actif'],
+        r: function (g) { return [g.name || '', g.key || g.slug || g.id || '', g.active === false ? 'non' : 'oui']; },
+        a: function (i) { return '<button type="button" class="mgs-chip" data-act="g-toggle" data-i="' + i + '">Activer/Désactiver</button>'; } },
+      crypto: { t: 'Crypto', ep: '/crypto/admin/payments', c: ['Montant','Devise','Statut'],
+        top: '<button type="button" class="mgs-chip" data-act="crypto-check" style="margin-bottom:1em">Vérifier les dépôts maintenant</button>',
+        r: function (x) { return [String(x.amount != null ? x.amount : ''), x.currency || '', x.status || '']; } },
+      payments: { t: 'Paiements', ep: '/payments/admin/settings', c: ['Paramètre','Valeur'], flat: true,
+        a: function (i, key) { return '<button type="button" class="mgs-chip" data-act="pay-edit" data-key="' + esc(key) + '">Modifier</button>'; } },
+      fzr: { t: 'Fournisseur', ep: '/admin/fazercards/coverage', c: ['Couverture'],
+        r: function (x) { return [typeof x === 'string' ? x : JSON.stringify(x).slice(0, 90)]; } }
     };
     function loadSec(k) {
-      var d = SEC[k]; if (!d || !body) return;
-      body.innerHTML = '<div class="mgs-panel"><h2 class="mgs-section-h">' + esc(d.t) + '</h2><div style="overflow-x:auto"><table class="mgs-table"><thead><tr>' + d.c.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody><tr><td colspan="' + d.c.length + '" class="mgs-muted">Chargement…</td></tr></tbody></table></div></div>';
+      var d = SEC[k]; if (!d || !body) return; cur = k;
+      var hasA = !!d.a;
+      body.innerHTML = '<div class="mgs-panel"><h2 class="mgs-section-h">' + esc(d.t) + '</h2>' + (d.top || '') + '<div style="overflow-x:auto"><table class="mgs-table"><thead><tr>' + d.c.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + (hasA ? '<th></th>' : '') + '</tr></thead><tbody><tr><td colspan="' + (d.c.length + (hasA ? 1 : 0)) + '" class="mgs-muted">Chargement…</td></tr></tbody></table></div></div>';
       req(d.ep).then(function (data) {
         var trs;
-        if (d.flat) { var o = (data && typeof data === 'object') ? data : {}; trs = Object.keys(o).map(function (key) { return '<tr><td>' + esc(key) + '</td><td>' + esc(String(o[key])) + '</td></tr>'; }); }
-        else { var arr = Array.isArray(data) ? data : (Array.isArray(data && data.items) ? data.items : []); trs = arr.map(function (row) { return '<tr>' + d.r(row).map(function (c) { return '<td>' + esc(String(c == null ? '' : c)) + '</td>'; }).join('') + '</tr>'; }); }
-        var tb = body.querySelector('tbody'); if (tb) tb.innerHTML = trs.length ? trs.join('') : '<tr><td colspan="' + d.c.length + '" class="mgs-muted">Aucun élément</td></tr>';
-      }).catch(function (e) { signale(e); var tb = body.querySelector('tbody'); if (tb) tb.innerHTML = '<tr><td colspan="' + d.c.length + '" class="mgs-muted">Indisponible</td></tr>'; });
+        if (d.flat) { var o = (data && typeof data === 'object') ? data : {}; var ks = Object.keys(o); ROWS[k] = o;
+          trs = ks.map(function (key) { return '<tr><td>' + esc(key) + '</td><td>' + esc(String(o[key])) + '</td>' + (hasA ? '<td class="mgs-admin-acts">' + d.a(0, key) + '</td>' : '') + '</tr>'; }); }
+        else { var arr = Array.isArray(data) ? data : (Array.isArray(data && data.items) ? data.items : []); ROWS[k] = arr;
+          trs = arr.map(function (row, idx) { return '<tr>' + d.r(row).map(function (c) { return '<td>' + esc(String(c == null ? '' : c)) + '</td>'; }).join('') + (hasA ? '<td class="mgs-admin-acts">' + d.a(idx) + '</td>' : '') + '</tr>'; }); }
+        var tb = body.querySelector('tbody'); if (tb) tb.innerHTML = trs.length ? trs.join('') : '<tr><td colspan="' + (d.c.length + (hasA ? 1 : 0)) + '" class="mgs-muted">Aucun élément</td></tr>';
+      }).catch(function (e) { signale(e); var tb = body.querySelector('tbody'); if (tb) tb.innerHTML = '<tr><td colspan="' + (d.c.length + (hasA ? 1 : 0)) + '" class="mgs-muted">Indisponible</td></tr>'; });
     }
+    function doAct(action, i, key) {
+      var rows = ROWS[cur] || {}; var row = (SEC[cur] && SEC[cur].flat) ? null : rows[i];
+      var done = function () { loadSec(cur); };
+      var fail = function (e) { signale(e); alert('Échec : ' + (e && e.message ? e.message : e)); };
+      if (action === 'o-status') { var st = prompt('Nouveau statut (pending_payment, paid, awaiting_verification, delivered, cancelled) ?', row && row.status || ''); if (!st) return; req('/admin/orders/' + row.id, { method: 'PATCH', body: { status: st } }).then(done).catch(fail); return; }
+      if (action === 'o-del') { if (!confirm('Supprimer cette commande ?')) return; req('/admin/orders/' + row.id, { method: 'DELETE' }).then(done).catch(fail); return; }
+      if (action === 'p-toggle') { req('/admin/products/' + row.id, { method: 'PUT', body: Object.assign({}, row, { active: !row.active, price: Number(row.price) || 0 }) }).then(done).catch(fail); return; }
+      if (action === 'p-del') { if (!confirm('Supprimer ce produit ?')) return; req('/admin/products/' + row.id, { method: 'DELETE' }).then(done).catch(fail); return; }
+      if (action === 'u-block') { req('/admin/users/' + (row.user_id || row.id), { method: 'PATCH', body: { blocked: !row.blocked } }).then(done).catch(fail); return; }
+      if (action === 'l-toggle') { req('/loyalty/admin/rewards/' + row.id, { method: 'PATCH', body: { name: row.name, type: row.type, cost_points: row.cost_points, value: row.value, description: row.description, active: !row.active, stock: row.stock != null ? row.stock : null } }).then(done).catch(fail); return; }
+      if (action === 'e-del') { if (!confirm('Supprimer cet événement ?')) return; req('/admin/events/' + row.id, { method: 'DELETE' }).then(done).catch(fail); return; }
+      if (action === 'g-toggle') { req('/admin/games/' + row.id, { method: 'PUT', body: { id: row.id, name: row.name, slug: row.slug || row.id, icon_url: row.icon_url || null, currency_label: row.currency_label || null, description: row.description || '', description_en: row.description_en || null, active: !row.active, sort_order: Number(row.sort_order || 0), fazercards_validation_category: row.fazercards_validation_category || null } }).then(done).catch(fail); return; }
+      if (action === 'crypto-check') { req('/crypto/admin/check', { method: 'POST' }).then(function (d) { alert(d && d.ran ? 'Vérification effectuée : ' + JSON.stringify(d.results) : 'Non exécutée (' + ((d && d.reason) || 'raison inconnue') + ')'); }).catch(fail); return; }
+      if (action === 'pay-edit') { var cur2 = (ROWS[cur] || {})[key]; var v = prompt('Valeur pour ' + key + ' ?', cur2 == null ? '' : String(cur2)); if (v === null) return; var pl = {}; pl[key] = v; req('/payments/admin/settings', { method: 'PATCH', body: pl }).then(done).catch(fail); return; }
+    }
+    if (body && !body.getAttribute('data-bound')) { body.setAttribute('data-bound', '1');
+      body.addEventListener('click', function (ev) { var b = ev.target && ev.target.closest ? ev.target.closest('[data-act]') : null; if (!b) return; ev.preventDefault(); doAct(b.getAttribute('data-act'), Number(b.getAttribute('data-i')), b.getAttribute('data-key')); }); }
     function setSec(k) {
       if (dash) dash.style.display = (k === 'dash') ? '' : 'none';
       if (body) body.innerHTML = (k === 'dash') ? '' : body.innerHTML;
@@ -4920,7 +4959,6 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       if (k !== 'dash') loadSec(k);
     }
     /* REF lib/adminNav.js : mêmes entrées, 3 groupes (ops/shop/system). */
-    var side = document.getElementById('admin-side');
     var ITEMS = [['dash', 'Tableau de bord', 'ops'], ['orders', 'Commandes', 'ops'], ['payments', 'Paiements', 'ops'], ['crypto', 'Crypto', 'ops'],
                  ['products', 'Catalogue', 'shop'], ['games', 'Jeux', 'shop'], ['events', 'Événements', 'shop'], ['loyalty', 'Fidélité', 'shop'],
                  ['users', 'Utilisateurs', 'system'], ['fzr', 'Fournisseur', 'system']];
@@ -4932,10 +4970,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         return '<a href="#admin" class="mgs-admin-nav-item' + (x[0] === 'dash' ? ' is--active' : '') + '" data-sec="' + x[0] + '">' + esc(x[1]) + '</a>';
       }).join('') + '</div>';
     }).join('') + '</div>';
-    var onNavClick = function (ev) {
-      var a = ev.target && ev.target.closest ? ev.target.closest('[data-sec]') : null; if (!a) return;
-      ev.preventDefault(); setSec(a.getAttribute('data-sec'));
-    };
+    var onNavClick = function (ev) { var a = ev.target && ev.target.closest ? ev.target.closest('[data-sec]') : null; if (!a) return; ev.preventDefault(); setSec(a.getAttribute('data-sec')); };
     if (nav) nav.addEventListener('click', onNavClick);
     if (side) side.addEventListener('click', onNavClick);
     req('/admin/stats').then(function (s) {
