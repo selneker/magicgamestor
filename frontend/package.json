@@ -66,6 +66,7 @@
     "start": "craco start",
     "prebuild": "node scripts/check-backend-url.mjs --strict",
     "build": "craco build",
+    "postbuild": "node scripts/inject-turnstile-key.mjs",
     "audit:contrast": "node scripts/audit-contrast.mjs",
     "test": "craco test",
     "test:ci": "craco test --watchAll=false"
