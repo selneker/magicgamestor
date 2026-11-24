@@ -3608,9 +3608,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 <div class="mgs-human-popup" hidden role="dialog" aria-label="Vérification de sécurité">
   <div class="mgs-human-head"><p>Vérification de sécurité</p><button type="button" class="mgs-human-close" aria-label="Fermer"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
   <p class="mgs-human-sub">Confirmez que vous êtes humain pour passer la commande.</p>
-  <div class="mgs-human-widget"><div class="mgs-human-turnstile" hidden></div><label class="mgs-human-check"><input type="checkbox" class="mgs-human-cb"><span class="mgs-human-box"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span></label>
-    <span class="mgs-human-label">Vérifiez que vous êtes humain.</span>
-    <span class="mgs-human-brand"><svg viewBox="0 0 24 24" class="mgs-human-cloud" aria-hidden="true"><path d="M17.5 19a4.5 4.5 0 0 0 .42-8.98 6 6 0 0 0-11.7 1.6A3.5 3.5 0 0 0 6.5 19z" fill="#F6821F" stroke="none"/></svg><small>CLOUDFLARE<br><a href="#" onclick="return false">Confidentialité</a> · <a href="#" onclick="return false">Aide</a></small></span></div>
+  <div class="mgs-human-widget"><div class="mgs-human-turnstile" hidden></div></div>
   <div class="mgs-human-foot"><button type="button" class="mgs-human-cancel">Fermer</button><button type="button" class="button-main w-inline-block mgs-human-confirm" data-button-theme="dark" data-button-accent="green" disabled><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Passer la commande"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Passer la commande</span></span></span></span></button></div>
 </div>
 
@@ -4247,11 +4245,12 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     });
   }
   function openHuman(always) {
+    /* Aucune vérification réelle sans site key : on n'ouvre pas de fausse case. */
+    if (!window.MGS_CAPTCHA || !window.MGS_CAPTCHA.enabled()) return;
     var o = $(".mgs-human-overlay"), p = $(".mgs-human-popup"); if (o) o.hidden = false; if (p) p.hidden = false;
     var cf = $(".mgs-human-confirm"); var cap = window.MGS_CAPTCHA;
-    var check = $(".mgs-human-check"), label = $(".mgs-human-label"), brand = $(".mgs-human-brand"), tsBox = $(".mgs-human-turnstile");
+    var tsBox = $(".mgs-human-turnstile");
     if (cap && cap.enabled()) {
-      if (check) check.style.display = "none"; if (label) label.style.display = "none"; if (brand) brand.style.display = "none";
       if (tsBox) tsBox.hidden = false;
       if (cf) cf.disabled = !cap.getToken();
       cap.render(tsBox, {
@@ -4260,10 +4259,6 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         onExpire: function () { if (cf) cf.disabled = true; },
         onInteractive: function (needed) { if (needed) { if (o) o.hidden = false; if (p) p.hidden = false; } }
       });
-    } else {
-      if (check) check.style.display = ""; if (label) label.style.display = ""; if (brand) brand.style.display = "";
-      if (tsBox) tsBox.hidden = true;
-      var cb = $(".mgs-human-cb"); if (cb) cb.checked = false; if (cf) cf.disabled = true;
     }
   }
   function closeHuman() { var o = $(".mgs-human-overlay"), p = $(".mgs-human-popup"); if (o) o.hidden = true; if (p) p.hidden = true; }
@@ -5939,7 +5934,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var rc = el.closest(".mgs-co-recent-chip"); if (rc) { stop(e); var ri = $(".mgs-co-id-input"); if (ri) ri.value = rc.dataset.id; /* main IdentityFieldsVerify.js:185-188 : remplit le champ, ne vérifie PAS */ return; }
     if (el.closest(".mgs-co-verify")) { stop(e); verifyId(); return; }
     var m = el.closest(".mgs-co-method"); if (m) { stop(e); var netBox = el.closest(".mgs-co-networks"); if (netBox) { /* choix du réseau USDT (REF Checkout.js:335-339) */ $$(".mgs-co-method", netBox).forEach(function (x) { x.classList.remove("is--active"); }); m.classList.add("is--active"); var nr = $("input", m); if (nr) nr.checked = true; co.network = nr ? nr.value : ""; return; } $$(".mgs-co-method").forEach(function (x) { x.classList.remove("is--active"); }); m.classList.add("is--active"); var r = $("input", m); if (r) r.checked = true; co.method = r ? r.value : ""; renderNetworks(); return; }
-    if (el.closest(".mgs-co-submit")) { stop(e); if (!co.verified) { coStatus("is--err", esc(t("checkout.verifyRequired"))); return; } if (!co.method) { toast(t("checkout.selectMethod"), "err"); return; } if (co.method === "Binance" && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.papiOff"), "err"); return; } if (co.method === "Binance" && !co.network) { toast(t("checkout.chooseNetwork"), "err"); return; } openHuman(); return; }
+    if (el.closest(".mgs-co-submit")) { stop(e); if (!co.verified) { coStatus("is--err", esc(t("checkout.verifyRequired"))); return; } if (!co.method) { toast(t("checkout.selectMethod"), "err"); return; } if (co.method === "Binance" && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.papiOff"), "err"); return; } if (co.method === "Binance" && !co.network) { toast(t("checkout.chooseNetwork"), "err"); return; } if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.enabled()) { openHuman(); } else { createOrder(); } return; }
     if (el.closest(".mgs-co-back")) { stop(e); stopPaymentPoll(); window.mgsShowPage("boutique"); return; }
     if (el.closest(".mgs-co-back2")) { stop(e); stopTimer(); stopPaymentPoll(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } coShow(1); return; }
     if (el.closest(".mgs-co-proof")) { stop(e); ensureProofInput().click(); return; }
@@ -5948,7 +5943,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (el.closest(".mgs-co-cancel-confirm")) { stop(e); confirmCancel(); return; }
     if (el.closest(".mgs-co-done")) { stop(e); coFinish(); return; }
     if (el.closest(".mgs-human-close") || el.closest(".mgs-human-cancel") || el.classList.contains("mgs-human-overlay")) { stop(e); closeHuman(); return; }
-    if (el.closest(".mgs-human-confirm")) { stop(e); var capOn = window.MGS_CAPTCHA && window.MGS_CAPTCHA.enabled(); if (capOn) { if (window.MGS_CAPTCHA.getToken()) createOrder(); } else if (($(".mgs-human-cb") || {}).checked) createOrder(); return; }
+    if (el.closest(".mgs-human-confirm")) { stop(e); if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.getToken()) createOrder(); return; }
     /* compte */
     if (el.closest(".mgs-page[data-page=compte]")) { var ctxt = (el.closest(".button-main") || {}).textContent || ""; if (/Déconnexion|Sign out/i.test(ctxt)) { stop(e); logout(); return; } if (/Enregistrer|Save/i.test(ctxt)) { stop(e); saveProfile(); return; } if (/Changer le mot de passe|Change password/i.test(ctxt)) { stop(e); changePassword(); return; } if (/Supprimer le compte|Delete account/i.test(ctxt)) { stop(e); deleteAccount(); return; } }
     /* connexion */
@@ -5968,7 +5963,6 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var tg = el.closest(".mgs-tag-toggle"); if (tg && /^(FR|EN)$/.test(tg.textContent.trim())) { stop(e); setLang(LANG === "fr" ? "en" : "fr"); tg.textContent = LANG.toUpperCase(); return; }
   }, true);
 
-  doc.addEventListener("change", function (e) { if (e.target.classList.contains("mgs-human-cb")) { var cf = $(".mgs-human-confirm"); if (cf) cf.disabled = !e.target.checked; } });
 
   function setLang(l) { LANG = l; try { localStorage.setItem("mgs_lang", l); } catch (e) { } doc.documentElement.lang = l; /* data-i18n : les libellés ajoutés dynamiquement aussi */ $$("[data-i18n]").forEach(function (e) { var k = e.getAttribute("data-i18n"); var v = t(k); if (typeof v === "string" && v !== k) e.textContent = v; }); if (lastPage) { var p = lastPage; lastPage = null; route(p); } renderCart(); if (window.MGS_LEGAL) { renderLegal("terms"); renderLegal("privacy"); } }
 
