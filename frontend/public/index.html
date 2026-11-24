@@ -742,6 +742,25 @@ html.reduced-motion svg.footer-row-col-img, html.reduced-motion .marquee-cta-dot
 .mgs-season{border:.09em solid var(--color--dark);border-radius:999px;padding:.2em .7em;font-size:.66em;font-weight:700}
 .mgs-season.is--on{background:var(--color--dark);color:var(--color--light)}
 .mgs-season button{border:0;background:none;font:inherit;color:inherit;text-decoration:underline;cursor:pointer;padding:0 0 0 .3em}
+.mgs-evgrid{display:grid;grid-template-columns:1fr;gap:.7em}
+@media(min-width:768px){.mgs-evgrid{grid-template-columns:1fr 1fr}}
+.mgs-evcard{display:flex;align-items:center;gap:.6em;border:.09em solid var(--color--dark);background:var(--color--light);padding:.6em;border-radius:.8em;min-width:0}
+.mgs-evcard__b{display:flex;align-items:center;gap:.6em;min-width:0;flex:1}
+.mgs-evcard__img{width:3.4em;height:2.4em;object-fit:cover;border-radius:.5em;flex:0 0 auto}
+.mgs-evcard__t{margin:0;font-family:var(--font--display);font-weight:800;font-size:.8em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mgs-evcard__a{display:flex;flex-direction:column;gap:.25em;flex:0 0 auto}
+.mgs-payrow{display:flex;align-items:flex-start;justify-content:space-between;gap:.7em;border-top:.09em solid rgba(0,0,0,.18);padding:.7em 0}
+.mgs-payrow__t{margin:0;font-family:var(--font--display);font-weight:800;font-size:.78em;line-height:1.25}
+.mgs-payrow__badge{border:.09em solid currentColor;border-radius:999px;padding:.1em .5em;font-size:.6em;font-weight:800;text-transform:uppercase;letter-spacing:.06em;align-self:flex-start}
+.mgs-fee{border:.09em solid var(--color--dark);border-radius:.7em;padding:.6em;margin-top:.5em}
+.mgs-fee__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.4em}
+.mgs-fee__grid label{font-size:.62em;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.mgs-fee__grid input{width:100%;margin-top:.25em;padding:.4em .5em;border:.09em solid var(--color--dark);border-radius:.4em;background:#fff;font:inherit;font-size:.85em}
+.mgs-wallet{display:grid;grid-template-columns:1fr;gap:.35em;border-top:.06em solid rgba(0,0,0,.15);padding:.5em 0}
+@media(min-width:768px){.mgs-wallet{grid-template-columns:6em 1fr 10em auto;align-items:center}}
+.mgs-wallet input:not([type="checkbox"]){width:100%;padding:.45em .55em;border:.09em solid var(--color--dark);border-radius:.4em;background:#fff;font:inherit;font-size:.72em}
+.mgs-wallet__n{margin:0;font-weight:800;font-size:.72em}
+.mgs-wallet__code{display:block;font-weight:400;font-size:.85em;opacity:.65}
 .mgs-form__box{border:.09em solid var(--color--dark);border-radius:.8em;padding:.7em;grid-column:1/-1}
 .mgs-form__box-t{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.4em;font-size:.72em;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
 .mgs-form__empty{margin:.4em 0 0;font-size:.72em;opacity:.75}
@@ -4964,17 +4983,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       loyalty: { t: 'Fidélité', ep: '/loyalty/admin/rewards', c: ['Récompense','Coût','Actif'],
         r: function (x) { return [x.name || '', String(x.cost_points != null ? x.cost_points : 0), x.active === false ? 'non' : 'oui']; },
         a: function (i) { return '<button type="button" class="mgs-chip" data-act="l-toggle" data-i="' + i + '">Activer/Désactiver</button>'; } },
-      events: { t: 'Événements', ep: '/admin/events', c: ['Titre','Début','Fin'],
-        r: function (e) { return [e.title || e.name || '', e.starts_at || e.start || '', e.ends_at || e.end || '']; },
-        a: function (i) { return '<button type="button" class="mgs-chip" data-act="e-del" data-i="' + i + '">Suppr</button>'; } },
       games: { t: 'Jeux', ep: '/admin/games', c: ['Nom','Clé','Actif'],
         r: function (g) { return [g.name || '', g.key || g.slug || g.id || '', g.active === false ? 'non' : 'oui']; },
         a: function (i) { return '<button type="button" class="mgs-chip" data-act="g-toggle" data-i="' + i + '">Activer/Désactiver</button>'; } },
-      crypto: { t: 'Crypto', ep: '/crypto/admin/payments', c: ['Montant','Devise','Statut'],
-        top: '<button type="button" class="mgs-chip" data-act="crypto-check" style="margin-bottom:1em">Vérifier les dépôts maintenant</button>',
-        r: function (x) { return [String(x.amount != null ? x.amount : ''), x.currency || '', x.status || '']; } },
-      payments: { t: 'Paiements', ep: '/payments/admin/settings', c: ['Paramètre','Valeur'], flat: true,
-        a: function (i, key) { return '<button type="button" class="mgs-chip" data-act="pay-edit" data-key="' + esc(key) + '">Modifier</button>'; } },
       fzr: { t: 'Fournisseur', ep: '/admin/fazercards/coverage', c: ['Couverture'],
         r: function (x) { return [typeof x === 'string' ? x : JSON.stringify(x).slice(0, 90)]; } }
     };
@@ -5263,9 +5274,188 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       });
       m.classList.add('is--open');
     }
+
+    /* ---- Événements : porté de pages/admin/AdminEvents.js (PR #100 2242ea8) ---- */
+    var EVENTS = [];
+    var E_EMPTY = { slug: '', title_fr: '', title_en: '', description_fr: '', description_en: '', image_url: '', badge: 'promo', product_slug: '', price_label: '', old_price_label: '', active: true };
+    function renderEvents(host) {
+      host.innerHTML = '<div class="mgs-admin-head"><div><p class="mgs-muted" style="margin:0;font-size:.6em;text-transform:uppercase;letter-spacing:.1em;opacity:.7">Administration</p><h2 class="mgs-section-h" style="margin:.2em 0 0">Événements</h2></div><button type="button" class="mgs-chip" data-act="ev-new">+ Nouvel événement</button></div><div class="mgs-evgrid" id="ev-grid"><p class="mgs-muted">Chargement…</p></div>';
+      req('/admin/events').then(function (arr) {
+        EVENTS = Array.isArray(arr) ? arr : [];
+        paintEvents();
+      }).catch(function (e) { signale(e); var g = document.getElementById('ev-grid'); if (g) g.innerHTML = '<p class="mgs-muted">Indisponible</p>'; });
+    }
+    function paintEvents() {
+      var g = document.getElementById('ev-grid'); if (!g) return;
+      g.innerHTML = EVENTS.length ? EVENTS.map(function (ev, i) {
+        return '<div class="mgs-evcard"><div class="mgs-evcard__b">' +
+          (ev.image_url ? '<img src="' + esc(ev.image_url) + '" alt="" class="mgs-evcard__img">' : '') +
+          '<div style="min-width:0"><p class="mgs-evcard__t">' + esc(ev.title_fr || '') + '</p>' +
+          '<p class="mgs-muted" style="margin:.2em 0 0;font-size:.66em">♥ ' + esc(String(ev.likes == null ? 0 : ev.likes)) + ' · ↗ ' + esc(String(ev.shares == null ? 0 : ev.shares)) + ' · ' + esc(ev.product_slug || '—') + '</p></div></div>' +
+          '<div class="mgs-evcard__a"><button type="button" class="mgs-chip" data-act="ev-edit" data-i="' + i + '">Modifier</button>' +
+          '<button type="button" class="mgs-chip" data-act="ev-del" data-i="' + i + '">Suppr</button></div></div>';
+      }).join('') : '<p class="mgs-muted">Aucun événement</p>';
+    }
+    function openEventForm(src) {
+      var ev = Object.assign({}, E_EMPTY, src || {});
+      var isEdit = !!(src && src.id);
+      var m = adminModal(); var box = document.getElementById('mgs-modal-box');
+      var fld = function (k, lab) { return '<label>' + esc(lab) + '<input name="' + k + '" value="' + esc(ev[k] == null ? '' : ev[k]) + '"></label>'; };
+      box.innerHTML = '<p class="mgs-modal__t">' + (isEdit ? 'Modifier l\'événement' : 'Nouvel événement') + '</p>' +
+        '<form class="mgs-form" id="event-form">' +
+        fld('title_fr', 'Titre (FR)') + fld('title_en', 'Title (EN)') + fld('slug', 'Slug') + fld('badge', 'Badge') +
+        fld('image_url', 'Image URL') + fld('product_slug', 'Produit lié (slug)') + fld('price_label', 'Prix affiché') + fld('old_price_label', 'Ancien prix affiché') +
+        '<label class="is--full">Description FR<textarea name="description_fr">' + esc(ev.description_fr || '') + '</textarea></label>' +
+        '<label class="is--full">Description EN<textarea name="description_en">' + esc(ev.description_en || '') + '</textarea></label>' +
+        '<label style="display:flex;align-items:center;gap:.4em">Actif<input name="active" type="checkbox"' + (ev.active ? ' checked' : '') + ' style="width:auto;margin:0"></label>' +
+        '<button type="submit" class="mgs-chip is--full" style="padding:.6em;font-size:.8em">Enregistrer</button></form>';
+      box.querySelector('#event-form').addEventListener('submit', function (e2) {
+        e2.preventDefault();
+        var f = e2.target;
+        var body = {};
+        Object.keys(E_EMPTY).forEach(function (k) {
+          if (k === 'active') return;
+          var el = f.querySelector('[name="' + k + '"]');
+          var v = el ? el.value : '';
+          body[k] = (v === '' ? null : v);
+        });
+        body.active = !!(f.querySelector('[name="active"]') || {}).checked;
+        body.description_fr = body.description_fr || '';
+        body.description_en = body.description_en || '';
+        var done = function () { closeAdminModal(); renderEvents(PDOMEV); };
+        var fail = function (er) { signale(er); alert('Échec : ' + (er && er.message ? er.message : er)); };
+        if (isEdit) req('/admin/events/' + src.id, { method: 'PUT', body: body }).then(done).catch(fail);
+        else req('/admin/events', { method: 'POST', body: body }).then(done).catch(fail);
+      });
+      m.classList.add('is--open');
+    }
+    var PDOMEV = null;
+
+    /* ---- Paiements : porté de pages/admin/AdminPayments.js (PR #100 2242ea8) ---- */
+    var PSET = null, PFEES = null, PFEES_OPEN = false, PDOM_PAY = null;
+    function isSuper() { return !!(me && me.role === 'super_admin'); }
+    function renderPayments(host) {
+      PDOM_PAY = host;
+      host.innerHTML = '<div class="mgs-panel"><p class="mgs-muted">Chargement…</p></div>';
+      req('/payments/admin/settings').then(function (st) {
+        PSET = st || {}; PFEES = PSET.payment_fees || {};
+        paintPayments();
+      }).catch(function (e) { signale(e); host.innerHTML = '<div class="mgs-panel"><p class="mgs-muted">Indisponible</p></div>'; });
+    }
+    function paintPayments() {
+      var host = PDOM_PAY; if (!host) return;
+      var sup = isSuper();
+      var row = function (key, label, hint, ok, sandbox) {
+        return '<div class="mgs-payrow"><div style="min-width:0;flex:1"><p class="mgs-payrow__t">' + esc(label) +
+          (sandbox ? ' <span class="mgs-payrow__badge">sandbox</span>' : '') + '</p>' +
+          '<p class="mgs-muted" style="margin:.2em 0 0;font-size:.68em">' + esc(hint) + '</p>' +
+          (ok ? '' : '<p style="margin:.2em 0 0;font-size:.68em;font-weight:700;color:#b42318">FiveOne Pay n\'est pas configuré côté serveur.</p>') + '</div>' +
+          '<div style="display:flex;align-items:center;gap:.5em;flex:0 0 auto"><span style="font-size:.66em;font-weight:800;letter-spacing:.1em">' + (PSET[key] ? 'ON' : 'OFF') + '</span>' +
+          '<input type="checkbox"' + (PSET[key] ? ' checked' : '') + (sup ? '' : ' disabled') + ' data-act="pay-toggle" data-k="' + key + '" style="width:1.2em;height:1.2em;cursor:pointer"></div></div>';
+      };
+      var fees = PFEES || {};
+      var feeBox = function (key, label, hint) {
+        var f = fees[key] || {};
+        var input = function (k, lab, step) { return '<label>' + lab + '<input type="number" min="0" step="' + step + '" data-fee="' + key + '.' + k + '" value="' + esc(f[k] == null ? '' : f[k]) + '"' + (isSuper() ? '' : ' disabled') + '></label>'; };
+        return '<div class="mgs-fee"><p class="mgs-payrow__t">' + esc(label) + '</p><p class="mgs-muted" style="margin:.2em 0 .5em;font-size:.66em">' + esc(hint) + '</p>' +
+          '<div class="mgs-fee__grid">' + input('percent', 'Taux', '0.05') + input('min', 'Min', '50') + input('max', 'Max', '50') + '</div></div>';
+      };
+      host.innerHTML = '<div class="mgs-panel"><div class="mgs-admin-head" style="border:0;padding:0;margin-bottom:.6em"><div><p class="mgs-muted" style="margin:0;font-size:.6em;text-transform:uppercase;letter-spacing:.1em;opacity:.7">Magic Game Store</p>' +
+        '<h2 class="mgs-section-h" style="margin:.2em 0 0">Paiements</h2></div></div>' +
+        '<p class="mgs-muted" style="font-size:.72em;margin:0 0 .8em">Passerelles Mobile Money et frais. Aucun secret n\'est affiché, seulement l\'état « configuré » côté serveur.</p>' +
+        '<p class="mgs-muted" style="font-size:.68em;margin:0 0 .6em">Mode serveur : <b>' + esc(String(PSET.payment_mode == null ? '…' : PSET.payment_mode)) + '</b></p>' +
+        row('papi_auto', 'Papi (Mobile Money auto)', 'Encaissement automatique Mobile Money.', true, false) +
+        row('fiveone_enabled', 'FiveOne Pay', 'Passerelle bancaire / Mobile Money.', PSET.fiveone_configured !== false, !!PSET.fiveone_sandbox) +
+        '<div style="border-top:.09em solid var(--color--dark);margin-top:.4em;padding-top:.6em">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:.6em"><p class="mgs-payrow__t" style="margin:0">Frais de paiement</p>' +
+        '<button type="button" class="mgs-chip" data-act="pay-fees-toggle">' + (PFEES_OPEN ? 'Réduire' : 'Afficher') + '</button></div>' +
+        (PFEES_OPEN ? '<div style="margin-top:.6em"><div class="mgs-fee"><p class="mgs-payrow__t">Espèces / manuel</p><p class="mgs-muted" style="margin:.2em 0 0;font-size:.66em">Aucun frais : le montant affiché est celui payé.</p></div>' +
+          feeBox('papi', 'Papi', 'Frais appliqués aux paiements Papi.') +
+          feeBox('fiveone', 'FiveOne Pay', 'Frais appliqués aux paiements FiveOne Pay.') +
+          '<button type="button" class="mgs-chip" data-act="pay-fees-save"' + (isSuper() && PFEES_OPEN ? '' : ' disabled') + ' style="margin-top:.6em">Enregistrer</button></div>' : '') +
+        '</div></div>' +
+        '<div id="pay-binance" style="margin-top:1.4em"></div>';
+      renderBinance(document.getElementById('pay-binance'));
+    }
+
+    /* ---- Crypto / Binance : porté de pages/admin/AdminBinance.js (PR #100 2242ea8) ---- */
+    var BN = null, BN_PAY = [], BN_UNM = [], BNETS = null, BN_PANEL = null;
+    var BNETS_KEYS = ['TRC20', 'BEP20', 'APTOS', 'TON'];
+    function renderBinance(host) {
+      if (!host) return;
+      BN_PANEL = host;
+      host.innerHTML = '<div class="mgs-panel"><p class="mgs-muted">Chargement…</p></div>';
+      req('/crypto/admin/settings').then(function (st) {
+        BN = st || { wallets: {} };
+        req('/crypto/admin/payments').then(function (x) { BN_PAY = Array.isArray(x) ? x : []; paintBinance(); }).catch(function () { BN_PAY = []; paintBinance(); });
+        req('/crypto/admin/unmatched').then(function (x) { BN_UNM = Array.isArray(x) ? x : []; paintBinance(); }).catch(function () { BN_UNM = []; paintBinance(); });
+      }).catch(function (e) {
+        signale(e);
+        host.innerHTML = '<div class="mgs-panel"><p class="mgs-muted">Réglages crypto indisponibles</p></div>';
+      });
+    }
+    function paintBinance() {
+      var host = BN_PANEL; if (!host || !BN) return;
+      var sup = isSuper();
+      var w = BN.wallets || {};
+      var codes = BN.binance_codes || {};
+      var wallets = BNETS_KEYS.map(function (n) {
+        var cur = w[n] || {};
+        return '<div class="mgs-wallet"><p class="mgs-wallet__n">' + n + '<span class="mgs-wallet__code">Binance : ' + esc(String(codes[n] == null ? '' : codes[n])) + '</span></p>' +
+          '<input placeholder="Adresse" data-wal="' + n + '.address" value="' + esc(cur.address || '') + '"' + (sup ? '' : ' disabled') + '>' +
+          '<input placeholder="MEMO (si requis)" data-wal="' + n + '.memo" value="' + esc(cur.memo || '') + '"' + (sup ? '' : ' disabled') + '>' +
+          '<label style="display:flex;align-items:center;gap:.3em;font-size:.62em;text-transform:none;letter-spacing:0"><input type="checkbox" data-wal="' + n + '.active"' + (cur.active ? ' checked' : '') + (sup ? '' : ' disabled') + ' style="width:auto;margin:0">actif</label></div>';
+      }).join('');
+      host.innerHTML = '<div class="mgs-panel"><div class="mgs-payrow" style="border-top:0;padding-top:0"><div style="min-width:0;flex:1">' +
+        '<p class="mgs-muted" style="margin:0;font-size:.6em;text-transform:uppercase;letter-spacing:.1em;opacity:.7">Paiements · Binance USDT (dépôts CEX)</p>' +
+        '<p class="mgs-muted" style="margin:.3em 0 0;font-size:.68em">Détection automatique via l\'API Binance (lecture seule). Aucun retrait, aucun trading.</p>' +
+        '<p style="margin:.3em 0 0;font-size:.68em;font-weight:700;color:' + (BN.api_configured ? '#1a7f37' : '#b42318') + '">' + (BN.api_configured ? '✓ Clés API configurées côté serveur' : '⚠ BINANCE_API_KEY / BINANCE_API_SECRET absentes côté serveur') + '</p></div>' +
+        '<label style="display:flex;align-items:center;gap:.3em;flex:0 0 auto;font-size:.66em;font-weight:800"><input type="checkbox" data-act="bn-toggle"' + (BN.enabled ? ' checked' : '') + (sup ? '' : ' disabled') + ' style="width:1.2em;height:1.2em">actif</label></div>' +
+        '<div class="mgs-form" style="margin-top:.8em"><label>Taux (Ar pour 1 USDT)<input type="number" min="1" data-bn="rate_ar_per_usdt" value="' + esc(BN.rate_ar_per_usdt == null ? '' : BN.rate_ar_per_usdt) + '"' + (sup ? '' : ' disabled') + '></label>' +
+        '<label>Validité d\'un paiement (minutes)<input type="number" min="10" max="180" data-bn="expiry_minutes" value="' + esc(BN.expiry_minutes == null ? '' : BN.expiry_minutes) + '"' + (sup ? '' : ' disabled') + '></label></div>' +
+        '<p class="mgs-muted" style="margin:.5em 0 0;font-size:.66em">Le taux et le montant USDT exact sont figés dans chaque paiement : modifier le taux n\'affecte pas les paiements existants.</p>' +
+        '<p class="mgs-payrow__t" style="margin:1em 0 .3em">Wallets de dépôt Binance</p>' +
+        '<p class="mgs-muted" style="margin:0 0 .5em;font-size:.66em">Collez l\'adresse exacte affichée par Binance (Dépôt → USDT → réseau). MEMO uniquement si Binance en affiche un.</p>' +
+        wallets +
+        (sup ? '<button type="button" class="mgs-chip" data-act="bn-save" style="margin-top:.7em">Enregistrer</button>' : '') +
+        '<div style="display:flex;flex-wrap:wrap;gap:.4em;margin-top:1em;border-top:.09em solid var(--color--dark);padding-top:.7em">' +
+        '<button type="button" class="mgs-chip" data-act="bn-check">Vérifier les dépôts maintenant</button>' +
+        '<button type="button" class="mgs-chip" data-act="bn-networks">Réseaux USDT Binance (live)</button></div>' +
+        (BNETS ? '<div style="margin-top:.6em;font-size:.66em">' + BNETS.map(function (n) { return '<p style="margin:.15em 0"><b>' + esc(n.network) + '</b> ' + esc(n.name) + ' · dépôt ' + (n.depositEnable ? 'ON' : 'OFF') + ' · memo ' + (n.memoRegex ? 'oui' : 'non') + ' · ' + esc(String(n.minConfirm)) + ' conf.' + (n.mgs_key ? ' · MGS ' + esc(n.mgs_key) : '') + '</p>'; }).join('') + '</div>' : '') +
+        '<p class="mgs-payrow__t" style="margin:1em 0 .3em">Dépôts non associés (revue manuelle) · ' + BN_UNM.length + '</p>' +
+        (BN_UNM.length === 0 ? '<p class="mgs-muted" style="font-size:.7em;margin:0">Aucun dépôt à revoir.</p>' : BN_UNM.map(function (u) {
+          return '<div class="mgs-payrow" style="padding:.4em 0"><div style="min-width:0;flex:1"><p class="mgs-payrow__t" style="font-size:.7em">' + esc(String(u.amount)) + ' USDT · ' + esc(u.network || '') + ' · <span style="color:#b42318">' + esc(u.reason || '') + '</span></p>' +
+            '<p class="mgs-muted" style="margin:.15em 0 0;font-size:.62em;overflow-wrap:anywhere">' + esc(u.tx_hash || '') + '</p></div>' +
+            '<button type="button" class="mgs-chip" data-act="bn-unmatched" data-id="' + esc(u.id) + '">Marquer revu</button></div>';
+        }).join('')) +
+        '<p class="mgs-payrow__t" style="margin:1em 0 .3em">Paiements USDT récents</p>' +
+        (BN_PAY.length === 0 ? '<p class="mgs-muted" style="font-size:.7em;margin:0">Aucun paiement USDT.</p>' : BN_PAY.map(function (x) {
+          return '<div class="mgs-payrow" style="padding:.4em 0"><div style="min-width:0;flex:1"><p class="mgs-payrow__t" style="font-size:.7em">' + esc(x.order_number || '') + ' · ' + esc(String(x.amount_usdt == null ? '' : x.amount_usdt)) + ' USDT · ' + esc(x.network || '') + ' · taux ' + esc(String(x.rate_ar_per_usdt == null ? '' : x.rate_ar_per_usdt)) + ' Ar</p>' +
+            (x.tx_hash ? '<p class="mgs-muted" style="margin:.15em 0 0;font-size:.62em;overflow-wrap:anywhere">' + esc(x.tx_hash) + '</p>' : '') + '</div>' +
+            '<span class="mgs-payrow__badge">' + esc(x.status || '') + '</span></div>';
+        }).join('')) +
+        '</div>';
+      var bind = function (sel, fn) { host.querySelectorAll(sel).forEach(fn); };
+      bind('[data-wal]', function (el) {
+        el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', function () {
+          var k = el.getAttribute('data-wal').split('.'); BN.wallets = BN.wallets || {}; BN.wallets[k[0]] = BN.wallets[k[0]] || {};
+          BN.wallets[k[0]][k[1]] = el.type === 'checkbox' ? el.checked : el.value;
+        });
+      });
+      bind('[data-bn]', function (el) { el.addEventListener('input', function () { BN[el.getAttribute('data-bn')] = el.value; }); });
+      bind('[data-fee]', function (el) {
+        el.addEventListener('input', function () {
+          var k = el.getAttribute('data-fee').split('.'); PFEES = PFEES || {}; PFEES[k[0]] = PFEES[k[0]] || {};
+          PFEES[k[0]][k[1]] = el.value;
+        });
+      });
+    }
     function loadSec(k) {
       if (k === 'games' && body) { cur = k; renderGames(body); return; }
       if (k === 'products' && body) { cur = k; renderProducts(body); return; }
+      if (k === 'events' && body) { cur = k; renderEvents(body); return; }
+      if (k === 'payments' && body) { cur = k; renderPayments(body); return; }
+      if (k === 'crypto' && body) { cur = k; renderBinance(body); return; }
       var d = SEC[k]; if (!d || !body) return; cur = k;
       var hasA = !!d.a;
       body.innerHTML = '<div class="mgs-panel"><h2 class="mgs-section-h">' + esc(d.t) + '</h2>' + (d.top || '') + '<div style="overflow-x:auto"><table class="mgs-table"><thead><tr>' + d.c.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + (hasA ? '<th></th>' : '') + '</tr></thead><tbody><tr><td colspan="' + (d.c.length + (hasA ? 1 : 0)) + '" class="mgs-muted">Chargement…</td></tr></tbody></table></div></div>';
@@ -5292,6 +5482,30 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
         if (!confirm('Supprimer ' + (pr.name || '') + ' ?')) return;
         req('/admin/products/' + pr.id, { method: 'DELETE' }).then(function () { renderProducts(PDOM); }).catch(fail); return;
       }
+      if (action === 'ev-new') { PDOMEV = document.getElementById('admin-sec-body'); openEventForm(null); return; }
+      if (action === 'ev-edit') { PDOMEV = document.getElementById('admin-sec-body'); openEventForm(EVENTS[i]); return; }
+      if (action === 'ev-del') {
+        if (!confirm('Supprimer cet événement ?')) return;
+        req('/admin/events/' + (EVENTS[i] || {}).id, { method: 'DELETE' }).then(function () { renderEvents(document.getElementById('admin-sec-body')); }).catch(fail); return;
+      }
+      if (action === 'pay-toggle') {
+        var pk = b.getAttribute('data-k'); var patch = {}; patch[pk] = !!b.checked;
+        req('/payments/admin/settings', { method: 'PATCH', body: patch }).then(function (st) { PSET = st || {}; PFEES = PSET.payment_fees || {}; paintPayments(); }).catch(fail); return;
+      }
+      if (action === 'pay-fees-toggle') { PFEES_OPEN = !PFEES_OPEN; paintPayments(); return; }
+      if (action === 'pay-fees-save') {
+        var body2 = { payment_fees: {} };
+        ['papi', 'fiveone'].forEach(function (kk) {
+          var cur = (PFEES || {})[kk] || {};
+          body2.payment_fees[kk] = { percent: Math.max(0, Number(cur.percent) || 0), min: Math.max(0, Number(cur.min) || 0), max: Math.max(0, Number(cur.max) || 0) };
+        });
+        req('/payments/admin/settings', { method: 'PATCH', body: body2 }).then(function (st) { PSET = st || {}; PFEES = PSET.payment_fees || {}; paintPayments(); }).catch(fail); return;
+      }
+      if (action === 'bn-toggle') { req('/crypto/admin/settings', { method: 'PATCH', body: { enabled: !!b.checked, rate_ar_per_usdt: Number(BN.rate_ar_per_usdt) || undefined, expiry_minutes: Number(BN.expiry_minutes), wallets: BN.wallets } }).then(function (st) { BN = st || BN; paintBinance(); }).catch(fail); return; }
+      if (action === 'bn-save') { req('/crypto/admin/settings', { method: 'PATCH', body: { enabled: BN.enabled, rate_ar_per_usdt: Number(BN.rate_ar_per_usdt) || undefined, expiry_minutes: Number(BN.expiry_minutes), wallets: BN.wallets } }).then(function (st) { BN = st || BN; paintBinance(); }).catch(fail); return; }
+      if (action === 'bn-check') { req('/crypto/admin/check', { method: 'POST' }).then(function (d) { alert(d && d.ran ? 'Vérification effectuée : ' + JSON.stringify(d.results) : 'Non exécutée (' + ((d && d.reason) || 'raison inconnue') + ')'); }).catch(fail); return; }
+      if (action === 'bn-networks') { req('/crypto/admin/networks').then(function (d) { BNETS = Array.isArray(d && d.networks) ? d.networks : []; paintBinance(); }).catch(fail); return; }
+      if (action === 'bn-unmatched') { req('/crypto/admin/unmatched/' + b.getAttribute('data-id'), { method: 'PATCH' }).then(function () { renderBinance(BN_PANEL); }).catch(fail); return; }
       if (action === 'season-activate') {
         req('/admin/seasons/' + b.getAttribute('data-s') + '/activate', { method: 'POST' }).then(renderSeasons).catch(fail); return;
       }
