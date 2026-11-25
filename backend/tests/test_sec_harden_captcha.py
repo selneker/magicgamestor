@@ -118,6 +118,44 @@ class TestCaptchaServerVerification:
         _run(captcha.require(None, "203.0.113.7"))  # désactivé : passe
 
 
+class TestCaptchaFailClosedOnRender:
+    """D3 — sur Render, une clé secrète absente ne doit JAMAIS laisser passer une commande."""
+
+    def test_missing_secret_on_render_refuses_creates_nothing_and_logs(self, monkeypatch, caplog):
+        from fastapi import HTTPException
+        from services import captcha
+        monkeypatch.delenv("TURNSTILE_SECRET_KEY", raising=False)
+        monkeypatch.delenv("TURNSTILE_ENABLED", raising=False)
+        monkeypatch.setenv("RENDER", "true")
+        with _captcha_http(), caplog.at_level("ERROR", logger="mgs.captcha"):
+            assert _run(captcha.verify_turnstile("fake-token", "203.0.113.7")) is False
+            with pytest.raises(HTTPException) as exc:
+                _run(captcha.require("fake-token", "203.0.113.7"))
+        assert exc.value.status_code == 400
+        assert FakeHttpClient.calls == []  # aucune requête siteverify sans clé secrète
+        assert any(
+            r.levelname == "ERROR" and "TURNSTILE_SECRET_KEY absente" in r.getMessage()
+            for r in caplog.records
+        )
+
+    def test_render_with_secret_still_verifies_normally(self, monkeypatch):
+        from services import captcha
+        monkeypatch.setenv("RENDER", "true")
+        monkeypatch.setenv("TURNSTILE_SECRET_KEY", FAKE_KEY)
+        monkeypatch.delenv("TURNSTILE_ENABLED", raising=False)
+        with _captcha_http(success=True):
+            assert _run(captcha.verify_turnstile("fake-token", None)) is True
+        assert len(FakeHttpClient.calls) == 1
+
+    def test_missing_secret_outside_render_still_skips(self, monkeypatch):
+        from services import captcha
+        monkeypatch.delenv("TURNSTILE_SECRET_KEY", raising=False)
+        monkeypatch.delenv("RENDER", raising=False)
+        with _captcha_http():
+            assert _run(captcha.verify_turnstile(None, None)) is True
+        assert FakeHttpClient.calls == []
+
+
 class FakeAttempts:
     def __init__(self, count=None, minutes_ago=0):
         self.doc = None if count is None else {
