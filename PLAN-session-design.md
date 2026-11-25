@@ -47,6 +47,7 @@ Statut : plan opérationnel. Un lot = un commit `fix(<zone>): …`, validation a
 - [x] 5. Bouton pleine largeur : dans `.mgs-human-foot` (`:1238`) / `.mgs-human-confirm` (`:1240`), faire occuper toute la largeur de la boîte au bouton (`flex:1 1 auto;width:100%;min-width:0`) ; les spans internes sont déjà à 100 %. Contrôle par rects à 390 px.
 - [x] 6. Contrôles : la case/Turnstile continue de piloter `disabled` (`:4386-4407`) ; `closeHuman()` (`:4409`) reste fonctionnel ; aucun `box-shadow` résiduel mesuré.
 - [x] 7. Correctif feedback : le bouton « change » est DANS le champ ID (wrapper `.mgs-co-id-field`, position absolue à droite, padding droit réservé sur l'input), masqué par défaut et affiché uniquement quand le nom vérifié est affiché (`.mgs-co-id-status.is--ok:not([hidden])` via `:has`). Libellé FR/EN réduit à « change ».
+- [x] 8. Paiement : masquer `.nav-w`, `.footer` et `.bottom-nav-w` dès que `.mgs-co-screen[data-co="2"]` ou `[data-co="3"]` est visible (coordonnées marchand / attente) ; le bouton « Retour » du tunnel reste disponible. Le formulaire (`data-co=1`) garde la navigation.
 
 ## 3. Vérification à l'implémentation
 

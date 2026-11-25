@@ -544,6 +544,19 @@ test("commande : ID modifiable, statut noir près des suggestions, popin nettoy�
   assert.equal(await page.locator(".mgs-human-confirm").isEnabled(), true);
   await page.locator(".mgs-human-popup:not(.mgs-co-cancel-popup) .mgs-human-close").click();
   await page.waitForFunction(() => document.querySelector(".mgs-human-popup").hidden, null, { timeout: 8000 });
+  const chromeOn = async (n) => {
+    await page.evaluate((n) => document.querySelectorAll(".mgs-co-screen[data-co]").forEach((s) => { s.hidden = +s.dataset.co !== n; }), n);
+    return page.evaluate(() => {
+      const d = (s) => getComputedStyle(document.querySelector(s)).display;
+      return { nav: d(".nav-w"), footer: d(".footer"), bottom: d(".bottom-nav-w") };
+    });
+  };
+  const form = await chromeOn(1);
+  assert.notEqual(form.nav, "none", "la navigation reste visible sur le formulaire");
+  const pay = await chromeOn(2);
+  assert.equal(pay.nav, "none", "paiement nav: " + JSON.stringify(pay)); assert.equal(pay.footer, "none", "paiement footer"); assert.equal(pay.bottom, "none", "paiement bottom");
+  const wait = await chromeOn(3);
+  assert.equal(wait.nav, "none", "attente nav: " + JSON.stringify(wait)); assert.equal(wait.footer, "none", "attente footer"); assert.equal(wait.bottom, "none", "attente bottom");
 });
 
 /* ---------- runner : chaque test à chaque viewport ---------- */
