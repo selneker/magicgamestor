@@ -1282,23 +1282,31 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
 /* Étapes numérotées (mêmes losanges que le paiement Binance) + filet vertical */
 .mgs-co-steps{position:relative;margin:0 0 1.5em;padding-left:2.125em}
 .mgs-co-steps::before{content:"";position:absolute;left:.6875em;top:1.35em;bottom:1.35em;width:1px;background:rgba(0,0,0,.16)}
-.mgs-co-steps>.mgs-co-step{position:relative;margin-bottom:1em}
+.mgs-co-steps>.mgs-co-step{position:relative;margin-bottom:1em;display:block}
 .mgs-co-steps>.mgs-co-step:last-child{margin-bottom:0}
 .mgs-co-dia{position:absolute;left:-2.125em;top:0;width:1.375em;height:1.375em;transform:rotate(45deg);border-radius:.375em;background:var(--color--dark);display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
 .mgs-co-dia span{transform:rotate(-45deg);font-size:.6875em;line-height:1;color:var(--color--light)}
 .mgs-co-step-h{margin:0 0 .5em;font-size:1em;font-weight:700;line-height:1.5;color:var(--color--dark)}
-.mgs-co-merchant{display:flex;flex-direction:column;gap:0;margin:0 0 .6em}
+/* Le nom du marchand sert de libellé à l'écran 2 : il doit être raccord avec
+   le titre « Transférer via MVola » et avec la note ci-dessous. */
+.mgs-co-step-h .mgs-co-mname{font-family:inherit;text-transform:none}
+/* Les étapes numérotées ne sont PAS des cartes (retour design : losange dans la
+   marge + filet vertical, comme l'écran Binance). */
+.mgs-co-steps>.mgs-co-step{border:0;border-radius:0;padding:0;gap:0}
+.mgs-co-merchant{display:flex;flex-direction:column;gap:0;margin:0 0 .6em;min-width:0;flex:1 1 auto}
 .mgs-co-screen .mgs-divider{margin:1em 0}
 /* Lignes marchand / Binance : libellé au-dessus de la valeur, icône de copie NUE
    à droite, comme l'écran Binance. */
-.mgs-co-kv{display:flex;align-items:center;justify-content:space-between;gap:1em;padding:.6em 0;border-top:.0625em solid rgba(0,0,0,.16);font-size:.9em}
+.mgs-co-kv{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:.75em;padding:.6em 0;border-top:.0625em solid rgba(0,0,0,.16);font-size:.9em}
 .mgs-co-kv:first-child{border-top:0}
 .mgs-co-kv-l{min-width:0}
 .mgs-co-kv-l span{display:block;color:rgba(0,0,0,.55)}
 .mgs-co-kv-v{margin:.1em 0 0;font-weight:700;color:var(--color--dark);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .mgs-co-copy{flex:none;display:inline-flex;align-items:center;justify-content:center;width:2.75em;height:2.75em;margin-right:-.75em;border:0;background:none;padding:0;color:rgba(0,0,0,.55);cursor:pointer}
 .mgs-co-copy:hover{color:var(--color--dark)}
-.mgs-co-copy svg{width:1em;height:1em}
+/* Icône de copie PETITE (retour design : pas une icône « très grande ») :
+   16 px dans une zone tactile de 44 px. */
+.mgs-co-copy svg{width:.8em;height:.8em}
 .mgs-co-proof{width:100%;margin-top:.6em;border:.125em solid var(--color--dark);border-radius:100em;background:var(--color--light);color:var(--color--dark);font-weight:700;padding:.7em;cursor:pointer;transition:background-color .2s}
 .mgs-co-proof:hover{background:var(--color--yellow-700)}
 /* Le survol du bouton de preuve ne doit RIEN changé d'autre que le fond :
@@ -2816,7 +2824,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
 <div class="mgs-co-top"><button type="button" class="mgs-co-back" aria-label="Retour"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button><span class="mgs-co-countdown">Payer sous <b class="mgs-co-timer">15:00</b></span></div>
 <p class="mgs-co-step-t">Transférer via <span class="mgs-co-mname">MVola</span></p>
 <div class="mgs-co-steps">
-  <div class="mgs-co-step"><span class="mgs-co-dia" aria-hidden="true"><span>1</span></span><p class="mgs-co-step-h">Transférer via <span class="mgs-co-mname">MVola</span></p>
+  <div class="mgs-co-step"><span class="mgs-co-dia" aria-hidden="true"><span>1</span></span><p class="mgs-co-step-h">Coordonnées du marchand</p>
     <div class="mgs-co-merchant"><div class="mgs-co-kv"><div class="mgs-co-kv-l"><span>Vous payez</span><b class="mgs-co-kv-v mgs-co-total2">0 Ar</b></div><button type="button" class="mgs-co-copy" data-copy="amount" aria-label="Copier le montant"></button></div><div class="mgs-co-kv"><div class="mgs-co-kv-l"><span>Nom du marchand</span><b class="mgs-co-kv-v mgs-co-mname-v">···</b></div><button type="button" class="mgs-co-copy" data-copy="name" aria-label="Copier le nom du marchand"></button></div><div class="mgs-co-kv"><div class="mgs-co-kv-l"><span>Numéro</span><b class="mgs-co-kv-v mgs-co-num-v">···</b></div><button type="button" class="mgs-co-copy" data-copy="number" aria-label="Copier le numéro"></button></div></div>
     <div class="mgs-co-merchant mgs-co-binance" hidden></div>
     <p class="mgs-co-hint">Nom et numéro réels servis par le backend.</p>
@@ -3685,7 +3693,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   <div class="mgs-human-head"><p>Vérification de sécurité</p><button type="button" class="mgs-human-close" aria-label="Fermer"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
   <p class="mgs-human-sub">Confirmez que vous êtes humain pour passer la commande.</p>
   <div class="mgs-human-widget"><div class="mgs-human-turnstile" hidden></div></div>
-  <div class="mgs-human-foot"><button type="button" class="mgs-human-cancel">Fermer</button><button type="button" class="button-main w-inline-block mgs-human-confirm" data-button-theme="dark" data-button-accent="green" disabled><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Passer la commande"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Passer la commande</span></span></span></span></button></div>
+  <div class="mgs-human-foot"><button type="button" class="mgs-human-cancel">Fermer</button><label style="display:flex;align-items:center;gap:.6em;font-size:.95em;cursor:pointer"><input type="checkbox" class="mgs-human-cb" style="width:1.4em;height:1.4em;accent-color:var(--color--dark)">Confirmez que vous êtes humain</label><button type="button" class="button-main w-inline-block mgs-human-confirm" data-button-theme="dark" data-button-accent="green" disabled><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Passer la commande"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Passer la commande</span></span></span></span></button></div>
 </div>
 
 <div class="mgs-human-overlay mgs-co-cancel-overlay" hidden></div>
@@ -4370,14 +4378,22 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     });
   }
   function openHuman(always) {
-    /* Aucune vérification réelle sans site key : on n'ouvre pas de fausse case. */
-    if (!window.MGS_CAPTCHA || !window.MGS_CAPTCHA.enabled()) return;
+    /* La popin de vérification s'ouvre si un widget Turnstile est actif OU si la
+       case « Je suis humain » est disponible (site key absente = case seule). */
+    var hasCb = !!$(".mgs-human-cb");
+    if (!window.MGS_CAPTCHA || !window.MGS_CAPTCHA.enabled()) { if (!hasCb) return; }
     var o = $(".mgs-human-overlay"), p = $(".mgs-human-popup"); if (o) o.hidden = false; if (p) p.hidden = false;
     var cf = $(".mgs-human-confirm"); var cap = window.MGS_CAPTCHA;
     var tsBox = $(".mgs-human-turnstile");
     if (cap && cap.enabled()) {
       if (tsBox) tsBox.hidden = false;
       if (cf) cf.disabled = !cap.getToken();
+    } else if (cf) {
+      /* Sans widget Turnstile : c'est la case qui pilote le bouton. */
+      var hcb = $(".mgs-human-cb"); if (hcb) cf.disabled = !hcb.checked;
+    }
+    if (cap && cap.enabled()) {
+      if (tsBox) tsBox.hidden = false;
       cap.render(tsBox, {
         /* La feuille n'existe QUE pour cette vérification : le widget doit être
            visible dès l'ouverture. `main` garde « interaction-only » parce qu'il
@@ -4517,7 +4533,19 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   doc.addEventListener("change", function (e) {
     var cb = e.target;
     if (cb && cb.classList && cb.classList.contains("mgs-co-declare-cb")) { syncProofSend(); return; }
-    if (cb === proofInput) { var add = 0; Array.prototype.slice.call(proofInput.files || []).forEach(function (f) { if (proofFiles.length + add < 3 && (/image\/(jpeg|png)/.test(f.type) || /\.(jpe?g|png)$/i.test(f.name || ""))) { proofFiles.push(f); add++; } }); if (add) { renderProofThumbs(); proofInput.value = ""; } }
+    /* Vérification humaine : la case active le bouton « Passer la commande »
+       (le widget Turnstile, quand il est actif, reste prioritaire). */
+    if (cb && cb.classList && cb.classList.contains("mgs-human-cb")) {
+      var cf = $(".mgs-human-confirm");
+      if (cf && !(window.MGS_CAPTCHA && window.MGS_CAPTCHA.getToken())) cf.disabled = !cb.checked;
+      return;
+    }
+    var files = (cb && cb.type === "file" && cb.files) ? cb.files : null;
+    if (!files || !files.length) return;
+    var add = 0;
+    Array.prototype.slice.call(files).forEach(function (f) { if (proofFiles.length + add < 3 && (/image\/(jpeg|png)/.test(f.type) || /\.(jpe?g|png)$/i.test(f.name || ""))) { proofFiles.push(f); add++; } });
+    if (add) renderProofThumbs();
+    try { cb.value = ""; } catch (e) { /* certains navigateurs interdisent la remise à zéro */ }
   });
   doc.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
@@ -4707,8 +4735,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (!st || next === kNext) next = t("order.banner.proofWaiting");
     var label = st ? t(kLabel) : "";
     if (!st || label === kLabel) label = statusLabel(st);
-    var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = next;
-    var wt = $(".mgs-co-wait-t"); if (wt) wt.textContent = label;
+    /* Le badge de l'écran d'attente est le STATUT (« Preuve en vérification » /
+       « Vérification en cours »), le message « quand ça vient » est à part. */
+    var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = label || t("order.banner.proofWaiting");
+    var wt = $(".mgs-co-wait-t"); if (wt) wt.textContent = next;
   }
   function pollOrder() {
     if (co.poll) clearInterval(co.poll); if (!co.order) return; var tries = 0, pollFails = 0;
@@ -6156,7 +6186,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var rc = el.closest(".mgs-co-recent-chip"); if (rc) { stop(e); var ri = $(".mgs-co-id-input"); if (ri) ri.value = rc.dataset.id; /* main IdentityFieldsVerify.js:185-188 : remplit le champ, ne vérifie PAS */ return; }
     if (el.closest(".mgs-co-verify")) { stop(e); verifyId(); return; }
     var m = el.closest(".mgs-co-method"); if (m) { stop(e); var netBox = el.closest(".mgs-co-networks"); if (netBox) { /* choix du réseau USDT (REF Checkout.js:335-339) */ $$(".mgs-co-method", netBox).forEach(function (x) { x.classList.remove("is--active"); }); m.classList.add("is--active"); var nr = $("input", m); if (nr) nr.checked = true; co.network = nr ? nr.value : ""; return; } $$(".mgs-co-method").forEach(function (x) { x.classList.remove("is--active"); }); m.classList.add("is--active"); var r = $("input", m); if (r) r.checked = true; co.method = r ? r.value : ""; renderNetworks(); return; }
-    if (el.closest(".mgs-co-submit")) { stop(e); if (!co.verified) { coStatus("is--err", esc(t("checkout.verifyRequired"))); return; } if (!co.method) { toast(t("checkout.selectMethod"), "err"); return; } if (co.method === "Binance" && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.papiOff"), "err"); return; } if (co.method === "Binance" && !co.network) { toast(t("checkout.chooseNetwork"), "err"); return; } if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.enabled()) { openHuman(); } else { createOrder(); } return; }
+    if (el.closest(".mgs-co-submit")) { stop(e); if (!co.verified) { coStatus("is--err", esc(t("checkout.verifyRequired"))); return; } if (!co.method) { toast(t("checkout.selectMethod"), "err"); return; } if (co.method === "Binance" && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.papiOff"), "err"); return; } if (co.method === "Binance" && !co.network) { toast(t("checkout.chooseNetwork"), "err"); return; } openHuman(); return; }
     if (el.closest(".mgs-co-back")) { stop(e); stopPaymentPoll(); window.mgsShowPage("boutique"); return; }
     if (el.closest(".mgs-co-back2")) { stop(e); stopTimer(); stopPaymentPoll(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } coShow(1); return; }
     if (el.closest(".mgs-co-proof")) { stop(e); openProofSheet(); return; }
@@ -6168,7 +6198,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (el.closest(".mgs-co-cancel-confirm")) { stop(e); confirmCancel(); return; }
     if (el.closest(".mgs-co-done")) { stop(e); coFinish(); return; }
     if (el.closest(".mgs-human-close") || el.closest(".mgs-human-cancel") || el.classList.contains("mgs-human-overlay")) { stop(e); closeHuman(); return; }
-    if (el.closest(".mgs-human-confirm")) { stop(e); if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.getToken()) createOrder(); return; }
+    if (el.closest(".mgs-human-confirm")) { stop(e); if (!window.MGS_CAPTCHA || !window.MGS_CAPTCHA.enabled() || window.MGS_CAPTCHA.getToken()) createOrder(); return; }
     /* compte */
     if (el.closest(".mgs-page[data-page=compte]")) { var ctxt = (el.closest(".button-main") || {}).textContent || ""; if (/Déconnexion|Sign out/i.test(ctxt)) { stop(e); logout(); return; } if (/Enregistrer|Save/i.test(ctxt)) { stop(e); saveProfile(); return; } if (/Changer le mot de passe|Change password/i.test(ctxt)) { stop(e); changePassword(); return; } if (/Supprimer le compte|Delete account/i.test(ctxt)) { stop(e); deleteAccount(); return; } }
     /* connexion */
