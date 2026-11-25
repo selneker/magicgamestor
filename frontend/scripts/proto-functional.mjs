@@ -87,7 +87,10 @@ function mockApi(page, state) {
     const cryptoDeadline = new Date(Date.now() + 30 * 60000).toISOString();
     const cryptoPayment = (status) => ({ id: "pay1", order_id: "o1", order_number: "MGS-001", network: "TRC20", binance_network: "TRX", currency: "USDT", address: CRYPTO_ADDRESS, memo: null, amount_usdt: "2.7812", base_usdt: "2.78", amount_ar: 12500, rate_ar_per_usdt: 4500, status, tx_hash: null, created_at: now, expires_at: cryptoDeadline });
 
-    if (p === "/auth/me" && method === "GET") return state.loggedIn ? json(USER) : json({ detail: "Non authentifié" }, 401);
+    if (p === "/auth/me" && method === "GET") {
+      if (state.meDelay) await new Promise((r) => setTimeout(r, state.meDelay));
+      return state.loggedIn ? json(USER) : json({ detail: "Non authentifié" }, 401);
+    }
     if (p === "/auth/login" && method === "POST") { state.loggedIn = true; return json({ user: USER, access_token: "t" }); }
     if (p === "/auth/register" && method === "POST") { state.loggedIn = true; return json({ user: USER, access_token: "t" }); }
     if (p === "/auth/logout" && method === "POST") { state.loggedIn = false; return json({ ok: true }); }
@@ -131,6 +134,36 @@ const txt = (page, sel) => page.locator(sel).first().textContent();
 const cartLen = (page) => page.evaluate(() => { try { return (JSON.parse(localStorage.getItem("mgs_cart")) || []).length; } catch { return 0; } });
 // bouton panier VISIBLE (le header desktop .nav-cart-btn est masqué sur mobile 390px)
 const clickCart = (page) => page.locator('button[aria-label*="Panier"]:visible').first().click();
+/* Enregistre, AVANT le chargement, les pages successives et les animations
+   d'entrée — sans cela on ne peut pas prouver l'absence d'un éclair « connexion ». */
+async function recordNavigation(page) {
+  await page.addInitScript(() => {
+    window.__mgsSeenPages = [];
+    window.__mgsPageAnims = [];
+    const rec = () => {
+      const p = document.body && document.body.getAttribute("data-page");
+      if (p && window.__mgsSeenPages[window.__mgsSeenPages.length - 1] !== p) window.__mgsSeenPages.push(p);
+    };
+    setInterval(rec, 4);
+    document.addEventListener("animationstart", (e) => {
+      if (e.animationName === "mgsPageIn") window.__mgsPageAnims.push(e.target.getAttribute("data-page") || "");
+    }, true);
+  });
+}
+async function chromeState(page) {
+  return page.evaluate(() => {
+    const disp = (s) => { const e = document.querySelector(s); return e ? getComputedStyle(e).display : null; };
+    const active = document.querySelector(".bottom-nav-item.is--active");
+    return {
+      nav: disp(".nav-w"),
+      footer: disp(".footer"),
+      bottom: disp(".bottom-nav-w"),
+      logo: [disp(".nav-logo-desktop"), disp(".nav-logo-mobile")].filter((d) => d && d !== "none").length > 0,
+      bottomItem: active ? active.getAttribute("aria-current") : null,
+      mobile: matchMedia("(max-width:991px)").matches,
+    };
+  });
+}
 
 async function addFirstProduct(page) {
   await page.evaluate(() => window.mgsShowPage("boutique"));
@@ -156,7 +189,7 @@ async function verifyAndSubmit(page, methodValue) {
   await page.locator(".mgs-co-submit").click();
   await page.waitForFunction(() => !document.querySelector(".mgs-human-popup").hidden, null, { timeout: 8000 });
   // captcha désactivé (pas de clé) => flux case à cocher existant
-  await page.locator(".mgs-human-cb").check();
+  await page.locator(".mgs-human-cb").check({ force: true });
   await page.waitForFunction(() => !document.querySelector(".mgs-human-confirm").disabled, null, { timeout: 8000 });
   await page.locator(".mgs-human-confirm").click();
 }
@@ -335,20 +368,30 @@ test("liens internes du template (hero, FAQ, colonnes du pied de page) naviguent
   }
 });
 
-test("favoris : bascule + persistance localStorage", async (page) => {
+test("boutique : cartes sans favori, quasi carrées et textes réduits", async (page) => {
   await boot(page);
   await page.evaluate(() => window.mgsShowPage("boutique"));
   await page.locator('.mgs-game[data-gamename="PUBG Mobile"]').first().click();
   await page.waitForSelector('.mgs-pcard[data-pid="p1"]', { timeout: 15000 });
-  const fav = page.locator('.mgs-pcard[data-pid="p1"] .mgs-pcard__fav');
-  await fav.click();
-  await page.waitForFunction(() => { try { return JSON.parse(localStorage.getItem("mgs_favorites") || "[]").indexOf("p1") >= 0; } catch { return false; } }, null, { timeout: 8000 });
-  assert.equal(await fav.getAttribute("aria-pressed"), "true");
-  await fav.click();
-  await page.waitForFunction(() => { try { return JSON.parse(localStorage.getItem("mgs_favorites") || "[]").indexOf("p1") < 0; } catch { return false; } }, null, { timeout: 8000 });
-  assert.equal(await fav.getAttribute("aria-pressed"), "false");
+  assert.equal(await page.locator(".mgs-pcard__fav").count(), 0, "aucune icône de favori dans les cartes");
+  assert.equal(await page.evaluate(() => localStorage.getItem("mgs_favorites") === null), true, "plus d'état favori");
+  const box = await page.locator('.mgs-pcard[data-pid="p1"]').boundingBox();
+  assert.ok(Math.abs(box.width / box.height - 1) <= 0.15, `carte quasi carrée: ${box.width}×${box.height}`);
+  /* Le débordement du marquee template est antérieur et hors périmètre : on mesure
+     seulement la grille de cartes, que nous avons modifiée. */
+  const gridOk = await page.evaluate(() => {
+    const g = document.querySelector(".mgs-boutique-catalog .mgs-grid");
+    return !!g && Array.from(g.querySelectorAll(".mgs-pcard")).every((c) => c.getBoundingClientRect().right <= innerWidth + 1) && g.scrollWidth <= g.clientWidth + 1;
+  });
+  assert.ok(gridOk, "les cartes ne doivent pas déborder de leur grille");
+  const sizes = await page.evaluate(() => ({
+    amount: parseFloat(getComputedStyle(document.querySelector('.mgs-pcard[data-pid="p1"] .mgs-pcard__amount')).fontSize),
+    title: (() => { const e = document.querySelector(".mgs-pcard__title"); return e ? parseFloat(getComputedStyle(e).fontSize) : null; })(),
+  }));
+  assert.ok(sizes.amount <= 36 && (sizes.title === null || sizes.title <= 18), `textes réduits: ${JSON.stringify(sizes)}`);
+  const add = await page.locator('.mgs-pcard[data-pid="p1"] .mgs-pill__add').boundingBox();
+  assert.ok(add.width >= 44 && add.height >= 44, `cible tactile ${add.width}×${add.height}`);
 });
-
 test("fiche produit : remplie depuis la carte cliquée + ajout au panier", async (page, state) => {
   state.loggedIn = true;
   await boot(page);
@@ -366,16 +409,144 @@ test("fiche produit : remplie depuis la carte cliquée + ajout au panier", async
   assert.equal(item.price, 32000);
 });
 
+/* ---------- lot 1 : session déjà connectée, sans éclair de connexion ---------- */
+async function assertConnectedDirect(page, state) {
+  state.loggedIn = true;
+  await recordNavigation(page);
+  await page.goto(new URL("connexion", page.url()).href, { waitUntil: "load", timeout: 30000 });
+  await pageIs(page, "boutique");
+  await page.waitForFunction(() => location.pathname === "/boutique", null, { timeout: 10000 });
+  const seen = await page.evaluate(() => window.__mgsSeenPages.slice());
+  assert.ok(!seen.includes("connexion"), "aucune page connexion ne doit être peinte, vues: " + seen.join(","));
+  const anims = await page.evaluate(() => window.__mgsPageAnims.slice());
+  const animName = await page.evaluate(() => getComputedStyle(document.querySelector('.mgs-page[data-page="boutique"]')).animationName);
+  assert.equal(animName, "mgsPageIn", "l'animation d'entrée doit rester portée par la page finale");
+  assert.ok(anims.length >= 1, "au moins une animation d'entrée doit être observée");
+  await boot(page);
+  const chrome = await chromeState(page);
+  assert.notEqual(chrome.nav, "none", "la nav doit rester visible");
+  assert.notEqual(chrome.footer, "none", "le pied doit rester visible");
+  assert.equal(chrome.logo, true, "le logo doit rester visible");
+  if (chrome.mobile) {
+    assert.notEqual(chrome.bottom, "none", "la bottom-nav doit rester visible sur mobile");
+    assert.equal(chrome.bottomItem, "page", "l'item choisi des jeux doit être actif");
+  }
+}
+test("session connectée : /connexion mène directement aux jeux, chrome et animation conservés", (page, state) => assertConnectedDirect(page, state));
+test("session connectée lente : pas d'éclair de connexion avant /auth/me", async (page, state) => {
+  state.meDelay = 1200;
+  await assertConnectedDirect(page, state);
+});
+test("invité : /connexion affiche bien le formulaire (chrome masqué volontairement)", async (page, state) => {
+  state.loggedIn = false;
+  await recordNavigation(page);
+  await page.goto(new URL("connexion", page.url()).href, { waitUntil: "load", timeout: 30000 });
+  await pageIs(page, "connexion");
+  const seen = await page.evaluate(() => window.__mgsSeenPages.slice());
+  assert.ok(seen.includes("connexion"), "pages vues: " + seen.join(","));
+  const chrome = await chromeState(page);
+  assert.equal(chrome.nav, "none");
+  assert.equal(chrome.bottom, "none");
+});
+test("déjà connecté : toute navigation vers connexion part aux jeux", async (page, state) => {
+  state.loggedIn = true;
+  await boot(page);
+  /* Observateur posé APRÈS le chargement : le changement est déclenché par l'appel
+     ci-dessous, pas par une navigation. */
+  await page.evaluate(() => {
+    window.__mgsSeenPages = [document.body.getAttribute("data-page")];
+    new MutationObserver(() => {
+      const p = document.body.getAttribute("data-page");
+      if (p && window.__mgsSeenPages[window.__mgsSeenPages.length - 1] !== p) window.__mgsSeenPages.push(p);
+    }).observe(document.body, { attributes: true, attributeFilter: ["data-page"] });
+  });
+  await page.evaluate(() => window.mgsShowPage("connexion"));
+  await pageIs(page, "boutique");
+  const seen = await page.evaluate(() => window.__mgsSeenPages.slice());
+  assert.ok(!seen.includes("connexion"), "vues: " + seen.join(","));
+});
+
+/* ---------- lot 3 : /commande ---------- */
+test("commande : ID modifiable, statut noir près des suggestions, popin nettoyée", async (page) => {
+  await boot(page);
+  await addFirstProduct(page);
+  await openCheckout(page);
+  await page.locator(".mgs-co-id-input").fill("123456789");
+  await page.locator(".mgs-co-verify").click();
+  await page.waitForSelector(".mgs-co-id-status.is--ok", { timeout: 10000 });
+  const idState = await page.evaluate(() => {
+    const st = document.querySelector(".mgs-co-id-status");
+    const foot = document.querySelector(".mgs-co-id-foot");
+    const probe = document.createElement("span");
+    probe.style.color = "var(--color--dark)";
+    document.body.appendChild(probe);
+    const expected = getComputedStyle(probe).color;
+    probe.remove();
+    return {
+      color: getComputedStyle(st).color,
+      expected,
+      beforeFoot: !!(st.nextElementSibling && st.nextElementSibling.classList.contains("mgs-co-id-foot")),
+      changeH: document.querySelector(".mgs-co-change-id").getBoundingClientRect().height,
+    };
+  });
+  assert.equal(idState.color, idState.expected, "le statut « Kapotue » est en noir nu");
+  assert.equal(idState.beforeFoot, true, "le statut est juste avant le bloc des suggestions");
+  assert.ok(idState.changeH >= 44, `cible tactile du bouton ID: ${idState.changeH}px`);
+  await page.locator(".mgs-co-change-id").click();
+  assert.equal(await page.locator(".mgs-co-id-input").inputValue(), "", "le champ est vidé");
+  assert.equal(await page.locator(".mgs-co-id-status").isVisible(), false, "le statut est réinitialisé");
+
+  await page.locator(".mgs-co-id-input").fill("123456789");
+  await page.locator(".mgs-co-verify").click();
+  await page.waitForSelector(".mgs-co-id-status.is--ok", { timeout: 10000 });
+  await page.locator('.mgs-co-method input[value="MVola"]').locator("xpath=ancestor::label[contains(@class,'mgs-co-method')]").click();
+  await page.waitForFunction(() => document.querySelector('.mgs-co-method input[value="MVola"]').closest(".mgs-co-method").classList.contains("is--active"), null, { timeout: 8000 });
+  await page.locator(".mgs-co-submit").hover();
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector(".mgs-co-submit")).boxShadow), "none", "aucune ombre au survol du bouton");
+  await page.locator(".mgs-co-submit").click();
+  await page.waitForFunction(() => !document.querySelector(".mgs-human-popup").hidden, null, { timeout: 8000 });
+  const pop = await page.evaluate(() => {
+    const p = document.querySelector(".mgs-human-popup");
+    const foot = p.querySelector(".mgs-human-foot");
+    const confirm = p.querySelector(".mgs-human-confirm");
+    const label = p.querySelector(".mgs-human-sr");
+    return {
+      shadow: getComputedStyle(p).boxShadow,
+      cancel: p.querySelectorAll(".mgs-human-cancel").length,
+      labelVisible: label ? label.getBoundingClientRect().width > 2 : false,
+      confirmW: confirm.getBoundingClientRect().width,
+      footW: foot.clientWidth,
+      checkW: p.querySelector(".mgs-human-cb").getBoundingClientRect().width,
+      gap: parseFloat(getComputedStyle(foot).gap) || 0,
+      cb: !!p.querySelector(".mgs-human-cb"),
+      disabledAtOpen: confirm.disabled,
+    };
+  });
+  assert.equal(pop.shadow, "none", "pas d'ombre noire sur la boîte");
+  assert.equal(pop.cancel, 0, "bouton « Fermer » retiré de cette popin");
+  assert.equal(pop.labelVisible, false, "libellé visible retiré");
+  assert.equal(pop.cb, true, "la case reste présente");
+  assert.equal(pop.disabledAtOpen, true, "la case pilote toujours le bouton");
+  const expectedConfirmW = pop.footW - pop.checkW - pop.gap;
+  assert.ok(Math.abs(pop.confirmW - expectedConfirmW) <= 2, `bouton pleine largeur restante: ${pop.confirmW}/${expectedConfirmW}`);
+  await page.locator(".mgs-human-cb").check({ force: true });
+  assert.equal(await page.locator(".mgs-human-confirm").isEnabled(), true);
+  await page.locator(".mgs-human-popup:not(.mgs-co-cancel-popup) .mgs-human-close").click();
+  await page.waitForFunction(() => document.querySelector(".mgs-human-popup").hidden, null, { timeout: 8000 });
+});
+
 /* ---------- runner : chaque test à chaque viewport ---------- */
 async function main() {
   if (!fs.existsSync(BUILD)) { console.error("[erreur] build/index.html absent : lancez `yarn build` d'abord."); process.exit(2); }
+  const only = process.env.MGS_TEST_FILTER ? new RegExp(process.env.MGS_TEST_FILTER) : null;
+  const selected = only ? tests.filter((t) => only.test(t.name)) : tests;
   const executablePath = findChromium();
   const { server, url } = process.env.MGS_PROTO_URL ? { server: null, url: process.env.MGS_PROTO_URL } : await serveBuild();
   const browser = await chromium.launch({ executablePath, args: ["--no-sandbox", "--disable-dev-shm-usage"] });
   let pass = 0, fail = 0; const failures = [];
   for (const vp of VIEWPORTS) {
     console.log(`\n=== ${vp.label} (${vp.width}×${vp.height}) ===`);
-    for (const { name, fn } of tests) {
+    for (const { name, fn } of selected) {
       const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } });
       context.setDefaultTimeout(12000);
       const page = await context.newPage();
@@ -399,7 +570,7 @@ async function main() {
   }
   await browser.close();
   if (server) server.close();
-  console.log(`\n${pass} passed, ${fail} failed (${tests.length * VIEWPORTS.length} runs)`);
+  console.log(`\n${pass} passed, ${fail} failed (${selected.length * VIEWPORTS.length} runs)`);
   if (failures.length) { console.log("\nÉchecs :"); failures.forEach((f) => console.log("  - " + f)); }
   process.exit(fail ? 1 : 0);
 }
