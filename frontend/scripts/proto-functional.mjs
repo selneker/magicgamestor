@@ -471,6 +471,7 @@ test("commande : ID modifiable, statut noir près des suggestions, popin nettoy�
   await boot(page);
   await addFirstProduct(page);
   await openCheckout(page);
+  assert.equal(await page.locator(".mgs-co-change-id").isVisible(), false, "le bouton est masqué avant vérification");
   await page.locator(".mgs-co-id-input").fill("123456789");
   await page.locator(".mgs-co-verify").click();
   await page.waitForSelector(".mgs-co-id-status.is--ok", { timeout: 10000 });
@@ -487,14 +488,23 @@ test("commande : ID modifiable, statut noir près des suggestions, popin nettoy�
       expected,
       beforeFoot: !!(st.nextElementSibling && st.nextElementSibling.classList.contains("mgs-co-id-foot")),
       changeH: document.querySelector(".mgs-co-change-id").getBoundingClientRect().height,
+      label: document.querySelector(".mgs-co-change-id").textContent.trim(),
+      insideField: (() => {
+        const b = document.querySelector(".mgs-co-change-id").getBoundingClientRect();
+        const i = document.querySelector(".mgs-co-id-input").getBoundingClientRect();
+        return b.left >= i.left && b.right <= i.right + 1 && b.top >= i.top - 1 && b.bottom <= i.bottom + 1;
+      })(),
     };
   });
   assert.equal(idState.color, idState.expected, "le statut « Kapotue » est en noir nu");
   assert.equal(idState.beforeFoot, true, "le statut est juste avant le bloc des suggestions");
   assert.ok(idState.changeH >= 44, `cible tactile du bouton ID: ${idState.changeH}px`);
+  assert.equal(idState.label, "change", "libellé réduit à « change »");
+  assert.equal(idState.insideField, true, "le bouton est à l'intérieur du champ");
   await page.locator(".mgs-co-change-id").click();
   assert.equal(await page.locator(".mgs-co-id-input").inputValue(), "", "le champ est vidé");
   assert.equal(await page.locator(".mgs-co-id-status").isVisible(), false, "le statut est réinitialisé");
+  assert.equal(await page.locator(".mgs-co-change-id").isVisible(), false, "le bouton se masque avec le statut");
 
   await page.locator(".mgs-co-id-input").fill("123456789");
   await page.locator(".mgs-co-verify").click();

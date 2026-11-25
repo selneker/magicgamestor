@@ -45,6 +45,7 @@ Statut : plan opérationnel. Un lot = un commit `fix(<zone>): …`, validation a
 - [x] 4. Popin de vérification humaine : retirer `box-shadow` de `.mgs-human-popup` (`:1220`) ; retirer le bouton `.mgs-human-cancel` **de cette popin uniquement** (`:3696`) — la classe est partagée avec la popin d'annulation (`:3709`) et son gestionnaire (`:6200`) ; retirer le texte visible du `<label>` (`:3696`) en gardant la checkbox `.mgs-human-cb` et un nom accessible non visible pour `openHuman()` (`:4380-4407`). Laisser le bouton X (`:3693`) fermer la popin.
 - [x] 5. Bouton pleine largeur : dans `.mgs-human-foot` (`:1238`) / `.mgs-human-confirm` (`:1240`), faire occuper toute la largeur de la boîte au bouton (`flex:1 1 auto;width:100%;min-width:0`) ; les spans internes sont déjà à 100 %. Contrôle par rects à 390 px.
 - [x] 6. Contrôles : la case/Turnstile continue de piloter `disabled` (`:4386-4407`) ; `closeHuman()` (`:4409`) reste fonctionnel ; aucun `box-shadow` résiduel mesuré.
+- [x] 7. Correctif feedback : le bouton « change » est DANS le champ ID (wrapper `.mgs-co-id-field`, position absolue à droite, padding droit réservé sur l'input), masqué par défaut et affiché uniquement quand le nom vérifié est affiché (`.mgs-co-id-status.is--ok:not([hidden])` via `:has`). Libellé FR/EN réduit à « change ».
 
 ## 3. Vérification à l'implémentation
 
