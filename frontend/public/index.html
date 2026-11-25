@@ -3509,6 +3509,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   }
   function mgsReveal(page){ /* contenu visible d'emblée ; l'entrée de page est portée par mgsPageIn */ }
   function showPage(id){
+    /* Session résolue et compte présent : l'écran de connexion n'est jamais affiché
+       (le visiteur connecté part directement au choix des jeux, chrome compris). */
+    if (id === "connexion" && window.mgsIsConnected && window.mgsIsConnected()) id = "boutique";
     var target=doc.querySelector('.mgs-page[data-page="'+id+'"]');
     if(!target) return;
     body.setAttribute("data-page",id);
@@ -3838,6 +3841,9 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- session ---------- */
   var me = null, payCfg = null, gamesCache = null, sessionResolved = false;
+  /* Le script du template (showPage) est un `<script>` distinct : il lit l'état
+     de session via cet accessor, sans accéder directement à la variable locale `me`. */
+  window.mgsIsConnected = function () { return !!me; };
   /* Session : un 401 est une absence de session certaine (silencieux) ; une panne
      (403 origine, réseau, 5xx) est réessayée 2 fois puis laissée hors ligne, sans
      message — même politique que main (frontend/src/context/AuthContext.js:27-49). */
@@ -6226,11 +6232,16 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     renderCart(); renderRecent(); loadPayCfg(); syncFavs(); maskUnsupported();
     /* L'écran demandé par l'URL s'affiche TOUT DE SUITE : la vérification de
        session (deux reprises de 3 s et 8 s en cas de réseau lent) ne doit pas
-       retarder la page — un visiteur qui ouvre /boutique doit voir la boutique. */
+       retarder la page — un visiteur qui ouvre /boutique doit voir la boutique.
+       Exception : les pages dépendantes de la session, qui ne doivent jamais
+       clignoter en « connexion » avant que `/auth/me` ait répondu. */
     var early = mgsPageFromUrl();
-    if (early !== (body.getAttribute("data-page") || "accueil")) window.mgsShowPage(early);
-    else mgsSyncUrl(early, true);
-    if (window.mgsSetNav) mgsSetNav(early);
+    var waitSession = SESSION_LOADERS.indexOf(early) >= 0 && !sessionResolved;
+    if (!waitSession) {
+      if (early !== (body.getAttribute("data-page") || "accueil")) window.mgsShowPage(early);
+      else mgsSyncUrl(early, true);
+      if (window.mgsSetNav) mgsSetNav(early);
+    }
     /* main : « Se souvenir » est coché par défaut (AuthPage.js:25) */
     var rem = $('.mgs-page[data-page=connexion] input[type="checkbox"]'); if (rem) rem.checked = true;
     handleGoogleError();
@@ -6257,6 +6268,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       }
       resumePendingOrder(function () {
         var fromUrl = mgsPageFromUrl();
+        /* Arrivée sur /connexion avec une session déjà ouverte : on réécrit l'URL
+           AVANT le changement de page, pour ne pas laisser d'entrée « connexion »
+           dans l'historique ni d'éclair de formulaire. */
+        if (waitSession && me && fromUrl === "connexion") mgsSyncUrl("boutique", true);
         if (fromUrl !== (body.getAttribute("data-page") || "accueil")) window.mgsShowPage(fromUrl);
         else mgsSyncUrl(fromUrl, true);
         openDeepLink();
