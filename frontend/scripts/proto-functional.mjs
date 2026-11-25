@@ -377,6 +377,7 @@ test("boutique : cartes sans favori, quasi carrées et textes réduits", async (
   assert.equal(await page.evaluate(() => localStorage.getItem("mgs_favorites") === null), true, "plus d'état favori");
   const box = await page.locator('.mgs-pcard[data-pid="p1"]').boundingBox();
   assert.ok(Math.abs(box.width / box.height - 1) <= 0.15, `carte quasi carrée: ${box.width}×${box.height}`);
+  assert.ok(box.width <= 190 && box.height <= 190, `carte pas plus grande que le format réduit: ${box.width}×${box.height}`);
   /* Le débordement du marquee template est antérieur et hors périmètre : on mesure
      seulement la grille de cartes, que nous avons modifiée. */
   const gridOk = await page.evaluate(() => {
