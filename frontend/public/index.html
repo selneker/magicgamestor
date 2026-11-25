@@ -796,7 +796,9 @@ html.reduced-motion svg.footer-row-col-img, html.reduced-motion .marquee-cta-dot
 .mgs-field{display:flex;flex-direction:column;gap:.4em;margin-bottom:1em}
 .mgs-field label{font-weight:700;font-size:.8em;text-transform:uppercase;letter-spacing:.05em}
 .mgs-input{border:.125em solid var(--color--dark);background:var(--color--light);color:var(--color--dark);height:3.2em;border-radius:100em;padding:0 1.2em;font-size:.95em;font-family:'Onest',Arial,sans-serif;width:100%}
-.mgs-input:focus{outline:none;box-shadow:0 0 0 .2em var(--color--yellow-700)}
+@media (max-width:767px){.mgs-input{font-size:16px}}
+.mgs-input:focus{outline:none}
+.mgs-input:focus-visible{box-shadow:0 0 0 .2em var(--color--yellow-700)}
 textarea.mgs-input{height:auto;min-height:6em;border-radius:1.25em;padding:1em 1.2em;resize:vertical}
 .mgs-help{font-size:.75em;opacity:.6}
 
@@ -806,6 +808,8 @@ textarea.mgs-input{height:auto;min-height:6em;border-radius:1.25em;padding:1em 1
 /* breadcrumb */
 .mgs-crumb{display:flex;align-items:center;gap:.5em;font-size:.8em;font-weight:600;text-transform:uppercase;letter-spacing:.05em;opacity:.7;margin-bottom:1.25em}
 .mgs-crumb a:hover{opacity:1;text-decoration:underline}
+.mgs-crumb a{position:relative}
+.mgs-crumb a::after{content:"";position:absolute;left:50%;top:50%;width:100%;min-width:44px;height:44px;transform:translate(-50%,-50%)}
 
 /* divers */
 .mgs-empty{border:.125em dashed var(--color--dark);border-radius:1.5em;padding:3em 1.5em;text-align:center;display:flex;flex-direction:column;align-items:center;gap:1em}
@@ -1008,6 +1012,8 @@ body[data-page="connexion"] .main-w{padding-bottom:0}
 .mgs-pref-l .bold-ic{width:1.3em;height:1.3em}
 .mgs-tag-toggle{border:.125em solid var(--color--dark);border-radius:100em;background:var(--color--light);color:var(--color--dark);font-weight:800;text-transform:uppercase;letter-spacing:.08em;font-size:.72em;padding:.5em 1.1em;cursor:pointer;transition:.2s;min-width:4.5em}
 .mgs-tag-toggle:hover{background:var(--color--yellow-700)}
+.mgs-tag-toggle{position:relative}
+.mgs-tag-toggle::after{content:"";position:absolute;left:50%;top:50%;width:100%;min-width:44px;height:44px;transform:translate(-50%,-50%)}
 </style>
 <style>
 /* Polices de marque : Bricolage Grotesque (display) + Onest (texte) — woff2 variables self-hosted, latin */
@@ -3707,7 +3713,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 </div>
 
 <div class="mgs-human-overlay mgs-co-cancel-overlay" hidden></div>
-<div class="mgs-human-popup mgs-co-cancel-popup" hidden role="dialog" aria-label="Annuler la commande">
+<div class="mgs-human-popup mgs-co-cancel-popup" hidden role="dialog" aria-modal="true" aria-label="Annuler la commande">
   <div class="mgs-human-head"><p data-i18n="checkout.cancelTitle">Annuler la commande</p><button type="button" class="mgs-human-close mgs-co-cancel-close" aria-label="Fermer"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
   <div class="mgs-field" style="display:flex;flex-direction:column;gap:.55em;margin-bottom:1em">
     <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="wrong_info" checked> <span data-i18n="checkout.cancelWrongInfo">Je me suis trompé (ID ou produit)</span></label>
@@ -4553,6 +4559,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   });
   doc.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
+    var cp = $(".mgs-co-cancel-popup");
+    if (cp && !cp.hidden) { closeCancel(); return; }
     var sh = $(".mgs-co-sheet");
     if (sh && !sh.hidden) { closeProofSheet(); return; }
   });
@@ -4771,8 +4779,18 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       });
     }
     if (o) o.hidden = false; p.hidden = false;
+    p.__mgsCancelTrigger = document.activeElement;
+    $$(".main-w,.nav-w,.footer,.bottom-nav-w").forEach(function (el) { el.setAttribute("inert", ""); });
+    var first = $("input[name='co-cancel-reason']", p);
+    if (first) first.focus();
   }
-  function closeCancel() { var o = $(".mgs-co-cancel-overlay"), p = $(".mgs-co-cancel-popup"); if (o) o.hidden = true; if (p) p.hidden = true; }
+  function closeCancel() {
+    var o = $(".mgs-co-cancel-overlay"), p = $(".mgs-co-cancel-popup");
+    if (o) o.hidden = true; if (p) p.hidden = true;
+    $$(".main-w,.nav-w,.footer,.bottom-nav-w").forEach(function (el) { el.removeAttribute("inert"); });
+    var back = p && p.__mgsCancelTrigger;
+    if (back && typeof back.focus === "function" && document.contains(back)) back.focus();
+  }
   function confirmCancel() {
     var p = $(".mgs-co-cancel-popup");
     var r = $("input[name='co-cancel-reason']:checked", p);
