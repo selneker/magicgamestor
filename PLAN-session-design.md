@@ -36,6 +36,7 @@ Statut : plan opérationnel. Un lot = un commit `fix(<zone>): …`, validation a
 - [x] 1. Retirer les favoris jusqu'à la racine (consigne « clean le code ») : markup des 8 cartes, CSS `:914-918`, `FAV_KEY`/`getFavs`/`toggleFav`/`syncFavs` `:3956-3959`, délégués `:3630` et `:6162`, clé i18n si elle existe. Contrôle final : `grep -i "fav"` sur le fichier servi ne remonte plus aucune occurrence fonctionnelle.
 - [x] 2. Cartes quasi carrées : ajuster `.mgs-pcard` (`:907`) avec un `aspect-ratio` proche de 1, puis réduire les tailles de texte internes (`.mgs-pcard__amount` `:920-921`, `.mgs-pcard__title` `:924`, et si nécessaire badge/catégorie `:911,923`). Uniquement des jetons existants (`--color--*`, `--font--*`). Conserver le hover (`:908`).
 - [x] 3. Mesurer à 390 px et 1 440 px : rapport largeur/hauteur de la carte, taille de police calculée, `document.scrollWidth === innerWidth`, cible tactile `.mgs-pill__add` ≥ 44 px (`:943`), aucun texte coupé.
+- [x] 4. Correctif feedback : la carte reste carrée mais plafonnée à `max-width:11em` (≈176 px) et centrée dans sa colonne — elle ne grandit plus en hauteur sur desktop (330×330 → ≈176×176), le format mobile reste ≈171×171.
 
 ### Lot 3 — `/commande`
 
