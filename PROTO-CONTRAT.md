@@ -35,14 +35,16 @@ Clé **publique** du site, ou `""`. Sources, dans cet ordre :
 2. `<meta name="mgs-turnstile-sitekey" content="…">`.
 
 `main` la lit au build via `process.env.REACT_APP_TURNSTILE_SITE_KEY`
-(`CaptchaWidget.js:47-51`). Le prototype n'a pas d'étape de build : il faut donc
-fournir la valeur par l'une des deux sources ci-dessus (voir « Points ouverts »).
+(`CaptchaWidget.js:47-51`). Le prototype reçoit la valeur au postbuild
+(`frontend/scripts/inject-turnstile-key.mjs`, hook `postbuild` de `package.json`) :
+un build Render sans variable échoue (exit 1), et la page source garde `content=""`.
 
 ### `MGS_CAPTCHA.enabled()` → `boolean`
 
 `true` si une clé est présente. Quand c'est `false`, **le champ `captcha_token`
-doit être omis** de toutes les requêtes : le backend l'ignore quand
-`TURNSTILE_SECRET_KEY` est vide (`backend/services/captcha.py:42-46`).
+doit être omis** de toutes les requêtes. Hors production, le backend saute alors
+la vérification ; **sur Render, un secret absent REFUSE la commande** (400
+`captcha_required`, fail-closed — `backend/services/captcha.py:54`).
 
 ### `MGS_CAPTCHA.render(containerElement, { onToken, onExpire, appearance })`
 

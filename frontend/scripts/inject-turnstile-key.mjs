@@ -15,10 +15,10 @@
  * lecture aligné sur CRA : process.env d'abord, puis les fichiers .env de
  * production, le premier qui DÉFINIT la variable gagnant.
  *
- * Sans clé : le fichier n'est pas modifié et un avertissement explicite est
- * écrit (la page part alors avec la valeur du fichier source, qui peut être la
- * clé de TEST Cloudflare). Le build n'échoue pas : une page sans CAPTCHA reste
- * préférable à un déploiement bloqué.
+ * Sans clé : hors production, le fichier n'est pas modifié et un avertissement
+ * explicite est écrit. Sur Render (`RENDER` défini), le build ÉCHOUE (exit 1) :
+ * une page livrée sans CAPTCHA est exactement la panne qui a coûté une session,
+ * et un déploiement qui échoue bruyamment vaut mieux qu'une protection absente.
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
@@ -38,6 +38,13 @@ const ENV_FILES = [".env.production.local", ".env.local", ".env.production", ".e
 /* Clé de TEST publique Cloudflare (« always passes ») : sa présence en
  * production signifie qu'aucune protection réelle n'est active. */
 const TEST_SITE_KEY = "1x00000000000000000000AA";
+
+/* Hôte de production : Render exporte `RENDER=true` (build et exécution). */
+const FALSE_VALUES = new Set(["0", "false", "no", "off"]);
+function onRender() {
+  const value = (process.env.RENDER || "").trim().toLowerCase();
+  return Boolean(value) && !FALSE_VALUES.has(value);
+}
 
 const META_RE = /(<meta\s+name="mgs-turnstile-sitekey"\s+content=")([^"]*)(")/;
 
@@ -95,6 +102,14 @@ function main() {
   const key = resolveSiteKey();
 
   if (!key) {
+    if (onRender()) {
+      console.error(
+        "[turnstile-key] RENDER est défini mais aucune site key n'est fournie " +
+          "(REACT_APP_TURNSTILE_SITE_KEY / TURNSTILE_SITE_KEY) : build interrompu — " +
+          "aucune page sans CAPTCHA ne doit partir en production.",
+      );
+      process.exit(1);
+    }
     console.warn(
       "[turnstile-key] REACT_APP_TURNSTILE_SITE_KEY absent de l'environnement et des .env : " +
         `la page livrée garde la clé du fichier source (${current ? mask(current) : "vide"}).` +
