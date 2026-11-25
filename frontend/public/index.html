@@ -1185,6 +1185,36 @@ body[data-page="connexion"] .main-w{padding-bottom:0}
 .mgs-co-recap{width:100%;border:.125em solid var(--color--dark);border-radius:.9em;padding:1em;display:flex;flex-direction:column;gap:.45em;text-align:left}
 .mgs-co-recap div{display:flex;justify-content:space-between;gap:1em;font-size:.85em}
 .mgs-co-recap span{opacity:.6}
+/* ===== FEUILLE D'ENVOI DE LA PREUVE (procédure de la référence) ===== */
+.mgs-co-sheet-ov{position:fixed;inset:0;background:rgba(17,17,17,.55);z-index:3120}
+.mgs-co-sheet{position:fixed;left:0;right:0;bottom:0;z-index:3121;display:flex;flex-direction:column;max-height:calc(100dvh - 3em);background:var(--color--light);border:.125em solid var(--color--dark);border-bottom:0;border-radius:1.4em 1.4em 0 0;padding:1.25em;color:var(--color--dark)}
+@media (min-width:1024px){.mgs-co-sheet{left:50%;right:auto;bottom:auto;top:50%;transform:translate(-50%,-50%);width:30em;max-height:80%;border-bottom:.125em solid var(--color--dark);border-radius:1.4em}}
+.mgs-co-sheet-grip{width:3em;height:.3em;border-radius:100em;background:rgba(0,0,0,.25);margin:0 auto 1em;flex:none}
+.mgs-co-sheet-h{display:flex;align-items:center;justify-content:space-between;gap:1em;margin-bottom:.4em}
+.mgs-co-sheet-h h2{margin:0;font-family:var(--font--display);font-weight:800;font-size:1.2em;line-height:1.2;text-transform:uppercase}
+.mgs-co-sheet-x{width:2.75em;height:2.75em;flex:none;display:grid;place-items:center;border:0;background:none;padding:0;color:var(--color--dark);cursor:pointer}
+.mgs-co-sheet-x svg{width:1.2em;height:1.2em}
+.mgs-co-sheet-b{flex:1;min-height:0;overflow-y:auto}
+.mgs-co-drop{border:.125em dashed rgba(0,0,0,.35);border-radius:1em;padding:1.75em 1em;text-align:center;font-weight:700;font-size:.95em;cursor:pointer;color:var(--color--dark);transition:border-color .2s,background-color .2s}
+.mgs-co-drop:hover{border-color:var(--color--dark);background:rgba(0,0,0,.04)}
+.mgs-co-drop svg{width:2.2em;height:2.2em;display:block;margin:0 auto .6em;opacity:.7}
+.mgs-co-drop small{display:block;margin-top:.5em;font-weight:400;font-size:.8em;opacity:.65}
+.mgs-co-thumbs{display:flex;flex-wrap:wrap;gap:.6em;margin-top:.8em}
+.mgs-co-thumb{position:relative;width:4.5em;height:4.5em;flex:none;border:.125em solid var(--color--dark);border-radius:.7em;overflow:hidden;background:#fff}
+.mgs-co-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.mgs-co-thumb button{position:absolute;top:.15em;right:.15em;width:1.6em;height:1.6em;display:grid;place-items:center;border:0;border-radius:100em;background:var(--color--dark);color:var(--color--light);cursor:pointer;padding:0}
+.mgs-co-thumb button svg{width:.9em;height:.9em}
+.mgs-co-thumbmore{display:grid;place-items:center;width:4.5em;height:4.5em;flex:none;border:.125em dashed rgba(0,0,0,.35);border-radius:.7em;font-weight:800;font-size:.8em;cursor:pointer;color:var(--color--dark)}
+.mgs-co-sheet-f{flex:none;margin-top:1em;padding-top:1em;border-top:.125em solid rgba(0,0,0,.16)}
+.mgs-co-declare{display:flex;align-items:flex-start;gap:.7em;font-size:.82em;line-height:1.35;cursor:pointer}
+.mgs-co-declare input{margin:.15em 0 0;flex:none;width:1.15em;height:1.15em;accent-color:var(--color--dark)}
+.mgs-co-sheet-foot{display:flex;align-items:center;justify-content:space-between;gap:1em;margin-top:1.1em}
+.mgs-co-sheet-count{font-size:.85em;font-weight:700;opacity:.75}
+.mgs-co-sheet-send{height:3.25em;flex:1;border:.125em solid var(--color--dark);border-radius:100em;background:var(--color--green-700);color:var(--color--dark);font-weight:800;cursor:pointer;transition:background-color .2s}
+.mgs-co-sheet-send:hover:not(:disabled){background:var(--color--yellow-700)}
+.mgs-co-sheet-send:disabled{opacity:.4;cursor:not-allowed}
+@media (prefers-reduced-motion:reduce){.mgs-co-sheet,.mgs-co-drop,.mgs-co-sheet-send{transition:none}}
+
 /* ===== VÉRIFICATION HUMAINE ===== */
 .mgs-human-overlay{position:fixed;inset:0;background:rgba(17,17,17,.55);z-index:3100}
 .mgs-human-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(26em,calc(100% - 2em));background:var(--color--light);border:.125em solid var(--color--dark);border-radius:1.1em;z-index:3101;padding:1.5em;color:var(--color--dark);box-shadow:.5em .5em 0 var(--color--dark)}
@@ -1249,12 +1279,39 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
 .mgs-co-id-status.is--err{color:var(--color--red-700)}
 /* écran 2 : marchand en lignes kv, sans bordure de boîte */
 .mgs-co-screen .mgs-co-step-t{font-family:var(--font--display);font-weight:800;font-size:1.2em;text-transform:uppercase;color:var(--color--dark);margin:0 0 .7em}
-.mgs-co-merchant{display:flex;flex-direction:column;gap:0;margin:0 0 .6em}
-.mgs-co-merchant div{display:flex;justify-content:space-between;align-items:baseline;gap:1em;padding:.6em 0;border-top:.0625em solid var(--color--dark-200);font-size:.9em}
-.mgs-co-merchant div:first-child{border-top:0}
-.mgs-co-merchant span{color:var(--color--dark-400)}
-.mgs-co-merchant b{font-weight:700;color:var(--color--dark);font-variant-numeric:tabular-nums}
+/* Étapes numérotées (mêmes losanges que le paiement Binance) + filet vertical */
+.mgs-co-steps{position:relative;margin:0 0 1.5em;padding-left:2.125em}
+.mgs-co-steps::before{content:"";position:absolute;left:.6875em;top:1.35em;bottom:1.35em;width:1px;background:rgba(0,0,0,.16)}
+.mgs-co-steps>.mgs-co-step{position:relative;margin-bottom:1em;display:block}
+.mgs-co-steps>.mgs-co-step:last-child{margin-bottom:0}
+.mgs-co-dia{position:absolute;left:-2.125em;top:0;width:1.375em;height:1.375em;transform:rotate(45deg);border-radius:.375em;background:var(--color--dark);display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
+.mgs-co-dia span{transform:rotate(-45deg);font-size:.6875em;line-height:1;color:var(--color--light)}
+.mgs-co-step-h{margin:0 0 .5em;font-size:1em;font-weight:700;line-height:1.5;color:var(--color--dark)}
+/* Le nom du marchand sert de libellé à l'écran 2 : il doit être raccord avec
+   le titre « Transférer via MVola » et avec la note ci-dessous. */
+.mgs-co-step-h .mgs-co-mname{font-family:inherit;text-transform:none}
+/* Les étapes numérotées ne sont PAS des cartes (retour design : losange dans la
+   marge + filet vertical, comme l'écran Binance). */
+.mgs-co-steps>.mgs-co-step{border:0;border-radius:0;padding:0;gap:0}
+.mgs-co-merchant{display:flex;flex-direction:column;gap:0;margin:0 0 .6em;min-width:0;flex:1 1 auto}
 .mgs-co-screen .mgs-divider{margin:1em 0}
+/* Lignes marchand / Binance : libellé au-dessus de la valeur, icône de copie NUE
+   à droite, comme l'écran Binance. */
+.mgs-co-kv{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:.75em;padding:.6em 0;border-top:.0625em solid rgba(0,0,0,.16);font-size:.9em}
+.mgs-co-kv:first-child{border-top:0}
+.mgs-co-kv-l{min-width:0}
+.mgs-co-kv-l span{display:block;color:rgba(0,0,0,.55)}
+.mgs-co-kv-v{margin:.1em 0 0;font-weight:700;color:var(--color--dark);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.mgs-co-copy{flex:none;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;margin-right:-.9em;border:0;background:none;padding:0;color:rgba(0,0,0,.55);cursor:pointer}
+.mgs-co-copy:hover{color:var(--color--dark)}
+/* Icône de copie PETITE (retour design : pas une icône « très grande ») :
+   16 px dans une zone tactile de 44 px. */
+.mgs-co-copy svg{width:.8em;height:.8em}
+.mgs-co-proof{width:100%;margin-top:.6em;border:.125em solid var(--color--dark);border-radius:100em;background:var(--color--light);color:var(--color--dark);font-weight:700;padding:.7em;cursor:pointer;transition:background-color .2s}
+.mgs-co-proof:hover{background:var(--color--yellow-700)}
+/* Le survol du bouton de preuve ne doit RIEN changé d'autre que le fond :
+   ni translation, ni ombre portée (retour design). */
+.mgs-co-proof.button-main,.mgs-co-proof.button-main:is(:hover,:focus-visible){transform:none;box-shadow:none}
 
 </style>
 </head>
@@ -2591,7 +2648,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
       <div class="mgs-kv"><span>Produit</span><span class="mgs-d-product">PUBG Mobile — 660 UC</span></div>
       <div class="mgs-kv"><span>ID joueur</span><span class="mgs-mono mgs-d-pid">5123456789</span></div>
       <div class="mgs-kv"><span>Méthode</span><span class="mgs-d-method">MVola</span></div>
-      <div class="mgs-kv"><span>Preuves de paiement</span><span>1 preuve envoyée</span></div>
+      <div class="mgs-kv"><span>Preuves de paiement</span><span class="mgs-d-proofs">1 preuve envoyée</span></div>
       <div class="mgs-kv"><span>Numéro de commande</span><span class="mgs-mono mgs-d-num">MGS-2026-0142</span></div>
       <div class="mgs-kv"><span>Commandée le</span><span class="mgs-d-datetime">19 nov 2026 · 14:02</span></div>
       <div class="mgs-divider"></div>
@@ -2766,11 +2823,16 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
   <div class="mgs-co-screen" data-co="2" hidden>
 <div class="mgs-co-top"><button type="button" class="mgs-co-back" aria-label="Retour"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></button><span class="mgs-co-countdown">Payer sous <b class="mgs-co-timer">15:00</b></span></div>
 <p class="mgs-co-step-t">Transférer via <span class="mgs-co-mname">MVola</span></p>
-<div class="mgs-co-merchant"><div><span>Vous payez</span><b class="mgs-co-total2">0 Ar</b></div><div><span>Nom du marchand</span><b>···</b></div><div><span>Numéro</span><b>···</b></div></div>
-<div class="mgs-co-merchant mgs-co-binance" hidden></div>
-<p class="mgs-co-hint">Nom et numéro réels servis par le backend.</p>
-<div class="mgs-divider"></div>
-<p class="mgs-co-hint">Appuyez sur le bouton pour envoyer la preuve de paiement.</p>
+<div class="mgs-co-steps">
+  <div class="mgs-co-step"><span class="mgs-co-dia" aria-hidden="true"><span>1</span></span><p class="mgs-co-step-h">Coordonnées du marchand</p>
+    <div class="mgs-co-merchant"><div class="mgs-co-kv"><div class="mgs-co-kv-l"><span>Vous payez</span><b class="mgs-co-kv-v mgs-co-total2">0 Ar</b></div><button type="button" class="mgs-co-copy" data-copy="amount" aria-label="Copier le montant"></button></div><div class="mgs-co-kv"><div class="mgs-co-kv-l"><span>Nom du marchand</span><b class="mgs-co-kv-v mgs-co-mname-v">···</b></div><button type="button" class="mgs-co-copy" data-copy="name" aria-label="Copier le nom du marchand"></button></div><div class="mgs-co-kv"><div class="mgs-co-kv-l"><span>Numéro</span><b class="mgs-co-kv-v mgs-co-num-v">···</b></div><button type="button" class="mgs-co-copy" data-copy="number" aria-label="Copier le numéro"></button></div></div>
+    <div class="mgs-co-merchant mgs-co-binance" hidden></div>
+    <p class="mgs-co-hint">Nom et numéro réels servis par le backend.</p>
+  </div>
+  <div class="mgs-co-step"><span class="mgs-co-dia" aria-hidden="true"><span>2</span></span><p class="mgs-co-step-h">Envoyez la preuve</p>
+    <p class="mgs-co-hint">Capture d'écran du SMS ou de l'écran de confirmation (JPG ou PNG).</p>
+  </div>
+</div>
 <button type="button" class="button-main w-inline-block mgs-co-proof" data-button-theme="dark" data-button-accent="green" style="width:100%"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Envoyer la preuve de paiement"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Envoyer la preuve de paiement</span></span></span></span></button>
 <button type="button" class="mgs-co-cancel">Annuler la commande</button>
 </div>
@@ -3631,7 +3693,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   <div class="mgs-human-head"><p>Vérification de sécurité</p><button type="button" class="mgs-human-close" aria-label="Fermer"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
   <p class="mgs-human-sub">Confirmez que vous êtes humain pour passer la commande.</p>
   <div class="mgs-human-widget"><div class="mgs-human-turnstile" hidden></div></div>
-  <div class="mgs-human-foot"><button type="button" class="mgs-human-cancel">Fermer</button><button type="button" class="button-main w-inline-block mgs-human-confirm" data-button-theme="dark" data-button-accent="green" disabled><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Passer la commande"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Passer la commande</span></span></span></span></button></div>
+  <div class="mgs-human-foot"><button type="button" class="mgs-human-cancel">Fermer</button><label style="display:flex;align-items:center;gap:.6em;font-size:.95em;cursor:pointer"><input type="checkbox" class="mgs-human-cb" style="width:1.4em;height:1.4em;accent-color:var(--color--dark)">Confirmez que vous êtes humain</label><button type="button" class="button-main w-inline-block mgs-human-confirm" data-button-theme="dark" data-button-accent="green" disabled><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Passer la commande"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Passer la commande</span></span></span></span></button></div>
 </div>
 
 <div class="mgs-human-overlay mgs-co-cancel-overlay" hidden></div>
@@ -3645,6 +3707,20 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     <label class="mgs-row" style="gap:.5em;cursor:pointer"><input type="radio" name="co-cancel-reason" value="other"> <span data-i18n="checkout.cancelOther">Autre raison</span></label>
   </div>
   <div class="mgs-human-foot"><button type="button" class="mgs-human-cancel mgs-co-cancel-close" data-i18n="common.close">Fermer</button><button type="button" class="button-main w-inline-block mgs-co-cancel-confirm" data-button-theme="dark" data-button-accent="green"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Confirmer l'annulation"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span data-i18n="checkout.cancelOrder">Confirmer l'annulation</span></span></span></span></button></div>
+</div>
+<div class="mgs-co-sheet-ov" hidden></div>
+<div class="mgs-co-sheet" hidden role="dialog" aria-modal="true" aria-label="Confirmation du paiement">
+  <span class="mgs-co-sheet-grip" aria-hidden="true"></span>
+  <div class="mgs-co-sheet-h"><h2>Confirmation du paiement</h2><button type="button" class="mgs-co-sheet-x mgs-co-proof-close" aria-label="Fermer"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <div class="mgs-co-sheet-b">
+    <p style="margin:0 0 .9em;font-size:.82em;line-height:1.4;opacity:.7">Ajoutez au moins une capture du SMS de confirmation (JPG ou PNG).</p>
+    <div class="mgs-co-drop" role="button" tabindex="0" aria-label="Choisir les captures d'écran"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg><span>Ajouter une capture d'écran</span><small>JPEG ou PNG · 8 Mo maximum chacune · 3 captures maximum</small></div>
+    <div class="mgs-co-thumbs" hidden></div>
+  </div>
+  <div class="mgs-co-sheet-f">
+    <label class="mgs-co-declare"><input type="checkbox" class="mgs-co-declare-cb"><span>J'ai déjà effectué le paiement avec mon propre compte.</span></label>
+    <div class="mgs-co-sheet-foot"><span class="mgs-co-sheet-count">0 / 3</span><button type="button" class="mgs-co-sheet-send" disabled>Envoyer la preuve</button></div>
+  </div>
 </div>
 
 <script src="mgs-logic-captcha.js"></script>
@@ -4125,8 +4201,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   /* Binance sans slot actif (main OrderTrack.js:340 : « aucune preuve » sur
      l'écran de paiement) : data-co=2, pas d'adresse, pas de preuve. */
   function coBinanceNoSlot() {
-    var mn = $(".mgs-co-mname"); if (mn) mn.textContent = methodLabel(co.method);
-    var merch = $(".mgs-co-merchant"); if (merch) merch.hidden = true;
+    var mn = $$(".mgs-co-mname"); mn.forEach(function (m) { m.textContent = methodLabel(co.method); });
+    var merch = $(".mgs-co-merchant:not(.mgs-co-binance)"); if (merch) merch.hidden = true;
     var bin = $(".mgs-co-binance"); if (bin) { bin.innerHTML = ""; bin.hidden = true; }
     var proof = $(".mgs-co-proof"); if (proof) proof.style.display = "none";
     var hints = $$(".mgs-co-hint"); if (hints[0]) { hints[0].textContent = t("checkout.binanceNoProof"); hints[0].style.display = ""; } if (hints[1]) hints[1].style.display = "none";
@@ -4302,14 +4378,22 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     });
   }
   function openHuman(always) {
-    /* Aucune vérification réelle sans site key : on n'ouvre pas de fausse case. */
-    if (!window.MGS_CAPTCHA || !window.MGS_CAPTCHA.enabled()) return;
+    /* La popin de vérification s'ouvre si un widget Turnstile est actif OU si la
+       case « Je suis humain » est disponible (site key absente = case seule). */
+    var hasCb = !!$(".mgs-human-cb");
+    if (!window.MGS_CAPTCHA || !window.MGS_CAPTCHA.enabled()) { if (!hasCb) return; }
     var o = $(".mgs-human-overlay"), p = $(".mgs-human-popup"); if (o) o.hidden = false; if (p) p.hidden = false;
     var cf = $(".mgs-human-confirm"); var cap = window.MGS_CAPTCHA;
     var tsBox = $(".mgs-human-turnstile");
     if (cap && cap.enabled()) {
       if (tsBox) tsBox.hidden = false;
       if (cf) cf.disabled = !cap.getToken();
+    } else if (cf) {
+      /* Sans widget Turnstile : c'est la case qui pilote le bouton. */
+      var hcb = $(".mgs-human-cb"); if (hcb) cf.disabled = !hcb.checked;
+    }
+    if (cap && cap.enabled()) {
+      if (tsBox) tsBox.hidden = false;
       cap.render(tsBox, {
         /* La feuille n'existe QUE pour cette vérification : le widget doit être
            visible dès l'ouverture. `main` garde « interaction-only » parce qu'il
@@ -4387,11 +4471,12 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     });
   }
   function coPay() {
-    var mn = $(".mgs-co-mname"); if (mn) mn.textContent = methodLabel(co.method);
-    var merch = $(".mgs-co-merchant"); var bin = $(".mgs-co-binance");
+    var mn = $$(".mgs-co-mname"); mn.forEach(function (m) { m.textContent = methodLabel(co.method); });
+    var merch = $(".mgs-co-merchant:not(.mgs-co-binance)"); var bin = $(".mgs-co-binance");
     if (merch) merch.hidden = false; if (bin) bin.hidden = true;
     var t2 = $(".mgs-co-total2"); if (t2) t2.textContent = ar(co.total);
-    if (merch && payCfg && payCfg.providers) { var prov = co.method === "MVola" ? payCfg.providers.mvola : payCfg.providers.orange; var bs = $$("b", merch); if (bs[1] && prov) bs[1].textContent = prov.name || "—"; if (bs[2] && prov) bs[2].textContent = prov.merchant || "—"; }
+    if (merch && payCfg && payCfg.providers) { var prov = co.method === "MVola" ? payCfg.providers.mvola : payCfg.providers.orange; var nv = $(".mgs-co-mname-v", merch); var bv = $(".mgs-co-num-v", merch); if (nv && prov) nv.textContent = prov.name || "—"; if (bv && prov) bv.textContent = prov.merchant || "—"; }
+    paintCopyIcons();
     var proof = $(".mgs-co-proof"); if (proof) proof.style.display = "";
     var hints = $$(".mgs-co-hint"); if (manualHintTexts) hints.forEach(function (h, i) { if (manualHintTexts[i] != null) h.textContent = manualHintTexts[i]; h.style.display = ""; });
     coShow(2);
@@ -4445,18 +4530,59 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       toast(r.detail || t("checkout.papiOff"), "err"); coShow(1);
     });
   }
+  doc.addEventListener("change", function (e) {
+    var cb = e.target;
+    if (cb && cb.classList && cb.classList.contains("mgs-co-declare-cb")) { syncProofSend(); return; }
+    /* Vérification humaine : la case active le bouton « Passer la commande »
+       (le widget Turnstile, quand il est actif, reste prioritaire). */
+    if (cb && cb.classList && cb.classList.contains("mgs-human-cb")) {
+      var cf = $(".mgs-human-confirm");
+      if (cf && !(window.MGS_CAPTCHA && window.MGS_CAPTCHA.getToken())) cf.disabled = !cb.checked;
+      return;
+    }
+    var files = (cb && cb.type === "file" && cb.files) ? cb.files : null;
+    if (!files || !files.length) return;
+    var add = 0;
+    Array.prototype.slice.call(files).forEach(function (f) { if (proofFiles.length + add < 3 && (/image\/(jpeg|png)/.test(f.type) || /\.(jpe?g|png)$/i.test(f.name || ""))) { proofFiles.push(f); add++; } });
+    if (add) renderProofThumbs();
+    try { cb.value = ""; } catch (e) { /* certains navigateurs interdisent la remise à zéro */ }
+  });
+  doc.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    var sh = $(".mgs-co-sheet");
+    if (sh && !sh.hidden) { closeProofSheet(); return; }
+  });
+  function paintCopyIcons() {
+    $$(".mgs-co-copy").forEach(function (b) { if (!b.querySelector("svg")) b.innerHTML = COPY_IC; });
+  }
+  /* Copie des lignes de l'écran de paiement (montant, marchand, Binance) :
+     presse-papiers + retour « Copié », sans navigation. */
+  doc.addEventListener("click", function (e) {
+    var cp = e.target.closest && e.target.closest(".mgs-co-copy"); if (!cp) return;
+    e.stopPropagation();
+    var raw = cp.getAttribute("data-copy-raw");
+    if (raw == null) {
+      var kv = cp.closest(".mgs-co-kv"); if (!kv) return;
+      var v = $(".mgs-co-kv-v", kv); if (!v) return;
+      raw = v.textContent.trim();
+    }
+    if (navigator.clipboard) navigator.clipboard.writeText(raw).catch(function () { });
+    cp.innerHTML = '<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+    setTimeout(function () { cp.innerHTML = COPY_IC; }, 1200);
+  });
   function coPayBinance(p) {
     co.payment = p;
     var mn = $(".mgs-co-mname"); if (mn) mn.textContent = "Binance USDT";
-    var merch = $(".mgs-co-merchant"); var bin = $(".mgs-co-binance");
+    var merch = $(".mgs-co-merchant:not(.mgs-co-binance)"); var bin = $(".mgs-co-binance");
     if (merch) merch.hidden = true;
     if (bin) {
       var netLabel = p.network; ((cryptoCfg && cryptoCfg.networks) || []).forEach(function (n) { if (n.key === p.network && n.label) netLabel = n.label; });
-      var rows = '<div><span>' + esc(t("checkout.binanceExactAmount")) + '</span><b>' + esc(p.amountUsdt) + ' ' + esc(p.currency) + '</b></div>'
-        + '<div><span>' + esc(t("checkout.binanceNetwork")) + '</span><b>' + esc(netLabel) + '</b></div>'
-        + '<div><span>' + esc(t("checkout.binanceAddress")) + '</span><b>' + esc(p.address) + '</b></div>';
-      if (p.memo) rows += '<div><span>' + esc(t("checkout.binanceMemo")) + '</span><b>' + esc(p.memo) + '</b></div>';
+      var rows = '<div class="mgs-co-kv"><div class="mgs-co-kv-l"><span>' + esc(t("checkout.binanceExactAmount")) + '</span><b class="mgs-co-kv-v">' + esc(p.amountUsdt) + ' ' + esc(p.currency) + '</b></div><button type="button" class="mgs-co-copy" data-copy-raw="' + esc(p.amountUsdt) + '" aria-label="Copier le montant"></button></div>'
+        + '<div class="mgs-co-kv"><div class="mgs-co-kv-l"><span>' + esc(t("checkout.binanceNetwork")) + '</span><b class="mgs-co-kv-v">' + esc(netLabel) + '</b></div><button type="button" class="mgs-co-copy" data-copy-raw="' + esc(netLabel) + '" aria-label="Copier le réseau"></button></div>'
+        + '<div class="mgs-co-kv"><div class="mgs-co-kv-l"><span>' + esc(t("checkout.binanceAddress")) + '</span><b class="mgs-co-kv-v">' + esc(p.address) + '</b></div><button type="button" class="mgs-co-copy" data-copy-raw="' + esc(p.address) + '" aria-label="Copier l\'adresse"></button></div>';
+      if (p.memo) rows += '<div class="mgs-co-kv"><div class="mgs-co-kv-l"><span>' + esc(t("checkout.binanceMemo")) + '</span><b class="mgs-co-kv-v">' + esc(p.memo) + '</b></div><button type="button" class="mgs-co-copy" data-copy-raw="' + esc(p.memo) + '" aria-label="Copier la note"></button></div>';
       bin.innerHTML = rows; bin.hidden = false;
+      paintCopyIcons();
     }
     var proof = $(".mgs-co-proof"); if (proof) proof.style.display = "none";
     var hints = $$(".mgs-co-hint"); if (hints[0]) { hints[0].textContent = t("checkout.binanceNoProof"); hints[0].style.display = ""; } if (hints[1]) hints[1].style.display = "none";
@@ -4481,7 +4607,54 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     coShow(3); window.scrollTo(0, 0);
   }
   var proofInput = null;
-  function ensureProofInput() { if (proofInput) return proofInput; proofInput = doc.createElement("input"); proofInput.type = "file"; proofInput.accept = "image/jpeg,image/png"; proofInput.multiple = true; proofInput.style.display = "none"; body.appendChild(proofInput); proofInput.addEventListener("change", function () { if (proofInput.files && proofInput.files.length) uploadProof(proofInput.files); }); return proofInput; }
+  function ensureProofInput() { if (proofInput) return proofInput; proofInput = doc.createElement("input"); proofInput.type = "file"; proofInput.accept = "image/jpeg,image/png"; proofInput.multiple = true; proofInput.style.display = "none"; body.appendChild(proofInput); return proofInput; }
+  /* Feuille « Confirmation du paiement » : les captures sont choisies PUIS
+     envoyées par le bouton — la sélection seule n'envoie plus rien. */
+  var proofFiles = [];
+  function openProofSheet() {
+    var sh = $(".mgs-co-sheet"), ov = $(".mgs-co-sheet-ov");
+    if (!sh || !ov) { ensureProofInput().click(); return; }
+    proofFiles = []; renderProofThumbs();
+    var cb = $(".mgs-co-declare-cb", sh); if (cb) cb.checked = false;
+    sh.hidden = false; ov.hidden = false; document.body.style.overflow = "hidden";
+    syncProofSend();
+    var x = $(".mgs-co-sheet-x", sh); if (x) x.focus();
+  }
+  function closeProofSheet() { var sh = $(".mgs-co-sheet"), ov = $(".mgs-co-sheet-ov"); if (sh) sh.hidden = true; if (ov) ov.hidden = true; document.body.style.overflow = ""; }
+  function renderProofThumbs() {
+    var box = $(".mgs-co-thumbs"); if (!box) return;
+    box.innerHTML = "";
+    var left = Math.max(0, 3 - proofFiles.length);
+    proofFiles.forEach(function (f, i) {
+      var d = doc.createElement("div"); d.className = "mgs-co-thumb";
+      var img = doc.createElement("img"); try { img.src = URL.createObjectURL(f); } catch (e) { }
+      img.alt = "Capture " + (i + 1);
+      var b = doc.createElement("button"); b.type = "button"; b.setAttribute("aria-label", "Retirer la capture " + (i + 1));
+      b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+      b.addEventListener("click", function () { proofFiles.splice(i, 1); renderProofThumbs(); syncProofSend(); });
+      d.appendChild(img); d.appendChild(b); box.appendChild(d);
+    });
+    if (left > 0) {
+      var m = doc.createElement("button"); m.type = "button"; m.className = "mgs-co-thumbmore"; m.textContent = "+" + left;
+      m.setAttribute("aria-label", "Ajouter une capture");
+      m.addEventListener("click", function () { ensureProofInput().click(); });
+      box.appendChild(m);
+    }
+    box.hidden = proofFiles.length === 0 && left === 3;
+    var cnt = $(".mgs-co-sheet-count"); if (cnt) cnt.textContent = proofFiles.length + " / 3";
+    var drop = $(".mgs-co-drop"); if (drop) drop.style.display = left > 0 ? "" : "none";
+    syncProofSend();
+  }
+  function syncProofSend() {
+    var send = $(".mgs-co-sheet-send"), cb = $(".mgs-co-declare-cb");
+    if (!send) return;
+    send.disabled = !(proofFiles.length > 0 && cb && cb.checked);
+  }
+  function submitProofSheet() {
+    if (!proofFiles.length) return;
+    uploadProof(proofFiles.slice());
+    closeProofSheet();
+  }
   /* Codes serveur → clé i18n (main ProofPay.js:33-38) : un nom technique de
      code n'est jamais affiché. */
   var PROOF_CODE_KEYS = {
@@ -4562,8 +4735,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     if (!st || next === kNext) next = t("order.banner.proofWaiting");
     var label = st ? t(kLabel) : "";
     if (!st || label === kLabel) label = statusLabel(st);
-    var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = next;
-    var wt = $(".mgs-co-wait-t"); if (wt) wt.textContent = label;
+    /* Le badge de l'écran d'attente est le STATUT (« Preuve en vérification » /
+       « Vérification en cours »), le message « quand ça vient » est à part. */
+    var badge = $(".mgs-co-wait-badge"); if (badge) badge.textContent = label || t("order.banner.proofWaiting");
+    var wt = $(".mgs-co-wait-t"); if (wt) wt.textContent = next;
   }
   function pollOrder() {
     if (co.poll) clearInterval(co.poll); if (!co.order) return; var tries = 0, pollFails = 0;
@@ -6011,16 +6186,19 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var rc = el.closest(".mgs-co-recent-chip"); if (rc) { stop(e); var ri = $(".mgs-co-id-input"); if (ri) ri.value = rc.dataset.id; /* main IdentityFieldsVerify.js:185-188 : remplit le champ, ne vérifie PAS */ return; }
     if (el.closest(".mgs-co-verify")) { stop(e); verifyId(); return; }
     var m = el.closest(".mgs-co-method"); if (m) { stop(e); var netBox = el.closest(".mgs-co-networks"); if (netBox) { /* choix du réseau USDT (REF Checkout.js:335-339) */ $$(".mgs-co-method", netBox).forEach(function (x) { x.classList.remove("is--active"); }); m.classList.add("is--active"); var nr = $("input", m); if (nr) nr.checked = true; co.network = nr ? nr.value : ""; return; } $$(".mgs-co-method").forEach(function (x) { x.classList.remove("is--active"); }); m.classList.add("is--active"); var r = $("input", m); if (r) r.checked = true; co.method = r ? r.value : ""; renderNetworks(); return; }
-    if (el.closest(".mgs-co-submit")) { stop(e); if (!co.verified) { coStatus("is--err", esc(t("checkout.verifyRequired"))); return; } if (!co.method) { toast(t("checkout.selectMethod"), "err"); return; } if (co.method === "Binance" && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.papiOff"), "err"); return; } if (co.method === "Binance" && !co.network) { toast(t("checkout.chooseNetwork"), "err"); return; } if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.enabled()) { openHuman(); } else { createOrder(); } return; }
+    if (el.closest(".mgs-co-submit")) { stop(e); if (!co.verified) { coStatus("is--err", esc(t("checkout.verifyRequired"))); return; } if (!co.method) { toast(t("checkout.selectMethod"), "err"); return; } if (co.method === "Binance" && !(cryptoCfg && cryptoCfg.available)) { toast(t("checkout.papiOff"), "err"); return; } if (co.method === "Binance" && !co.network) { toast(t("checkout.chooseNetwork"), "err"); return; } openHuman(); return; }
     if (el.closest(".mgs-co-back")) { stop(e); stopPaymentPoll(); window.mgsShowPage("boutique"); return; }
     if (el.closest(".mgs-co-back2")) { stop(e); stopTimer(); stopPaymentPoll(); if (co.cryptoPoll) { co.cryptoPoll.stop(); co.cryptoPoll = null; } coShow(1); return; }
-    if (el.closest(".mgs-co-proof")) { stop(e); ensureProofInput().click(); return; }
+    if (el.closest(".mgs-co-proof")) { stop(e); openProofSheet(); return; }
+    if (el.closest(".mgs-co-proof-close") || el.classList.contains("mgs-co-sheet-ov")) { stop(e); closeProofSheet(); return; }
+    if (el.closest(".mgs-co-sheet-send")) { stop(e); submitProofSheet(); return; }
+    if (el.closest(".mgs-co-drop") || el.closest(".mgs-co-thumbmore")) { stop(e); ensureProofInput().click(); return; }
     if (el.closest(".mgs-co-cancel")) { stop(e); openCancel(); return; }
     if (el.closest(".mgs-co-cancel-close") || el.classList.contains("mgs-co-cancel-overlay")) { stop(e); closeCancel(); return; }
     if (el.closest(".mgs-co-cancel-confirm")) { stop(e); confirmCancel(); return; }
     if (el.closest(".mgs-co-done")) { stop(e); coFinish(); return; }
     if (el.closest(".mgs-human-close") || el.closest(".mgs-human-cancel") || el.classList.contains("mgs-human-overlay")) { stop(e); closeHuman(); return; }
-    if (el.closest(".mgs-human-confirm")) { stop(e); if (window.MGS_CAPTCHA && window.MGS_CAPTCHA.getToken()) createOrder(); return; }
+    if (el.closest(".mgs-human-confirm")) { stop(e); if (!window.MGS_CAPTCHA || !window.MGS_CAPTCHA.enabled() || window.MGS_CAPTCHA.getToken()) createOrder(); return; }
     /* compte */
     if (el.closest(".mgs-page[data-page=compte]")) { var ctxt = (el.closest(".button-main") || {}).textContent || ""; if (/Déconnexion|Sign out/i.test(ctxt)) { stop(e); logout(); return; } if (/Enregistrer|Save/i.test(ctxt)) { stop(e); saveProfile(); return; } if (/Changer le mot de passe|Change password/i.test(ctxt)) { stop(e); changePassword(); return; } if (/Supprimer le compte|Delete account/i.test(ctxt)) { stop(e); deleteAccount(); return; } }
     /* connexion */
