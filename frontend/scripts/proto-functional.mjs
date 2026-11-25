@@ -368,20 +368,30 @@ test("liens internes du template (hero, FAQ, colonnes du pied de page) naviguent
   }
 });
 
-test("favoris : bascule + persistance localStorage", async (page) => {
+test("boutique : cartes sans favori, quasi carrées et textes réduits", async (page) => {
   await boot(page);
   await page.evaluate(() => window.mgsShowPage("boutique"));
   await page.locator('.mgs-game[data-gamename="PUBG Mobile"]').first().click();
   await page.waitForSelector('.mgs-pcard[data-pid="p1"]', { timeout: 15000 });
-  const fav = page.locator('.mgs-pcard[data-pid="p1"] .mgs-pcard__fav');
-  await fav.click();
-  await page.waitForFunction(() => { try { return JSON.parse(localStorage.getItem("mgs_favorites") || "[]").indexOf("p1") >= 0; } catch { return false; } }, null, { timeout: 8000 });
-  assert.equal(await fav.getAttribute("aria-pressed"), "true");
-  await fav.click();
-  await page.waitForFunction(() => { try { return JSON.parse(localStorage.getItem("mgs_favorites") || "[]").indexOf("p1") < 0; } catch { return false; } }, null, { timeout: 8000 });
-  assert.equal(await fav.getAttribute("aria-pressed"), "false");
+  assert.equal(await page.locator(".mgs-pcard__fav").count(), 0, "aucune icône de favori dans les cartes");
+  assert.equal(await page.evaluate(() => localStorage.getItem("mgs_favorites") === null), true, "plus d'état favori");
+  const box = await page.locator('.mgs-pcard[data-pid="p1"]').boundingBox();
+  assert.ok(Math.abs(box.width / box.height - 1) <= 0.15, `carte quasi carrée: ${box.width}×${box.height}`);
+  /* Le débordement du marquee template est antérieur et hors périmètre : on mesure
+     seulement la grille de cartes, que nous avons modifiée. */
+  const gridOk = await page.evaluate(() => {
+    const g = document.querySelector(".mgs-boutique-catalog .mgs-grid");
+    return !!g && Array.from(g.querySelectorAll(".mgs-pcard")).every((c) => c.getBoundingClientRect().right <= innerWidth + 1) && g.scrollWidth <= g.clientWidth + 1;
+  });
+  assert.ok(gridOk, "les cartes ne doivent pas déborder de leur grille");
+  const sizes = await page.evaluate(() => ({
+    amount: parseFloat(getComputedStyle(document.querySelector('.mgs-pcard[data-pid="p1"] .mgs-pcard__amount')).fontSize),
+    title: (() => { const e = document.querySelector(".mgs-pcard__title"); return e ? parseFloat(getComputedStyle(e).fontSize) : null; })(),
+  }));
+  assert.ok(sizes.amount <= 36 && (sizes.title === null || sizes.title <= 18), `textes réduits: ${JSON.stringify(sizes)}`);
+  const add = await page.locator('.mgs-pcard[data-pid="p1"] .mgs-pill__add').boundingBox();
+  assert.ok(add.width >= 44 && add.height >= 44, `cible tactile ${add.width}×${add.height}`);
 });
-
 test("fiche produit : remplie depuis la carte cliquée + ajout au panier", async (page, state) => {
   state.loggedIn = true;
   await boot(page);

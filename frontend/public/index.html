@@ -904,24 +904,19 @@ textarea.mgs-input{height:auto;min-height:6em;border-radius:1.25em;padding:1em 1
 
 <style>
 /* ===== Carte catalogue fidèle au site déployé (ProductCard) : montant vedette, badge, cœur, pastille prix + stepper ===== */
-.mgs-pcard{position:relative;border:.125em solid var(--color--dark);border-radius:1.75em;background:var(--color--light);padding:.85em;display:flex;flex-direction:column;color:var(--color--dark);transition:transform .4s var(--elastic-ease-out),box-shadow .4s var(--elastic-ease-out);min-width:0}
+.mgs-pcard{position:relative;border:.125em solid var(--color--dark);border-radius:1.75em;background:var(--color--light);padding:.85em;display:flex;flex-direction:column;color:var(--color--dark);transition:transform .4s var(--elastic-ease-out),box-shadow .4s var(--elastic-ease-out);min-width:0;aspect-ratio:1/1}
 .mgs-pcard:hover{transform:translateY(-.3em);box-shadow:.4em .4em 0 var(--color--dark)}
 .mgs-pcard__link{position:absolute;inset:0;z-index:0;border-radius:1.75em}
-.mgs-pcard__top{position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:.5em;min-height:2.75em}
-.mgs-pcard__badge{display:inline-flex;align-items:center;gap:.35em;border:.1em solid var(--color--dark);border-radius:100em;background:var(--color--yellow-100);padding:.3em .65em;font-size:.55em;font-weight:800;text-transform:uppercase;letter-spacing:.08em;line-height:1}
+.mgs-pcard__top{position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:.5em;min-height:2.2em}
+.mgs-pcard__badge{display:inline-flex;align-items:center;gap:.35em;border:.1em solid var(--color--dark);border-radius:100em;background:var(--color--yellow-100);padding:.3em .65em;font-size:.5em;font-weight:800;text-transform:uppercase;letter-spacing:.08em;line-height:1}
 .mgs-pcard__badge .bold-ic{width:1.1em;height:1.1em}
 .mgs-pcard__badge--disc{background:var(--color--yellow-700)}
-.mgs-pcard__fav{position:relative;z-index:1;flex:none;width:2.75em;height:2.75em;border-radius:100em;border:.125em solid var(--color--dark);background:var(--color--dark);color:var(--color--light);display:grid;place-items:center;cursor:pointer;transition:.2s}
-.mgs-pcard__fav .bold-ic{width:1.2em;height:1.2em}
-.mgs-pcard__fav:hover{transform:scale(1.06)}
-.mgs-pcard__fav[aria-pressed="true"]{background:#ff4d4d;border-color:#ff4d4d}
-.mgs-pcard__fav[aria-pressed="true"] .bold-ic{fill:currentColor}
 .mgs-pcard__figure{position:relative;z-index:1;margin:.3em 0 0;display:flex;align-items:baseline;gap:.12em;font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;letter-spacing:-.03em;line-height:.85}
-.mgs-pcard__amount{font-size:2.5em}
-.mgs-pcard__amount.is--long{font-size:2em}
+.mgs-pcard__amount{font-size:2.1em}
+.mgs-pcard__amount.is--long{font-size:1.7em}
 .mgs-pcard__unit{font-family:'Onest',Arial,sans-serif;font-size:.7em;font-weight:700;text-transform:uppercase;letter-spacing:0;opacity:.6}
-.mgs-pcard__cat{position:relative;z-index:1;margin:.5em 0 0;font-size:.55em;font-weight:800;text-transform:uppercase;letter-spacing:.08em;opacity:.6}
-.mgs-pcard__title{position:relative;z-index:1;margin:.12em 0 0;font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;text-transform:uppercase;font-size:1.2em;line-height:.9}
+.mgs-pcard__cat{position:relative;z-index:1;margin:.5em 0 0;font-size:.5em;font-weight:800;text-transform:uppercase;letter-spacing:.08em;opacity:.6}
+.mgs-pcard__title{position:relative;z-index:1;margin:.12em 0 0;font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;text-transform:uppercase;font-size:1.05em;line-height:.9}
 .mgs-pcard__bottom{position:relative;z-index:1;margin-top:auto;padding-top:.7em}
 .mgs-pcard__old{display:flex;align-items:center;gap:.5em;padding-bottom:.35em;font-size:.7em}
 .mgs-pcard__old s{opacity:.55;font-weight:600}
@@ -939,7 +934,7 @@ textarea.mgs-input{height:auto;min-height:6em;border-radius:1.25em;padding:1em 1
 .mgs-pcard--skel .mgs-skel--line{width:42%}
 .mgs-pcard--skel .mgs-skel--pill{height:3.1em;border-radius:100em;margin-top:auto}
 .mgs-pill{display:flex;align-items:center;justify-content:space-between;gap:.4em;height:3.1em;border:.125em solid var(--color--dark);border-radius:100em;background:var(--color--light);padding:.3em .35em .3em 1.1em;transition:background .25s}
-.mgs-pill__price{font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;font-size:1.1em;white-space:nowrap;line-height:1}
+.mgs-pill__price{font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;font-size:1em;white-space:nowrap;line-height:1}
 .mgs-pill__add{flex:none;width:2.75em;height:2.75em;border-radius:100em;background:var(--color--dark);color:var(--color--light);display:grid;place-items:center;cursor:pointer;transition:.2s}
 .mgs-pill__add .bold-ic{width:1.3em;height:1.3em}
 .mgs-pill__add:hover{transform:scale(1.07)}
@@ -2470,7 +2465,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
     <div class="mgs-between" style="margin-bottom:1.25em"><p class="mgs-muted mgs-mono" style="margin:0">8 offres · exemple</p><div class="mgs-row"><span class="mgs-chip">Trier : populaire</span><span class="mgs-chip">Prix : tous</span></div></div>
     <div class="mgs-grid"><div class="mgs-pcard">
       <a href="#produit" data-nav="produit" class="mgs-pcard__link" aria-label="Voir le produit"></a>
-      <div class="mgs-pcard__top"><span class="mgs-pcard__badge"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 3.5 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 .3 1.2 1 1.8 1.8 2C10.5 8.5 11 5.5 12 3z"/></svg>Populaire</span><button type="button" class="mgs-pcard__fav" aria-pressed="false" aria-label="Ajouter aux favoris"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-8-4.7-8-10.2A4.3 4.3 0 0 1 12 7.8a4.3 4.3 0 0 1 8 2.5c0 5.5-8 10.2-8 10.2z"/></svg></button></div>
+      <div class="mgs-pcard__top"><span class="mgs-pcard__badge"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c1 3.5 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 .3 1.2 1 1.8 1.8 2C10.5 8.5 11 5.5 12 3z"/></svg>Populaire</span></div>
       <p class="mgs-pcard__figure"><span class="mgs-pcard__amount">660</span><span class="mgs-pcard__unit">UC</span></p>
       <div class="mgs-pcard__bottom">
         <div class="mgs-pill">
@@ -2485,8 +2480,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
       </div>
     </div><div class="mgs-pcard">
       <a href="#produit" data-nav="produit" class="mgs-pcard__link" aria-label="Voir le produit"></a>
-      <div class="mgs-pcard__top"><span></span><button type="button" class="mgs-pcard__fav" aria-pressed="false" aria-label="Ajouter aux favoris"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-8-4.7-8-10.2A4.3 4.3 0 0 1 12 7.8a4.3 4.3 0 0 1 8 2.5c0 5.5-8 10.2-8 10.2z"/></svg></button></div>
-      <p class="mgs-pcard__figure"><span class="mgs-pcard__amount is--long">1800</span><span class="mgs-pcard__unit">UC</span></p>
+            <p class="mgs-pcard__figure"><span class="mgs-pcard__amount is--long">1800</span><span class="mgs-pcard__unit">UC</span></p>
       <div class="mgs-pcard__bottom">
         <div class="mgs-pill">
           <span class="mgs-pill__price">32 000 Ar</span>
@@ -2500,8 +2494,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
       </div>
     </div><div class="mgs-pcard">
       <a href="#produit" data-nav="produit" class="mgs-pcard__link" aria-label="Voir le produit"></a>
-      <div class="mgs-pcard__top"><span></span><button type="button" class="mgs-pcard__fav" aria-pressed="false" aria-label="Ajouter aux favoris"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-8-4.7-8-10.2A4.3 4.3 0 0 1 12 7.8a4.3 4.3 0 0 1 8 2.5c0 5.5-8 10.2-8 10.2z"/></svg></button></div>
-      <p class="mgs-pcard__figure"><span class="mgs-pcard__amount is--long">3850</span><span class="mgs-pcard__unit">UC</span></p>
+            <p class="mgs-pcard__figure"><span class="mgs-pcard__amount is--long">3850</span><span class="mgs-pcard__unit">UC</span></p>
       <div class="mgs-pcard__bottom"><div class="mgs-pcard__old"><span class="mgs-pcard__badge mgs-pcard__badge--disc">-15%</span><s>72 000 Ar</s></div>
         <div class="mgs-pill">
           <span class="mgs-pill__price">62 000 Ar</span>
@@ -2515,8 +2508,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
       </div>
     </div><div class="mgs-pcard">
       <a href="#produit" data-nav="produit" class="mgs-pcard__link" aria-label="Voir le produit"></a>
-      <div class="mgs-pcard__top"><span></span><button type="button" class="mgs-pcard__fav" aria-pressed="false" aria-label="Ajouter aux favoris"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-8-4.7-8-10.2A4.3 4.3 0 0 1 12 7.8a4.3 4.3 0 0 1 8 2.5c0 5.5-8 10.2-8 10.2z"/></svg></button></div>
-      <p class="mgs-pcard__cat">abonnement</p><h3 class="mgs-pcard__title">Prime 1 mois</h3>
+            <p class="mgs-pcard__cat">abonnement</p><h3 class="mgs-pcard__title">Prime 1 mois</h3>
       <div class="mgs-pcard__bottom">
         <div class="mgs-pill">
           <span class="mgs-pill__price">4 500 Ar</span>
@@ -2530,8 +2522,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
       </div>
     </div><div class="mgs-pcard">
       <a href="#produit" data-nav="produit" class="mgs-pcard__link" aria-label="Voir le produit"></a>
-      <div class="mgs-pcard__top"><span></span><button type="button" class="mgs-pcard__fav" aria-pressed="false" aria-label="Ajouter aux favoris"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-8-4.7-8-10.2A4.3 4.3 0 0 1 12 7.8a4.3 4.3 0 0 1 8 2.5c0 5.5-8 10.2-8 10.2z"/></svg></button></div>
-      <p class="mgs-pcard__cat">abonnement</p><h3 class="mgs-pcard__title">Prime+ 1 mois</h3>
+            <p class="mgs-pcard__cat">abonnement</p><h3 class="mgs-pcard__title">Prime+ 1 mois</h3>
       <div class="mgs-pcard__bottom">
         <div class="mgs-pill">
           <span class="mgs-pill__price">12 000 Ar</span>
@@ -2545,8 +2536,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
       </div>
     </div><div class="mgs-pcard">
       <a href="#produit" data-nav="produit" class="mgs-pcard__link" aria-label="Voir le produit"></a>
-      <div class="mgs-pcard__top"><span></span><button type="button" class="mgs-pcard__fav" aria-pressed="false" aria-label="Ajouter aux favoris"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-8-4.7-8-10.2A4.3 4.3 0 0 1 12 7.8a4.3 4.3 0 0 1 8 2.5c0 5.5-8 10.2-8 10.2z"/></svg></button></div>
-      <p class="mgs-pcard__cat">pack</p><h3 class="mgs-pcard__title">Royal Pass</h3>
+            <p class="mgs-pcard__cat">pack</p><h3 class="mgs-pcard__title">Royal Pass</h3>
       <div class="mgs-pcard__bottom">
         <div class="mgs-pill">
           <span class="mgs-pill__price">9 500 Ar</span>
@@ -2560,8 +2550,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
       </div>
     </div><div class="mgs-pcard">
       <a href="#produit" data-nav="produit" class="mgs-pcard__link" aria-label="Voir le produit"></a>
-      <div class="mgs-pcard__top"><span></span><button type="button" class="mgs-pcard__fav" aria-pressed="false" aria-label="Ajouter aux favoris"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-8-4.7-8-10.2A4.3 4.3 0 0 1 12 7.8a4.3 4.3 0 0 1 8 2.5c0 5.5-8 10.2-8 10.2z"/></svg></button></div>
-      <p class="mgs-pcard__cat">pack</p><h3 class="mgs-pcard__title">Pack évolutif</h3>
+            <p class="mgs-pcard__cat">pack</p><h3 class="mgs-pcard__title">Pack évolutif</h3>
       <div class="mgs-pcard__bottom">
         <div class="mgs-pill">
           <span class="mgs-pill__price">dès 3 000 Ar</span>
@@ -2575,8 +2564,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
       </div>
     </div><div class="mgs-pcard">
       <a href="#produit" data-nav="produit" class="mgs-pcard__link" aria-label="Voir le produit"></a>
-      <div class="mgs-pcard__top"><span></span><button type="button" class="mgs-pcard__fav" aria-pressed="false" aria-label="Ajouter aux favoris"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-8-4.7-8-10.2A4.3 4.3 0 0 1 12 7.8a4.3 4.3 0 0 1 8 2.5c0 5.5-8 10.2-8 10.2z"/></svg></button></div>
-      <p class="mgs-pcard__figure"><span class="mgs-pcard__amount">325</span><span class="mgs-pcard__unit">UC</span></p>
+            <p class="mgs-pcard__figure"><span class="mgs-pcard__amount">325</span><span class="mgs-pcard__unit">UC</span></p>
       <div class="mgs-pcard__bottom">
         <div class="mgs-pill">
           <span class="mgs-pill__price">6 500 Ar</span>
@@ -3619,7 +3607,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var t=e.target.closest(".mgs-cmd-tab"); if(t){t.parentElement.querySelectorAll(".mgs-cmd-tab").forEach(function(x){x.classList.remove("is--active");});t.classList.add("is--active");cmdFilter();return;}
   });
   doc.addEventListener("input",function(e){if(e.target.classList.contains("mgs-cmd-search"))cmdFilter();});
-  /* carte catalogue : + -> stepper quantité, favori */
+  /* carte catalogue : + -> stepper quantité */
   doc.addEventListener("click",function(e){
     var add=e.target.closest(".mgs-pill__add");
     if(add){var pill=add.closest(".mgs-pill");pill.classList.add("is--incart");pill.querySelector(".mgs-stepper__qty").textContent="1";pill.dataset.qty="1";return;}
@@ -3630,8 +3618,6 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       pill.dataset.qty=String(q);pill.querySelector(".mgs-stepper__qty").textContent=String(q);
       var minus=pill.querySelector('[data-act="minus"]');if(minus)minus.innerHTML=(q===1)?'<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/></svg>':'<svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M5 12h14"/></svg>';
       return;}
-    var fav=e.target.closest(".mgs-pcard__fav");
-    if(fav){var fc=fav.closest(".mgs-pcard");toggleFav(fc&&fc.dataset.pid,fav);return;}
   });
   /* COMPTE : toggles langue/thème (démo) */
   doc.addEventListener("click",function(e){
@@ -3959,10 +3945,6 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       pill.classList.toggle("is--incart", q > 0);
     });
   }
-  var FAV_KEY = "mgs_favorites";
-  function getFavs() { try { var a = JSON.parse(localStorage.getItem(FAV_KEY)); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
-  function toggleFav(pid, btn) { if (!pid) return; var a = getFavs(); var i = a.indexOf(pid); if (i >= 0) a.splice(i, 1); else a.push(pid); try { localStorage.setItem(FAV_KEY, JSON.stringify(a)); } catch (e) { } syncFavs(); }
-  function syncFavs() { var a = getFavs(); $$(".mgs-pcard").forEach(function (c) { var b = $(".mgs-pcard__fav", c); if (!b) return; var on = c.dataset.pid && a.indexOf(c.dataset.pid) >= 0; b.setAttribute("aria-pressed", on ? "true" : "false"); }); }
   function openCart() { renderCart(); var d = $(".mgs-cart-drawer"), o = $(".mgs-cart-overlay"); if (!d) return; d.hidden = false; o.hidden = false; void d.offsetWidth; d.classList.add("is--open"); o.classList.add("is--open"); }
   function closeCart() { var d = $(".mgs-cart-drawer"), o = $(".mgs-cart-overlay"); if (!d) return; d.classList.remove("is--open"); o.classList.remove("is--open"); setTimeout(function () { d.hidden = true; o.hidden = true; }, 450); }
   var produitCurrent = null;
@@ -4015,11 +3997,11 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- catalogue (données réelles -> gabarit .mgs-pcard existant) ---------- */
   /* Paramètres EXACTS de main (pages/Catalog.js:142) : game, type, q, sort,
-     popular, favorites, min_price, max_price. Rien d'autre n'est envoyé. */
+     popular, min_price, max_price. Rien d'autre n'est envoyé. */
   function qs(o) { return Object.keys(o).filter(function (k) { return o[k] !== null && o[k] !== undefined && o[k] !== ""; }).map(function (k) { return encodeURIComponent(k) + "=" + encodeURIComponent(o[k]); }).join("&"); }
   function catalogQuery() {
     var sp = new URL(location.href).searchParams;
-    return { game: sp.get("game") || "", type: sp.get("type") || "", q: sp.get("q") || "", sort: sp.get("sort") || "price_asc", popular: sp.get("popular") || "", favorites: sp.get("favorites") || "", min: sp.get("min") || "", max: sp.get("max") || "" };
+    return { game: sp.get("game") || "", type: sp.get("type") || "", q: sp.get("q") || "", sort: sp.get("sort") || "price_asc", popular: sp.get("popular") || "", min: sp.get("min") || "", max: sp.get("max") || "" };
   }
   var catalogGame = null;
   function applyCatalogQuery(patch) {
@@ -4039,8 +4021,6 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     var tpl = window.__mgsCatalogTpl || $(".mgs-boutique-catalog .mgs-pcard:not(.mgs-pcard--skel)") || $(".mgs-boutique-catalog .mgs-pcard");
     if (tpl) window.__mgsCatalogTpl = tpl;
     if (!tpl) return;
-    /* main filtre les favoris côté client (pages/Catalog.js:155-157) */
-    if (catalogQuery().favorites === "1") { var favs = getFavs(); products = (products || []).filter(function (p) { return favs.indexOf(p.id) >= 0; }); }
     if (!products || !products.length) {
       /* Liste VIDE (jeu sans catalogue publié) : état vide du design avec
          `catalog.emptyGame`. L'appelant impose l'autre clé quand la requête a
@@ -4069,7 +4049,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       frag.appendChild(card);
     });
     $$(".mgs-pcard", grid).forEach(function (c) { c.remove(); });
-    grid.appendChild(frag); syncPillsFromCart(); syncFavs();
+    grid.appendChild(frag); syncPillsFromCart();
+
     var ch = $$(".mgs-boutique-catalog .mgs-chip"); if (ch[0]) ch[0].textContent = t("catalog.popular"); if (ch[1]) ch[1].textContent = catalogQuery().sort === "price_desc" ? t("catalog.priceDesc") : t("catalog.priceAsc");
     renderCatalogTabs();
   }
@@ -4112,10 +4093,6 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
       renderCatalogTabs();
       var q = catalogQuery();
       if (q.game !== gid) { q.game = gid; var s0 = qs(q); try { history.replaceState({}, "", location.pathname + (s0 ? "?" + s0 : "") + location.hash); } catch (e) { } }
-      /* `favorites` n'existe pas au contrat déployé (GET /products : type, q,
-         min_price, max_price, popular, sort, include_inactive, game) — REF l'envoyait
-         pour rien, le backend ignore le paramètre : le filtre favoris reste
-         purement local (pages/Catalog.js:155-157, renderCatalog ci-dessus). */
       var params = { game: gid, type: q.type, q: q.q, sort: q.sort, popular: q.popular, min_price: q.min, max_price: q.max };
       var path = "/products" + (qs(params) ? "?" + qs(params) : "");
       /* Échec de la requête (422 d'un `?sort` hors énumération, panne) : plus de
@@ -6164,12 +6141,10 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   /* ---------- clics : capture, stoppe le script template sur les actions prises en charge ---------- */
   doc.addEventListener("click", function (e) {
     var el = e.target;
-    /* favori : toggleFav vit dans notre IIFE, le handler du template ne le voit pas (ReferenceError) */
-    var fv = el.closest(".mgs-pcard__fav"); if (fv) { var fc = fv.closest(".mgs-pcard"); stop(e); toggleFav(fc && fc.dataset.pid); return; }
-    /* fiche produit : tout clic sur la carte (hors pilule/favori) ouvre la fiche remplie avec le produit.
+    /* fiche produit : tout clic sur la carte (hors pilule) ouvre la fiche remplie avec le produit.
        Le <a> plein cadre est en z-index:0, donc sous __figure/__bottom : lui seul était inatteignable. */
     var pc = el.closest(".mgs-pcard");
-    if (pc && !el.closest(".mgs-pill") && !el.closest(".mgs-pcard__fav")) { stop(e); openProduit(pc); return; }
+    if (pc && !el.closest(".mgs-pill")) { stop(e); openProduit(pc); return; }
     /* liens internes du template (#jeux, #securite, #support, #top…) : le sélecteur du script
        template (a[data-nav], .nav-inner-li a, …) ne les couvrait pas — ces boutons ne faisaient rien */
     var la = el.closest('a[href^="#"]');
@@ -6229,7 +6204,8 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
 
   /* ---------- boot ---------- */
   function boot() {
-    renderCart(); renderRecent(); loadPayCfg(); syncFavs(); maskUnsupported();
+    renderCart(); renderRecent(); loadPayCfg(); maskUnsupported();
+
     /* L'écran demandé par l'URL s'affiche TOUT DE SUITE : la vérification de
        session (deux reprises de 3 s et 8 s en cas de réseau lent) ne doit pas
        retarder la page — un visiteur qui ouvre /boutique doit voir la boutique.
