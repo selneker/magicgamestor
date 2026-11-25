@@ -222,8 +222,7 @@ body:has( [data-cursor]:not([data-cursor-logo]):hover ) .cursor-paragraph{displa
 .nav-inner-li:nth-of-type(1) .button-main.w--current .button-main-inner__bg{ background: var(--color--violet-700);}
 .nav-inner-li:nth-of-type(2) .button-main.w--current .button-main-inner__bg{ background: var(--color--blue-700);}
 .nav-inner-li:nth-of-type(3) .button-main.w--current .button-main-inner__bg{ background: var(--color--green-700);}
-.nav-inner-li:nth-of-type(4) .button-main.w--current .button-main-inner__bg{ background: var(--color--yellow-700);}
-.nav-inner-li:nth-of-type(5) .button-main.w--current .button-main-inner__bg{ background: var(--color--orange-800);}
+.nav-inner-li:nth-of-type(4) .button-main.w--current .button-main-inner__bg{ background: var(--color--orange-800);}
 
 [data-lottie-size="small"]{inset: 20%; width: auto; height: auto;}
 
@@ -842,6 +841,19 @@ textarea.mgs-input{height:auto;min-height:6em;border-radius:1.25em;padding:1em 1
   .mgs-grid--2{grid-template-columns:1fr}
   .mgs-buybar{flex-wrap:wrap}
 }
+
+/* Boutique : densité des cartes de jeu (50+ jeux) — vignettes réduites,
+   sans toucher aux cartes produits (.mgs-card) ni aux autres grilles. */
+.mgs-boutique-games .mgs-grid--2{grid-template-columns:repeat(6,1fr);gap:.75em}
+.mgs-boutique-games .mgs-game__media{height:4em}
+.mgs-boutique-games .mgs-game__media .bold-ic{width:1.9em;height:1.9em}
+.mgs-boutique-games .mgs-game__body{padding:.7em;gap:.4em}
+.mgs-boutique-games .mgs-game__name{font-size:1.15em;line-height:1}
+.mgs-boutique-games .mgs-game__desc{font-size:.75em}
+@media (max-width:1199px){.mgs-boutique-games .mgs-grid--2{grid-template-columns:repeat(5,1fr)}}
+@media (max-width:991px){.mgs-boutique-games .mgs-grid--2{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:767px){.mgs-boutique-games .mgs-grid--2{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:479px){.mgs-boutique-games .mgs-grid--2{grid-template-columns:1fr}}
 </style>
 
 <style>
@@ -2294,7 +2306,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
     <nav class="nav-inner" aria-label="Navigation principale">
       <a href="#top" class="nav-btn-circle is--nav-logo w-inline-block" aria-label="Magic Game Store"><svg class="nav-button-logo nav-logo-desktop" viewBox="0 0 830 830" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M415 0A415 415 0 1 1 415 830A415 415 0 1 1 415 0ZM415 0A415 415 0 0 0 830 415A415 415 0 0 0 415 830A415 415 0 0 0 0 415A415 415 0 0 0 415 0Z"/></svg><svg class="nav-logo-mobile" viewBox="0 0 830 830" aria-hidden="true"><path fill-rule="evenodd" fill="currentColor" d="M415 0A415 415 0 1 1 415 830A415 415 0 1 1 415 0ZM415 0A415 415 0 0 0 830 415A415 415 0 0 0 415 830A415 415 0 0 0 0 415A415 415 0 0 0 415 0Z"/></svg></a>
       <div class="nav-inner-right">
-        <ul class="nav-inner-list" role="list"><li class="nav-inner-li"><a href="#" data-nav="boutique" class="button-main w-inline-block" data-button-theme="light" data-button-accent="yellow"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="boutique"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>boutique</span></span></span></span></a></li><li class="nav-inner-li"><a href="#" data-nav="commandes" class="button-main w-inline-block" data-button-theme="light" data-button-accent="green"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="commandes"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>commandes</span></span></span></span></a></li><li class="nav-inner-li"><a href="#" data-nav="support" class="button-main w-inline-block" data-button-theme="light" data-button-accent="violet"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="support"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>support</span></span></span></span></a></li><li class="nav-inner-li"><a href="#" data-nav="compte" class="button-main w-inline-block" data-button-theme="light" data-button-accent="orange"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="compte"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>compte</span></span></span></span></a></li><li class="nav-inner-li" data-admin-only style="display:none"><a href="#admin" data-nav="admin" class="button-main w-inline-block" data-button-theme="light" data-button-accent="blue"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="admin"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>admin</span></span></span></span></a></li></ul>
+        <ul class="nav-inner-list" role="list"><li class="nav-inner-li"><a href="#" data-nav="boutique" class="button-main w-inline-block" data-button-theme="light" data-button-accent="yellow"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="boutique"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>boutique</span></span></span></span></a></li><li class="nav-inner-li"><a href="#" data-nav="commandes" class="button-main w-inline-block" data-button-theme="light" data-button-accent="green"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="commandes"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>commandes</span></span></span></span></a></li><li class="nav-inner-li"><a href="#" data-nav="support" class="button-main w-inline-block" data-button-theme="light" data-button-accent="violet"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="support"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>support</span></span></span></span></a></li><li class="nav-inner-li" data-admin-only style="display:none"><a href="#admin" data-nav="admin" class="button-main w-inline-block" data-button-theme="light" data-button-accent="blue"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="admin"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>admin</span></span></span></span></a></li></ul>
         <div class="nav-mobile-actions">
           <a href="#" data-nav="points" class="nav-btn-circle nav-action" aria-label="Points fidélité : 120 (démo)"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span class="nav-action-badge">120</span></a>
           <a href="#" data-nav="compte" class="nav-btn-circle nav-action" aria-label="Compte"><svg class="bold-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></a>
