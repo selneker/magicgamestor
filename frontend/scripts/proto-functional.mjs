@@ -189,7 +189,7 @@ async function verifyAndSubmit(page, methodValue) {
   await page.locator(".mgs-co-submit").click();
   await page.waitForFunction(() => !document.querySelector(".mgs-human-popup").hidden, null, { timeout: 8000 });
   // captcha désactivé (pas de clé) => flux case à cocher existant
-  await page.locator(".mgs-human-cb").check();
+  await page.locator(".mgs-human-cb").check({ force: true });
   await page.waitForFunction(() => !document.querySelector(".mgs-human-confirm").disabled, null, { timeout: 8000 });
   await page.locator(".mgs-human-confirm").click();
 }
@@ -464,6 +464,75 @@ test("déjà connecté : toute navigation vers connexion part aux jeux", async (
   await pageIs(page, "boutique");
   const seen = await page.evaluate(() => window.__mgsSeenPages.slice());
   assert.ok(!seen.includes("connexion"), "vues: " + seen.join(","));
+});
+
+/* ---------- lot 3 : /commande ---------- */
+test("commande : ID modifiable, statut noir près des suggestions, popin nettoyée", async (page) => {
+  await boot(page);
+  await addFirstProduct(page);
+  await openCheckout(page);
+  await page.locator(".mgs-co-id-input").fill("123456789");
+  await page.locator(".mgs-co-verify").click();
+  await page.waitForSelector(".mgs-co-id-status.is--ok", { timeout: 10000 });
+  const idState = await page.evaluate(() => {
+    const st = document.querySelector(".mgs-co-id-status");
+    const foot = document.querySelector(".mgs-co-id-foot");
+    const probe = document.createElement("span");
+    probe.style.color = "var(--color--dark)";
+    document.body.appendChild(probe);
+    const expected = getComputedStyle(probe).color;
+    probe.remove();
+    return {
+      color: getComputedStyle(st).color,
+      expected,
+      beforeFoot: !!(st.nextElementSibling && st.nextElementSibling.classList.contains("mgs-co-id-foot")),
+      changeH: document.querySelector(".mgs-co-change-id").getBoundingClientRect().height,
+    };
+  });
+  assert.equal(idState.color, idState.expected, "le statut « Kapotue » est en noir nu");
+  assert.equal(idState.beforeFoot, true, "le statut est juste avant le bloc des suggestions");
+  assert.ok(idState.changeH >= 44, `cible tactile du bouton ID: ${idState.changeH}px`);
+  await page.locator(".mgs-co-change-id").click();
+  assert.equal(await page.locator(".mgs-co-id-input").inputValue(), "", "le champ est vidé");
+  assert.equal(await page.locator(".mgs-co-id-status").isVisible(), false, "le statut est réinitialisé");
+
+  await page.locator(".mgs-co-id-input").fill("123456789");
+  await page.locator(".mgs-co-verify").click();
+  await page.waitForSelector(".mgs-co-id-status.is--ok", { timeout: 10000 });
+  await page.locator('.mgs-co-method input[value="MVola"]').locator("xpath=ancestor::label[contains(@class,'mgs-co-method')]").click();
+  await page.waitForFunction(() => document.querySelector('.mgs-co-method input[value="MVola"]').closest(".mgs-co-method").classList.contains("is--active"), null, { timeout: 8000 });
+  await page.locator(".mgs-co-submit").hover();
+  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector(".mgs-co-submit")).boxShadow), "none", "aucune ombre au survol du bouton");
+  await page.locator(".mgs-co-submit").click();
+  await page.waitForFunction(() => !document.querySelector(".mgs-human-popup").hidden, null, { timeout: 8000 });
+  const pop = await page.evaluate(() => {
+    const p = document.querySelector(".mgs-human-popup");
+    const foot = p.querySelector(".mgs-human-foot");
+    const confirm = p.querySelector(".mgs-human-confirm");
+    const label = p.querySelector(".mgs-human-sr");
+    return {
+      shadow: getComputedStyle(p).boxShadow,
+      cancel: p.querySelectorAll(".mgs-human-cancel").length,
+      labelVisible: label ? label.getBoundingClientRect().width > 2 : false,
+      confirmW: confirm.getBoundingClientRect().width,
+      footW: foot.clientWidth,
+      checkW: p.querySelector(".mgs-human-cb").getBoundingClientRect().width,
+      gap: parseFloat(getComputedStyle(foot).gap) || 0,
+      cb: !!p.querySelector(".mgs-human-cb"),
+      disabledAtOpen: confirm.disabled,
+    };
+  });
+  assert.equal(pop.shadow, "none", "pas d'ombre noire sur la boîte");
+  assert.equal(pop.cancel, 0, "bouton « Fermer » retiré de cette popin");
+  assert.equal(pop.labelVisible, false, "libellé visible retiré");
+  assert.equal(pop.cb, true, "la case reste présente");
+  assert.equal(pop.disabledAtOpen, true, "la case pilote toujours le bouton");
+  const expectedConfirmW = pop.footW - pop.checkW - pop.gap;
+  assert.ok(Math.abs(pop.confirmW - expectedConfirmW) <= 2, `bouton pleine largeur restante: ${pop.confirmW}/${expectedConfirmW}`);
+  await page.locator(".mgs-human-cb").check({ force: true });
+  assert.equal(await page.locator(".mgs-human-confirm").isEnabled(), true);
+  await page.locator(".mgs-human-popup:not(.mgs-co-cancel-popup) .mgs-human-close").click();
+  await page.waitForFunction(() => document.querySelector(".mgs-human-popup").hidden, null, { timeout: 8000 });
 });
 
 /* ---------- runner : chaque test à chaque viewport ---------- */
