@@ -849,7 +849,8 @@ textarea.mgs-input{height:auto;min-height:6em;border-radius:1.25em;padding:1em 1
 /* Boutique : densité des cartes de jeu (50+ jeux) — vignettes réduites,
    sans toucher aux cartes produits (.mgs-card) ni aux autres grilles. */
 .mgs-boutique-games .mgs-grid--2{grid-template-columns:repeat(6,1fr);gap:.75em}
-.mgs-boutique-games .mgs-game__media{height:4em}
+.mgs-boutique-games .mgs-game{border-radius:1.8em}
+.mgs-boutique-games .mgs-game__media{height:3.5em;margin:.6em .6em 0;border-bottom:0;border-radius:1.4em;overflow:hidden}
 .mgs-boutique-games .mgs-game__media .bold-ic{width:1.9em;height:1.9em}
 .mgs-boutique-games .mgs-game__body{padding:.5em;gap:.2em}
 .mgs-boutique-games .mgs-game__name{font-size:1.15em;line-height:1}
@@ -861,7 +862,7 @@ textarea.mgs-input{height:auto;min-height:6em;border-radius:1.25em;padding:1em 1
 .mgs-boutique-games .mgs-game__price{display:flex;align-items:baseline;flex-wrap:wrap;gap:.4em;font-family:"Bricolage Grotesque",Impact,sans-serif;font-weight:800;font-size:1em}
 .mgs-boutique-games .mgs-game__old{font-family:'Onest',Arial,sans-serif;font-size:.62em;font-weight:600;opacity:.55;text-decoration:line-through}
 .mgs-boutique-games .mgs-game__discount{background:var(--color--blue-100);border:.125em solid var(--color--dark);border-radius:100em;font-family:'Onest',Arial,sans-serif;font-size:.6em;font-weight:800;padding:.1em .5em}
-@media (min-width:992px){.mgs-boutique-games .mgs-game{aspect-ratio:2/3}.mgs-boutique-games .mgs-game__media{height:65%;flex:none}}
+@media (min-width:992px){.mgs-boutique-games .mgs-game{aspect-ratio:2/3}.mgs-boutique-games .mgs-game__media{height:62%;flex:none}}
 @media (max-width:1199px){.mgs-boutique-games .mgs-grid--2{grid-template-columns:repeat(5,1fr)}}
 @media (max-width:991px){.mgs-boutique-games .mgs-grid--2{grid-template-columns:repeat(3,1fr)}}
 @media (max-width:767px){.mgs-boutique-games .mgs-grid--2{grid-template-columns:repeat(2,1fr)}}
