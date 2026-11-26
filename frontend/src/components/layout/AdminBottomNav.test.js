@@ -116,6 +116,15 @@ test("Jeux est atteignable : son lien pointe vers /admin/jeux (absent des deux s
   await act(async () => root.unmount());
 });
 
+test("menu Plus : liens client en ancres absolues hors HashRouter", async () => {
+  const { container, root } = await mountNav();
+  await act(async () => { container.querySelector('[data-testid="admin-bnav-more"]').click(); });
+  const links = Array.from(container.querySelectorAll(".bg-card a[data-client-nav]"));
+  expect(links.map((a) => a.getAttribute("href"))).toEqual(["/boutique", "/commandes", "/compte", "/support"]);
+  expect(links.every((a) => a.tagName === "A")).toBe(true);
+  await act(async () => root.unmount());
+});
+
 test("hors /admin, la barre ne rend rien", async () => {
   mockPathname = "/";
   const { container, root } = await mountNav();

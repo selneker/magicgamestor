@@ -156,6 +156,18 @@ test("pied de sidebar fixe : Boutique et Déconnexion hors de la zone scrollée"
   await act(async () => root.unmount());
 });
 
+test("liens espace client : ancres absolues hors HashRouter", async () => {
+  const { container, root } = await mountLayout();
+  const links = Array.from(container.querySelectorAll("[data-client-nav]"));
+  expect(links.map((a) => a.getAttribute("href"))).toEqual(["/boutique", "/commandes", "/compte", "/support"]);
+  expect(links.every((a) => a.tagName === "A" && !a.hasAttribute("to"))).toBe(true);
+  const shop = container.querySelector('[data-testid="admin-sidebar-shop"]');
+  expect(shop.getAttribute("href")).toBe("/boutique");
+  const header = Array.from(container.querySelectorAll("a[href='/']"));
+  expect(header.length).toBeGreaterThan(0);
+  await act(async () => root.unmount());
+});
+
 test("Déconnexion déclenche logout() du contexte auth", async () => {
   const { container, root } = await mountLayout();
   const logoutBtn = container.querySelector('[data-testid="admin-sidebar-logout"]');

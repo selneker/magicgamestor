@@ -1,12 +1,12 @@
 import { useState, useRef } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Home, LogOut, MoreHorizontal, X } from "lucide-react";
+import { Home, LogOut, MessageCircle, MoreHorizontal, ReceiptText, UserRound, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useChat } from "@/context/ChatContext";
 import { useLang } from "@/context/LanguageContext";
 import { Dialog, DialogOverlay } from "@/components/ui/dialog";
-import { adminBarItems, adminMoreItems, adminBadge, useFzrAlerts } from "@/lib/adminNav";
+import { adminBarItems, adminMoreItems, adminBadge, useFzrAlerts, CLIENT_LINKS } from "@/lib/adminNav";
 
 // Mobile-only admin bottom nav (<1024px). Desktop reads the same ADMIN_NAV
 // source of truth for its sidebar (AdminLayout) — never duplicate entries here.
@@ -117,11 +117,25 @@ export function AdminBottomNav() {
               );
             })}
             <li>
-              <Link to="/" onClick={() => setMoreOpen(false)} data-testid="admin-bnav-go-shop" className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-muted">
-                <span className="flex h-9 w-9 items-center justify-center border border-[color:var(--rule-strong)] bg-background"><Home className="h-4 w-4" strokeWidth={1.75} /></span>
-                <span className="flex-1 text-sm font-semibold">{t("nav.shop")}</span>
-              </Link>
+              <p className="eyebrow px-3 py-2">{t("admin.clientArea")}</p>
             </li>
+            {CLIENT_LINKS.map((c) => {
+              const Icon = c.key === "shop" ? Home : c.key === "orders" ? ReceiptText : c.key === "account" ? UserRound : MessageCircle;
+              return (
+                <li key={c.key}>
+                  <a
+                    href={c.href}
+                    data-client-nav={c.key}
+                    onClick={() => setMoreOpen(false)}
+                    data-testid={c.key === "shop" ? "admin-bnav-go-shop" : `admin-bnav-client-${c.key}`}
+                    className="flex items-center gap-3 px-3 py-3 transition-colors hover:bg-muted"
+                  >
+                    <span className="flex h-9 w-9 items-center justify-center border border-[color:var(--rule-strong)] bg-background"><Icon className="h-4 w-4" strokeWidth={1.75} /></span>
+                    <span className="flex-1 text-sm font-semibold">{t(c.labelKey)}</span>
+                  </a>
+                </li>
+              );
+            })}
             <li>
               <button
                 type="button"

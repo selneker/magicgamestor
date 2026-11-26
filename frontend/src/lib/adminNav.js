@@ -40,6 +40,16 @@ export const ADMIN_NAV_GROUPS = [
   { key: "system", labelKey: "admin.group.system" },
 ];
 
+// Liens vers l'espace client, VOLONTAIREMENT séparés de ADMIN_NAV : les tests
+// verrouillent les 11 routes admin et les ids `admin-nav-*`. Ce sont des <a>
+// absolus (hors HashRouter de /admin.html), pas des routes React Router.
+export const CLIENT_LINKS = [
+  { key: "shop", labelKey: "nav.shop", href: "/boutique" },
+  { key: "orders", labelKey: "nav.orders", href: "/commandes" },
+  { key: "account", labelKey: "nav.account", href: "/compte" },
+  { key: "support", labelKey: "nav.support", href: "/support" },
+];
+
 // Filtre selon les permissions (can() vient d'AuthContext).
 export const adminNavVisible = (can) => ADMIN_NAV.filter((e) => !e.permission || can(e.permission));
 

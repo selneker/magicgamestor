@@ -20,10 +20,10 @@ export default function AdminDashboard() {
     <div className="space-y-6" data-testid="admin-dashboard">
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-5">
         {cards.map(([label, value, id]) => (
-          <div key={id} data-testid={id} className="min-w-0 border border-foreground bg-card p-4 sm:p-5"><p className="eyebrow truncate">{label}</p><p className="num mt-3 break-words text-xl sm:text-2xl lg:text-3xl">{value}</p></div>
+          <div key={id} data-testid={id} className="min-w-0 rounded-[10px] border border-[color:var(--foreground)] bg-card p-4 sm:p-5"><p className="eyebrow truncate">{label}</p><p className="num mt-3 break-words text-xl sm:text-2xl lg:text-3xl">{value}</p></div>
         ))}
       </div>
-      <div className="flex flex-wrap items-end justify-between gap-4 border-2 border-foreground bg-card p-5" data-testid="stat-pending-payment">
+      <div className="flex flex-wrap items-end justify-between gap-4 rounded-[10px] border-2 border-[color:var(--foreground)] bg-card p-5" data-testid="stat-pending-payment">
         <div>
           <p className="eyebrow">{t("admin.pendingPayment")}</p>
           <p className="num mt-2 text-3xl sm:text-4xl" data-testid="stat-pending-count">{stats.pending_payment_count ?? 0}</p>
@@ -34,7 +34,7 @@ export default function AdminDashboard() {
         </div>
       </div>
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <div className="rounded-2xl border border-[color:var(--rule)] bg-card p-5">
+        <div className="rounded-[10px] border border-[color:var(--foreground)] bg-card p-5">
           <h2 className="font-display text-lg font-bold text-foreground">{t("admin.last14")}</h2>
           <div className="mt-4 h-56">
             <ResponsiveContainer width="100%" height="100%">
@@ -42,7 +42,7 @@ export default function AdminDashboard() {
             </ResponsiveContainer>
           </div>
         </div>
-        <div className="rounded-2xl border border-[color:var(--rule)] bg-card p-5">
+        <div className="rounded-[10px] border border-[color:var(--foreground)] bg-card p-5">
           <h2 className="font-display text-lg font-bold text-foreground">{t("admin.topProducts")}</h2>
           <ul className="mt-4 space-y-2">
             {stats.top_products.map((p) => <li key={p._id} className="flex justify-between rounded-xl bg-card px-3 py-2 text-sm"><span className="font-semibold">{p._id}</span><span className="text-muted-foreground">×{p.qty}</span></li>)}

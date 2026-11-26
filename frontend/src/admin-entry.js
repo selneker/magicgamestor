@@ -15,6 +15,7 @@ import { ChatProvider } from "@/context/ChatContext";
 import { CartProvider } from "@/context/CartContext";
 import { Toaster } from "@/components/ui/sonner";
 import AdminLayout from "@/pages/admin/AdminLayout";
+import { AdminBottomNav } from "@/components/layout/AdminBottomNav";
 import AdminDashboard from "@/pages/admin/AdminDashboard";
 import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminProducts from "@/pages/admin/AdminProducts";
@@ -78,6 +79,7 @@ root.render(
                 <CartProvider>
                   <HashRouter>
                     <AdminApp />
+                    <AdminBottomNav />
                     <Toaster position="top-center" richColors />
                   </HashRouter>
                 </CartProvider>
