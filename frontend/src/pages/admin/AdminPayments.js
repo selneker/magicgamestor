@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import AdminBinance from "@/pages/admin/AdminBinance";
 
-const panel = "border-2 border-foreground bg-card p-4 sm:p-5";
+const panel = "border-2 border-[color:var(--foreground)] bg-card p-4 sm:p-5";
 
 // Unified "Paiements" admin surface. It only MERGES the existing admin UIs
 // (PAPI + FiveOne Pay toggles/fees previously on the dashboard, and Binance)
