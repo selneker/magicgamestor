@@ -109,18 +109,18 @@ export default function AdminUsers() {
           <Input data-testid="users-search" value={filters.search} placeholder={t("admin.userMgmt.searchPlaceholder")}
             onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, search: e.target.value })); }} className="h-11 rounded-xl pl-9" />
         </div>
-        <select data-testid="users-filter-role" value={filters.role} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, role: e.target.value })); }} className="h-11 border border-foreground bg-card px-3 text-sm font-semibold">
+        <select data-testid="users-filter-role" value={filters.role} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, role: e.target.value })); }} className="h-11 border border-[color:var(--foreground)] bg-card px-3 text-sm font-semibold">
           <option value="">{t("admin.userMgmt.filterRoleAll")}</option>
           <option value="customer">{t("admin.userMgmt.filterRoleCustomer")}</option>
           <option value="admin">{t("admin.userMgmt.filterRoleAdmin")}</option>
           <option value="super_admin">{t("admin.userMgmt.filterRoleSuperAdmin")}</option>
         </select>
-        <select data-testid="users-filter-status" value={filters.status} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, status: e.target.value })); }} className="h-11 border border-foreground bg-card px-3 text-sm font-semibold">
+        <select data-testid="users-filter-status" value={filters.status} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, status: e.target.value })); }} className="h-11 border border-[color:var(--foreground)] bg-card px-3 text-sm font-semibold">
           <option value="">{t("admin.userMgmt.filterStatusAll")}</option>
           <option value="active">{t("admin.userMgmt.filterStatusActive")}</option>
           <option value="blocked">{t("admin.userMgmt.filterStatusBlocked")}</option>
         </select>
-        <select data-testid="users-filter-verified" value={filters.email_verified} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, email_verified: e.target.value })); }} className="h-11 border border-foreground bg-card px-3 text-sm font-semibold">
+        <select data-testid="users-filter-verified" value={filters.email_verified} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, email_verified: e.target.value })); }} className="h-11 border border-[color:var(--foreground)] bg-card px-3 text-sm font-semibold">
           <option value="">{t("admin.userMgmt.filterVerifiedAll")}</option>
           <option value="yes">{t("admin.userMgmt.filterVerifiedYes")}</option>
           <option value="no">{t("admin.userMgmt.filterVerifiedNo")}</option>
@@ -131,7 +131,7 @@ export default function AdminUsers() {
         <div className="space-y-2" data-testid="users-list">
           {data.items.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground" data-testid="users-empty">{t("admin.userMgmt.empty")}</p>}
           {data.items.map((u) => (
-            <div key={u.user_id} data-testid={`user-row-${u.user_id}`} className="flex flex-wrap items-center gap-3 border border-foreground bg-card p-3">
+            <div key={u.user_id} data-testid={`user-row-${u.user_id}`} className="flex flex-wrap items-center gap-3 border border-[color:var(--foreground)] bg-card p-3">
               <div className="min-w-0 flex-1 basis-full sm:basis-auto">
                 <p className="truncate font-bold text-foreground">{u.name || t("account.pubgCard.placeholder")}</p>
                 <p className="truncate text-xs text-muted-foreground">{u.email}</p>
@@ -176,20 +176,20 @@ export default function AdminUsers() {
 
       {/* Grant admin confirmation + permissions */}
       <Dialog open={!!grant} onOpenChange={(v) => !v && setGrant(null)}>
-        <DialogContent className="border-2 border-foreground bg-background sm:max-w-md" data-testid="grant-dialog">
+        <DialogContent className="border-2 border-[color:var(--foreground)] bg-background sm:max-w-md" data-testid="grant-dialog">
           <DialogHeader>
             <DialogTitle className="font-display text-lg font-bold">{t("admin.userMgmt.grantDialogTitle")}</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">{grant?.email}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             {ALL_PERMISSIONS.map((perm) => (
-              <label key={perm} className="flex items-center justify-between border border-foreground bg-card px-3 py-2 text-sm font-semibold">
+              <label key={perm} className="flex items-center justify-between border border-[color:var(--foreground)] bg-card px-3 py-2 text-sm font-semibold">
                 {permLabel(perm)}
                 <Switch checked={grantPerms.includes(perm)} data-testid={`grant-perm-${perm}`}
                   onCheckedChange={(v) => setGrantPerms((cur) => (v ? [...cur, perm] : cur.filter((p) => p !== perm)))} />
               </label>
             ))}
-            <p className="border border-foreground bg-primary/15 px-3 py-2 text-xs font-bold uppercase tracking-[0.12em]" data-testid="grant-delete-note">{t("admin.userMgmt.grantDeleteNote")}</p>
+            <p className="border border-[color:var(--foreground)] bg-primary/15 px-3 py-2 text-xs font-bold uppercase tracking-[0.12em]" data-testid="grant-delete-note">{t("admin.userMgmt.grantDeleteNote")}</p>
           </div>
           <Button className="mt-2 h-11 w-full rounded-full font-bold" disabled={busy} onClick={confirmGrant} data-testid="grant-confirm">{t("common.confirm")}</Button>
         </DialogContent>
@@ -197,14 +197,14 @@ export default function AdminUsers() {
 
       {/* User detail */}
       <Dialog open={!!detail} onOpenChange={(v) => !v && setDetail(null)}>
-        <DialogContent className="max-h-[90vh] w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] overflow-y-auto border-2 border-foreground bg-background sm:w-full sm:max-w-lg" data-testid="user-detail">
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] overflow-y-auto border-2 border-[color:var(--foreground)] bg-background sm:w-full sm:max-w-lg" data-testid="user-detail">
           <DialogHeader>
             <DialogTitle className="font-display text-lg font-bold">{detail?.name || t("account.pubgCard.placeholder")}</DialogTitle>
             <DialogDescription className="break-all text-xs text-muted-foreground">{detail?.email}</DialogDescription>
           </DialogHeader>
           {detail && (
             <div className="space-y-3 text-sm">
-              <div className="border border-foreground bg-card p-3">
+              <div className="border border-[color:var(--foreground)] bg-card p-3">
                 <p className="eyebrow">{t("admin.userMgmt.detailProvider")}</p>
                 <p>{t("admin.userMgmt.detailProvider")} : <b>{detail.auth_provider === "google" ? t("admin.userMgmt.detailProvider") : t("admin.userMgmt.detailPhone")}</b></p>
                 <p>{t("admin.userMgmt.detailPhone")} : <b>{detail.phone || t("account.pubgCard.placeholder")}</b></p>
@@ -213,36 +213,36 @@ export default function AdminUsers() {
                 <p>{t("admin.userMgmt.detailRole")} : <b data-testid="detail-role">{roleLabel(detail.role)}</b></p>
                 <p>{t("admin.userMgmt.detailRegistered")} : <b>{(detail.created_at || "").slice(0, 10)}</b></p>
               </div>
-              <div className="border border-foreground bg-card p-3">
+              <div className="border border-[color:var(--foreground)] bg-card p-3">
                 <p className="eyebrow">PUBG</p>
                 <p>{t("admin.userMgmt.detailPubgId")} : <b>{(detail.saved_pubg_ids || []).join(", ") || t("account.pubgCard.placeholder")}</b></p>
                 <p>{t("admin.userMgmt.detailPubgPseudo")} : <b>{detail.pubg_pseudo || t("account.pubgCard.placeholder")}</b></p>
               </div>
-              <div className="border border-foreground bg-card p-3">
+              <div className="border border-[color:var(--foreground)] bg-card p-3">
                 <p className="eyebrow">{t("admin.userMgmt.detailOrders")}</p>
                 <p>{t("admin.userMgmt.detailEarned")} : <b>{detail.loyalty?.earned ?? 0}</b> · {t("admin.userMgmt.detailPromo")} : <b>{detail.loyalty?.promo ?? 0}</b> · {t("admin.userMgmt.detailBalance")} : <b data-testid="detail-balance">{detail.loyalty?.balance ?? 0}</b></p>
               </div>
-              <div className="border border-foreground bg-card p-3">
+              <div className="border border-[color:var(--foreground)] bg-card p-3">
                 <p className="eyebrow">{t("admin.userMgmt.detailOrders")}</p>
                 <p><b data-testid="detail-orders-count">{detail.orders_count}</b> {t("admin.userMgmt.detailOrdersCount", { count: detail.orders_count })}</p>
                 <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
                   {(detail.recent_orders || []).map((o) => <li key={o.order_number}>{o.order_number} · {o.status} · {formatAr(o.total || 0, lang)}</li>)}
                 </ul>
               </div>
-              <div className="border border-foreground bg-card p-3">
+              <div className="border border-[color:var(--foreground)] bg-card p-3">
                 <p className="eyebrow">{t("admin.userMgmt.detailOrders")}</p>
                 {detail.role === "super_admin" && <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em]">{t("admin.userMgmt.detailFullAccess")}</p>}
                 {detail.role === "customer" && <p className="mt-1 text-xs text-muted-foreground">{t("admin.userMgmt.detailNoPermissions")}</p>}
                 {detail.role === "admin" && (
                   <div className="mt-2 space-y-2">
                     {ALL_PERMISSIONS.map((perm) => (
-                      <label key={perm} className="flex items-center justify-between border border-foreground bg-background px-3 py-2 text-sm font-semibold">
+                      <label key={perm} className="flex items-center justify-between border border-[color:var(--foreground)] bg-background px-3 py-2 text-sm font-semibold">
                         {permLabel(perm)}
                         <Switch checked={(detail.permissions || []).includes(perm)} disabled={!isSuper || busy} data-testid={`perm-${perm}`}
                           onCheckedChange={(v) => togglePermission(detail, perm, v)} />
                       </label>
                     ))}
-                    <p className="border border-foreground bg-primary/15 px-3 py-2 text-xs font-bold uppercase tracking-[0.12em]" data-testid="detail-delete-note">{t("admin.userMgmt.grantDeleteNote")}</p>
+                    <p className="border border-[color:var(--foreground)] bg-primary/15 px-3 py-2 text-xs font-bold uppercase tracking-[0.12em]" data-testid="detail-delete-note">{t("admin.userMgmt.grantDeleteNote")}</p>
                     {!isSuper && <p className="text-xs text-muted-foreground">{t("admin.userMgmt.detailOnlySuperAdmin")}</p>}
                   </div>
                 )}
