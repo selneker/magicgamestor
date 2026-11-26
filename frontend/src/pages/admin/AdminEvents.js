@@ -28,15 +28,15 @@ export default function AdminEvents() {
     } catch (err) { toast.error(errorMessage(err)); }
   };
   const remove = async (ev) => { if (!window.confirm(`${t("admin.delete")} ?`)) return; await api.delete(`/admin/events/${ev.id}`); load(); };
-  const field = (k, label) => <label className="text-sm font-semibold text-foreground">{label}<Input data-testid={`event-field-${k}`} value={editing[k] ?? ""} onChange={(e) => setEditing({ ...editing, [k]: e.target.value })} className="mt-1 h-10 rounded-xl" /></label>;
+  const field = (k, label) => <label className="text-sm font-semibold text-foreground">{label}<Input data-testid={`event-field-${k}`} value={editing[k] ?? ""} onChange={(e) => setEditing({ ...editing, [k]: e.target.value })} className="mt-1 h-10 rounded-[10px]" /></label>;
 
   return (
     <div data-testid="admin-events">
       <Button className="rounded-full font-bold" onClick={() => setEditing({ ...EMPTY })} data-testid="admin-new-event"><Plus className="mr-1 h-4 w-4" />{t("admin.newEvent")}</Button>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {events.map((ev) => (
-          <div key={ev.id} data-testid={`admin-event-${ev.slug}`} className={`flex items-center gap-3 rounded-[10px] border bg-card p-4 ${ev.active ? "border-[color:var(--rule)]" : "border-dashed opacity-60"}`}>
-            {ev.image_url && <img src={ev.image_url} alt="" className="h-14 w-20 rounded-xl object-cover" />}
+          <div key={ev.id} data-testid={`admin-event-${ev.slug}`} className={`flex items-center gap-3 rounded-[10px] border bg-card p-4 ${ev.active ? "border-[color:var(--foreground)]" : "border-dashed opacity-60"}`}>
+            {ev.image_url && <img src={ev.image_url} alt="" className="h-14 w-20 rounded-[10px] object-cover" />}
             <div className="min-w-0 flex-1"><p className="truncate font-display font-bold text-foreground">{ev.title_fr}</p><p className="text-xs">♥ {ev.likes} · ↗ {ev.shares} · {ev.product_slug || "—"}</p></div>
             <Button size="icon" variant="ghost" className="rounded-full" aria-label={t("admin.edit")} onClick={() => setEditing({ ...EMPTY, ...ev })} data-testid={`admin-edit-event-${ev.slug}`}><Pencil className="h-4 w-4" /></Button>
             <Button size="icon" variant="ghost" className="rounded-full text-muted-foreground hover:text-foreground" aria-label={t("admin.delete")} onClick={() => remove(ev)} data-testid={`admin-delete-event-${ev.slug}`}><Trash2 className="h-4 w-4" /></Button>
@@ -44,14 +44,14 @@ export default function AdminEvents() {
         ))}
       </div>
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent aria-describedby={undefined} className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-2xl" data-testid="event-dialog">
+        <DialogContent aria-describedby={undefined} className="max-h-[90vh] overflow-y-auto rounded-[10px] sm:max-w-2xl" data-testid="event-dialog">
           <DialogHeader><DialogTitle className="font-display">{editing?.id ? t("admin.edit") : t("admin.newEvent")}</DialogTitle></DialogHeader>
           {editing && (
             <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
               {field("title_fr", t("admin.fieldTitleFr"))}{field("title_en", t("admin.fieldTitleEn"))}{field("slug", t("admin.fieldSlug"))}{field("badge", t("admin.fieldBadge"))}
               {field("image_url", t("admin.fieldImageUrl"))}{field("product_slug", t("admin.fieldProductSlug"))}{field("price_label", t("admin.fieldPriceLabel"))}{field("old_price_label", t("admin.fieldOldPriceLabel"))}
-              <label className="text-sm font-semibold text-foreground sm:col-span-2">{t("admin.fieldDescriptionFr")}<Textarea value={editing.description_fr || ""} onChange={(e) => setEditing({ ...editing, description_fr: e.target.value })} className="mt-1 rounded-xl" data-testid="event-field-description_fr" /></label>
-              <label className="text-sm font-semibold text-foreground sm:col-span-2">{t("admin.fieldDescriptionEn")}<Textarea value={editing.description_en || ""} onChange={(e) => setEditing({ ...editing, description_en: e.target.value })} className="mt-1 rounded-xl" data-testid="event-field-description_en" /></label>
+              <label className="text-sm font-semibold text-foreground sm:col-span-2">{t("admin.fieldDescriptionFr")}<Textarea value={editing.description_fr || ""} onChange={(e) => setEditing({ ...editing, description_fr: e.target.value })} className="mt-1 rounded-[10px]" data-testid="event-field-description_fr" /></label>
+              <label className="text-sm font-semibold text-foreground sm:col-span-2">{t("admin.fieldDescriptionEn")}<Textarea value={editing.description_en || ""} onChange={(e) => setEditing({ ...editing, description_en: e.target.value })} className="mt-1 rounded-[10px]" data-testid="event-field-description_en" /></label>
               <label className="flex items-center gap-2 text-sm font-semibold"><Switch checked={!!editing.active} onCheckedChange={(v) => setEditing({ ...editing, active: v })} data-testid="event-field-active" />{t("admin.active")}</label>
               <Button type="submit" className="rounded-full font-bold sm:col-span-2" data-testid="event-save">{t("admin.save")}</Button>
             </form>

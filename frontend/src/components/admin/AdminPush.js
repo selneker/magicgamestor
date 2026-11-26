@@ -51,12 +51,12 @@ export const syncResultText = (sync, t) => {
 const Unsupported = ({ t }) => (
   // iOS 16.4+ : PushManager n'existe que dans l'app installée (mode
   // standalone) — pas de détection fragile : doute = aide neutre.
-  <section data-testid="admin-push" className="border border-foreground bg-card p-3">
+  <section data-testid="admin-push" className="border border-[color:var(--foreground)] bg-card p-3">
     <div className="flex flex-wrap items-center gap-3">
       <Bell className="h-4 w-4" strokeWidth={2} />
       <p className="text-[11px] font-black uppercase tracking-[0.12em]" data-testid="push-status">
         {t("admin.push.title")}
-        <span className="ml-2 inline-block border border-foreground px-1.5 py-0.5 text-[color:var(--admin-ink-muted)]">{t("admin.push.unavailable")}</span>
+        <span className="ml-2 inline-block border border-[color:var(--foreground)] px-1.5 py-0.5 text-[color:var(--admin-ink-muted)]">{t("admin.push.unavailable")}</span>
       </p>
     </div>
     <p data-testid="push-unsupported-help" className="mt-2 text-xs text-muted-foreground">{t("admin.push.pwaHelp")}</p>
@@ -80,13 +80,13 @@ export const AdminPushPage = () => {
   const switchOn = s.permission === "granted" && s.deviceSynced === true && !s.off;
 
   return (
-    <section data-testid="admin-push" className="border border-foreground bg-card p-3">
+    <section data-testid="admin-push" className="border border-[color:var(--foreground)] bg-card p-3">
       <div className="flex flex-wrap items-center gap-3">
         <Bell className="h-4 w-4" strokeWidth={2} />
         <p className="text-[11px] font-black uppercase tracking-[0.12em]" data-testid="push-status" aria-live="polite">
           {t("admin.push.title")}
-          <span className="ml-2 inline-block border border-foreground px-1.5 py-0.5">{permBadge}</span>
-          <span data-testid="push-device" className={`ml-2 inline-block border border-foreground px-1.5 py-0.5 ${s.deviceSynced === true ? "bg-primary text-ink" : "text-[color:var(--admin-ink-muted)]"}`}>{deviceBadge}</span>
+          <span className="ml-2 inline-block border border-[color:var(--foreground)] px-1.5 py-0.5">{permBadge}</span>
+          <span data-testid="push-device" className={`ml-2 inline-block border border-[color:var(--foreground)] px-1.5 py-0.5 ${s.deviceSynced === true ? "bg-primary text-ink" : "text-[color:var(--admin-ink-muted)]"}`}>{deviceBadge}</span>
         </p>
         {s.sync.state === "failed" && (
           <Button type="button" size="sm" variant="outline" className="min-h-11" disabled={s.syncing || s.busy} onClick={pushSync.syncNow} data-testid="push-retry">
@@ -101,7 +101,7 @@ export const AdminPushPage = () => {
       {/* Interrupteur : activation = demande de permission + abonnement + envoi ;
           désactivation = suppression serveur + locale. `off` distingue le choix
           volontaire d'un appareil « non synchronisé ». */}
-      <div className="mt-3 flex items-center justify-between gap-3 border-t border-[color:var(--rule)] pt-1">
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-[color:var(--foreground)] pt-1">
         <label htmlFor="push-switch" className="flex min-h-11 flex-1 cursor-pointer items-center text-sm font-semibold">
           {switchOn ? t("admin.push.switchOn") : t("admin.push.switchOff")}
         </label>
@@ -132,7 +132,7 @@ export const AdminPushPage = () => {
 
       {/* Journal replié par défaut : la page reste sobre, les alertes se
           ouvrent à la demande avec leur bouton d'actualisation. */}
-      <div className="mt-3 border-t border-[color:var(--rule)] pt-1">
+      <div className="mt-3 border-t border-[color:var(--foreground)] pt-1">
         <button
           type="button"
           data-testid="push-alerts-toggle"

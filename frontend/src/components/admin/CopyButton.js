@@ -18,8 +18,8 @@ export const CopyButton = ({ value, label, testId, bare = false, small = false }
     className={bare
       ? "relative inline-flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:text-foreground focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-foreground before:absolute before:-inset-1.5 before:content-['']"
       : small
-        ? "relative inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[3px] border border-foreground/30 text-muted-foreground transition-colors hover:border-foreground hover:bg-primary hover:text-primary-foreground focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-foreground before:absolute before:-inset-3 before:content-['']"
-        : "inline-flex h-6 w-6 shrink-0 items-center justify-center border border-foreground/30 text-muted-foreground transition-colors hover:border-foreground hover:bg-primary hover:text-primary-foreground"}>
+        ? "relative inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[10px] border border-[color:var(--foreground)] text-muted-foreground transition-colors hover:border-[color:var(--foreground)] hover:bg-primary hover:text-primary-foreground focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-foreground before:absolute before:-inset-3 before:content-['']"
+        : "inline-flex h-6 w-6 shrink-0 items-center justify-center border border-[color:var(--foreground)] text-muted-foreground transition-colors hover:border-[color:var(--foreground)] hover:bg-primary hover:text-primary-foreground"}>
     <Copy className={small ? "h-3 w-3" : "h-3.5 w-3.5"} strokeWidth={2} />
   </button>;
 };

@@ -58,7 +58,7 @@ export default function AdminPayments() {
             <div key={p.key} className="flex items-start justify-between gap-3 py-3" data-testid={`${p.testid}-setting`}>
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-2 font-display text-base font-bold leading-tight">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border border-[color:var(--rule-strong)] bg-background"><p.icon className="h-4 w-4" strokeWidth={2} /></span>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-[color:var(--foreground)] bg-background"><p.icon className="h-4 w-4" strokeWidth={2} /></span>
                   {p.label}
                   {p.sandbox && <span className="rounded-full bg-card px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-foreground">{t("admin.sandbox")}</span>}
                 </p>
@@ -80,18 +80,18 @@ export default function AdminPayments() {
             </div>
             {feesOpen && feeRules && (
               <>
-                <div className="flex min-w-0 items-center justify-between gap-3 border border-border p-3" data-testid="fee-rule-manual">
+                <div className="flex min-w-0 items-center justify-between gap-3 border border-[color:var(--foreground)] p-3" data-testid="fee-rule-manual">
                   <p className="text-sm font-bold">{t("admin.feesManual")}</p>
                   <p className="shrink-0 text-sm font-semibold text-muted-foreground" data-testid="fee-manual-value">{t("admin.feesManualValue")}</p>
                 </div>
                 {["papi", "fiveone"].map((key) => (
-                  <div key={key} className="min-w-0 border border-border p-3" data-testid={`fee-rule-${key}`}>
+                  <div key={key} className="min-w-0 border border-[color:var(--foreground)] p-3" data-testid={`fee-rule-${key}`}>
                     <p className="text-sm font-bold">{key === "papi" ? "Papi" : "FiveOne Pay"}</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">{key === "papi" ? t("admin.feesPapiHint") : t("admin.feesFiveoneHint")}</p>
                     <div className="mt-2 grid grid-cols-3 gap-2">
                       {[["percent", t("admin.feeRate"), "0.05"], ["min", t("admin.feeMin"), "50"], ["max", t("admin.feeMax"), "50"]].map(([f, label, step]) => (
                         <label key={f} className="min-w-0 text-xs font-semibold text-muted-foreground">{label}
-                          <Input type="number" min="0" step={step} inputMode="decimal" value={feeRules[key]?.[f] ?? ""} disabled={!isSuperAdmin} data-testid={`fee-${key}-${f}`} className="mt-1 h-10 w-full rounded-xl" onChange={(e) => setFeeRules({ ...feeRules, [key]: { ...feeRules[key], [f]: e.target.value } })} />
+                          <Input type="number" min="0" step={step} inputMode="decimal" value={feeRules[key]?.[f] ?? ""} disabled={!isSuperAdmin} data-testid={`fee-${key}-${f}`} className="mt-1 h-10 w-full rounded-[10px]" onChange={(e) => setFeeRules({ ...feeRules, [key]: { ...feeRules[key], [f]: e.target.value } })} />
                         </label>
                       ))}
                     </div>

@@ -107,7 +107,7 @@ export default function AdminUsers() {
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
           <Input data-testid="users-search" value={filters.search} placeholder={t("admin.userMgmt.searchPlaceholder")}
-            onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, search: e.target.value })); }} className="h-11 rounded-xl pl-9" />
+            onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, search: e.target.value })); }} className="h-11 rounded-[10px] pl-9" />
         </div>
         <select data-testid="users-filter-role" value={filters.role} onChange={(e) => { setPage(1); setFilters((f) => ({ ...f, role: e.target.value })); }} className="h-11 border border-[color:var(--foreground)] bg-card px-3 text-sm font-semibold">
           <option value="">{t("admin.userMgmt.filterRoleAll")}</option>

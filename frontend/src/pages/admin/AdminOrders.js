@@ -96,7 +96,7 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
   const [open, setOpen] = useState(false);
   const itemsText = o.items.map((i) => `${i.quantity}× ${i.name}${i.season_name ? ` · ${i.season_name}` : ""}${i.week_key ? ` · sem. ${i.week_key}` : ""}`).join(", ");
   return (
-    <article data-testid={`admin-order-${o.order_number}`} className="rounded-[16px] border border-[color:var(--rule)] bg-card px-4 py-[14px] sm:grid sm:grid-cols-[215px_1fr_auto] sm:items-start sm:gap-x-[18px] sm:gap-y-0">
+    <article data-testid={`admin-order-${o.order_number}`} className="rounded-[10px] border border-[color:var(--foreground)] bg-card px-4 py-[14px] sm:grid sm:grid-cols-[215px_1fr_auto] sm:items-start sm:gap-x-[18px] sm:gap-y-0">
       {/* En-tête. Mobile : la tête du bloc repliable — un <button> PUR (la
           maquette ne met PAS d'icône de copie dans l'en-tête fermé, ce qui
           évite aussi d'imbriquer un bouton de copie dans le bouton de
@@ -119,7 +119,7 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
             <span className="num mt-[2px] block text-[11px] tracking-[0.04em] text-muted-foreground">{`${new Date(o.created_at).toLocaleDateString("fr-FR")} ${new Date(o.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`}</span>
             <span className="mt-[7px] block leading-none"><StatusPill status={o.status} small /></span>
           </span>
-          <span aria-hidden="true" className="mt-0.5 inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[8px] border border-[color:var(--rule-strong)] bg-background text-foreground">
+          <span aria-hidden="true" className="mt-0.5 inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[10px] border border-[color:var(--foreground)] bg-background text-foreground">
             <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`} />
           </span>
         </span>
@@ -154,7 +154,7 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
       <div
         id={`admin-order-body-${o.order_number}`}
         data-testid={`admin-order-body-${o.order_number}`}
-        className={`${open ? "block" : "hidden"} min-w-0 border-t border-[color:var(--rule)] pt-2.5 sm:contents`}
+        className={`${open ? "block" : "hidden"} min-w-0 border-t border-[color:var(--foreground)] pt-2.5 sm:contents`}
       >
         <div className="min-w-0 sm:col-start-2 sm:row-span-2 sm:row-start-1">
           <p className="flex min-w-0 items-center gap-1.5 text-[14px] font-semibold text-foreground">
@@ -189,15 +189,15 @@ function AdminOrderCard({ order: o, mappedIds, mapStatus, mapComponents, readyCo
             suppression 44 px. Bureau : 34 px, rayon 8 px, aligné à droite. */}
         <div className="flex flex-wrap items-center gap-2 sm:col-start-3 sm:row-start-2 sm:mt-[10px] sm:justify-end">
           <Select value={o.status} onValueChange={(v) => onStatus(o, v)} disabled={!TRANSITIONS[o.status]?.length}>
-            <SelectTrigger className="mt-2.5 h-11 w-full rounded-[8px] border-ink font-semibold text-xs sm:mt-0 sm:h-[34px] sm:w-[235px] sm:shrink-0" data-testid={`admin-status-select-${o.order_number}`}><SelectValue /></SelectTrigger>
+            <SelectTrigger className="mt-2.5 h-11 w-full rounded-[10px] border-ink font-semibold text-xs sm:mt-0 sm:h-[34px] sm:w-[235px] sm:shrink-0" data-testid={`admin-status-select-${o.order_number}`}><SelectValue /></SelectTrigger>
             <SelectContent>{STATUSES.filter((s) => s === o.status || TRANSITIONS[o.status]?.includes(s)).map((s) => <SelectItem key={s} value={s}>{t(`order.status.${s}`)}</SelectItem>)}</SelectContent>
           </Select>
           <OrderProofs order={o} className="h-11 flex-1 sm:h-[34px] sm:flex-none" />
           {o.status === "pending_payment" && o.payment_method !== "manual" && (
-            <><Button className="h-11 rounded-[8px] text-xs sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "completed")} data-testid={`admin-simulate-paid-${o.order_number}`}>{t("admin.forcePaid")}</Button>
-            <Button className="h-11 rounded-[8px] text-xs sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "failed")} data-testid={`admin-simulate-failed-${o.order_number}`}>{t("admin.forceFailed")}</Button></>
+            <><Button className="h-11 rounded-[10px] text-xs sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "completed")} data-testid={`admin-simulate-paid-${o.order_number}`}>{t("admin.forcePaid")}</Button>
+            <Button className="h-11 rounded-[10px] text-xs sm:h-[34px]" variant="outline" onClick={() => onSimulate(o, "failed")} data-testid={`admin-simulate-failed-${o.order_number}`}>{t("admin.forceFailed")}</Button></>
           )}
-          {isSuperAdmin && <Button size="icon" variant="ghost" className="h-11 w-11 shrink-0 rounded-[8px] text-muted-foreground hover:text-destructive sm:h-[34px] sm:w-[34px]" aria-label={t("admin.delete")} onClick={() => onRemove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
+          {isSuperAdmin && <Button size="icon" variant="ghost" className="h-11 w-11 shrink-0 rounded-[10px] text-muted-foreground hover:text-destructive sm:h-[34px] sm:w-[34px]" aria-label={t("admin.delete")} onClick={() => onRemove(o)} data-testid={`admin-delete-${o.order_number}`}><Trash2 className="h-4 w-4" /></Button>}
         </div>
         <FzrFulfillment order={o} mappedIds={mappedIds} mapStatus={mapStatus} mapComponents={mapComponents} readyCount={readyCount} onChanged={onChanged} />
       </div>
@@ -271,7 +271,7 @@ export default function AdminOrders() {
 
   return (
     <div data-testid="admin-orders">
-      {focusedOrder && <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-primary bg-accent p-3" data-testid="notification-order-focus"><span className="text-sm">Commande ouverte depuis la notification</span><Button variant="outline" size="sm" data-testid="admin-orders-show-all" onClick={() => setParams({})}>Toutes les commandes</Button></div>}
+      {focusedOrder && <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[10px] border border-primary bg-accent p-3" data-testid="notification-order-focus"><span className="text-sm">Commande ouverte depuis la notification</span><Button variant="outline" size="sm" data-testid="admin-orders-show-all" onClick={() => setParams({})}>Toutes les commandes</Button></div>}
       {focusError && <p role="alert" data-testid="notification-order-error" className="mb-3 text-sm text-destructive">{focusError}</p>}
       <div className="flex flex-wrap gap-2">
         <Input data-testid="admin-orders-search" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder={t("admin.search")} className="h-10 w-full rounded-full sm:w-72" />

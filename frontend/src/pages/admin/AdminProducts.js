@@ -31,12 +31,12 @@ function SeasonsPanel({ t }) {
       <h2 className="font-display text-lg font-bold">{t("admin.seasons")}</h2>
       <p className="mt-1 text-xs text-muted-foreground">{t("admin.seasonsHint")}</p>
       <form onSubmit={create} className="mt-3 flex flex-wrap gap-2">
-        <Input data-testid="season-name-input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("admin.seasonName")} required className="h-10 w-full rounded-xl sm:w-56" />
+        <Input data-testid="season-name-input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("admin.seasonName")} required className="h-10 w-full rounded-[10px] sm:w-56" />
         <Button type="submit" className="rounded-full font-bold" data-testid="season-create-button">{t("admin.newSeason")}</Button>
       </form>
       <div className="mt-3 flex flex-wrap gap-2">
         {seasons.map((s) => (
-          <span key={s.id} data-testid={`season-${s.id}`} className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${s.active ? "border-[color:var(--foreground)] bg-primary text-primary-foreground" : "border-[color:var(--rule)] text-muted-foreground"}`}>
+          <span key={s.id} data-testid={`season-${s.id}`} className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${s.active ? "border-[color:var(--foreground)] bg-primary text-primary-foreground" : "border-[color:var(--foreground)] text-muted-foreground"}`}>
             {s.name}{s.active ? ` · ${t("admin.activeSeason")}` : (
               <button type="button" onClick={() => activate(s)} className="underline" data-testid={`season-activate-${s.id}`}>{t("admin.activateSeason")}</button>
             )}
@@ -80,7 +80,7 @@ export default function AdminProducts() {
   };
   const remove = async (p) => { if (!window.confirm(`${t("admin.delete")} ${p.name} ?`)) return; await api.delete(`/admin/products/${p.id}`); load(); };
   const field = (k, label, type = "text") => (
-    <label className="text-sm font-semibold text-foreground">{label}<Input data-testid={`product-field-${k}`} type={type} value={editing[k] ?? ""} onChange={(e) => setEditing({ ...editing, [k]: e.target.value })} className="mt-1 h-10 rounded-xl" /></label>
+    <label className="text-sm font-semibold text-foreground">{label}<Input data-testid={`product-field-${k}`} type={type} value={editing[k] ?? ""} onChange={(e) => setEditing({ ...editing, [k]: e.target.value })} className="mt-1 h-10 rounded-[10px]" /></label>
   );
 
   return (
@@ -118,15 +118,15 @@ export default function AdminProducts() {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {visible.map((p) => (
-          <div key={p.id} data-testid={`admin-product-${p.slug}`} className={`flex min-w-0 items-center gap-2 border-2 bg-card p-3 sm:gap-3 sm:p-4 ${p.active ? "border-[color:var(--foreground)]" : "border-dashed border-[color:var(--rule-strong)] opacity-60"}`}>
+          <div key={p.id} data-testid={`admin-product-${p.slug}`} className={`flex min-w-0 items-center gap-2 border-2 bg-card p-3 sm:gap-3 sm:p-4 ${p.active ? "border-[color:var(--foreground)]" : "border-dashed border-[color:var(--foreground)] opacity-60"}`}>
             <div className="min-w-0 flex-1">
               <p className="break-words font-display text-sm font-bold leading-snug sm:text-base">{p.name}</p>
               <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                <span className="rounded-full border border-[color:var(--rule-strong)] px-2 py-0.5 font-semibold uppercase tracking-[0.08em]">{typeName(p)}</span>
+                <span className="rounded-full border border-[color:var(--foreground)] px-2 py-0.5 font-semibold uppercase tracking-[0.08em]">{typeName(p)}</span>
                 <span className="font-semibold text-foreground">{formatAr(p.price, lang)}</span>
                 {p.old_price ? <span className="line-through">{formatAr(p.old_price, lang)}</span> : null}
                 {p.popular ? <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">★</span> : null}
-                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase ${p.active ? "bg-foreground text-background" : "border border-[color:var(--rule-strong)]"}`}>{p.active ? t("admin.active") : t("admin.inactive")}</span>
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase ${p.active ? "bg-foreground text-background" : "border border-[color:var(--foreground)]"}`}>{p.active ? t("admin.active") : t("admin.inactive")}</span>
               </p>
             </div>
             <div className="flex shrink-0 items-center">
@@ -137,7 +137,7 @@ export default function AdminProducts() {
         ))}
       </div>
       {visible.length === 0 && (
-        <div className="mt-4 border-2 border-dashed border-[color:var(--rule-strong)] bg-card p-10 text-center" data-testid="admin-catalog-empty">
+        <div className="mt-4 border-2 border-dashed border-[color:var(--foreground)] bg-card p-10 text-center" data-testid="admin-catalog-empty">
           <p className="font-display text-base font-bold">{currentGame?.name || ""}</p>
           <p className="mt-1 text-sm text-muted-foreground">{t("admin.catalogEmptyGame")}</p>
           <Button className="mt-4 rounded-full font-bold" onClick={() => setEditing({ ...EMPTY, game_id: gameId })} data-testid="admin-catalog-empty-new"><Plus className="mr-1 h-4 w-4" />{t("admin.newProduct")}</Button>
@@ -145,31 +145,31 @@ export default function AdminProducts() {
       )}
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent aria-describedby={undefined} className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-2xl" data-testid="product-dialog">
+        <DialogContent aria-describedby={undefined} className="max-h-[90vh] overflow-y-auto rounded-[10px] sm:max-w-2xl" data-testid="product-dialog">
           <DialogHeader><DialogTitle className="font-display">{editing?.id ? t("admin.edit") : t("admin.newProduct")}</DialogTitle></DialogHeader>
           {editing && (
             <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
               {field("name", "Nom (FR)")}{field("name_en", "Name (EN)")}{field("slug", "Slug")}
               <label className="text-sm font-semibold text-foreground">Jeu associé
                 <Select value={editing.game_id || "pubg-mobile"} onValueChange={(v) => setEditing({ ...editing, game_id: v, type: typesOf(v).some((pt) => pt.key === editing.type) ? editing.type : "" })}>
-                  <SelectTrigger className="mt-1 h-10 rounded-xl" data-testid="product-field-game_id"><SelectValue placeholder={t("admin.fzr.pickGame")} /></SelectTrigger>
+                  <SelectTrigger className="mt-1 h-10 rounded-[10px]" data-testid="product-field-game_id"><SelectValue placeholder={t("admin.fzr.pickGame")} /></SelectTrigger>
                   <SelectContent>{games.map((g) => <SelectItem key={g.id} value={g.id}>{g.name} {g.active ? "" : "· Inactif"}</SelectItem>)}</SelectContent>
                 </Select>
               </label>
               <label className="text-sm font-semibold text-foreground">Type
-                <Select value={editing.type || ""} onValueChange={(v) => setEditing({ ...editing, type: v })}><SelectTrigger className="mt-1 h-10 rounded-xl" data-testid="product-field-type"><SelectValue placeholder={typesOf(editing.game_id).length ? "Choisir un type" : "Aucun type configuré"} /></SelectTrigger><SelectContent>{typesOf(editing.game_id).map((pt) => <SelectItem key={pt.key} value={pt.key} data-testid={`product-type-option-${pt.key}`}>{pt.label}</SelectItem>)}</SelectContent></Select>
+                <Select value={editing.type || ""} onValueChange={(v) => setEditing({ ...editing, type: v })}><SelectTrigger className="mt-1 h-10 rounded-[10px]" data-testid="product-field-type"><SelectValue placeholder={typesOf(editing.game_id).length ? "Choisir un type" : "Aucun type configuré"} /></SelectTrigger><SelectContent>{typesOf(editing.game_id).map((pt) => <SelectItem key={pt.key} value={pt.key} data-testid={`product-type-option-${pt.key}`}>{pt.label}</SelectItem>)}</SelectContent></Select>
                 {typesOf(editing.game_id).length === 0 && <span className="mt-1 block text-xs font-normal text-foreground" data-testid="product-type-missing">Configurez les types de produit de ce jeu dans Admin → Jeux.</span>}
               </label>
               {editing.type === "evo" && (editing.game_id || "pubg-mobile") === "pubg-mobile" && (
                 <label className="text-sm font-semibold text-foreground">{t("admin.evoLimit")}
-                  <Select value={editing.evo_limit || "season"} onValueChange={(v) => setEditing({ ...editing, evo_limit: v })}><SelectTrigger className="mt-1 h-10 rounded-xl" data-testid="product-field-evo_limit"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="season">{t("evo.limit.season")}</SelectItem><SelectItem value="lifetime">{t("evo.limit.lifetime")}</SelectItem><SelectItem value="week">{t("evo.limit.week")}</SelectItem></SelectContent></Select>
+                  <Select value={editing.evo_limit || "season"} onValueChange={(v) => setEditing({ ...editing, evo_limit: v })}><SelectTrigger className="mt-1 h-10 rounded-[10px]" data-testid="product-field-evo_limit"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="season">{t("evo.limit.season")}</SelectItem><SelectItem value="lifetime">{t("evo.limit.lifetime")}</SelectItem><SelectItem value="week">{t("evo.limit.week")}</SelectItem></SelectContent></Select>
                 </label>
               )}
               {field("price", `${t("catalog.price")} (Ar)`, "number")}{field("old_price", "Ancien prix (Ar)", "number")}
               {field("uc_amount", `${games.find((g) => g.id === (editing.game_id || "pubg-mobile"))?.currency_label || ((editing.game_id || "pubg-mobile") === "pubg-mobile" ? "UC" : "Quantité de monnaie")}`, "number")}{field("duration_months", "Mois", "number")}{field("badge", "Badge")}{field("sort_order", "Ordre", "number")}
-              <label className="text-sm font-semibold text-foreground sm:col-span-2">Logo URL<Input data-testid="product-field-image_url" type="url" inputMode="url" placeholder="https://example.com/60uc.png" value={editing.image_url ?? ""} onChange={(e) => setEditing({ ...editing, image_url: e.target.value })} className="mt-1 h-10 rounded-xl" /></label>
-              <label className="text-sm font-semibold text-foreground sm:col-span-2">Description FR<Textarea value={editing.description_fr} onChange={(e) => setEditing({ ...editing, description_fr: e.target.value })} className="mt-1 rounded-xl" data-testid="product-field-description_fr" /></label>
-              <label className="text-sm font-semibold text-foreground sm:col-span-2">Description EN<Textarea value={editing.description_en} onChange={(e) => setEditing({ ...editing, description_en: e.target.value })} className="mt-1 rounded-xl" data-testid="product-field-description_en" /></label>
+              <label className="text-sm font-semibold text-foreground sm:col-span-2">Logo URL<Input data-testid="product-field-image_url" type="url" inputMode="url" placeholder="https://example.com/60uc.png" value={editing.image_url ?? ""} onChange={(e) => setEditing({ ...editing, image_url: e.target.value })} className="mt-1 h-10 rounded-[10px]" /></label>
+              <label className="text-sm font-semibold text-foreground sm:col-span-2">Description FR<Textarea value={editing.description_fr} onChange={(e) => setEditing({ ...editing, description_fr: e.target.value })} className="mt-1 rounded-[10px]" data-testid="product-field-description_fr" /></label>
+              <label className="text-sm font-semibold text-foreground sm:col-span-2">Description EN<Textarea value={editing.description_en} onChange={(e) => setEditing({ ...editing, description_en: e.target.value })} className="mt-1 rounded-[10px]" data-testid="product-field-description_en" /></label>
               <label className="flex items-center gap-2 text-sm font-semibold"><Switch checked={editing.popular} onCheckedChange={(v) => setEditing({ ...editing, popular: v })} data-testid="product-field-popular" />{t("admin.popular")}</label>
               <p className="text-xs font-semibold text-foreground sm:col-span-2">Mapping fournisseur obligatoire pour tout nouveau pack. Un pack reste inactif jusqu'à ce que tu confirmes son offre dans Admin → Fournisseur.</p>
               <label className="flex items-center gap-2 text-sm font-semibold"><Switch checked={editing.active} onCheckedChange={(v) => setEditing({ ...editing, active: v })} data-testid="product-field-active" />{t("admin.active")}</label>

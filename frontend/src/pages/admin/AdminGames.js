@@ -101,7 +101,7 @@ export default function AdminGames() {
   const field = (k, label, type = "text", disabled = false) => (
     <label className="text-sm font-semibold text-foreground">{label}
       <Input data-testid={`game-field-${k}`} type={type} disabled={disabled} value={editing[k] ?? ""}
-        onChange={(e) => setEditing({ ...editing, [k]: e.target.value })} className="mt-1 h-10 rounded-xl" />
+        onChange={(e) => setEditing({ ...editing, [k]: e.target.value })} className="mt-1 h-10 rounded-[10px]" />
     </label>
   );
 
@@ -121,7 +121,7 @@ export default function AdminGames() {
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {games.map((g) => (
           <div key={g.id} data-testid={`admin-game-${g.slug || g.id}`}
-            className={`flex min-w-0 items-center gap-3 rounded-[10px] border bg-card p-3 sm:p-4 ${g.active ? "border-[color:var(--rule)]" : "border-dashed border-[color:var(--rule-strong)] opacity-60"}`}>
+            className={`flex min-w-0 items-center gap-3 rounded-[10px] border bg-card p-3 sm:p-4 ${g.active ? "border-[color:var(--foreground)]" : "border-dashed border-[color:var(--foreground)] opacity-60"}`}>
             <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground">
               {g.icon_url ? <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy" />
                 : <Gamepad2 className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
@@ -143,9 +143,9 @@ export default function AdminGames() {
       </div>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent aria-describedby={undefined} className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-2xl" data-testid="game-dialog">
+        <DialogContent aria-describedby={undefined} className="max-h-[90vh] overflow-y-auto rounded-[10px] sm:max-w-2xl" data-testid="game-dialog">
           <DialogHeader><DialogTitle className="font-display">{editing?._existing ? t("admin.edit") : t("admin.newGame")}</DialogTitle></DialogHeader>
-          <p className="rounded-xl border border-[color:var(--foreground)] bg-card p-3 text-xs text-foreground">
+          <p className="rounded-[10px] border border-[color:var(--foreground)] bg-card p-3 text-xs text-foreground">
             Pour préparer un nouveau jeu : définissez ses champs d'identité joueur, son unité de monnaie,
             associez ses catégories FazerCards et liez chaque pack dans Admin → Fournisseur.
             Le jeu ne pourra être activé que lorsque sa configuration ET son catalogue livrable seront réels.
@@ -158,28 +158,28 @@ export default function AdminGames() {
               {field("sort_order", t("admin.sortOrder"), "number")}
               <label className="text-sm font-semibold text-foreground">Unité de monnaie
                 <Input data-testid="game-field-currency_label" maxLength={24} placeholder="UC, Diamants, Coins…"
-                  value={editing.currency_label ?? ""} onChange={(e) => setEditing({ ...editing, currency_label: e.target.value })} className="mt-1 h-10 rounded-xl" />
+                  value={editing.currency_label ?? ""} onChange={(e) => setEditing({ ...editing, currency_label: e.target.value })} className="mt-1 h-10 rounded-[10px]" />
                 <span className="mt-1 block text-xs font-normal text-muted-foreground">Utilisée pour nommer la monnaie des packs dans la boutique (ex. UC, Diamants).</span>
               </label>
               <label className="text-sm font-semibold text-foreground sm:col-span-2">Catégorie de validation FazerCards
                 <Input data-testid="game-field-fazercards_validation_category" placeholder="ex: ff_validation_cat"
-                  value={editing.fazercards_validation_category ?? ""} onChange={(e) => setEditing({ ...editing, fazercards_validation_category: e.target.value })} className="mt-1 h-10 rounded-xl" />
+                  value={editing.fazercards_validation_category ?? ""} onChange={(e) => setEditing({ ...editing, fazercards_validation_category: e.target.value })} className="mt-1 h-10 rounded-[10px]" />
                 <span className="mt-1 block text-xs font-normal text-muted-foreground">ID de la catégorie d'espace de validation chez FazerCards (distinct des catégories commerciales). À renseigner par l'admin pour ce jeu ; laissé vide, la validation d'identité n'est pas disponible pour ce jeu.</span>
               </label>
               <label className="text-sm font-semibold text-foreground">Logo URL
                 <Input data-testid="game-field-icon_url" type="url" inputMode="url" placeholder="https://example.com/logo.png"
-                  value={editing.icon_url ?? ""} onChange={(e) => setEditing({ ...editing, icon_url: e.target.value })} className="mt-1 h-10 rounded-xl" />
+                  value={editing.icon_url ?? ""} onChange={(e) => setEditing({ ...editing, icon_url: e.target.value })} className="mt-1 h-10 rounded-[10px]" />
               </label>
               <label className="text-sm font-semibold text-foreground sm:col-span-2">Description FR
-                <Textarea value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} className="mt-1 rounded-xl" data-testid="game-field-description" />
+                <Textarea value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} className="mt-1 rounded-[10px]" data-testid="game-field-description" />
               </label>
               <label className="text-sm font-semibold text-foreground sm:col-span-2">Description EN
-                <Textarea value={editing.description_en ?? ""} onChange={(e) => setEditing({ ...editing, description_en: e.target.value })} className="mt-1 rounded-xl" data-testid="game-field-description_en" />
+                <Textarea value={editing.description_en ?? ""} onChange={(e) => setEditing({ ...editing, description_en: e.target.value })} className="mt-1 rounded-[10px]" data-testid="game-field-description_en" />
               </label>
               <label className="flex items-center gap-2 text-sm font-semibold">
                 <Switch checked={!!editing.active} onCheckedChange={(v) => setEditing({ ...editing, active: v })} data-testid="game-field-active" />{t("admin.active")}
               </label>
-              <div className="sm:col-span-2 rounded-[10px] border-2 border-foreground/15 p-3" data-testid="game-identity-fields">
+              <div className="sm:col-span-2 rounded-[10px] border-2 border-[color:var(--foreground)] p-3" data-testid="game-identity-fields">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-bold">Champs d'identité joueur</p>
                   <Button type="button" size="sm" variant="outline" className="rounded-full font-bold" onClick={addField} data-testid="game-identity-add">
@@ -192,17 +192,17 @@ export default function AdminGames() {
                 </p>
                 <div className="mt-3 space-y-2">
                   {(editing.identity_fields || []).length === 0 && (
-                    <p className="rounded-xl border border-dashed border-border bg-muted/30 p-2 text-xs text-muted-foreground" data-testid="game-identity-empty">
+                    <p className="rounded-[10px] border border-dashed border-[color:var(--foreground)] bg-muted/30 p-2 text-xs text-muted-foreground" data-testid="game-identity-empty">
                       Aucun champ défini : l'activation publique de ce jeu sera refusée.
                     </p>
                   )}
                   {(editing.identity_fields || []).map((f, i) => (
                     <div key={i} className="grid grid-cols-2 gap-2 sm:grid-cols-12" data-testid={`game-identity-row-${i}`}>
-                      <Input aria-label={t("admin.fzr.gameKey")} placeholder={t("admin.fzr.gameKeyPlaceholder")} value={f.key || ""} onChange={(e) => updField(i, { key: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-3" data-testid={`game-identity-key-${i}`} />
-                      <Input aria-label={t("admin.fzr.gameLabel")} placeholder={t("admin.fzr.gameIdJoueur")} value={f.label || ""} onChange={(e) => updField(i, { label: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-3" data-testid={`game-identity-label-${i}`} />
-                      <Input aria-label={t("admin.fzr.gamePattern")} placeholder={t("admin.fzr.gamePatternPlaceholder")} value={f.pattern || ""} onChange={(e) => updField(i, { pattern: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-3" data-testid={`game-identity-pattern-${i}`} />
-                      <Input aria-label={t("admin.fzr.gameLengthMin")} type="number" placeholder={t("admin.fzr.gameMin")} value={f.min_length ?? ""} onChange={(e) => updField(i, { min_length: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-1" data-testid={`game-identity-min-${i}`} />
-                      <Input aria-label={t("admin.fzr.gameLengthMax")} type="number" placeholder={t("admin.fzr.gameMax")} value={f.max_length ?? ""} onChange={(e) => updField(i, { max_length: e.target.value })} className="col-span-1 h-9 rounded-lg sm:col-span-1" data-testid={`game-identity-max-${i}`} />
+                      <Input aria-label={t("admin.fzr.gameKey")} placeholder={t("admin.fzr.gameKeyPlaceholder")} value={f.key || ""} onChange={(e) => updField(i, { key: e.target.value })} className="col-span-1 h-9 rounded-[10px] sm:col-span-3" data-testid={`game-identity-key-${i}`} />
+                      <Input aria-label={t("admin.fzr.gameLabel")} placeholder={t("admin.fzr.gameIdJoueur")} value={f.label || ""} onChange={(e) => updField(i, { label: e.target.value })} className="col-span-1 h-9 rounded-[10px] sm:col-span-3" data-testid={`game-identity-label-${i}`} />
+                      <Input aria-label={t("admin.fzr.gamePattern")} placeholder={t("admin.fzr.gamePatternPlaceholder")} value={f.pattern || ""} onChange={(e) => updField(i, { pattern: e.target.value })} className="col-span-1 h-9 rounded-[10px] sm:col-span-3" data-testid={`game-identity-pattern-${i}`} />
+                      <Input aria-label={t("admin.fzr.gameLengthMin")} type="number" placeholder={t("admin.fzr.gameMin")} value={f.min_length ?? ""} onChange={(e) => updField(i, { min_length: e.target.value })} className="col-span-1 h-9 rounded-[10px] sm:col-span-1" data-testid={`game-identity-min-${i}`} />
+                      <Input aria-label={t("admin.fzr.gameLengthMax")} type="number" placeholder={t("admin.fzr.gameMax")} value={f.max_length ?? ""} onChange={(e) => updField(i, { max_length: e.target.value })} className="col-span-1 h-9 rounded-[10px] sm:col-span-1" data-testid={`game-identity-max-${i}`} />
                       <label className="col-span-1 flex items-center gap-1 text-xs font-semibold sm:col-span-1">
                         <input type="radio" name="identity-primary" checked={!!f.primary} onChange={() => makePrimary(i)} data-testid={`game-identity-primary-${i}`} />{t("admin.fzr.gamePrimary")}
                       </label>
@@ -213,7 +213,7 @@ export default function AdminGames() {
                   ))}
                 </div>
               </div>
-              <div className="sm:col-span-2 rounded-[10px] border-2 border-foreground/15 p-3" data-testid="game-product-types">
+              <div className="sm:col-span-2 rounded-[10px] border-2 border-[color:var(--foreground)] p-3" data-testid="game-product-types">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-bold">Types de produit (boutique MGS)</p>
                   <Button type="button" size="sm" variant="outline" className="rounded-full font-bold" onClick={() => setTypes((l) => [...l, { key: "", label: "", label_en: "" }])} data-testid="game-type-add">
@@ -227,13 +227,13 @@ export default function AdminGames() {
                 </p>
                 <div className="mt-3 space-y-2">
                   {(editing.product_types || []).length === 0 && (
-                    <p className="rounded-xl border border-dashed border-border bg-muted/30 p-2 text-xs text-muted-foreground" data-testid="game-types-empty">Aucun type : aucun pack ne pourra être créé pour ce jeu.</p>
+                    <p className="rounded-[10px] border border-dashed border-[color:var(--foreground)] bg-muted/30 p-2 text-xs text-muted-foreground" data-testid="game-types-empty">Aucun type : aucun pack ne pourra être créé pour ce jeu.</p>
                   )}
                   {(editing.product_types || []).map((pt, i) => (
                     <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2" data-testid={`game-type-row-${i}`}>
-                      <Input aria-label="Clé" placeholder="cp" value={pt.key || ""} onChange={(e) => setTypes((l) => l.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)))} className="h-9 rounded-lg" data-testid={`game-type-key-${i}`} />
-                      <Input aria-label="Libellé" placeholder="CP" value={pt.label || ""} onChange={(e) => setTypes((l) => l.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} className="h-9 rounded-lg" data-testid={`game-type-label-${i}`} />
-                      <Input aria-label="Label EN" placeholder="CP" value={pt.label_en || ""} onChange={(e) => setTypes((l) => l.map((x, j) => (j === i ? { ...x, label_en: e.target.value } : x)))} className="h-9 rounded-lg" data-testid={`game-type-label-en-${i}`} />
+                      <Input aria-label="Clé" placeholder="cp" value={pt.key || ""} onChange={(e) => setTypes((l) => l.map((x, j) => (j === i ? { ...x, key: e.target.value } : x)))} className="h-9 rounded-[10px]" data-testid={`game-type-key-${i}`} />
+                      <Input aria-label="Libellé" placeholder="CP" value={pt.label || ""} onChange={(e) => setTypes((l) => l.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} className="h-9 rounded-[10px]" data-testid={`game-type-label-${i}`} />
+                      <Input aria-label="Label EN" placeholder="CP" value={pt.label_en || ""} onChange={(e) => setTypes((l) => l.map((x, j) => (j === i ? { ...x, label_en: e.target.value } : x)))} className="h-9 rounded-[10px]" data-testid={`game-type-label-en-${i}`} />
                       <Button type="button" size="icon" variant="ghost" className="h-9 w-9 rounded-full" onClick={() => setTypes((l) => l.filter((_, j) => j !== i))} data-testid={`game-type-del-${i}`} aria-label={t("admin.delete")}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   ))}

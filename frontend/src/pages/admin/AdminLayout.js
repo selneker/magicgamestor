@@ -90,7 +90,7 @@ export default function AdminLayout() {
               </div>
             ))}
             </div>
-            <div className="flex-none border-t border-[color:var(--rule-strong)] pt-3">
+            <div className="flex-none border-t border-[color:var(--foreground)] pt-3">
               <p className="eyebrow mb-2">{t("admin.clientArea")}</p>
               {CLIENT_LINKS.map((c) => {
                 const Icon = c.key === "shop" ? Home : c.key === "orders" ? ReceiptText : c.key === "account" ? UserRound : MessageCircle;

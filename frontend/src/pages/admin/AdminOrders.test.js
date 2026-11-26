@@ -144,7 +144,7 @@ test("liste admin : bouton « Preuves (n) », AUCUNE image chargée ni affichée
   expect(button).not.toBeNull();
   expect(button.textContent).toContain("Preuves (2)");
   // PL-UX-5 — rayon 8 px (jamais de pilule), 34 px sur bureau.
-  expect(button.className).toContain("rounded-[8px]");
+  expect(button.className).toContain("rounded-[10px]");
   expect(button.className).toContain("sm:h-[34px]");
   // AUCUNE requête d'image avant le clic, AUCUNE vignette dans la liste.
   expect(api.get).not.toHaveBeenCalledWith("/admin/orders/MGS-PS/proofs/0", { responseType: "blob" });
@@ -296,7 +296,7 @@ test("PL-UX-5 : grille bureau 3 colonnes fixes, badge d'origine plus petit, bout
   // Icône de copie : petit carré bordé d'origine (20 px, rayon 3 px).
   const copy = card.querySelector('[data-testid="copy-pubg-MGS-C1"]');
   expect(copy.className).toContain("h-5 w-5");
-  expect(copy.className).toContain("rounded-[3px]");
+  expect(copy.className).toContain("rounded-[10px]");
   await act(async () => root.unmount());
 });
 
@@ -319,13 +319,13 @@ test("PL-UX-5 : cartes mobiles repliées par défaut, ouverture/fermeture avec a
   await act(async () => root.unmount());
 });
 
-test("PL-UX-5 : sélecteur pleine largeur 44 px sur mobile (rayon 8 px), email coupé, Preuves masqué sans preuve", async () => {
+test("PL-UX-5 : sélecteur pleine largeur 44 px sur mobile (rayon 10 px), email coupé, Preuves masqué sans preuve", async () => {
   mockOrders = [order({ order_number: "MGS-C3", payment_method: "manual" })];
   const { container, root } = await mountOrders();
   const select = container.querySelector('[data-testid="admin-status-select-MGS-C3"]');
   expect(select.className).toContain("w-full");
   expect(select.className).toContain("h-11");
-  expect(select.className).toContain("rounded-[8px]");
+  expect(select.className).toContain("rounded-[10px]");
   expect(select.className).toContain("border-ink");
   const email = container.querySelector('[data-testid="admin-order-email-MGS-C3"]');
   expect(email.className).toContain("truncate");

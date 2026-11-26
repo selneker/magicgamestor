@@ -45,7 +45,7 @@ export default function AdminDashboard() {
         <div className="rounded-[10px] border border-[color:var(--foreground)] bg-card p-5">
           <h2 className="font-display text-lg font-bold text-foreground">{t("admin.topProducts")}</h2>
           <ul className="mt-4 space-y-2">
-            {stats.top_products.map((p) => <li key={p._id} className="flex justify-between rounded-xl bg-card px-3 py-2 text-sm"><span className="font-semibold">{p._id}</span><span className="text-muted-foreground">×{p.qty}</span></li>)}
+            {stats.top_products.map((p) => <li key={p._id} className="flex justify-between rounded-[10px] bg-card px-3 py-2 text-sm"><span className="font-semibold">{p._id}</span><span className="text-muted-foreground">×{p.qty}</span></li>)}
             {stats.top_products.length === 0 && <li className="text-sm text-muted-foreground">—</li>}
           </ul>
           <div className="mt-4 flex gap-2 text-xs font-semibold">

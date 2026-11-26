@@ -262,7 +262,7 @@ export default function AdminFazercards() {
         </div>
       </div>
 
-      <section className="rounded-[10px] border border-border bg-card p-5" data-testid="fzr-game-categories">
+      <section className="rounded-[10px] border border-[color:var(--foreground)] bg-card p-5" data-testid="fzr-game-categories">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h2 className="font-display text-lg font-bold text-foreground">Catégories FazerCards par jeu</h2>
@@ -283,14 +283,14 @@ export default function AdminFazercards() {
           </div>
         </div>
         <div className="mt-4">
-          <Input value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} placeholder="Rechercher une catégorie ou un ID FazerCards…" className="h-10 rounded-xl" data-testid="fzr-category-search" />
+          <Input value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} placeholder="Rechercher une catégorie ou un ID FazerCards…" className="h-10 rounded-[10px]" data-testid="fzr-category-search" />
         </div>
-        <div className="mt-3 max-h-[24rem] space-y-1.5 overflow-y-auto rounded-xl border border-border p-2" data-testid="fzr-provider-category-list">
+        <div className="mt-3 max-h-[24rem] space-y-1.5 overflow-y-auto rounded-[10px] border border-[color:var(--foreground)] p-2" data-testid="fzr-provider-category-list">
           {visibleProviderCategories.map((cat) => {
             const selected = assignedCategoryIds.includes(cat.category_id);
             const assignedElsewhere = cat.assigned_to && cat.assigned_to.game_id !== game;
             return (
-              <label key={cat.category_id} className={`flex items-start gap-3 rounded-xl border p-3 text-sm ${selected ? "border-primary bg-primary/10" : "border-border"} ${assignedElsewhere ? "opacity-60" : ""}`} data-testid={`fzr-provider-category-${cat.category_id}`}>
+              <label key={cat.category_id} className={`flex items-start gap-3 rounded-[10px] border p-3 text-sm ${selected ? "border-primary bg-primary/10" : "border-[color:var(--foreground)]"} ${assignedElsewhere ? "opacity-60" : ""}`} data-testid={`fzr-provider-category-${cat.category_id}`}>
                 <Checkbox checked={selected} disabled={!game || !!assignedElsewhere} onCheckedChange={(checked) => setAssignedCategoryIds((old) => checked ? [...old.filter((id) => id !== cat.category_id), cat.category_id] : old.filter((id) => id !== cat.category_id))} className="mt-0.5" />
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold text-foreground">{cat.name || cat.category_id}</span>
@@ -307,7 +307,7 @@ export default function AdminFazercards() {
         <p className="mt-2 text-xs text-muted-foreground">{assignedCategoryIds.length} catégorie(s) sélectionnée(s). Les offres du catalogue seront disponibles ci-dessous après enregistrement.</p>
       </section>
 
-      <section className="rounded-[10px] border border-border bg-card p-5">
+      <section className="rounded-[10px] border border-[color:var(--foreground)] bg-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-lg font-bold text-foreground">{t("admin.fzr.priceAlerts")}{alerts.unacknowledged > 0 && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground" data-testid="fzr-alert-count">{alerts.unacknowledged}</span>}</h2>
           {can("catalog.manage") && (
@@ -317,10 +317,10 @@ export default function AdminFazercards() {
             </Button>
           )}
         </div>
-        <div className="mt-4 max-h-[19rem] space-y-2 overflow-y-auto rounded-xl border border-border bg-muted/30 p-3" data-testid="fzr-alerts-scroll">
+        <div className="mt-4 max-h-[19rem] space-y-2 overflow-y-auto rounded-[10px] border border-[color:var(--foreground)] bg-muted/30 p-3" data-testid="fzr-alerts-scroll">
           {alerts.alerts.length === 0 && <p className="text-sm text-muted-foreground" data-testid="fzr-no-alerts">{t("admin.fzr.noAlerts")}</p>}
           {alerts.alerts.map((a) => (
-            <div key={a.id} className={`flex flex-wrap items-center gap-3 rounded-xl border p-3 text-sm ${a.acknowledged ? "border-border opacity-60" : "border-border bg-muted/30"}`} data-testid={`fzr-alert-${a.id}`}>
+            <div key={a.id} className={`flex flex-wrap items-center gap-3 rounded-[10px] border p-3 text-sm ${a.acknowledged ? "border-[color:var(--foreground)] opacity-60" : "border-[color:var(--foreground)] bg-muted/30"}`} data-testid={`fzr-alert-${a.id}`}>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-foreground">{a.offer_name} <span className="font-mono text-xs text-muted-foreground">({a.category_id})</span></p>
                 <p className="text-xs text-muted-foreground">{t("admin.fzr.oldCost")} : ${a.old_price_usd} → {t("admin.fzr.newCost")} : <span className={a.direction === "up" ? "font-bold text-foreground" : "font-bold text-foreground"}>${a.new_price_usd}</span>
@@ -333,7 +333,7 @@ export default function AdminFazercards() {
         </div>
       </section>
 
-      <section className="rounded-[10px] border border-border bg-card p-5" data-testid="fzr-mappings-section">
+      <section className="rounded-[10px] border border-[color:var(--foreground)] bg-card p-5" data-testid="fzr-mappings-section">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-display text-lg font-bold text-foreground">{t("admin.fzr.mappings")}</h2>
@@ -354,7 +354,7 @@ export default function AdminFazercards() {
           </div>
         </div>
         {can("catalog.manage") && (
-          <div className="mt-4 flex flex-col gap-2 rounded-xl border border-border bg-muted/40 p-3 sm:flex-row sm:items-center" data-testid="fzr-uc-audit">
+          <div className="mt-4 flex flex-col gap-2 rounded-[10px] border border-[color:var(--foreground)] bg-muted/40 p-3 sm:flex-row sm:items-center" data-testid="fzr-uc-audit">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-foreground">{t("admin.fzr.ucAudit", { label: currencyLabel })}</p>
               <p className="text-xs text-muted-foreground">{t("admin.fzr.ucAuditHint", { label: currencyLabel })}</p>
@@ -372,7 +372,7 @@ export default function AdminFazercards() {
         {audit && (
           <div className="mt-2 space-y-1" data-testid="fzr-uc-audit-rows">
             {audit.map((r) => (
-              <div key={r.product_id} className={`flex flex-wrap items-center gap-2 rounded-lg px-3 py-1.5 text-xs ${r.action === "ok" ? "bg-muted/20" : r.action === "fix" ? "bg-muted/30" : r.action === "remove" ? "bg-muted/40" : "bg-muted/50"}`} data-testid={`fzr-uc-audit-row-${r.slug}`}>
+              <div key={r.product_id} className={`flex flex-wrap items-center gap-2 rounded-[10px] px-3 py-1.5 text-xs ${r.action === "ok" ? "bg-muted/20" : r.action === "fix" ? "bg-muted/30" : r.action === "remove" ? "bg-muted/40" : "bg-muted/50"}`} data-testid={`fzr-uc-audit-row-${r.slug}`}>
                 <span className="w-20 shrink-0 font-bold text-foreground">{r.uc_amount} {currencyLabel}</span>
                 <span className="min-w-0 flex-1 basis-full break-words text-muted-foreground sm:basis-0">{r.resolved_mode === "missing" ? t("admin.fzr.auditMissing") : `${r.resolved_mode === "direct" ? t("admin.fzr.direct") : t("admin.fzr.composite")} · ${r.resolved_summary}`}</span>
                 <span className={`ml-auto shrink-0 rounded-full px-2 py-0.5 font-bold bg-card text-foreground`} data-testid={`fzr-uc-audit-action-${r.slug}`}>
@@ -383,7 +383,7 @@ export default function AdminFazercards() {
           </div>
         )}
         {products.length === 0 && (
-          <div className="mt-5 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground" data-testid="fzr-no-game-products">
+          <div className="mt-5 rounded-[10px] border border-dashed border-[color:var(--foreground)] p-4 text-sm text-muted-foreground" data-testid="fzr-no-game-products">
             {t("admin.fzr.noProducts")}
           </div>
         )}
@@ -397,7 +397,7 @@ export default function AdminFazercards() {
                 {group.map((p) => {
                   const m = p.fazercards_mapping;
                   return (
-                    <div key={p.id} className="rounded-xl border border-border bg-background/40 px-3 py-2 text-sm" data-testid={`fzr-map-${p.slug}`}>
+                    <div key={p.id} className="rounded-[10px] border border-[color:var(--foreground)] bg-background/40 px-3 py-2 text-sm" data-testid={`fzr-map-${p.slug}`}>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <span className="min-w-0 max-w-full break-words font-semibold text-foreground">{p.name}</span>
                         <span className="text-xs text-muted-foreground">{formatAr(p.price, lang)}</span>
@@ -434,7 +434,7 @@ export default function AdminFazercards() {
         })}
       </section>
 
-      <section className="rounded-[10px] border border-border bg-card p-5" data-testid="fzr-coverage-section">
+      <section className="rounded-[10px] border border-[color:var(--foreground)] bg-card p-5" data-testid="fzr-coverage-section">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-display text-lg font-bold text-foreground">{t("admin.fzr.coverage")}</h2>
@@ -451,7 +451,7 @@ export default function AdminFazercards() {
               <span>·</span><span>{unusedOffers.length} non affectée(s)</span><span>·</span><span>{usedOffers.length} déjà utilisées</span>
             </div>
             {unusedOffers.map((o) => (
-              <div key={`${o.category_id}:${o.offer_id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border px-3 py-2 text-sm opacity-90" data-testid={`fzr-coverage-${o.offer_id}`}>
+              <div key={`${o.category_id}:${o.offer_id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[10px] border border-[color:var(--foreground)] px-3 py-2 text-sm opacity-90" data-testid={`fzr-coverage-${o.offer_id}`}>
                 <span className="min-w-0 break-words font-semibold text-foreground">{o.name}</span>
                 <span className="break-all font-mono text-xs text-muted-foreground">{o.offer_id} · {o.category_id}</span>
                 <span className="text-xs font-semibold text-foreground">${o.price_usd}</span>
@@ -459,7 +459,7 @@ export default function AdminFazercards() {
               </div>
             ))}
             {usedOffers.map((o) => (
-              <div key={`${o.category_id}:${o.offer_id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border px-3 py-2 text-sm opacity-90" data-testid={`fzr-coverage-${o.offer_id}`}>
+              <div key={`${o.category_id}:${o.offer_id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[10px] border border-[color:var(--foreground)] px-3 py-2 text-sm opacity-90" data-testid={`fzr-coverage-${o.offer_id}`}>
                 <span className="min-w-0 break-words font-semibold text-foreground">{o.name}</span>
                 <span className="break-all font-mono text-xs text-muted-foreground">{o.offer_id} · {o.category_id}</span>
                 <span className="text-xs font-semibold text-foreground">${o.price_usd}</span>
@@ -502,7 +502,7 @@ export default function AdminFazercards() {
                     </Select>
                   </div>
                   {selectedOffer && (
-                    <div className="space-y-1 rounded-xl bg-muted p-3 text-xs">
+                    <div className="space-y-1 rounded-[10px] bg-muted p-3 text-xs">
                       <p className="flex justify-between"><span className="text-muted-foreground">Offer ID</span><span className="font-mono font-semibold" data-testid="fzr-offer-id">{selectedOffer.offer_id}</span></p>
                       <p className="flex justify-between"><span className="text-muted-foreground">{t("admin.fzr.cost")}</span><span className="font-semibold" data-testid="fzr-offer-cost">${selectedOffer.price_usd}</span></p>
                       <p className="flex justify-between"><span className="text-muted-foreground">{t("admin.fzr.mgsSell")}</span><span className="font-semibold">{formatAr(editing.price, lang)}</span></p>
@@ -529,7 +529,7 @@ export default function AdminFazercards() {
                     {t("admin.fzr.addComponent")}
                   </Button>
                   {compTotals && (
-                    <div className="space-y-1 rounded-xl bg-muted p-3 text-xs">
+                    <div className="space-y-1 rounded-[10px] bg-muted p-3 text-xs">
                       <p className="flex justify-between"><span className="text-muted-foreground">{t("admin.fzr.totalUc", { label: currencyLabel })}</span><span className="font-semibold" data-testid="fzr-comp-total-uc">{compTotals.uc} / {compTotals.target} {currencyLabel}</span></p>
                       <p className="flex justify-between"><span className="text-muted-foreground">{t("admin.fzr.totalSupplier")}</span><span className="font-semibold" data-testid="fzr-comp-total-usd">${compTotals.usd}</span></p>
                       <p className={`font-bold ${compTotals.exact ? "text-foreground" : "text-foreground"}`} data-testid="fzr-comp-check">
@@ -539,7 +539,7 @@ export default function AdminFazercards() {
                   )}
                 </div>
               )}
-              <label className="flex items-start gap-2 rounded-xl border border-[color:var(--rule)] p-3">
+              <label className="flex items-start gap-2 rounded-[10px] border border-[color:var(--foreground)] p-3">
                 <Checkbox checked={form.confirmed} onCheckedChange={(v) => setForm((f) => ({ ...f, confirmed: !!v }))} data-testid="fzr-confirmed-toggle" className="mt-0.5" />
                 <span>
                   <span className="text-sm font-semibold">{t("admin.fzr.confirmedLabel")}</span>
@@ -547,7 +547,7 @@ export default function AdminFazercards() {
                 </span>
               </label>
               {!form.confirmed && (
-                <p className="flex items-center gap-2 rounded-xl bg-[color-mix(in_srgb,var(--status-refund)_12%,transparent)] px-3 py-2 text-xs font-semibold text-[color:var(--status-refund)]" data-testid="fzr-unconfirmed-warning">
+                <p className="flex items-center gap-2 rounded-[10px] bg-[color-mix(in_srgb,var(--status-refund)_12%,transparent)] px-3 py-2 text-xs font-semibold text-[color:var(--status-refund)]" data-testid="fzr-unconfirmed-warning">
                   <AlertTriangle className="h-3.5 w-3.5" />{t("admin.fzr.statusUnconfirmed")}
                 </p>
               )}

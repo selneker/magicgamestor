@@ -93,7 +93,7 @@ export default function AdminBinance() {
         <p className="eyebrow">Dépôts non associés (revue manuelle) · {unmatched.length}</p>
         {unmatched.length === 0 && <p className="mt-2 text-sm text-muted-foreground">Aucun dépôt à revoir.</p>}
         {unmatched.map((u) => (
-          <div key={u.id} className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2 text-xs">
+          <div key={u.id} className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[color:var(--foreground)] pt-2 text-xs">
             <div className="min-w-0"><p className="font-bold">{u.amount} USDT · {u.network} · <span className="text-foreground">{u.reason}</span></p><p className="break-all font-mono text-muted-foreground">{u.tx_hash}</p></div>
             <Button size="sm" variant="outline" className="rounded-full" onClick={() => act(() => api.patch(`/crypto/admin/unmatched/${u.id}`), () => "Marqué comme revu.")} data-testid={`binance-unmatched-review-${u.id}`}>Marquer revu</Button>
           </div>
@@ -104,9 +104,9 @@ export default function AdminBinance() {
         <p className="eyebrow">Paiements USDT récents</p>
         {payments.length === 0 && <p className="mt-2 text-sm text-muted-foreground">Aucun paiement USDT.</p>}
         {payments.map((p) => (
-          <div key={p.id} className="mt-2 grid gap-1 border-t border-border pt-2 text-xs sm:grid-cols-[1fr_auto]" data-testid={`binance-payment-${p.id}`}>
+          <div key={p.id} className="mt-2 grid gap-1 border-t border-[color:var(--foreground)] pt-2 text-xs sm:grid-cols-[1fr_auto]" data-testid={`binance-payment-${p.id}`}>
             <div className="min-w-0"><p className="font-bold">{p.order_number} · {p.amount_usdt} USDT · {p.network} · taux {p.rate_ar_per_usdt} Ar</p>{p.tx_hash && <p className="break-all font-mono text-muted-foreground">{p.tx_hash}</p>}</div>
-            <span className={`self-start rounded-full border px-2 py-0.5 font-black ${p.status === "CONFIRMED" ? "border-[color:var(--foreground)] bg-primary text-primary-foreground" : p.status === "FAILED" ? "border-destructive text-destructive" : "border-[color:var(--rule-strong)]"}`}>{p.status}</span>
+            <span className={`self-start rounded-full border px-2 py-0.5 font-black ${p.status === "CONFIRMED" ? "border-[color:var(--foreground)] bg-primary text-primary-foreground" : p.status === "FAILED" ? "border-destructive text-destructive" : "border-[color:var(--foreground)]"}`}>{p.status}</span>
           </div>
         ))}
       </section>

@@ -51,19 +51,19 @@ export default function AdminLoyalty() {
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {SETTING_FIELDS.map(([key, label]) => (
             <div key={key}><label htmlFor={`s-${key}`} className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</label>
-              <Input id={`s-${key}`} type="number" defaultValue={settings[key]} onBlur={(e) => Number(e.target.value) !== settings[key] && saveSettings({ [key]: Number(e.target.value) })} className="mt-1 h-10 rounded-xl" data-testid={`loyalty-setting-${key}`} /></div>
+              <Input id={`s-${key}`} type="number" defaultValue={settings[key]} onBlur={(e) => Number(e.target.value) !== settings[key] && saveSettings({ [key]: Number(e.target.value) })} className="mt-1 h-10 rounded-[10px]" data-testid={`loyalty-setting-${key}`} /></div>
           ))}
         </div>
       </section>
       <section className="panel p-5">
         <h2 className="font-display text-lg font-bold">Récompenses</h2>
         <form onSubmit={createReward} className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
-          <Input required placeholder={t("admin.fzr.rewardName")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="h-10 rounded-xl lg:col-span-2" data-testid="reward-name-input" aria-label={t("admin.fzr.rewardName")} />
-          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="h-10 rounded-xl border bg-background px-2 text-sm" data-testid="reward-type-select" aria-label="Type">{["uc", "discount", "bonus", "event"].map((x) => <option key={x} value={x}>{x}</option>)}</select>
-          <Input type="number" required min={1} placeholder="Coût (pts)" value={form.cost_points} onChange={(e) => setForm({ ...form, cost_points: e.target.value })} className="h-10 rounded-xl" data-testid="reward-cost-input" aria-label="Coût" />
-          <Input type="number" required min={0} placeholder="Valeur (UC/Ar)" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} className="h-10 rounded-xl" data-testid="reward-value-input" aria-label="Valeur" />
-          <Input type="number" min={0} placeholder="Stock (vide = ∞)" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="h-10 rounded-xl" data-testid="reward-stock-input" aria-label="Stock" />
-          <Input placeholder={t("admin.fzr.rewardDescription")} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="h-10 rounded-xl lg:col-span-5" aria-label={t("admin.fzr.rewardDescription")} />
+          <Input required placeholder={t("admin.fzr.rewardName")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="h-10 rounded-[10px] lg:col-span-2" data-testid="reward-name-input" aria-label={t("admin.fzr.rewardName")} />
+          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="h-10 rounded-[10px] border bg-background px-2 text-sm" data-testid="reward-type-select" aria-label="Type">{["uc", "discount", "bonus", "event"].map((x) => <option key={x} value={x}>{x}</option>)}</select>
+          <Input type="number" required min={1} placeholder="Coût (pts)" value={form.cost_points} onChange={(e) => setForm({ ...form, cost_points: e.target.value })} className="h-10 rounded-[10px]" data-testid="reward-cost-input" aria-label="Coût" />
+          <Input type="number" required min={0} placeholder="Valeur (UC/Ar)" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} className="h-10 rounded-[10px]" data-testid="reward-value-input" aria-label="Valeur" />
+          <Input type="number" min={0} placeholder="Stock (vide = ∞)" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="h-10 rounded-[10px]" data-testid="reward-stock-input" aria-label="Stock" />
+          <Input placeholder={t("admin.fzr.rewardDescription")} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="h-10 rounded-[10px] lg:col-span-5" aria-label={t("admin.fzr.rewardDescription")} />
           <Button type="submit" className="h-10 rounded-full font-semibold" data-testid="reward-create-submit">Créer</Button>
         </form>
         <ul className="mt-4 divide-y text-sm">
@@ -84,11 +84,11 @@ export default function AdminLoyalty() {
       <section className="panel p-5">
         <h2 className="font-display text-lg font-bold">Ajustement manuel (journalisé)</h2>
         <form onSubmit={doAdjust} className="mt-3 grid gap-2 sm:grid-cols-5">
-          <Input type="email" required placeholder="Email client" value={adjust.user_email} onChange={(e) => setAdjust({ ...adjust, user_email: e.target.value })} className="h-10 rounded-xl sm:col-span-2" data-testid="adjust-email-input" aria-label="Email" />
-          <Input type="number" required placeholder="+/- points" value={adjust.amount} onChange={(e) => setAdjust({ ...adjust, amount: e.target.value })} className="h-10 rounded-xl" data-testid="adjust-amount-input" aria-label="Points" />
-          <select value={adjust.bucket} onChange={(e) => setAdjust({ ...adjust, bucket: e.target.value })} className="h-10 rounded-xl border bg-background px-2 text-sm" aria-label="Type de points"><option value="promo">promo</option><option value="earned">earned</option></select>
+          <Input type="email" required placeholder="Email client" value={adjust.user_email} onChange={(e) => setAdjust({ ...adjust, user_email: e.target.value })} className="h-10 rounded-[10px] sm:col-span-2" data-testid="adjust-email-input" aria-label="Email" />
+          <Input type="number" required placeholder="+/- points" value={adjust.amount} onChange={(e) => setAdjust({ ...adjust, amount: e.target.value })} className="h-10 rounded-[10px]" data-testid="adjust-amount-input" aria-label="Points" />
+          <select value={adjust.bucket} onChange={(e) => setAdjust({ ...adjust, bucket: e.target.value })} className="h-10 rounded-[10px] border bg-background px-2 text-sm" aria-label="Type de points"><option value="promo">promo</option><option value="earned">earned</option></select>
           <Button type="submit" className="h-10 rounded-full font-semibold" data-testid="adjust-submit">Appliquer</Button>
-          <Input required minLength={3} placeholder="Raison (obligatoire)" value={adjust.reason} onChange={(e) => setAdjust({ ...adjust, reason: e.target.value })} className="h-10 rounded-xl sm:col-span-5" data-testid="adjust-reason-input" aria-label="Raison" />
+          <Input required minLength={3} placeholder="Raison (obligatoire)" value={adjust.reason} onChange={(e) => setAdjust({ ...adjust, reason: e.target.value })} className="h-10 rounded-[10px] sm:col-span-5" data-testid="adjust-reason-input" aria-label="Raison" />
         </form>
       </section>
     </div>

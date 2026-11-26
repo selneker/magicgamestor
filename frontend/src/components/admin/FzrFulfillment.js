@@ -104,7 +104,7 @@ export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, mapComponents
     // 9 px, bordure 1 px). Le contenu repliable, l'action
     // « Envoyer » et le rafraîchissement restent inchangés derrière.
     <div className="col-span-full text-xs" data-testid={`fzr-block-${order.order_number}`}>
-      <div className="mt-[10px] flex flex-wrap items-center gap-2 border-t border-[color:var(--rule)] pt-[9px]">
+      <div className="mt-[10px] flex flex-wrap items-center gap-2 border-t border-[color:var(--foreground)] pt-[9px]">
         {/* PL-UX-4/5 — le nom du fournisseur ne s'affiche PAS dans l'admin :
             le lien s'appelle « Détails » et garde l'information utile
             (état de livraison, référence fournisseur, erreur, action
@@ -114,13 +114,13 @@ export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, mapComponents
           {open ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         </button>
         {readyCount > 0 && order.status === "paid" && (
-          <Button size="sm" className="h-7 rounded-[8px] text-xs" onClick={openPreflight} disabled={busy} data-testid={`fzr-send-${order.order_number}`}>
+          <Button size="sm" className="h-7 rounded-[10px] text-xs" onClick={openPreflight} disabled={busy} data-testid={`fzr-send-${order.order_number}`}>
             {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-3 w-3" />}
             {t("admin.fzr.send")} ({readyCount})
           </Button>
         )}
         {open && canRefresh && (
-          <Button size="sm" variant="outline" className="h-7 rounded-[8px] text-xs" onClick={refresh} disabled={busy} data-testid={`fzr-refresh-${order.order_number}`}>
+          <Button size="sm" variant="outline" className="h-7 rounded-[10px] text-xs" onClick={refresh} disabled={busy} data-testid={`fzr-refresh-${order.order_number}`}>
             <RefreshCw className="mr-1 h-3 w-3" />{t("admin.fzr.refresh")}
           </Button>
         )}
@@ -148,7 +148,7 @@ export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, mapComponents
           };
           if (comps?.length) {
             return (
-              <li key={idx} className="rounded-lg border-l-2 border-[color:var(--brand-blue)] bg-card px-2.5 py-1.5" data-testid={`fzr-line-${on}-${idx}`}>
+              <li key={idx} className="rounded-[10px] border-l-2 border-[color:var(--foreground)] bg-card px-2.5 py-1.5" data-testid={`fzr-line-${on}-${idx}`}>
                 <p className="flex flex-wrap items-center gap-2 font-semibold text-foreground">
                   {item.quantity}× {item.name}
                   <span className="rounded-full bg-[color-mix(in_srgb,var(--brand-blue)_14%,transparent)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[color:var(--brand-blue)]">{t("admin.fzr.composition")}</span>
@@ -172,7 +172,7 @@ export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, mapComponents
           }
           if (qty > 1 && mappedIds[item.product_id]) {
             return (
-              <li key={idx} className="rounded-lg bg-card px-2.5 py-1.5" data-testid={`fzr-line-${on}-${idx}`}>
+              <li key={idx} className="rounded-[10px] bg-card px-2.5 py-1.5" data-testid={`fzr-line-${on}-${idx}`}>
                 <p className="font-semibold text-foreground">{item.quantity}× {item.name}</p>
                 <ul className="mt-1.5 space-y-1 pl-2">
                   {Array.from({ length: qty }).map((_, q) => unitRow(q, null, item.name, q === qty - 1, false))}
@@ -199,11 +199,11 @@ export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, mapComponents
           <DialogHeader><DialogTitle>{t("admin.fzr.preflightTitle")}</DialogTitle></DialogHeader>
           {report && (
             <div className="space-y-2 text-sm">
-              <p className="flex justify-between gap-4 border-b border-[color:var(--rule)] py-1"><span className="text-muted-foreground">{t("admin.fzr.mgsOrder")}</span><span className="font-semibold">{report.order_number}</span></p>
-              <p className="flex justify-between gap-4 border-b border-[color:var(--rule)] py-1"><span className="text-muted-foreground">{t("admin.fzr.playerId")}</span><span className="font-semibold">{report.player_id}</span></p>
-              <p className="flex justify-between gap-4 border-b border-[color:var(--rule)] py-1"><span className="text-muted-foreground">{t("admin.fzr.playerName")}</span><span className="font-semibold">{report.player_name || "—"}</span></p>
+              <p className="flex justify-between gap-4 border-b border-[color:var(--foreground)] py-1"><span className="text-muted-foreground">{t("admin.fzr.mgsOrder")}</span><span className="font-semibold">{report.order_number}</span></p>
+              <p className="flex justify-between gap-4 border-b border-[color:var(--foreground)] py-1"><span className="text-muted-foreground">{t("admin.fzr.playerId")}</span><span className="font-semibold">{report.player_id}</span></p>
+              <p className="flex justify-between gap-4 border-b border-[color:var(--foreground)] py-1"><span className="text-muted-foreground">{t("admin.fzr.playerName")}</span><span className="font-semibold">{report.player_name || "—"}</span></p>
               {(report.lines || []).map((l, i) => (
-                <div key={i} className="rounded-lg bg-muted p-2" data-testid={`fzr-preflight-line-${l.index}${l.component_index != null ? `-${l.component_index}` : ""}`}>
+                <div key={i} className="rounded-[10px] bg-muted p-2" data-testid={`fzr-preflight-line-${l.index}${l.component_index != null ? `-${l.component_index}` : ""}`}>
                   <p className="font-semibold">{l.product}{l.component_name ? <span className="text-muted-foreground"> · {l.component_name}</span> : null}</p>
                   <p className="text-xs text-muted-foreground">{l.offer_name} ({l.offer_id}) · ${l.price_usd}</p>
                   <p className="break-all text-xs text-muted-foreground">{t("admin.fzr.idem")} : {l.idempotency_key}</p>
@@ -211,7 +211,7 @@ export const FzrFulfillment = ({ order, mappedIds, mapStatus = {}, mapComponents
                 </div>
               ))}
               {(report.skipped || []).map((s, i) => (
-                <p key={i} className="rounded-lg bg-[color-mix(in_srgb,var(--status-refund)_12%,transparent)] p-2 text-xs text-[color:var(--status-refund)]" data-testid={`fzr-preflight-skipped-${s.index}`}>{s.product} : {s.reason}</p>
+                <p key={i} className="rounded-[10px] bg-[color-mix(in_srgb,var(--status-refund)_12%,transparent)] p-2 text-xs text-[color:var(--status-refund)]" data-testid={`fzr-preflight-skipped-${s.index}`}>{s.product} : {s.reason}</p>
               ))}
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" className="rounded-full" onClick={() => setReport(null)} data-testid="fzr-preflight-cancel">{t("admin.fzr.preflightCancel")}</Button>
