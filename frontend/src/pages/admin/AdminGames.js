@@ -25,7 +25,7 @@ function Readiness({ readiness, compact = false }) {
     return <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${readiness.ready ? "bg-primary text-primary-foreground" : "border text-muted-foreground"}`}>{readiness.ready ? "Prêt à la vente" : `${missing} étape(s) manquante(s)`}</span>;
   }
   return (
-    <ul className="space-y-1.5 rounded-2xl border p-3 sm:col-span-2" data-testid="game-readiness">
+    <ul className="space-y-1.5 rounded-[10px] border p-3 sm:col-span-2" data-testid="game-readiness">
       <li className="text-sm font-bold">Préparation à la vente {readiness.ready ? "— complète" : "— incomplète"}</li>
       {readiness.checks.map((c) => (
         <li key={c.key} className="flex items-start gap-2 text-xs" data-testid={`readiness-${c.key}`}>
@@ -107,7 +107,7 @@ export default function AdminGames() {
 
   return (
     <div data-testid="admin-games">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-foreground pb-3">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[color:var(--foreground)] pb-3">
         <div>
           <p className="eyebrow">{t("admin.games")}</p>
           <h2 className="font-display text-2xl font-black uppercase tracking-tight">{t("admin.gamesTitle")}</h2>
@@ -121,7 +121,7 @@ export default function AdminGames() {
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {games.map((g) => (
           <div key={g.id} data-testid={`admin-game-${g.slug || g.id}`}
-            className={`flex min-w-0 items-center gap-3 rounded-2xl border bg-card p-3 sm:p-4 ${g.active ? "border-[color:var(--rule)]" : "border-dashed border-[color:var(--rule-strong)] opacity-60"}`}>
+            className={`flex min-w-0 items-center gap-3 rounded-[10px] border bg-card p-3 sm:p-4 ${g.active ? "border-[color:var(--rule)]" : "border-dashed border-[color:var(--rule-strong)] opacity-60"}`}>
             <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-primary-foreground">
               {g.icon_url ? <img src={g.icon_url} alt="" className="h-full w-full object-cover" loading="lazy" />
                 : <Gamepad2 className="h-5 w-5" strokeWidth={2} aria-hidden="true" />}
@@ -145,7 +145,7 @@ export default function AdminGames() {
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
         <DialogContent aria-describedby={undefined} className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-2xl" data-testid="game-dialog">
           <DialogHeader><DialogTitle className="font-display">{editing?._existing ? t("admin.edit") : t("admin.newGame")}</DialogTitle></DialogHeader>
-          <p className="rounded-xl border border-foreground bg-card p-3 text-xs text-foreground">
+          <p className="rounded-xl border border-[color:var(--foreground)] bg-card p-3 text-xs text-foreground">
             Pour préparer un nouveau jeu : définissez ses champs d'identité joueur, son unité de monnaie,
             associez ses catégories FazerCards et liez chaque pack dans Admin → Fournisseur.
             Le jeu ne pourra être activé que lorsque sa configuration ET son catalogue livrable seront réels.
@@ -179,7 +179,7 @@ export default function AdminGames() {
               <label className="flex items-center gap-2 text-sm font-semibold">
                 <Switch checked={!!editing.active} onCheckedChange={(v) => setEditing({ ...editing, active: v })} data-testid="game-field-active" />{t("admin.active")}
               </label>
-              <div className="sm:col-span-2 rounded-2xl border-2 border-foreground/15 p-3" data-testid="game-identity-fields">
+              <div className="sm:col-span-2 rounded-[10px] border-2 border-foreground/15 p-3" data-testid="game-identity-fields">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-bold">Champs d'identité joueur</p>
                   <Button type="button" size="sm" variant="outline" className="rounded-full font-bold" onClick={addField} data-testid="game-identity-add">
@@ -213,7 +213,7 @@ export default function AdminGames() {
                   ))}
                 </div>
               </div>
-              <div className="sm:col-span-2 rounded-2xl border-2 border-foreground/15 p-3" data-testid="game-product-types">
+              <div className="sm:col-span-2 rounded-[10px] border-2 border-foreground/15 p-3" data-testid="game-product-types">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-bold">Types de produit (boutique MGS)</p>
                   <Button type="button" size="sm" variant="outline" className="rounded-full font-bold" onClick={() => setTypes((l) => [...l, { key: "", label: "", label_en: "" }])} data-testid="game-type-add">
