@@ -35,7 +35,7 @@ export default function AdminEvents() {
       <Button className="rounded-full font-bold" onClick={() => setEditing({ ...EMPTY })} data-testid="admin-new-event"><Plus className="mr-1 h-4 w-4" />{t("admin.newEvent")}</Button>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         {events.map((ev) => (
-          <div key={ev.id} data-testid={`admin-event-${ev.slug}`} className={`flex items-center gap-3 rounded-2xl border bg-card p-4 ${ev.active ? "border-[color:var(--rule)]" : "border-dashed opacity-60"}`}>
+          <div key={ev.id} data-testid={`admin-event-${ev.slug}`} className={`flex items-center gap-3 rounded-[10px] border bg-card p-4 ${ev.active ? "border-[color:var(--rule)]" : "border-dashed opacity-60"}`}>
             {ev.image_url && <img src={ev.image_url} alt="" className="h-14 w-20 rounded-xl object-cover" />}
             <div className="min-w-0 flex-1"><p className="truncate font-display font-bold text-foreground">{ev.title_fr}</p><p className="text-xs">♥ {ev.likes} · ↗ {ev.shares} · {ev.product_slug || "—"}</p></div>
             <Button size="icon" variant="ghost" className="rounded-full" aria-label={t("admin.edit")} onClick={() => setEditing({ ...EMPTY, ...ev })} data-testid={`admin-edit-event-${ev.slug}`}><Pencil className="h-4 w-4" /></Button>
