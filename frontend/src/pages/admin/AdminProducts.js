@@ -27,7 +27,7 @@ function SeasonsPanel({ t }) {
   };
   if (seasons === null) return null;
   return (
-    <section className="mb-6 border-2 border-foreground bg-card p-4" data-testid="admin-seasons">
+    <section className="mb-6 border-2 border-[color:var(--foreground)] bg-card p-4" data-testid="admin-seasons">
       <h2 className="font-display text-lg font-bold">{t("admin.seasons")}</h2>
       <p className="mt-1 text-xs text-muted-foreground">{t("admin.seasonsHint")}</p>
       <form onSubmit={create} className="mt-3 flex flex-wrap gap-2">
@@ -36,7 +36,7 @@ function SeasonsPanel({ t }) {
       </form>
       <div className="mt-3 flex flex-wrap gap-2">
         {seasons.map((s) => (
-          <span key={s.id} data-testid={`season-${s.id}`} className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${s.active ? "border-foreground bg-primary text-primary-foreground" : "border-[color:var(--rule)] text-muted-foreground"}`}>
+          <span key={s.id} data-testid={`season-${s.id}`} className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${s.active ? "border-[color:var(--foreground)] bg-primary text-primary-foreground" : "border-[color:var(--rule)] text-muted-foreground"}`}>
             {s.name}{s.active ? ` · ${t("admin.activeSeason")}` : (
               <button type="button" onClick={() => activate(s)} className="underline" data-testid={`season-activate-${s.id}`}>{t("admin.activateSeason")}</button>
             )}
@@ -86,7 +86,7 @@ export default function AdminProducts() {
   return (
     <div data-testid="admin-products">
       {/* Game selector — the whole catalogue screen is scoped to this game. */}
-      <section className="border-2 border-foreground bg-card p-4 sm:p-5" data-testid="admin-catalog-gamebar">
+      <section className="border-2 border-[color:var(--foreground)] bg-card p-4 sm:p-5" data-testid="admin-catalog-gamebar">
         <p className="eyebrow">{t("admin.catalogPickGame")}</p>
         <p className="mt-1 text-xs text-muted-foreground">{t("admin.catalogGameHint")}</p>
         <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto" role="tablist" data-testid="admin-game-tabs">
@@ -94,7 +94,7 @@ export default function AdminProducts() {
             const active = g.id === gameId;
             return (
               <button key={g.id} type="button" role="tab" aria-selected={active} data-testid={`admin-game-tab-${g.id}`} onClick={() => setGameId(g.id)}
-                className={`inline-flex shrink-0 items-center gap-2 border px-4 py-2 text-[11px] font-black uppercase tracking-[0.1em] transition-colors ${active ? "border-foreground bg-primary text-primary-foreground" : "border-foreground bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`}>
+                className={`inline-flex shrink-0 items-center gap-2 border px-4 py-2 text-[11px] font-black uppercase tracking-[0.1em] transition-colors ${active ? "border-[color:var(--foreground)] bg-primary text-primary-foreground" : "border-[color:var(--foreground)] bg-card text-muted-foreground hover:bg-foreground hover:text-background"}`}>
                 {g.name}{g.active ? "" : ` · ${t("admin.inactive")}`}
               </button>
             );
@@ -118,7 +118,7 @@ export default function AdminProducts() {
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {visible.map((p) => (
-          <div key={p.id} data-testid={`admin-product-${p.slug}`} className={`flex min-w-0 items-center gap-2 border-2 bg-card p-3 sm:gap-3 sm:p-4 ${p.active ? "border-foreground" : "border-dashed border-[color:var(--rule-strong)] opacity-60"}`}>
+          <div key={p.id} data-testid={`admin-product-${p.slug}`} className={`flex min-w-0 items-center gap-2 border-2 bg-card p-3 sm:gap-3 sm:p-4 ${p.active ? "border-[color:var(--foreground)]" : "border-dashed border-[color:var(--rule-strong)] opacity-60"}`}>
             <div className="min-w-0 flex-1">
               <p className="break-words font-display text-sm font-bold leading-snug sm:text-base">{p.name}</p>
               <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
