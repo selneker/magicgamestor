@@ -289,7 +289,7 @@ export default function AdminOrders() {
           filtre que par `payment_method`) : la limite est dite, jamais cachée. */}
       <AdminMethodOperatorNote method={filters.method} />
       <div className="mt-4 space-y-2.5">
-        {visibleOrders.length === 0 && <p className="rounded-2xl bg-card p-6 text-muted-foreground" data-testid="admin-orders-empty">{t("order.none")}</p>}
+        {visibleOrders.length === 0 && <p className="rounded-[10px] bg-card p-6 text-muted-foreground" data-testid="admin-orders-empty">{t("order.none")}</p>}
         {visibleOrders.map((o) => (
           <AdminOrderCard
             key={o.id}
