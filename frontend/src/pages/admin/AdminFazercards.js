@@ -248,7 +248,7 @@ export default function AdminFazercards() {
 
   return (
     <div className="space-y-6" data-testid="admin-fzr">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-2 border-foreground bg-card p-4" data-testid="fzr-auto-setting">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-2 border-[color:var(--foreground)] bg-card p-4" data-testid="fzr-auto-setting">
         <div>
           <p className="font-display text-base font-bold">{t("admin.fzr.auto")}</p>
           <p className="text-xs text-muted-foreground">{t("admin.fzr.autoHint")}</p>
@@ -262,7 +262,7 @@ export default function AdminFazercards() {
         </div>
       </div>
 
-      <section className="rounded-2xl border border-border bg-card p-5" data-testid="fzr-game-categories">
+      <section className="rounded-[10px] border border-border bg-card p-5" data-testid="fzr-game-categories">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h2 className="font-display text-lg font-bold text-foreground">Catégories FazerCards par jeu</h2>
@@ -307,7 +307,7 @@ export default function AdminFazercards() {
         <p className="mt-2 text-xs text-muted-foreground">{assignedCategoryIds.length} catégorie(s) sélectionnée(s). Les offres du catalogue seront disponibles ci-dessous après enregistrement.</p>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-5">
+      <section className="rounded-[10px] border border-border bg-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-lg font-bold text-foreground">{t("admin.fzr.priceAlerts")}{alerts.unacknowledged > 0 && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground" data-testid="fzr-alert-count">{alerts.unacknowledged}</span>}</h2>
           {can("catalog.manage") && (
@@ -333,7 +333,7 @@ export default function AdminFazercards() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-5" data-testid="fzr-mappings-section">
+      <section className="rounded-[10px] border border-border bg-card p-5" data-testid="fzr-mappings-section">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-display text-lg font-bold text-foreground">{t("admin.fzr.mappings")}</h2>
@@ -434,7 +434,7 @@ export default function AdminFazercards() {
         })}
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-5" data-testid="fzr-coverage-section">
+      <section className="rounded-[10px] border border-border bg-card p-5" data-testid="fzr-coverage-section">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-display text-lg font-bold text-foreground">{t("admin.fzr.coverage")}</h2>
