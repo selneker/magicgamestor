@@ -1039,6 +1039,12 @@ body[data-page="connexion"] .main-w{padding-bottom:0}
 .title-row .h-sm,.logo-section-content .h-sm{width:100%;max-width:100%;align-self:stretch}
 @media (max-width:767px){.h-d{font-size:4.5em}.h-l{font-size:3.8em}.h-m{font-size:2.2em}.h-sm{font-size:2em}.xs--h-ml{font-size:3.8em}.content-container{padding-left:1.5em;padding-right:1.5em}}
 @media (max-width:479px){.h-d{font-size:3em}.h-l{font-size:2.6em}.h-sm{font-size:1.7em}.xs--h-ml{font-size:2.6em}.h-l.xs--h-ml{font-size:2.6em}.content-container{padding-left:1.1em;padding-right:1.1em}}
+/* Correctif accueil : seules les colonnes de texte de la grille d'accueil
+   passent à une valeur d'échelle déjà présente dans cette feuille. */
+.two-col-grid__text h2.h-l{font-size:3em;line-height:.95}
+.two-col-grid__text p.h-s{font-size:1.5em}
+@media (max-width:767px){.two-col-grid__text h2.h-l{font-size:2.2em}.two-col-grid__text p.h-s{font-size:1.25em}}
+@media (max-width:479px){.two-col-grid__text h2.h-l{font-size:1.7em}.two-col-grid__text p.h-s{font-size:1em}}
 </style>
 
 <style>
@@ -2356,7 +2362,6 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
             <div class="defi-i-2" data-icon data-lottie="PiggyBank"></div>
             <div class="button-row">
               <a href="#jeux" class="button-main w-inline-block download-button text-only" data-button-accent="dark" data-load-stagger data-cursor="voir la boutique"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="Voir la boutique"></span><span class="button-main-inner__front"><span class="button-main-inner__bg is--white"></span><span class="button-main-inner__text"><span>Voir la boutique</span></span></span></span></a>
-              <a href="#jeux" class="button-main w-inline-block download-button" data-button-accent="yellow" data-load-stagger data-cursor="choisir un jeu"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="choisir un jeu"></span><span class="button-main-inner__front"><span class="button-main-inner__bg is--white"></span><span class="button-main-inner__text has--logo"><span class="download-button__logo"><svg class="" viewBox="0 0 100 100" aria-hidden="true"><use href="#ic-manette"/></svg></span><span>Choisir un jeu</span></span></span></span></a>
               <a href="#securite" class="button-main w-inline-block download-button text-only" data-button-accent="yellow" data-load-stagger data-cursor="suivre une commande"><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="suivre une commande"></span><span class="button-main-inner__front"><span class="button-main-inner__bg is--white"></span><span class="button-main-inner__text has--icon"><span>Suivre une commande</span><svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 10 17" fill="none" class="button-main-inner__arrow" aria-hidden="true"><path d="M1.11328 1.34766L8.2646 8.49897L1.11328 15.6503" stroke="currentColor" stroke-width="0.08em"></path></svg></span></span></span></a>
             </div>
           </div>
@@ -2365,7 +2370,7 @@ button.button-main:disabled{opacity:.45;pointer-events:none}
       <div class="two-col-grid" data-hero-fade>
           <div class="two-col-grid__item">
             <div class="two-col-grid__text">
-              <h2 class="h-l xs--first xs--h-ml" data-anim-slant>Commencez ici : vos jeux</h2>
+              <h2 class="h-l xs--first xs--h-ml" data-anim-slant>Commencez ici</h2>
               <p class="h-s xs--last">Parcourez le catalogue de chaque jeu et ajoutez votre offre en un clic. UC, diamants, CP : tout y est.</p>
               <div class="flex-row gap--reg"><a href="#jeux" class="button-main w-inline-block" data-button-theme="dark" data-button-accent=""><span class="button-main-inner full-h"><span class="button-main-inner__back" data-text="VOIR LA BOUTIQUE"></span><span class="button-main-inner__front"><span class="button-main-inner__bg"></span><span class="button-main-inner__text"><span>Voir la boutique</span></span></span></span></a></div>
             </div>
@@ -4956,21 +4961,22 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
   /* invité vs connecté : chrome de nav (pill points desktop + cercle points mobile) */
   var authBusy = false;
   function syncAuthChrome() {
-    var on = !!me && loyaltyOk;
+    /* L'avatar suit la session (`me`), pas le solde de points : un échec de
+       /loyalty/me ne doit pas effacer l'accès au compte. */
+    var connected = !!me;
+    var on = connected && loyaltyOk;
     /* Accès à l'administration : visible seulement pour un compte admin connecté. */
-    var isAdm = !!me && (me.role === "admin" || me.role === "super_admin");
+    var isAdm = connected && (me.role === "admin" || me.role === "super_admin");
     $$("[data-admin-only]").forEach(function (e) { e.style.display = isAdm ? "" : "none"; });
     $$(".nav-points-pill").forEach(function (e) { e.style.display = on ? "" : "none"; });
     $$('.nav-mobile-actions a[data-nav="points"]').forEach(function (e) { e.style.display = on ? "" : "none"; });
-    /* Photo de profil à la place de l'icône : dans la nav, à droite du chiffre
-       des points (desktop), et sur le cercle « Compte » du mobile. */
     $$(".nav-avatar-d").forEach(function (e) {
-      if (on && !e.dataset.av) { paintAvatar(e); e.dataset.av = "1"; }
-      e.style.display = on ? "" : "none";
+      if (connected && !e.dataset.av) { paintAvatar(e); e.dataset.av = "1"; }
+      e.style.display = connected ? "" : "none";
     });
     $$('.nav-mobile-actions a[data-nav="compte"]').forEach(function (e) {
       if (!e.dataset.ic) e.dataset.ic = e.innerHTML;
-      if (on) { if (!e.dataset.av) { paintAvatar(e); e.dataset.av = "1"; } }
+      if (connected) { if (!e.dataset.av) { paintAvatar(e); e.dataset.av = "1"; } }
       else if (e.dataset.av) { e.innerHTML = e.dataset.ic; delete e.dataset.av; }
     });
   }
@@ -5035,7 +5041,7 @@ var LOTTIE_DATA = {"Rocket":{"v":"5.12.1","fr":60,"ip":0,"op":162,"w":500,"h":50
     function hex(n) { var out = ""; for (k = 0; k < 4; k++) out += ("0" + ((n >> (k * 8)) & 255).toString(16)).slice(-2); return out; }
     return hex(a) + hex(b) + hex(c) + hex(d);
   }
-  function avatarSrc() { var e = String((me && me.email) || "").trim().toLowerCase(); return e ? "https://www.gravatar.com/avatar/" + md5(e) + "?s=96&d=404" : null; }
+  function avatarSrc() { var pic = String((me && me.picture) || "").trim(); if (pic) return pic; var e = String((me && me.email) || "").trim().toLowerCase(); return e ? "https://www.gravatar.com/avatar/" + md5(e) + "?s=96&d=404" : null; }
   function initials() { var n = ((me && (me.name || me.email)) || "").trim(); return (n ? n.slice(0, 2) : "MG").toUpperCase(); }
   function paintAvatar(el) {
     if (!el) return;
