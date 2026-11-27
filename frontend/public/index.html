@@ -996,7 +996,8 @@ textarea.mgs-input{height:auto;min-height:6em;border-radius:1.25em;padding:1em 1
 .mgs-set-block .mgs-field{margin-bottom:.8em}
 
 /* ===== CONNEXION plein écran focalisé + fond animé ===== */
-body[data-page="connexion"] .nav-w,body[data-page="connexion"] .footer,body[data-page="connexion"] .bottom-nav-w,body[data-page="commande"] .footer{display:none !important}
+body:not([data-page="accueil"]) .footer{display:none !important}
+body[data-page="connexion"] .nav-w,body[data-page="connexion"] .bottom-nav-w{display:none !important}
 body[data-page="connexion"] .main-w{padding-bottom:0}
 .mgs-auth{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2em 1.25em;overflow:hidden}
 .mgs-auth-bg{position:absolute;inset:0;z-index:0;pointer-events:none}
@@ -1286,10 +1287,10 @@ body:has(.mgs-co-id-status.is--ok:not([hidden])) .mgs-co-change-id{display:block
 .mgs-receipt-btn.is--downloading .mgs-btn-ic,.mgs-receipt-btn.is--downloading .mgs-receipt-ic{animation:mgsDownBounce .6s var(--elastic-ease-out)}
 @keyframes mgsDownBounce{0%{transform:translateY(0)}40%{transform:translateY(.3em)}100%{transform:translateY(0)}}
 body:has(.mgs-page[data-page="commande"].is--active) .bottom-nav-w{display:none!important}
-/* Phase de paiement (coordonnées marchand / attente) : la navigation du site
-   disparaît, seul le bouton « Retour » du tunnel reste disponible. */
-body:has(.mgs-page[data-page="commande"].is--active .mgs-co-screen[data-co="2"]:not([hidden])) :is(.nav-w,.footer,.bottom-nav-w),
-body:has(.mgs-page[data-page="commande"].is--active .mgs-co-screen[data-co="3"]:not([hidden])) :is(.nav-w,.footer,.bottom-nav-w){display:none!important}
+/* Phase de paiement (coordonnées marchand / attente) : seule la navigation
+   fonctionnelle disparaît ; le logo reste visible et cliquable. */
+body:has(.mgs-page[data-page="commande"].is--active .mgs-co-screen[data-co="2"]:not([hidden])) :is(.nav-inner-right,.footer,.bottom-nav-w),
+body:has(.mgs-page[data-page="commande"].is--active .mgs-co-screen[data-co="3"]:not([hidden])) :is(.nav-inner-right,.footer,.bottom-nav-w){display:none!important}
 @media (max-width:991px){.mgs-co-shell{padding-bottom:2.5em}}
 @media (prefers-reduced-motion:reduce){.mgs-co-wait-ic,.mgs-receipt-btn.is--downloading .mgs-btn-ic,.mgs-receipt-btn.is--downloading .mgs-receipt-ic{animation:none}.mgs-cart-drawer{transition:none}}
 @media (max-width:479px){.mgs-co-total{font-size:2.2em}.mgs-co-shell{max-width:100%}.mgs-human-popup{padding:1.1em}}
